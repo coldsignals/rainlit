@@ -84,7 +84,7 @@ for (const id of [
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
   'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice',
   'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove',
-  'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-delete', 'edit-bar', 'edit-cancel', 'typing', 'starting',
+  'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-delete', 'edit-bar', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
   'ring', 'ring-face', 'ring-name', 'ring-decline', 'ring-join',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-remove',
@@ -1850,6 +1850,16 @@ function addMessageMenu(li) {
     more.addEventListener('click', () => openEmojiPicker(li));
     tools.append(more);
   }
+  if (canReply(li)) {
+    const reply = document.createElement('button');
+    reply.type = 'button';
+    reply.className = 'msg-reply';
+    reply.title = 'Reply';
+    reply.setAttribute('aria-label', 'Reply');
+    reply.innerHTML = '<svg class="icon"><use href="#i-reply"/></svg>';
+    reply.addEventListener('click', () => startReply(li));
+    tools.append(reply);
+  }
   if (messageActions(li).length) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -1977,6 +1987,7 @@ function messageActions(li) {
   const mine = li.dataset.from === 'me';
   const kind = li.dataset.kind;
   const actions = [];
+  if (canReply(li)) actions.push('reply');
   if (mine && kind === 'text') actions.push('edit');
   const media = mediaOf(li);
   if (media) actions.push('save');
@@ -2013,6 +2024,7 @@ function openMessageMenu(li, x, y) {
     more.addEventListener('click', () => openEmojiPicker(li));
     el.msgReacts.append(more);
   }
+  el.msgReply.hidden = !actions.includes('reply');
   el.msgEdit.hidden = !actions.includes('edit');
   el.msgCopy.hidden = !actions.includes('copy');
   el.msgSave.hidden = !actions.includes('save');
@@ -2283,9 +2295,122 @@ function renderTyping() {
 
 // ----- Editing -----
 
+// ----- Replying -----
+// Reply to a message: a "Replying to…" bar sits above the message box, and what you send next
+// carries a little quote of it. Click the quote to go to the message it's answering.
+
+function canReply(li) {
+  return ['text', 'file', 'gif'].includes(li.dataset.kind) && Boolean(li.dataset.author)
+    && !['removed', 'pending', 'failed'].some((c) => li.classList.contains(c)) && !S.uploads.has(li.dataset.id);
+}
+
+function startReply(li) {
+  closeMessageMenu();
+  if (!li || !S.openDm || !canReply(li)) return;
+  if (S.editing) stopEdit();
+  const { name, text } = quoteOf(li);
+  S.replying = { friendId: S.openDm, id: li.dataset.id };
+  el.replyName.textContent = name;
+  el.replySnippet.textContent = text;
+  el.replyBar.hidden = false;
+  el.chatInput.focus();
+}
+
+function stopReply() {
+  if (!S.replying) return;
+  S.replying = null;
+  el.replyBar.hidden = true;
+}
+
+// The message you're replying to in this conversation, if you are.
+function replyingTo(friendId) {
+  return S.replying && S.replying.friendId === friendId ? S.replying.id : null;
+}
+
+// Who said a message, and a line of what it said.
+function quoteOf(li) {
+  const name = li.dataset.from === 'me' ? 'You' : friendName(li.dataset.author);
+  const kind = li.dataset.kind;
+  const fileName = kind === 'file' && li.querySelector('.file-name');
+  const text = kind === 'gif' ? 'GIF' : fileName ? `📎 ${fileName.textContent}` : messageText(li);
+  return { name, text: text.replace(/\s+/g, ' ').trim() };
+}
+
+// In a reply, the quote of what it's answering.
+function replyQuote(r) {
+  const q = document.createElement('button');
+  q.type = 'button';
+  q.className = 'reply-quote';
+  q.dataset.for = r.id;
+  q.title = 'Go to the message this is answering';
+  q.snapshot = r;
+  q.addEventListener('click', (e) => {
+    e.stopPropagation();
+    jumpToMessage(r.id);
+  });
+  fillQuote(q);
+  return q;
+}
+
+// What a quote says: the original as it is on screen, or else as the server described it.
+function fillQuote(q) {
+  const target = document.querySelector(`.chat-log li[data-id="${CSS.escape(q.dataset.for)}"]`);
+  const s = q.snapshot || {};
+  let name = '';
+  let text = '';
+  if (target && !target.classList.contains('removed')) {
+    ({ name, text } = quoteOf(target));
+  } else if (target || s.kind === 'removed') {
+    text = 'Original message was deleted';
+  } else if (s.author) {
+    name = s.author === S.clientId ? 'You' : friendName(s.author);
+    text = s.kind === 'gif' ? 'GIF' : s.kind === 'file' ? `📎 ${s.fileName || 'a file'}` : String(s.text || '').replace(/\s+/g, ' ');
+  } else {
+    text = "Original message isn't available";
+  }
+  q.classList.toggle('gone', !name);
+  const who = document.createElement('span');
+  who.className = 'rq-name';
+  who.textContent = name;
+  const what = document.createElement('span');
+  what.className = 'rq-text';
+  what.textContent = text;
+  q.replaceChildren(...(name ? [who] : []), what);
+}
+
+// An original was edited or removed: its quotes follow.
+function refreshQuotes(id) {
+  for (const q of document.querySelectorAll(`.reply-quote[data-for="${CSS.escape(id)}"]`)) fillQuote(q);
+  if (S.replying && S.replying.id === id) {
+    const li = document.querySelector(`.chat-log li[data-id="${CSS.escape(id)}"]`);
+    if (!li || li.classList.contains('removed')) stopReply();
+    else el.replySnippet.textContent = quoteOf(li).text;
+  }
+}
+
+// Scrolls to a message (loading older ones if it's further up) and makes it glow for a moment.
+async function jumpToMessage(id) {
+  if (!S.openDm) return;
+  const dm = dmFor(S.openDm);
+  const find = () => dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
+  let li = find();
+  for (let i = 0; !li && dm.more && i < 30; i++) {
+    if (dm.loading) await new Promise((r) => setTimeout(r, 250));
+    else await loadOlder(dm);
+    li = find();
+  }
+  if (!li) return toast("That message isn't here any more.");
+  li.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  li.classList.remove('flash');
+  void li.offsetWidth; // (so it glows again if it just did)
+  li.classList.add('flash');
+  setTimeout(() => li.classList.remove('flash'), 1600);
+}
+
 function startEdit(li) {
   closeMessageMenu();
   if (!li || !li.querySelector('.msg-text') || !S.openDm) return;
+  stopReply();
   S.editing = { id: li.dataset.id, friendId: S.openDm, draft: el.chatInput.value };
   el.editBar.hidden = false;
   el.chatInput.value = messageText(li);
@@ -2345,6 +2470,7 @@ function onDmEdited({ dm: dmId, id, text, editedAt }) {
   const dm = S.dms.get(friendOfDm(dmId));
   const li = dm && dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
   if (li) showEdited(li, text, editedAt);
+  refreshQuotes(id);
 }
 
 async function deleteMine(li) {
@@ -2456,6 +2582,7 @@ async function openDm(friendId) {
   const dm = dmFor(friendId);
   closeGifPanel();
   if (S.editing && S.editing.friendId !== friendId) stopEdit();
+  if (S.replying && S.replying.friendId !== friendId) stopReply();
   if (S.typingTo && S.typingTo !== friendId) stopTyping();
   S.openDm = friendId;
   el.home.hidden = true;
@@ -2481,6 +2608,7 @@ function closeDm() {
   closeGifPanel();
   closeMessageMenu();
   stopEdit();
+  stopReply();
   stopTyping();
   S.openDm = '';
   el.dm.hidden = true;
@@ -2734,6 +2862,10 @@ function renderMessage(m) {
   if (m.kind === 'gif' && m.meta && m.meta.url) li.dataset.copy = m.meta.url;
   if (m.reactions && m.reactions.length) renderReactions(li, m.reactions);
   if (m.kind === 'text' && m.editedAt) showEdited(li, m.text, m.editedAt);
+  if (m.replyTo && ['text', 'file', 'gif'].includes(m.kind)) {
+    li.dataset.replyTo = m.replyTo.id;
+    li.prepend(replyQuote(m.replyTo));
+  }
   if (['text', 'file', 'gif'].includes(m.kind)) {
     li.dataset.author = m.author;
     addMessageMenu(li);
@@ -2748,7 +2880,7 @@ const GROUP_MS = 7 * 60_000;
 
 function continues(prev, li) {
   return Boolean(prev && li.dataset.author && prev.dataset.author === li.dataset.author
-    && !prev.classList.contains('sys')
+    && !prev.classList.contains('sys') && !li.dataset.replyTo
     && Number(li.dataset.at) - Number(prev.dataset.at) < GROUP_MS);
 }
 
@@ -2794,18 +2926,18 @@ function markSendFailed(li, err, retrySend) {
   li.append(note);
 }
 
-async function sendText(friendId, text) {
+async function sendText(friendId, text, replyTo = null) {
   const dm = dmFor(friendId);
   const id = randomId();
-  const li = appendMessage(dm, { id, dm: '', author: S.clientId, kind: 'text', text, at: Date.now() });
+  const li = appendMessage(dm, { id, dm: '', author: S.clientId, kind: 'text', text, replyTo: replyTo && { id: replyTo }, at: Date.now() });
   li.classList.add('pending');
   clearNewDivider(dm);
   scrollChat(dm.log);
   try {
-    const { message } = await postMessage(friendId, { id, text });
+    const { message } = await postMessage(friendId, { id, text, replyTo });
     appendMessage(dm, message);
   } catch (err) {
-    markSendFailed(li, err, () => sendText(friendId, text));
+    markSendFailed(li, err, () => sendText(friendId, text, replyTo));
   }
 }
 
@@ -2920,16 +3052,17 @@ function gifTile(item) {
   btn.addEventListener('click', () => {
     const q = gifs.q;
     closeGifPanel();
-    sendGif(S.openDm, item, q);
+    sendGif(S.openDm, item, q, replyingTo(S.openDm));
+    stopReply();
   });
   return btn;
 }
 
-async function sendGif(friendId, item, q) {
+async function sendGif(friendId, item, q, replyTo = null) {
   const gif = gifSizes(item).send;
   const dm = dmFor(friendId);
   const id = randomId();
-  const li = appendMessage(dm, { id, dm: '', author: S.clientId, kind: 'gif', meta: gif, at: Date.now() });
+  const li = appendMessage(dm, { id, dm: '', author: S.clientId, kind: 'gif', meta: gif, replyTo: replyTo && { id: replyTo }, at: Date.now() });
   li.classList.add('pending');
   clearNewDivider(dm);
   scrollChat(dm.log);
@@ -2940,10 +3073,10 @@ async function sendGif(friendId, item, q) {
     body: JSON.stringify({ customer_id: S.clientId, q: q || '' }),
   }).catch(() => {});
   try {
-    const { message } = await postMessage(friendId, { id, gif });
+    const { message } = await postMessage(friendId, { id, gif, replyTo });
     appendMessage(dm, message);
   } catch (err) {
-    markSendFailed(li, err, () => sendGif(friendId, item, q));
+    markSendFailed(li, err, () => sendGif(friendId, item, q, replyTo));
   }
 }
 
@@ -3023,6 +3156,7 @@ function onDmRemoved({ dm: dmId, id, by, name, was }) {
   if (upload) upload.abort();
   const li = dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
   if (li) showRemoved(li, `${by === S.clientId ? 'You' : name} removed ${was === 'file' ? 'a file' : 'a message'}`);
+  refreshQuotes(id);
 }
 
 function onDmSaving({ dm: dmId, save }) {
@@ -3349,6 +3483,10 @@ window.rainlitBack = () => {
     stopEdit();
     return true;
   }
+  if (S.replying) {
+    stopReply();
+    return true;
+  }
   if (!el.gifPanel.hidden) {
     closeGifPanel();
     return true;
@@ -3639,10 +3777,10 @@ function removePending(id) {
 }
 
 // Sends everything waiting in the tray for this conversation.
-function sendPending(dm) {
+function sendPending(dm, replyTo = null) {
   const items = dm.pending.splice(0);
   renderTray();
-  sendFiles(items.map((p) => p.file));
+  sendFiles(items.map((p) => p.file), replyTo);
   for (const p of items) if (p.url) URL.revokeObjectURL(p.url);
 }
 
@@ -3712,13 +3850,13 @@ function fileGlyph(p) {
 
 // Files for the conversation that's open. With saving on they're uploaded and kept;
 // with it off they go straight to your friend, which only works during a call.
-function sendFiles(list) {
+function sendFiles(list, replyTo = null) {
   const files = Array.from(list || []);
   const friendId = S.openDm;
   if (!files.length || !friendId) return;
   const dm = dmFor(friendId);
   if (dm.save) {
-    for (const file of files) uploadFile(dm, file);
+    files.forEach((file, i) => uploadFile(dm, file, i === 0 ? replyTo : null)); // (the first one answers it)
     return;
   }
   if (!(S.inCall && S.callWith === friendId && S.peer && !S.peer.away)) {
@@ -3737,14 +3875,18 @@ function sendFiles(list) {
 // Uploads a file to a saved conversation, showing its progress. When it's done, the
 // server sends it back as a message, which takes this card's place. Files sent together
 // go up one at a time, so they arrive in the order you picked them.
-function uploadFile(dm, file) {
+function uploadFile(dm, file, replyTo = null) {
   if (file.size > S.maxFileMb * 1024 * 1024) {
     return toast(`"${file.name}" is too big. Files can be up to ${S.maxFileMb} MB.`, 6000);
   }
-  const t = { id: randomId(), dir: 'up', name: file.name || 'file', size: file.size, type: file.type, state: 'queued', sent: 0 };
+  const t = { id: randomId(), dir: 'up', name: file.name || 'file', size: file.size, type: file.type, state: 'queued', sent: 0, replyTo };
   const li = fileCard(t, 'You', Date.now());
   li.dataset.author = S.clientId;
   li.dataset.kind = 'file';
+  if (replyTo) {
+    li.dataset.replyTo = replyTo;
+    li.prepend(replyQuote({ id: replyTo }));
+  }
   addMessageMenu(li);
   if (previewKind(t.type)) showPreview(t.ui.card, t, fileUrl(file, t));
   appendItem(dm, li, Date.now());
@@ -3781,6 +3923,7 @@ function startUpload(dm, t, file, xhr, done) {
   xhr.setRequestHeader('X-Message-Id', t.id);
   xhr.setRequestHeader('X-File-Name', encodeURIComponent(t.name));
   xhr.setRequestHeader('X-File-Type', t.type || '');
+  if (t.replyTo) xhr.setRequestHeader('X-Reply-To', t.replyTo);
   xhr.upload.onprogress = (e) => {
     t.sent = e.loaded;
     renderProgress(t);
@@ -5312,7 +5455,9 @@ async function init() {
   el.menuProfile.addEventListener('click', menuAction(openMiniProfile));
   el.menuRemove.addEventListener('click', onMenuRemove);
   // ----- The message menu -----
+  el.msgReply.addEventListener('click', () => startReply(msgMenuLi));
   el.msgEdit.addEventListener('click', () => startEdit(msgMenuLi));
+  el.replyCancel.addEventListener('click', () => { stopReply(); el.chatInput.focus(); });
   el.msgCopy.addEventListener('click', onMessageMenuCopy);
   el.msgSave.addEventListener('click', onMessageMenuSave);
   el.msgOpen.addEventListener('click', onMessageMenuOpen);
@@ -5334,6 +5479,9 @@ async function init() {
     if (e.key === 'Escape' && S.editing) {
       e.preventDefault();
       stopEdit();
+    } else if (e.key === 'Escape' && S.replying) {
+      e.preventDefault();
+      stopReply();
     } else if (e.key === 'ArrowUp' && !S.editing && !el.chatInput.value) {
       const li = lastEditable();
       if (li) {
@@ -5481,12 +5629,14 @@ async function init() {
       toast(`Saving is off here, so files can only go straight to ${friendName(dm.friendId)} during a call.`, 6000);
       return; // keep the files and the message, in case the call's about to start
     }
+    const replyTo = replyingTo(dm.friendId);
     if (text) {
-      sendText(dm.friendId, text);
+      sendText(dm.friendId, text, replyTo);
       el.chatInput.value = '';
     }
     stopTyping();
-    if (dm.pending.length) sendPending(dm);
+    if (dm.pending.length) sendPending(dm, text ? null : replyTo); // (with no words, the first file answers it)
+    stopReply();
   });
 
   el.lightboxClose.addEventListener('click', () => el.lightbox.close());

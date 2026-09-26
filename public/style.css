@@ -980,6 +980,28 @@ img.file-preview { cursor: zoom-in; }
 .edit-bar .icon { width: 16px; height: 16px; }
 .chat-log .removed { color: var(--mist); font-size: 14px; font-style: italic; }
 
+/* Replying: the bar above the message box, and in a reply, a little quote of what it's
+   answering, joined to it by a curved line (click it to go there). */
+.reply-bar strong { color: var(--text); font-weight: 650; }
+.reply-bar > span { display: flex; gap: 5px; min-width: 0; white-space: nowrap; }
+.reply-snippet { overflow: hidden; text-overflow: ellipsis; }
+.reply-quote {
+  display: flex; align-items: center; gap: 6px;
+  max-width: 100%; margin: 0 0 2px; padding: 0;
+  border: 0; background: none; cursor: pointer;
+  color: var(--mist); font: inherit; font-size: 13px; line-height: 1.4; text-align: left;
+}
+.reply-quote::before {
+  content: ''; flex: none; align-self: flex-end;
+  width: 18px; height: 8px; margin: 0 2px 1px 8px;
+  border-left: 2px solid var(--line); border-top: 2px solid var(--line); border-top-left-radius: 7px;
+}
+.reply-quote .rq-name { flex: none; color: var(--text); font-weight: 650; }
+.reply-quote .rq-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reply-quote:hover .rq-text, .reply-quote:focus-visible .rq-text { color: var(--text); }
+.reply-quote.gone .rq-text { font-style: italic; }
+.chat-log li.flash { background: rgba(245, 185, 74, 0.16); border-radius: 8px; transition: background-color 0.3s; }
+
 /* ================= Picture, full size ================= */
 
 .lightbox {

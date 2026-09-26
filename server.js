@@ -427,17 +427,20 @@ api.post('/dms/:friendId/messages', needUser, needFriend, (req, res) => {
   const passed = dms.passingMessage(id);
   if (passed) {
     if (passed.author !== req.user.id || passed.dm !== req.dm.id) return fail(res, 400, "That message didn't make sense.");
-    return res.json({ message: { id, dm: passed.dm, author: passed.author, kind: passed.kind, text: String(b.text || ''), meta: b.gif || null, file: null, at: passed.at, seq: null, saved: false } });
+    const again = { id, dm: passed.dm, author: passed.author, kind: passed.kind, text: String(b.text || ''), meta: b.gif || null, file: null, at: passed.at, replyTo: passed.replyTo ? { id: passed.replyTo } : null, seq: null, saved: false };
+    return res.json({ message: dms.withReplies([again])[0] });
   }
   let fields;
+  // Answering an earlier message in this conversation (anything else is just ignored).
+  const replyTo = dms.replyTarget(req.dm.id, b.replyTo);
   if (b.gif) {
     const gif = cleanGif(b.gif);
     if (!gif) return fail(res, 400, "That GIF didn't come through right. Try another.");
-    fields = { id, dm: req.dm.id, author: req.user.id, kind: 'gif', meta: gif };
+    fields = { id, dm: req.dm.id, author: req.user.id, kind: 'gif', meta: gif, replyTo };
   } else {
     const text = String(b.text || '').slice(0, MESSAGE_MAX);
     if (!text.trim()) return fail(res, 400, "You can't send an empty message.");
-    fields = { id, dm: req.dm.id, author: req.user.id, kind: 'text', text };
+    fields = { id, dm: req.dm.id, author: req.user.id, kind: 'text', text, replyTo };
   }
   const message = req.dm.save ? dms.addMessage(fields) : dms.passing(fields);
   tellBoth(req, { type: 'dm-message', message });
@@ -492,7 +495,8 @@ api.post('/dms/:friendId/files', needUser, needFriend, (req, res) => {
       return;
     }
     fs.renameSync(partial, final);
-    const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id } });
+    const replyTo = dms.replyTarget(req.dm.id, req.get('x-reply-to'));
+    const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, replyTo });
     tellBoth(req, { type: 'dm-message', message });
     res.json({ message });
   });

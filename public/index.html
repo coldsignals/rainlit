@@ -47,6 +47,7 @@
       <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></symbol>
       <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
       <symbol id="i-speaker-off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
+      <symbol id="i-reply" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
       <symbol id="i-react" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-7.5-8.9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/><path d="M19 2v6M16 5h6"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
@@ -324,6 +325,12 @@
             <p class="gif-credit">Powered by KLIPY</p>
           </div>
           <div id="attach-tray" class="attach-tray" aria-label="Files to send" hidden></div>
+          <div id="reply-bar" class="edit-bar reply-bar" hidden>
+            <span>Replying to <strong id="reply-name"></strong> <span id="reply-snippet" class="reply-snippet"></span></span>
+            <button id="reply-cancel" class="icon-btn ghost" type="button" aria-label="Stop replying" title="Stop replying (Esc)">
+              <svg class="icon"><use href="#i-close"/></svg>
+            </button>
+          </div>
           <div id="edit-bar" class="edit-bar" hidden>
             <span>Editing your message. <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels.</span>
             <button id="edit-cancel" class="icon-btn ghost" type="button" aria-label="Stop editing" title="Stop editing">
@@ -358,6 +365,7 @@
   <!-- ============ Right-click, long-press or "..." on a message ============ -->
   <div id="msg-menu" class="menu" role="menu" hidden>
     <div id="msg-reacts" class="msg-reacts" role="group" aria-label="React"></div>
+    <button id="msg-reply" type="button" role="menuitem">Reply</button>
     <button id="msg-edit" type="button" role="menuitem">Edit</button>
     <button id="msg-save" type="button" role="menuitem">Save</button>
     <button id="msg-open" type="button" role="menuitem">Open in browser</button>
