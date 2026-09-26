@@ -26,8 +26,8 @@ server can hold many of them, the way Discord holds many servers.
 
 - [x] Spaces with text channels: anyone can make one, and anyone on the server can
       join with an invite link
-- [x] Profiles you can open for anyone in your spaces, with badges (First Drops for
-      everyone who joins during the alpha)
+- [x] Profiles you can open for anyone in your spaces, and First Leaf: a badge for
+      everyone who joins during the alpha
 - [ ] Roles and permissions
 - [ ] Moderation for the people running a space: kick, ban, timeout, deleting others'
       messages, an audit log

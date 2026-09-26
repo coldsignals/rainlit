@@ -5571,11 +5571,9 @@ async function onMenuRemove() {
 // ---------------- Badges ----------------
 
 // The little marks on people's profiles, in the order they're shown. Their pictures are in
-// /badges. First Drops and Lamplighter come by themselves; the admin gives the others.
+// /badges. So far there's one: a glowing leaf for everyone who joined during the alpha.
 const BADGES = {
-  lamplighter: { name: 'Lamplighter', about: 'Keeps this Rainlit server running', when: 'Since' },
-  'first-drops': { name: 'First Drops', about: 'Joined Rainlit during the alpha', when: 'Joined' },
-  stormchaser: { name: 'Stormchaser', about: 'Helped track down bugs in Rainlit', when: 'Since', given: true },
+  alpha: { name: 'First Leaf', about: 'Here since the Rainlit alpha', when: 'Joined' },
 };
 
 function badgeImg(id, size = 22) {
@@ -5882,27 +5880,7 @@ async function renderAdmin() {
         toast(err.message);
       }
     });
-    const gives = Object.entries(BADGES).filter(([, b]) => b.given).map(([id, b]) => {
-      const has = (u.badges || []).some((x) => x.id === id);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'badge-toggle';
-      btn.setAttribute('aria-pressed', String(has));
-      btn.title = has ? `Take back ${b.name}` : `Give ${u.displayName} ${b.name}`;
-      btn.setAttribute('aria-label', btn.title);
-      btn.append(badgeImg(id, 20));
-      btn.addEventListener('click', async () => {
-        try {
-          await api(has ? 'DELETE' : 'PUT', `/admin/users/${u.id}/badges/${id}`);
-          toast(has ? `Took back ${b.name}.` : `Gave ${u.displayName} ${b.name}.`);
-          renderAdmin();
-        } catch (err) {
-          toast(err.message);
-        }
-      });
-      return btn;
-    });
-    li.append(makeFace(u, null), who, ...gives, reset);
+    li.append(makeFace(u, null), who, reset);
     return li;
   }));
 }

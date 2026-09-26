@@ -776,22 +776,6 @@ api.get('/admin/users', needAdmin, (_req, res) => {
   res.json({ users });
 });
 
-// The admin gives (and takes back) the badges that don't come by themselves.
-api.put('/admin/users/:id/badges/:badge', needAdmin, (req, res) => {
-  const u = people.userById(req.params.id);
-  if (!u) return fail(res, 404, 'Not found.');
-  if (!badges.GIVEN.has(req.params.badge)) return fail(res, 400, "That badge can't be given.");
-  badges.give(u.id, req.params.badge);
-  res.json({ user: people.publicUser(profileChanged(u.id)) });
-});
-api.delete('/admin/users/:id/badges/:badge', needAdmin, (req, res) => {
-  const u = people.userById(req.params.id);
-  if (!u) return fail(res, 404, 'Not found.');
-  if (!badges.GIVEN.has(req.params.badge)) return fail(res, 400, "That badge can't be taken back.");
-  badges.take(u.id, req.params.badge);
-  res.json({ user: people.publicUser(profileChanged(u.id)) });
-});
-
 // Makes a one-time link the admin can send to someone who forgot their password.
 api.post('/admin/users/:id/reset-link', needAdmin, (req, res) => {
   const u = people.userById(req.params.id);

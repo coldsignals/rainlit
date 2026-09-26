@@ -468,13 +468,6 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .badge-tip small { display: block; margin-top: 4px; color: var(--mist); font-size: 12px; }
 .user-badge.show .badge-tip, .user-badge:focus-visible .badge-tip { display: block; }
 @media (hover: hover) { .user-badge:hover .badge-tip { display: block; } }
-.badge-toggle {
-  display: grid; place-items: center; width: 32px; height: 32px; flex: none; padding: 0;
-  background: none; border: 1px dashed var(--line); border-radius: 10px;
-}
-.badge-toggle img { opacity: 0.35; filter: grayscale(1); }
-.badge-toggle[aria-pressed="true"] { background: var(--dusk-hi); border: 1px solid var(--lamp); }
-.badge-toggle[aria-pressed="true"] img { opacity: 1; filter: none; }
 .mp-presence { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .mp-presence::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--offline); }
 .mp-presence[data-presence="online"]::before { background: var(--online); }
