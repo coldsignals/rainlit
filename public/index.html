@@ -47,6 +47,9 @@
       <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></symbol>
       <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
       <symbol id="i-speaker-off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
       <symbol id="i-reply" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
       <symbol id="i-react" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-7.5-8.9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/><path d="M19 2v6M16 5h6"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
@@ -126,11 +129,39 @@
 
   <!-- ============ The app: friends on the left, home or a call on the right ============ -->
   <div id="app" class="app" hidden>
-    <aside class="sidebar" aria-label="Friends">
+    <!-- The rail: Home (friends and DMs), your spaces, and making or joining one. -->
+    <nav id="rail" class="rail" aria-label="Spaces">
+      <button id="rail-home" class="rail-btn rail-home open" type="button" title="Friends and messages" aria-label="Friends and messages">
+        <img src="/icons/mark.svg" alt="" width="26" height="26" />
+      </button>
+      <span class="rail-sep" aria-hidden="true"></span>
+      <div id="rail-spaces" class="rail-spaces"></div>
+      <button id="rail-add" class="rail-btn rail-add" type="button" title="Create or join a space" aria-label="Create or join a space">
+        <svg class="icon"><use href="#i-plus"/></svg>
+      </button>
+    </nav>
+
+    <aside class="sidebar" aria-label="Friends and channels">
       <header class="side-head">
         <div id="brand" class="brand"><img class="brand-mark" src="/icons/mark.svg" alt="" width="30" height="30" /><span class="brand-name"><span class="wm-rain">rain</span><span class="wm-lit">lit</span></span></div>
+        <button id="space-head" class="space-head" type="button" aria-haspopup="menu" aria-expanded="false" hidden>
+          <span id="space-title" class="space-title"></span>
+          <svg class="icon"><use href="#i-chevron-down"/></svg>
+        </button>
       </header>
 
+      <div id="space-side" class="side-body" hidden>
+        <div class="side-scroll">
+          <section class="side-section" aria-labelledby="channels-title">
+            <h2 class="side-title side-title-row"><span id="channels-title">Text channels</span>
+              <button id="add-channel-btn" class="icon-btn ghost side-add" type="button" aria-label="Add a channel" title="Add a channel" hidden><svg class="icon"><use href="#i-plus"/></svg></button>
+            </h2>
+            <ol id="channel-list" class="channels"></ol>
+          </section>
+        </div>
+      </div>
+
+      <div id="home-side" class="side-body">
       <form id="add-friend-form" class="add-friend">
         <input id="add-friend-input" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="33" placeholder="Add a friend by username" aria-label="Add a friend by username" />
         <button class="icon-btn send-btn" type="submit" aria-label="Send friend request" title="Send friend request">
@@ -148,6 +179,7 @@
           <ol id="friend-list" class="people"></ol>
           <p id="friends-empty" class="side-empty" hidden>No friends yet. Add someone by their username above.</p>
         </section>
+      </div>
       </div>
 
       <footer class="me-card">
@@ -373,6 +405,15 @@
     <button id="msg-delete" class="danger" type="button" role="menuitem">Delete</button>
   </div>
 
+  <!-- ============ A space's menu (its name at the top of the channels) ============ -->
+  <div id="space-menu" class="menu" role="menu" hidden>
+    <button id="sm-invite" type="button" role="menuitem">Invite people</button>
+    <button id="sm-members" type="button" role="menuitem">Members</button>
+    <button id="sm-settings" type="button" role="menuitem">Space settings</button>
+    <hr />
+    <button id="sm-leave" class="danger" type="button" role="menuitem">Leave space</button>
+  </div>
+
   <!-- ============ Right-click (or long-press) a friend ============ -->
   <div id="menu" class="menu" role="menu" hidden>
     <button id="menu-message" type="button" role="menuitem">Message</button>
@@ -473,6 +514,73 @@
       </details>
       <button id="signout-btn" class="text-btn danger signout" type="button">Sign out</button>
     </form>
+  </dialog>
+
+  <!-- ============ Spaces: making, joining, inviting, members, settings ============ -->
+  <dialog id="space-new" class="settings space-dialog" aria-labelledby="space-new-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="space-new-title">A space for your people</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <form id="space-create-form" class="space-form" novalidate>
+        <label class="field"><span>Start a new space</span><input id="space-create-name" maxlength="40" autocomplete="off" placeholder="Moonlight Cove" /></label>
+        <button class="primary-btn" type="submit">Create space</button>
+      </form>
+      <p class="or-line"><span>or</span></p>
+      <form id="space-join-form" class="space-form" novalidate>
+        <label class="field"><span>Join one with an invite link</span><input id="space-join-code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://rainlit.app/join/…" /></label>
+        <button class="primary-btn ghost-btn" type="submit">Join</button>
+      </form>
+      <p id="space-new-error" class="form-error" role="alert" hidden></p>
+    </div>
+  </dialog>
+
+  <dialog id="space-invite" class="settings space-dialog" aria-labelledby="space-invite-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="space-invite-title">Invite people</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p class="hint">Anyone with an account on this Rainlit can join <strong id="space-invite-name"></strong> with this link.</p>
+      <div class="invite-link">
+        <input id="space-invite-link" readonly aria-label="Invite link" />
+        <button id="space-invite-copy" class="primary-btn small" type="button">Copy</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="space-members" class="settings space-dialog" aria-labelledby="space-members-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="space-members-title">Members</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <ol id="space-member-list" class="people member-list"></ol>
+    </div>
+  </dialog>
+
+  <dialog id="space-settings" class="settings space-dialog" aria-labelledby="space-settings-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="space-settings-title">Space settings</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <form id="space-rename-form" class="space-row" novalidate>
+        <label class="field"><span>Name</span><input id="space-rename-input" maxlength="40" autocomplete="off" /></label>
+        <button class="primary-btn small" type="submit">Save</button>
+      </form>
+      <section>
+        <h3 class="side-title">Channels</h3>
+        <ol id="space-channel-admin" class="channel-admin"></ol>
+        <small class="hint">Rename one by changing its name. Deleting one deletes everything in it, for everyone.</small>
+      </section>
+      <section id="space-danger" class="danger-zone" hidden>
+        <button id="space-delete-btn" class="text-btn danger" type="button">Delete this space</button>
+        <small class="hint">Deletes every channel and everything in them, for everyone. It can't be undone.</small>
+      </section>
+      <p id="space-settings-error" class="form-error" role="alert" hidden></p>
+    </div>
+  </dialog>
+
+  <dialog id="space-join" class="settings space-dialog" aria-labelledby="space-join-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="space-join-title">You're invited</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <div class="join-card">
+        <span id="space-join-icon" class="space-icon big" aria-hidden="true"></span>
+        <div><strong id="space-join-name"></strong><span id="space-join-count" class="hint"></span></div>
+      </div>
+      <button id="space-join-btn" class="primary-btn" type="button">Join space</button>
+      <p id="space-join-error" class="form-error" role="alert" hidden></p>
+    </div>
   </dialog>
 
   <!-- ============ Another Rainlit server (in the apps) ============ -->

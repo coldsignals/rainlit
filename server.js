@@ -16,6 +16,7 @@ const people = require('./lib/people');
 const dms = require('./lib/dms');
 const realtime = require('./lib/realtime');
 const push = require('./lib/push');
+const spaces = require('./lib/spaces');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -89,7 +90,7 @@ const INDEX_HTML = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')
   .replace('<meta charset="utf-8" />', `<meta charset="utf-8" />\n  <meta name="rainlit-build" content="${BUILD}" />` +
     `\n  <meta name="rainlit-source" content="${attr(SOURCE_URL)}" />` +
     (SERVER_NAME ? `\n  <meta name="rainlit-server-name" content="${attr(SERVER_NAME)}" />` : ''));
-app.get(['/', '/index.html'], (_req, res) => {
+app.get(['/', '/index.html', '/join/:code'], (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.type('html').send(INDEX_HTML);
 });
@@ -378,43 +379,67 @@ api.delete('/push', needUser, (req, res) => {
 api.get('/users/:id', needUser, (req, res) => {
   const u = people.userById(req.params.id);
   const f = u && people.friendship(req.user.id, u.id);
-  if (!u || (!f && u.id !== req.user.id)) return fail(res, 404, 'Not found.');
+  if (!u || (!f && u.id !== req.user.id && !spaces.shareSpace(req.user.id, u.id))) return fail(res, 404, 'Not found.');
   const presence = f && f.status === 'accepted' ? realtime.presenceOf(u.id) : null;
   res.json({ user: { ...people.publicUser(u), presence } });
 });
 
 // ----- Conversations -----
 //
-// Everything new in a conversation goes out live to both people (every device they
-// have open), whether or not it's being saved.
+// A conversation is a DM between two friends, or a channel in a space. Either way,
+// everything new in it goes out live to everyone in it (every device they have open),
+// and the routes below serve both: /dms/:friendId/... and /channels/:channelId/...
 
-// Only friends can message each other. Puts the conversation on the request.
+// Only friends can message each other. Puts the conversation, and who's in it, on the request.
 function needFriend(req, res, next) {
   const friendId = String(req.params.friendId);
   if (!people.areFriends(req.user.id, friendId)) return fail(res, 404, 'You can only message people on your friends list.');
   req.friendId = friendId;
   req.dm = dms.getDm(req.user.id, friendId);
+  req.audience = [req.user.id, friendId];
   next();
 }
 
-function tellBoth(req, msg) {
-  realtime.sendToUser(req.user.id, msg);
-  realtime.sendToUser(req.friendId, msg);
+// Only a space's members can see and use its channels. (A channel always keeps its messages.)
+function needChannel(req, res, next) {
+  const channel = spaces.channel(req.params.channelId);
+  const role = channel && spaces.roleOf(channel.space_id, req.user.id);
+  if (!role) return fail(res, 404, "That channel isn't there, or you're not in its space.");
+  req.channel = channel;
+  req.role = role;
+  req.dm = { id: channel.id, save: 1 };
+  req.audience = spaces.memberIds(channel.space_id);
+  next();
+}
+
+const needConv = (req, res, next) => (req.params.channelId ? needChannel : needFriend)(req, res, next);
+const conv = (rest = '') => [`/dms/:friendId${rest}`, `/channels/:channelId${rest}`];
+
+function tell(req, msg) {
+  for (const id of req.audience) realtime.sendToUser(id, msg);
   // A new message for a friend who has Rainlit closed: a push notification to their phone.
   // It says who it's from, never what it says.
   const m = msg.type === 'dm-message' && msg.message;
-  if (m && m.author === req.user.id && ['text', 'file', 'gif'].includes(m.kind) && !realtime.isOnline(req.friendId)) {
+  if (req.friendId && m && m.author === req.user.id && ['text', 'file', 'gif'].includes(m.kind) && !realtime.isOnline(req.friendId)) {
     push.send(req.friendId, { type: 'message', from: { id: req.user.id, name: req.user.display_name } }, { ttl: 24 * 3600 });
   }
 }
 
-api.get('/dms/:friendId/messages', needUser, needFriend, (req, res) => {
+// Where "new messages" starts for you: what you've read, or (a channel you've never opened) when you joined its space.
+function readFloor(req) {
+  const at = dms.readAt(req.dm.id, req.user.id);
+  if (at || !req.channel) return at;
+  const joined = spaces.members(req.channel.space_id).find((m) => m.id === req.user.id);
+  return joined ? joined.joinedAt : 0;
+}
+
+api.get(conv('/messages'), needUser, needConv, (req, res) => {
   if (req.query.after) return res.json({ messages: dms.since(req.dm.id, Number(req.query.after) || 0) });
   const page = dms.history(req.dm.id, Number(req.query.before) || 0);
-  res.json({ ...page, save: Boolean(req.dm.save), readAt: dms.readAt(req.dm.id, req.user.id) });
+  res.json({ ...page, save: Boolean(req.dm.save), readAt: readFloor(req) });
 });
 
-api.post('/dms/:friendId/messages', needUser, needFriend, (req, res) => {
+api.post(conv('/messages'), needUser, needConv, (req, res) => {
   const b = req.body || {};
   const id = String(b.id || '');
   if (!ID_RE.test(id)) return fail(res, 400, "That message didn't make sense.");
@@ -443,7 +468,7 @@ api.post('/dms/:friendId/messages', needUser, needFriend, (req, res) => {
     fields = { id, dm: req.dm.id, author: req.user.id, kind: 'text', text, replyTo };
   }
   const message = req.dm.save ? dms.addMessage(fields) : dms.passing(fields);
-  tellBoth(req, { type: 'dm-message', message });
+  tell(req, { type: 'dm-message', message });
   res.json({ message });
 });
 
@@ -467,7 +492,7 @@ function cleanGif(g) {
 
 // A file, sent as the raw request body with its name and type in headers. It's
 // written to disk as it arrives, so big files never have to fit in memory.
-api.post('/dms/:friendId/files', needUser, needFriend, (req, res) => {
+api.post(conv('/files'), needUser, needConv, (req, res) => {
   const tooBig = `Files can be up to ${FILE_MAX_MB} MB.`;
   if (!req.dm.save) return fail(res, 409, 'Saving is off in this conversation, so files can only be sent during a call.');
   const id = String(req.get('x-message-id') || '');
@@ -497,7 +522,7 @@ api.post('/dms/:friendId/files', needUser, needFriend, (req, res) => {
     fs.renameSync(partial, final);
     const replyTo = dms.replyTarget(req.dm.id, req.get('x-reply-to'));
     const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, replyTo });
-    tellBoth(req, { type: 'dm-message', message });
+    tell(req, { type: 'dm-message', message });
     res.json({ message });
   });
 });
@@ -526,11 +551,17 @@ function fileLinkOk(id, link) {
   return want.length === got.length && crypto.timingSafeEqual(want, got);
 }
 
-// The file, if this person may see it (they're in the conversation, and still friends).
+// The file, if this person may see it: they're in the DM (and still friends), or in the
+// channel's space.
 function fileFor(user, id) {
   const r = dms.getRow(id);
-  const other = r && r.dm_id.split(':').find((u) => u !== user.id);
-  return r && r.kind === 'file' && dms.inDm(r.dm_id, user.id) && people.areFriends(user.id, other) ? r : null;
+  if (!r || r.kind !== 'file') return null;
+  if (!r.dm_id.includes(':')) {
+    const channel = spaces.channel(r.dm_id);
+    return channel && spaces.isMember(channel.space_id, user.id) ? r : null;
+  }
+  const other = r.dm_id.split(':').find((u) => u !== user.id);
+  return dms.inDm(r.dm_id, user.id) && people.areFriends(user.id, other) ? r : null;
 }
 
 api.post('/files/:id/link', needUser, (req, res) => {
@@ -540,7 +571,7 @@ api.post('/files/:id/link', needUser, (req, res) => {
   res.json({ url: `/files/${r.id}/${encodeURIComponent(r.file_name)}?link=${expires}.${linkSig(r.id, expires)}` });
 });
 
-api.delete('/dms/:friendId/messages/:id', needUser, needFriend, (req, res) => {
+api.delete(conv('/messages/:id'), needUser, needConv, (req, res) => {
   const id = req.params.id;
   const m = dms.getMessage(id) || dms.passingMessage(id);
   if (!m || m.dm !== req.dm.id || m.author !== req.user.id || !['text', 'file', 'gif'].includes(m.kind)) {
@@ -548,12 +579,12 @@ api.delete('/dms/:friendId/messages/:id', needUser, needFriend, (req, res) => {
   }
   if (m.seq) dms.removeMessage(id);
   else dms.forgetPassing(id);
-  tellBoth(req, { type: 'dm-removed', dm: req.dm.id, id, by: req.user.id, name: req.user.display_name, was: m.kind === 'file' ? 'file' : 'message' });
+  tell(req, { type: 'dm-removed', dm: req.dm.id, id, by: req.user.id, name: req.user.display_name, was: m.kind === 'file' ? 'file' : 'message' });
   res.json({ ok: true });
 });
 
 // Edit one of your own text messages. Both of you see the new text, marked "(edited)".
-api.patch('/dms/:friendId/messages/:id', needUser, needFriend, (req, res) => {
+api.patch(conv('/messages/:id'), needUser, needConv, (req, res) => {
   const id = req.params.id;
   const m = dms.getMessage(id) || dms.passingMessage(id);
   if (!m || m.dm !== req.dm.id || m.author !== req.user.id || m.kind !== 'text') {
@@ -563,7 +594,7 @@ api.patch('/dms/:friendId/messages/:id', needUser, needFriend, (req, res) => {
   if (!text.trim()) return fail(res, 400, 'A message needs something in it. To remove it, delete it instead.');
   const editedAt = Date.now();
   if (m.seq) dms.editMessage(id, text, editedAt);
-  tellBoth(req, { type: 'dm-edited', dm: req.dm.id, id, text, editedAt });
+  tell(req, { type: 'dm-edited', dm: req.dm.id, id, text, editedAt });
   res.json({ ok: true, editedAt });
 });
 
@@ -581,14 +612,13 @@ function reactRoute(req, res, on) {
   if (!r || r.dm_id !== req.dm.id || !['text', 'file', 'gif'].includes(r.kind)) return fail(res, 404, "That message isn't there any more.");
   if (!dms.react(r.id, req.user.id, emoji, on)) return fail(res, 400, 'That message has all the reactions it can take.');
   const reactions = dms.reactionsOf(r.id);
-  realtime.sendToUser(req.user.id, { type: 'dm-reactions', dm: req.dm.id, id: r.id, reactions });
-  realtime.sendToUser(req.friendId, { type: 'dm-reactions', dm: req.dm.id, id: r.id, reactions });
+  tell(req, { type: 'dm-reactions', dm: req.dm.id, id: r.id, reactions });
   res.json({ reactions, quick: dms.quickReactions(req.user.id) });
 }
-api.post('/dms/:friendId/messages/:id/reactions', needUser, needFriend, (req, res) => reactRoute(req, res, true));
-api.delete('/dms/:friendId/messages/:id/reactions', needUser, needFriend, (req, res) => reactRoute(req, res, false));
+api.post(conv('/messages/:id/reactions'), needUser, needConv, (req, res) => reactRoute(req, res, true));
+api.delete(conv('/messages/:id/reactions'), needUser, needConv, (req, res) => reactRoute(req, res, false));
 
-api.post('/dms/:friendId/read', needUser, needFriend, (req, res) => {
+api.post(conv('/read'), needUser, needConv, (req, res) => {
   const at = Math.min(Number((req.body || {}).at) || Date.now(), Date.now());
   dms.markRead(req.dm.id, req.user.id, at);
   realtime.sendToUser(req.user.id, { type: 'dm-read', dm: req.dm.id, at }); // clears the unread count on your other devices
@@ -600,11 +630,126 @@ api.patch('/dms/:friendId', needUser, needFriend, (req, res) => {
   const save = Boolean((req.body || {}).save);
   if (save !== Boolean(req.dm.save)) {
     dms.setSave(req.dm.id, save);
-    tellBoth(req, { type: 'dm-saving', dm: req.dm.id, save });
+    tell(req, { type: 'dm-saving', dm: req.dm.id, save });
     const message = dms.addMessage({ id: auth.newId(), dm: req.dm.id, author: req.user.id, kind: 'saving', meta: { on: save } });
-    tellBoth(req, { type: 'dm-message', message });
+    tell(req, { type: 'dm-message', message });
   }
   res.json({ save });
+});
+
+// ----- Spaces -----
+//
+// Anyone can start a space. Its owner and admins can rename it and manage its channels;
+// any member can invite people with a link. When something about a space changes, its
+// members' apps are told to fetch it again ('space-changed'), or that it's gone for them.
+
+function tellSpace(spaceId, msg) {
+  for (const id of spaces.memberIds(spaceId)) realtime.sendToUser(id, msg);
+}
+const spaceChanged = (spaceId) => tellSpace(spaceId, { type: 'space-changed', space: spaceId });
+const mySpace = (userId, spaceId) => spaces.spacesFor(userId).find((s) => s.id === spaceId) || null;
+
+function needMember(req, res, next) {
+  const space = spaces.getSpace(req.params.spaceId);
+  const role = space && spaces.roleOf(space.id, req.user.id);
+  if (!role) return fail(res, 404, "That space isn't there, or you're not in it.");
+  req.space = space;
+  req.role = role;
+  next();
+}
+const needManager = (req, res, next) => (spaces.canManage(req.role) ? next() : fail(res, 403, "Only the space's owner and admins can do that."));
+
+api.get('/spaces', needUser, (req, res) => {
+  res.json({ spaces: spaces.spacesFor(req.user.id) });
+});
+
+api.post('/spaces', needUser, (req, res) => {
+  const name = spaces.spaceName((req.body || {}).name);
+  if (!name) return fail(res, 400, 'Give your space a name.');
+  const id = spaces.createSpace(req.user.id, name);
+  realtime.sendToUser(req.user.id, { type: 'space-changed', space: id });
+  res.json({ space: mySpace(req.user.id, id) });
+});
+
+api.get('/spaces/:spaceId', needUser, needMember, (req, res) => {
+  res.json({ space: mySpace(req.user.id, req.space.id), members: spaces.members(req.space.id) });
+});
+
+api.patch('/spaces/:spaceId', needUser, needMember, needManager, (req, res) => {
+  const name = spaces.spaceName((req.body || {}).name);
+  if (!name) return fail(res, 400, 'A space needs a name.');
+  spaces.renameSpace(req.space.id, name);
+  spaceChanged(req.space.id);
+  res.json({ ok: true });
+});
+
+api.delete('/spaces/:spaceId', needUser, needMember, (req, res) => {
+  if (req.role !== 'owner') return fail(res, 403, 'Only the owner can delete a space.');
+  const everyone = spaces.memberIds(req.space.id);
+  spaces.deleteSpace(req.space.id);
+  for (const id of everyone) realtime.sendToUser(id, { type: 'space-removed', space: req.space.id });
+  res.json({ ok: true });
+});
+
+api.post('/spaces/:spaceId/leave', needUser, needMember, (req, res) => {
+  if (req.role === 'owner') return fail(res, 400, "You own this space, so you can't leave it. You can delete it instead.");
+  spaces.removeMember(req.space.id, req.user.id);
+  realtime.sendToUser(req.user.id, { type: 'space-removed', space: req.space.id });
+  spaceChanged(req.space.id);
+  res.json({ ok: true });
+});
+
+api.post('/spaces/:spaceId/channels', needUser, needMember, needManager, (req, res) => {
+  const name = spaces.channelName((req.body || {}).name);
+  if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
+  const id = spaces.createChannel(req.space.id, name);
+  if (!id) return fail(res, 400, `A space can have up to ${spaces.MAX_CHANNELS} channels.`);
+  spaceChanged(req.space.id);
+  res.json({ channel: { id, name } });
+});
+
+api.patch('/channels/:channelId', needUser, needChannel, (req, res) => {
+  if (!spaces.canManage(req.role)) return fail(res, 403, "Only the space's owner and admins can do that.");
+  const name = spaces.channelName((req.body || {}).name);
+  if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
+  spaces.renameChannel(req.channel.id, name);
+  spaceChanged(req.channel.space_id);
+  res.json({ ok: true });
+});
+
+api.delete('/channels/:channelId', needUser, needChannel, (req, res) => {
+  if (!spaces.canManage(req.role)) return fail(res, 403, "Only the space's owner and admins can do that.");
+  if (spaces.channelsOf(req.channel.space_id).length <= 1) return fail(res, 400, 'A space needs at least one channel.');
+  spaces.deleteChannel(req.channel.id);
+  spaceChanged(req.channel.space_id);
+  res.json({ ok: true });
+});
+
+// Invite links: rainlit.app/join/<code>. Anyone in the space can make one.
+api.post('/spaces/:spaceId/invites', needUser, needMember, (req, res) => {
+  res.json({ code: spaces.createInvite(req.space.id, req.user.id) });
+});
+
+api.get('/space-invites/:code', needUser, (req, res) => {
+  const invite = spaces.inviteByCode(req.params.code);
+  const space = invite && spaces.getSpace(invite.space_id);
+  if (!space) return fail(res, 404, "That invite link doesn't work any more.");
+  res.json({
+    space: { id: space.id, name: space.name, memberCount: spaces.memberIds(space.id).length },
+    member: spaces.isMember(space.id, req.user.id),
+  });
+});
+
+api.post('/space-invites/:code', needUser, (req, res) => {
+  const invite = spaces.inviteByCode(req.params.code);
+  const space = invite && spaces.getSpace(invite.space_id);
+  if (!space) return fail(res, 404, "That invite link doesn't work any more.");
+  if (!spaces.isMember(space.id, req.user.id)) {
+    spaces.addMember(space.id, req.user.id);
+    spaces.useInvite(invite.code);
+    spaceChanged(space.id);
+  }
+  res.json({ space: mySpace(req.user.id, space.id) });
 });
 
 // ----- Admin: invites and accounts -----

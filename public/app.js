@@ -97,7 +97,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-leave', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -207,7 +207,11 @@ const S = {
   sounds: store.get('sounds', 'on') !== 'off',
   clickSounds: store.get('clickSounds', 'on') !== 'off',
   callSounds: store.get('callSounds', 'on') !== 'off',
-  typingFrom: new Map(), // friends typing to you right now -> when to stop showing it
+  typing: new Map(), // conversation -> who's typing in it right now -> when to stop showing it
+  spaces: new Map(), // your spaces, by id: { id, name, role, memberCount, channels, members }
+  channels: new Map(), // every channel in them, by id: { id, name, spaceId, ... }
+  people: new Map(), // everyone in your spaces (who may not be friends), by id, for names and pictures
+  view: 'home', // what the sidebar shows: 'home' (friends) or a space's id
   typingSentAt: 0, // when you last told a friend you're typing
   typingTo: '',
   // Off to start with for anyone whose system asks for less motion.
@@ -814,7 +818,7 @@ function connectSocket() {
     if (S.inCall) sendCallJoin();
     if (wasDown) {
       refreshFriends(); // things may have changed while you were offline
-      catchUp();
+      refreshSpaces().then(catchUp);
     }
     clearInterval(S.pingTimer);
     // Regular pings let us notice a dead connection quickly.
@@ -875,6 +879,10 @@ function handleServerMessage(msg) {
       return onProfile(msg.user);
     case 'friends-changed':
       return refreshFriends();
+    case 'space-changed':
+      return onSpaceChanged(msg.space);
+    case 'space-removed':
+      return onSpaceRemoved(msg.space);
     case 'me':
       return setMe(msg.user);
     case 'ring':
@@ -1796,8 +1804,8 @@ function renderControls() {
 function updateTitle() {
   if (S.ringing) return; // "Bea is calling" stays until the ringing stops
   const base = S.peer ? `Rainlit with ${S.peer.name}` : 'Rainlit';
-  let unread = 0;
-  for (const dm of S.dms.values()) unread += dm.unread;
+  let unread = 0; // (DMs: channels' unread show on the rail instead)
+  for (const dm of S.dms.values()) if (!dm.channelId) unread += dm.unread;
   document.title = unread ? `(${unread}) ${base}` : base;
   if (DESKTOP) DESKTOP.setUnread(unread);
   // The drop in the corner glows brighter while something's waiting for you, or you're in a call.
@@ -1913,7 +1921,7 @@ async function toggleReaction(li, emoji) {
   closeMessageMenu();
   const mine = (li.reactions || []).some((r) => r.emoji === emoji && r.users.includes(S.clientId));
   try {
-    const res = await api(mine ? 'DELETE' : 'POST', `/dms/${S.openDm}/messages/${li.dataset.id}/reactions`, { emoji });
+    const res = await api(mine ? 'DELETE' : 'POST', `${convPath(S.openDm)}/messages/${li.dataset.id}/reactions`, { emoji });
     renderReactions(li, res.reactions);
     if (res.quick) setQuickReactions(res.quick);
   } catch (err) {
@@ -1951,7 +1959,7 @@ function renderReactions(li, reactions) {
 }
 
 function onDmReactions({ dm: dmId, id, reactions }) {
-  const dm = S.dms.get(friendOfDm(dmId));
+  const dm = S.dms.get(convOf(dmId));
   const li = dm && dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
   if (li) renderReactions(li, reactions);
 }
@@ -2156,7 +2164,7 @@ async function catchUp() {
   for (const dm of S.dms.values()) {
     if (!dm.loaded || !dm.save || !dm.newestSeq) continue;
     try {
-      const { messages } = await api('GET', `/dms/${dm.friendId}/messages?after=${dm.newestSeq}`);
+      const { messages } = await api('GET', `${convPath(dm.friendId)}/messages?after=${dm.newestSeq}`);
       for (const m of messages) onDmMessage(m);
     } catch {}
   }
@@ -2247,46 +2255,60 @@ const TYPING_EVERY_MS = 3000; // while you type, your friend is told this often
 const TYPING_FOR_MS = 6000; // and it shows on their screen this long after the last time
 
 function onTypingInput() {
-  const friendId = S.openDm;
-  if (!friendId || S.editing) return;
+  const key = S.openDm;
+  if (!key || S.editing) return;
   if (!el.chatInput.value.trim()) return stopTyping();
-  if (Date.now() - S.typingSentAt < TYPING_EVERY_MS && S.typingTo === friendId) return;
+  if (Date.now() - S.typingSentAt < TYPING_EVERY_MS && S.typingTo === key) return;
   S.typingSentAt = Date.now();
-  S.typingTo = friendId;
-  wsSend({ type: 'typing', to: friendId, on: true });
+  S.typingTo = key;
+  wsSend(typingNote(key, true));
 }
+
+const typingNote = (key, on) => (isChannelKey(key) ? { type: 'typing', channel: channelIdOf(key), on } : { type: 'typing', to: key, on });
 
 // You sent it, cleared the box, or went elsewhere.
 function stopTyping() {
-  if (S.typingTo) wsSend({ type: 'typing', to: S.typingTo, on: false });
+  if (S.typingTo) wsSend(typingNote(S.typingTo, false));
   S.typingSentAt = 0;
   S.typingTo = '';
 }
 
-function onTyping({ from, on }) {
-  if (!S.friends.has(from)) return;
-  clearTimeout(S.typingFrom.get(from));
+// Someone typing to you, or in one of your channels.
+function onTyping({ from, channel, on }) {
+  const key = channel ? `ch:${channel}` : from;
+  if (!convExists(key)) return;
+  let who = S.typing.get(key);
+  if (!who) S.typing.set(key, (who = new Map()));
+  clearTimeout(who.get(from));
   if (on) {
-    S.typingFrom.set(from, setTimeout(() => {
-      S.typingFrom.delete(from);
+    who.set(from, setTimeout(() => {
+      who.delete(from);
       renderTyping();
     }, TYPING_FOR_MS));
   } else {
-    S.typingFrom.delete(from);
+    who.delete(from);
   }
   renderTyping();
 }
 
+const typersIn = (key) => [...(S.typing.get(key) || new Map()).keys()];
+
 function renderTyping() {
-  const id = S.openDm;
-  if (id && S.typingFrom.has(id)) {
+  const names = S.openDm ? typersIn(S.openDm).map(friendName) : [];
+  if (names.length) {
     const dots = document.createElement('span');
     dots.className = 'typing-dots';
     dots.setAttribute('aria-hidden', 'true');
     dots.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
-    const name = document.createElement('strong');
-    name.textContent = friendName(id);
-    el.typing.replaceChildren(dots, name, ' is typing…');
+    const strong = (text) => {
+      const b = document.createElement('strong');
+      b.textContent = text;
+      return b;
+    };
+    const words = names.length === 1 ? [strong(names[0]), ' is typing…']
+      : names.length === 2 ? [strong(names[0]), ' and ', strong(names[1]), ' are typing…']
+      : ['Several people are typing…'];
+    el.typing.replaceChildren(dots, ...words);
   } else {
     el.typing.replaceChildren();
   }
@@ -2433,7 +2455,7 @@ async function saveEdit() {
   if (li && messageText(li) === text) return stopEdit(); // nothing changed
   stopEdit();
   try {
-    await api('PATCH', `/dms/${editing.friendId}/messages/${editing.id}`, { text });
+    await api('PATCH', `${convPath(editing.friendId)}/messages/${editing.id}`, { text });
   } catch (err) {
     toast(err.message || "Couldn't save your edit.");
   }
@@ -2467,7 +2489,7 @@ function messageText(li) {
 }
 
 function onDmEdited({ dm: dmId, id, text, editedAt }) {
-  const dm = S.dms.get(friendOfDm(dmId));
+  const dm = S.dms.get(convOf(dmId));
   const li = dm && dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
   if (li) showEdited(li, text, editedAt);
   refreshQuotes(id);
@@ -2494,7 +2516,7 @@ async function deleteMine(li) {
   if (!dm) return;
   const what = li.classList.contains('file-msg') ? 'a file' : 'a message'; // before the server's own notice replaces it
   try {
-    await api('DELETE', `/dms/${dm.friendId}/messages/${id}`);
+    await api('DELETE', `${convPath(dm.friendId)}/messages/${id}`);
     showRemoved(li, `You removed ${what}`);
   } catch (err) {
     toast(err.message);
@@ -2546,6 +2568,7 @@ function dmFor(friendId) {
     log.setAttribute('aria-label', 'Messages');
     dm = {
       friendId, log,
+      channelId: isChannelKey(friendId) ? channelIdOf(friendId) : null,
       save: true, unread: 0, readAt: 0, lastAt: 0,
       loaded: false, loading: false, more: false, oldestSeq: 0,
       early: [], // unsaved messages that arrived before the history was loaded
@@ -2559,15 +2582,27 @@ function dmFor(friendId) {
   return dm;
 }
 
-// A conversation's id is the two people's ids; this finds the one that's your friend.
-function friendOfDm(dmId) {
+// Conversations are DMs and spaces' channels, and they share everything: history, sending,
+// replies, reactions, typing, unread. Each has a key: a DM's is your friend's id, a
+// channel's is "ch:" and its id. The server knows a DM by the two people's ids ("a:b").
+const isChannelKey = (key) => String(key).startsWith('ch:');
+const channelIdOf = (key) => String(key).slice(3);
+const convPath = (key) => (isChannelKey(key) ? `/channels/${channelIdOf(key)}` : `/dms/${key}`);
+
+// The conversation a server id belongs to: a channel of yours, or your friend's DM.
+function convOf(dmId) {
+  if (S.channels.has(dmId)) return `ch:${dmId}`;
   return String(dmId).split(':').find((id) => id !== S.clientId) || '';
 }
 
+// Anyone's name: a friend's, or someone's from one of your spaces.
 function friendName(id) {
-  const f = S.friends.get(id);
-  return f ? f.displayName : 'Your friend';
+  const f = S.friends.get(id) || S.people.get(id);
+  return f ? f.displayName : 'Someone';
 }
+
+// Whether a conversation (still) exists for you.
+const convExists = (key) => (isChannelKey(key) ? S.channels.has(channelIdOf(key)) : S.friends.has(key));
 
 function nearBottom(log) {
   return log.scrollHeight - log.scrollTop - log.clientHeight < 80;
@@ -2578,8 +2613,11 @@ function scrollChat(log = el.chatLog) {
 }
 
 async function openDm(friendId) {
-  if (!S.friends.has(friendId)) return;
+  if (!convExists(friendId)) return;
   const dm = dmFor(friendId);
+  // The sidebar follows: Home for a DM, the space for one of its channels.
+  S.view = dm.channelId ? S.channels.get(dm.channelId).spaceId : 'home';
+  if (dm.channelId) rememberChannel(dm.channelId);
   closeGifPanel();
   if (S.editing && S.editing.friendId !== friendId) stopEdit();
   if (S.replying && S.replying.friendId !== friendId) stopReply();
@@ -2618,9 +2656,15 @@ function closeDm() {
 }
 
 function renderDmHead() {
+  if (isChannelKey(S.openDm)) return renderChannelHead();
   const f = S.friends.get(S.openDm);
   if (!f) return;
   const dm = dmFor(f.id);
+  el.dmFace.classList.remove('channel-face');
+  el.dmSave.hidden = false;
+  el.dmWho.title = 'See their profile';
+  el.dmBack.setAttribute('aria-label', 'Back to friends');
+  el.dmBack.title = 'Back to friends';
   renderFace(el.dmFace, f, f.presence);
   el.dmName.textContent = f.displayName;
   el.dmSub.textContent = f.statusText || PRESENCE_LABEL[f.presence];
@@ -2699,7 +2743,8 @@ function dayLine(ts) {
 function startLine(dm) {
   const li = document.createElement('li');
   li.className = 'sys dm-start';
-  li.textContent = `This is the beginning of your conversation with ${friendName(dm.friendId)}.`;
+  const channel = dm.channelId && S.channels.get(dm.channelId);
+  li.textContent = channel ? `This is the beginning of #${channel.name}.` : `This is the beginning of your conversation with ${friendName(dm.friendId)}.`;
   return li;
 }
 
@@ -2707,7 +2752,7 @@ async function loadDmHistory(dm) {
   if (dm.loading) return;
   dm.loading = true;
   try {
-    const page = await api('GET', `/dms/${dm.friendId}/messages`);
+    const page = await api('GET', `${convPath(dm.friendId)}/messages`);
     dm.save = page.save;
     dm.readAt = page.readAt;
     // Anything already showing (a file being sent, messages that just arrived) goes back after the history.
@@ -2739,7 +2784,7 @@ async function loadOlder(dm) {
   const log = dm.log;
   const heightBefore = log.scrollHeight;
   try {
-    const page = await api('GET', `/dms/${dm.friendId}/messages?before=${dm.oldestSeq}`);
+    const page = await api('GET', `${convPath(dm.friendId)}/messages?before=${dm.oldestSeq}`);
     const frag = document.createDocumentFragment();
     let day = '';
     for (const m of page.messages) {
@@ -2819,7 +2864,7 @@ function sysLine(text, at, extraClass = '') {
 function callLine(m) {
   const missed = Boolean(m.meta && m.meta.missed);
   const text = !missed ? `Call, ${fmtLong((m.meta && m.meta.durationMs) || 0)}`
-    : m.author === S.clientId ? `${friendName(friendOfDm(m.dm))} missed your call`
+    : m.author === S.clientId ? `${friendName(convOf(m.dm))} missed your call`
     : `You missed a call from ${friendName(m.author)}`;
   const li = sysLine('', m.at, `call-note${missed ? ' missed' : ''}`);
   li.replaceChildren(li.firstChild); // just the time
@@ -2901,7 +2946,7 @@ async function postMessage(friendId, body) {
   const giveUpAt = Date.now() + 90_000;
   for (let wait = 1500; ; wait = Math.min(wait * 1.5, 8000)) {
     try {
-      return await api('POST', `/dms/${friendId}/messages`, body);
+      return await api('POST', `${convPath(friendId)}/messages`, body);
     } catch (err) {
       const temporary = !err.status || err.status >= 500;
       if (!temporary || Date.now() + wait > giveUpAt) throw err;
@@ -3121,13 +3166,18 @@ function gifElement(g) {
 // ----- Arriving -----
 
 function onDmMessage(m) {
-  const friendId = friendOfDm(m.dm);
-  if (!S.friends.has(friendId)) return;
+  const friendId = convOf(m.dm);
+  if (!convExists(friendId)) return;
   const dm = dmFor(friendId);
   dm.lastAt = Math.max(dm.lastAt, m.at);
-  const fromThem = m.author === friendId && ['text', 'file', 'gif'].includes(m.kind);
-  if (fromThem && S.typingFrom.has(friendId)) onTyping({ from: friendId, on: false });
-  if (fromThem && (DESKTOP || ANDROID)) {
+  const fromThem = Boolean(m.author) && m.author !== S.clientId && ['text', 'file', 'gif'].includes(m.kind);
+  if (fromThem && typersIn(friendId).includes(m.author)) onTyping({ from: m.author, channel: dm.channelId, on: false });
+  // Someone new in a space: get their name (and fix it on anything already showing).
+  if (fromThem && dm.channelId && !S.friends.has(m.author) && !S.people.has(m.author)) {
+    loadMembers(S.channels.get(dm.channelId).spaceId).then(() => refreshNames(dm, m.author));
+  }
+  // (Channels don't ding or notify for every message; their unread counts show on the rail.)
+  if (fromThem && !dm.channelId && (DESKTOP || ANDROID)) {
     const body = m.kind === 'text' ? m.text : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     appNotify({ title: friendName(friendId), body }); // only shows if you're not looking at Rainlit
   }
@@ -3138,7 +3188,7 @@ function onDmMessage(m) {
       dm.unread++;
       renderFriends();
       updateTitle();
-      if (S.sounds) playChime();
+      if (S.sounds && !dm.channelId) playChime();
     }
     return;
   }
@@ -3149,7 +3199,7 @@ function onDmMessage(m) {
 }
 
 function onDmRemoved({ dm: dmId, id, by, name, was }) {
-  const dm = S.dms.get(friendOfDm(dmId));
+  const dm = S.dms.get(convOf(dmId));
   if (!dm) return;
   if (el.lightbox.open && el.lightbox.dataset.id === id) el.lightbox.close();
   const upload = S.uploads.get(id);
@@ -3160,14 +3210,14 @@ function onDmRemoved({ dm: dmId, id, by, name, was }) {
 }
 
 function onDmSaving({ dm: dmId, save }) {
-  const dm = S.dms.get(friendOfDm(dmId)) || dmFor(friendOfDm(dmId));
+  const dm = S.dms.get(convOf(dmId)) || dmFor(convOf(dmId));
   dm.save = save;
   if (S.openDm === dm.friendId) renderDmHead();
 }
 
 // You read it on another device.
 function onDmRead({ dm: dmId }) {
-  const dm = S.dms.get(friendOfDm(dmId));
+  const dm = S.dms.get(convOf(dmId));
   if (!dm || !dm.unread) return;
   dm.unread = 0;
   renderFriends();
@@ -3184,7 +3234,7 @@ function notifyIncoming(dm, li) {
   dm.unread++;
   renderFriends();
   updateTitle();
-  if (S.sounds && (!open || lookingAway())) playChime();
+  if (S.sounds && !dm.channelId && (!open || lookingAway())) playChime();
 }
 
 let readTimers = new Map();
@@ -3199,7 +3249,7 @@ function markRead(dm) {
   if (readTimers.has(dm.friendId)) return;
   readTimers.set(dm.friendId, setTimeout(() => {
     readTimers.delete(dm.friendId);
-    api('POST', `/dms/${dm.friendId}/read`, {}).catch(() => {});
+    api('POST', `${convPath(dm.friendId)}/read`, {}).catch(() => {});
   }, 1000));
 }
 
@@ -3918,7 +3968,7 @@ function uploadFile(dm, file, replyTo = null) {
 function startUpload(dm, t, file, xhr, done) {
   t.state = 'sending';
   renderTransfer(t);
-  xhr.open('POST', `${SERVER}/api/dms/${dm.friendId}/files`);
+  xhr.open('POST', `${SERVER}/api${convPath(dm.friendId)}/files`);
   xhr.setRequestHeader('Content-Type', 'application/octet-stream');
   xhr.setRequestHeader('X-Message-Id', t.id);
   xhr.setRequestHeader('X-File-Name', encodeURIComponent(t.name));
@@ -4522,8 +4572,10 @@ async function signedIn(user) {
   el.signinPassword.value = el.signupPassword.value = el.resetPassword.value = '';
   renderHistory();
   await refreshFriends();
+  await refreshSpaces();
   connectSocket();
   syncAndroidPush();
+  followJoinLink();
 }
 
 // ---------------- Push, for when the Android app is closed ----------------
@@ -4586,6 +4638,10 @@ function signedOut(message = '') {
   for (const up of S.uploads.values()) up.abort();
   closeDm();
   S.dms.clear();
+  S.spaces.clear();
+  S.channels.clear();
+  S.people.clear();
+  S.view = 'home';
   for (const url of S.fileUrls) URL.revokeObjectURL(url);
   S.fileUrls = [];
   clearTimeout(S.wsTimer);
@@ -4683,6 +4739,553 @@ function makeFace(user, presence, size = '') {
   return face;
 }
 
+// ---------------- Spaces ----------------
+// Places for more than two people, like a Discord server: members, and text channels that
+// work just like DMs (see "Conversations"). The rail on the left switches the sidebar between
+// Home (friends and DMs) and each space's channels.
+
+async function refreshSpaces() {
+  let data;
+  try {
+    data = await api('GET', '/spaces');
+  } catch {
+    return;
+  }
+  const kept = new Set();
+  S.spaces = new Map();
+  S.channels = new Map();
+  for (const space of data.spaces) {
+    const old = S.spaces.get(space.id);
+    S.spaces.set(space.id, { ...space, members: old ? old.members : null });
+    for (const c of space.channels) {
+      S.channels.set(c.id, { ...c, spaceId: space.id });
+      const key = `ch:${c.id}`;
+      const dm = dmFor(key);
+      dm.lastAt = c.lastAt;
+      // Unless you're reading it right now, the server knows best how much is unread.
+      if (!(S.openDm === key && !lookingAway())) dm.unread = c.unread;
+      kept.add(key);
+    }
+  }
+  // Channels that are gone: deleted, or their space is gone for you.
+  for (const key of [...S.dms.keys()]) {
+    if (!isChannelKey(key) || kept.has(key)) continue;
+    if (S.openDm === key) closeDm();
+    S.dms.delete(key);
+  }
+  if (S.view !== 'home' && !S.spaces.has(S.view)) S.view = 'home';
+  renderSpaces();
+  if (S.openDm) renderDmHead();
+}
+
+// Everyone in a space, for their names and pictures (they may not be your friends).
+async function loadMembers(spaceId) {
+  try {
+    const { members } = await api('GET', `/spaces/${spaceId}`);
+    for (const m of members) S.people.set(m.id, m);
+    const space = S.spaces.get(spaceId);
+    if (space) space.members = members;
+    return members;
+  } catch {
+    return [];
+  }
+}
+
+// Messages drawn before their author's name was known.
+function refreshNames(dm, userId) {
+  for (const li of dm.log.querySelectorAll(`li[data-author="${CSS.escape(userId)}"] > .msg-name`)) {
+    if (li.firstChild && li.firstChild.nodeType === Node.TEXT_NODE) li.firstChild.nodeValue = friendName(userId);
+  }
+}
+
+async function onSpaceChanged(spaceId) {
+  await refreshSpaces();
+  if (S.spaces.has(spaceId) && (S.view === spaceId || S.spaces.get(spaceId).members)) await loadMembers(spaceId);
+  if (el.spaceMembers.open) renderMembers();
+  if (el.spaceSettings.open) renderSpaceSettings();
+}
+
+function onSpaceRemoved(spaceId) {
+  const space = S.spaces.get(spaceId);
+  refreshSpaces();
+  for (const d of [el.spaceMembers, el.spaceSettings, el.spaceInvite]) if (d.open && S.view === spaceId) d.close();
+  if (space) toast(`You're not in ${space.name} any more.`);
+}
+
+const spaceInitials = (name) => {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  const letters = words.length > 1 ? [Array.from(words[0])[0], Array.from(words[1])[0]] : Array.from(words[0] || '?').slice(0, 2);
+  return letters.join('').toUpperCase();
+};
+
+const canManageSpace = (space) => Boolean(space) && (space.role === 'owner' || space.role === 'admin');
+
+function spaceUnread(spaceId) {
+  for (const [id, c] of S.channels) if (c.spaceId === spaceId && dmFor(`ch:${id}`).unread) return true;
+  return false;
+}
+
+function renderSpaces() {
+  renderRail();
+  renderSide();
+}
+
+function renderRail() {
+  let dmUnread = 0;
+  for (const dm of S.dms.values()) if (!dm.channelId) dmUnread += dm.unread;
+  el.railHome.classList.toggle('open', S.view === 'home');
+  el.railHome.classList.toggle('unread', S.view !== 'home' && dmUnread > 0);
+  el.railSpaces.replaceChildren(...[...S.spaces.values()].map((space) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    const unread = spaceUnread(space.id);
+    b.className = `rail-btn rail-space${S.view === space.id ? ' open' : ''}${unread ? ' unread' : ''}`;
+    b.title = space.name;
+    b.setAttribute('aria-label', unread ? `${space.name} (unread)` : space.name);
+    b.style.setProperty('--face-bg', faceColor(space.id));
+    b.textContent = spaceInitials(space.name);
+    b.addEventListener('click', () => showSpace(space.id));
+    return b;
+  }));
+}
+
+function renderSide() {
+  const space = S.view !== 'home' && S.spaces.get(S.view);
+  el.homeSide.hidden = Boolean(space);
+  el.spaceSide.hidden = !space;
+  el.brand.hidden = Boolean(space);
+  el.spaceHead.hidden = !space;
+  if (!space) return;
+  el.spaceTitle.textContent = space.name;
+  el.addChannelBtn.hidden = !canManageSpace(space);
+  const adding = el.channelList.querySelector('.channel-new');
+  el.channelList.replaceChildren(...space.channels.map(channelItem), ...(adding ? [adding] : []));
+}
+
+function channelItem(c) {
+  const key = `ch:${c.id}`;
+  const dm = dmFor(key);
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = `channel${S.openDm === key ? ' open' : ''}${dm.unread ? ' unread' : ''}`;
+  b.innerHTML = '<svg class="icon"><use href="#i-hash"/></svg>';
+  const name = document.createElement('span');
+  name.className = 'channel-name';
+  name.textContent = c.name;
+  b.append(name);
+  if (dm.unread && S.openDm !== key) {
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = dm.unread > 99 ? '99+' : String(dm.unread);
+    b.append(badge);
+  }
+  b.addEventListener('click', () => openDm(key));
+  li.append(b);
+  return li;
+}
+
+// The channel you were in last, in each space.
+function rememberChannel(channelId) {
+  const c = S.channels.get(channelId);
+  if (!c) return;
+  const last = lastChannels();
+  last[c.spaceId] = channelId;
+  store.set('lastChannels', JSON.stringify(last));
+}
+
+function lastChannels() {
+  try {
+    return JSON.parse(store.get('lastChannels', '{}')) || {};
+  } catch {
+    return {};
+  }
+}
+
+const phoneLayout = () => matchMedia('(max-width: 760px)').matches;
+
+// The rail: a space. Its channels show in the sidebar, and (on a computer) the one you were
+// in last opens. On a phone, you pick one from the list.
+async function showSpace(spaceId) {
+  const space = S.spaces.get(spaceId);
+  if (!space) return;
+  S.view = spaceId;
+  renderSpaces();
+  if (!space.members) await loadMembers(spaceId);
+  if (S.view !== spaceId || phoneLayout()) return;
+  const last = lastChannels()[spaceId];
+  const channel = space.channels.find((c) => c.id === last) || space.channels[0];
+  if (channel && S.openDm !== `ch:${channel.id}`) openDm(`ch:${channel.id}`);
+}
+
+// The rail: Home. Your friends, and the conversation you had open there (if it was a DM).
+function showHome() {
+  S.view = 'home';
+  if (S.openDm && isChannelKey(S.openDm)) {
+    if (phoneLayout()) closeDm();
+    else {
+      closeGifPanel();
+      stopEdit();
+      stopReply();
+      stopTyping();
+      S.openDm = '';
+      el.dm.hidden = true;
+      el.home.hidden = false;
+      el.app.classList.remove('in-dm');
+    }
+  }
+  renderFriends();
+}
+
+function renderChannelHead() {
+  const c = S.channels.get(channelIdOf(S.openDm));
+  if (!c) return;
+  const space = S.spaces.get(c.spaceId);
+  el.dmFace.replaceChildren();
+  el.dmFace.style.removeProperty('--face-bg');
+  delete el.dmFace.dataset.presence;
+  el.dmFace.classList.add('channel-face');
+  el.dmFace.innerHTML = '<svg class="icon"><use href="#i-hash"/></svg>';
+  el.dmName.textContent = c.name;
+  el.dmSub.textContent = space ? `${space.name} · ${space.memberCount} member${space.memberCount === 1 ? '' : 's'}` : '';
+  el.dmWho.title = 'See who is here';
+  el.dmBack.setAttribute('aria-label', 'Back to channels');
+  el.dmBack.title = 'Back to channels';
+  el.dmSave.hidden = true;
+  el.dmCallBtn.hidden = true;
+  el.dmNotice.hidden = true;
+  el.chatInput.placeholder = `Message #${c.name}`;
+}
+
+// ----- The space's menu -----
+
+function openSpaceMenu() {
+  const space = S.spaces.get(S.view);
+  if (!space) return;
+  if (!el.spaceMenu.hidden) return closeSpaceMenu();
+  el.smSettings.hidden = !canManageSpace(space);
+  el.smLeave.hidden = space.role === 'owner';
+  el.spaceMenu.hidden = false;
+  const r = el.spaceHead.getBoundingClientRect();
+  el.spaceMenu.style.left = `${Math.max(8, r.left)}px`;
+  el.spaceMenu.style.top = `${r.bottom + 4}px`;
+  el.spaceMenu.style.minWidth = `${Math.round(r.width)}px`;
+  el.spaceHead.setAttribute('aria-expanded', 'true');
+  el.spaceMenu.querySelector('button:not([hidden])').focus({ preventScroll: true });
+}
+
+function closeSpaceMenu() {
+  if (el.spaceMenu.hidden) return;
+  el.spaceMenu.hidden = true;
+  el.spaceHead.setAttribute('aria-expanded', 'false');
+}
+
+// ----- Making and joining spaces -----
+
+function openSpaceNew() {
+  showSpaceNewError('');
+  el.spaceCreateName.value = '';
+  el.spaceJoinCode.value = '';
+  el.spaceNew.showModal();
+  el.spaceCreateName.focus();
+}
+
+function showSpaceNewError(text) {
+  el.spaceNewError.textContent = text;
+  el.spaceNewError.hidden = !text;
+}
+
+async function onSpaceCreate(e) {
+  e.preventDefault();
+  const name = el.spaceCreateName.value.trim();
+  if (!name) return showSpaceNewError('Give your space a name.');
+  try {
+    const { space } = await api('POST', '/spaces', { name });
+    el.spaceNew.close();
+    await refreshSpaces();
+    showSpace(space.id);
+  } catch (err) {
+    showSpaceNewError(err.message);
+  }
+}
+
+// "https://rainlit.app/join/AbCd1234", or just the code.
+function inviteCodeFrom(text) {
+  const t = String(text || '').trim();
+  const m = t.match(/(?:^|\/join\/)([A-Za-z0-9_-]{8})\/?$/);
+  if (!m) return { error: "That doesn't look like an invite link." };
+  if (/^https?:\/\//i.test(t)) {
+    const host = new URL(t).host;
+    if (host !== location.host) return { error: `That's an invite to another Rainlit server (${host}). Open it there.` };
+  }
+  return { code: m[1] };
+}
+
+function onSpaceJoinCode(e) {
+  e.preventDefault();
+  const { code, error } = inviteCodeFrom(el.spaceJoinCode.value);
+  if (error) return showSpaceNewError(error);
+  el.spaceNew.close();
+  openJoin(code);
+}
+
+// An invite link: rainlit.app/join/<code>. It opens Rainlit, which asks if you'd like to join.
+function followJoinLink() {
+  const m = location.pathname.match(/^\/join\/([A-Za-z0-9_-]{8})\/?$/);
+  let code = m && m[1];
+  if (m) history.replaceState(null, '', '/');
+  try {
+    if (code) sessionStorage.removeItem('rainlit.joinCode');
+    else code = sessionStorage.getItem('rainlit.joinCode');
+    sessionStorage.removeItem('rainlit.joinCode');
+  } catch {}
+  if (code) openJoin(code);
+}
+
+async function openJoin(code) {
+  let info;
+  try {
+    info = await api('GET', `/space-invites/${code}`);
+  } catch (err) {
+    return toast(err.message || "That invite link doesn't work any more.");
+  }
+  if (info.member) {
+    await refreshSpaces();
+    return showSpace(info.space.id);
+  }
+  S.joinCode = code;
+  el.spaceJoinName.textContent = info.space.name;
+  el.spaceJoinCount.textContent = `${info.space.memberCount} member${info.space.memberCount === 1 ? '' : 's'}`;
+  el.spaceJoinIcon.textContent = spaceInitials(info.space.name);
+  el.spaceJoinIcon.style.setProperty('--face-bg', faceColor(info.space.id));
+  el.spaceJoinError.hidden = true;
+  el.spaceJoin.showModal();
+}
+
+async function onJoinSpace() {
+  el.spaceJoinBtn.disabled = true;
+  try {
+    const { space } = await api('POST', `/space-invites/${S.joinCode}`);
+    el.spaceJoin.close();
+    await refreshSpaces();
+    showSpace(space.id);
+  } catch (err) {
+    el.spaceJoinError.textContent = err.message;
+    el.spaceJoinError.hidden = false;
+  } finally {
+    el.spaceJoinBtn.disabled = false;
+  }
+}
+
+// ----- Inviting, members, settings -----
+
+async function openInvite() {
+  closeSpaceMenu();
+  const space = S.spaces.get(S.view);
+  if (!space) return;
+  el.spaceInviteName.textContent = space.name;
+  el.spaceInviteLink.value = 'Making a link…';
+  el.spaceInviteCopy.textContent = 'Copy';
+  el.spaceInvite.showModal();
+  try {
+    const { code } = await api('POST', `/spaces/${space.id}/invites`);
+    el.spaceInviteLink.value = `${location.origin}/join/${code}`;
+    el.spaceInviteLink.select();
+  } catch (err) {
+    el.spaceInviteLink.value = '';
+    toast(err.message);
+  }
+}
+
+async function copyInvite() {
+  const link = el.spaceInviteLink.value;
+  if (!/^https?:\/\//.test(link)) return;
+  try {
+    await navigator.clipboard.writeText(link);
+  } catch {
+    el.spaceInviteLink.select();
+    document.execCommand('copy');
+  }
+  el.spaceInviteCopy.textContent = 'Copied!';
+}
+
+async function openMembers() {
+  closeSpaceMenu();
+  const spaceId = isChannelKey(S.openDm) && S.view === 'home' ? S.channels.get(channelIdOf(S.openDm)).spaceId : S.view;
+  const space = S.spaces.get(spaceId);
+  if (!space) return;
+  el.spaceMembers.dataset.space = spaceId;
+  renderMembers();
+  el.spaceMembers.showModal();
+  await loadMembers(spaceId);
+  renderMembers();
+}
+
+function renderMembers() {
+  const space = S.spaces.get(el.spaceMembers.dataset.space);
+  if (!space) return;
+  el.spaceMembersTitle ||= document.getElementById('space-members-title');
+  el.spaceMembersTitle.textContent = `Members of ${space.name}`;
+  el.spaceMemberList.replaceChildren(...(space.members || []).map((m) => {
+    const li = document.createElement('li');
+    li.className = 'member';
+    const text = document.createElement('span');
+    text.className = 'member-text';
+    const name = document.createElement('span');
+    name.className = 'member-name';
+    name.textContent = m.id === S.clientId ? `${m.displayName} (you)` : m.displayName;
+    const user = document.createElement('span');
+    user.className = 'member-user';
+    user.textContent = `@${m.username}`;
+    text.append(name, user);
+    const role = document.createElement('span');
+    role.className = 'role';
+    role.textContent = m.role === 'member' ? '' : m.role;
+    li.append(makeFace(m, null), text, role);
+    return li;
+  }));
+}
+
+function openSpaceSettings() {
+  closeSpaceMenu();
+  const space = S.spaces.get(S.view);
+  if (!canManageSpace(space)) return;
+  el.spaceSettings.dataset.space = space.id;
+  el.spaceRenameInput.value = space.name;
+  showSettingsError('');
+  renderSpaceSettings();
+  el.spaceSettings.showModal();
+}
+
+function showSettingsError(text) {
+  el.spaceSettingsError.textContent = text;
+  el.spaceSettingsError.hidden = !text;
+}
+
+function renderSpaceSettings() {
+  const space = S.spaces.get(el.spaceSettings.dataset.space);
+  if (!space) return el.spaceSettings.close();
+  el.spaceDanger.hidden = space.role !== 'owner';
+  el.spaceChannelAdmin.replaceChildren(...space.channels.map((c) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<svg class="icon"><use href="#i-hash"/></svg>';
+    const input = document.createElement('input');
+    input.value = c.name;
+    input.maxLength = 32;
+    input.setAttribute('aria-label', `Rename #${c.name}`);
+    const rename = async () => {
+      const name = input.value.trim();
+      if (!name || name === c.name) return;
+      try {
+        await api('PATCH', `/channels/${c.id}`, { name });
+        showSettingsError('');
+      } catch (err) {
+        showSettingsError(err.message);
+        input.value = c.name;
+      }
+    };
+    input.addEventListener('change', rename);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'text-btn danger';
+    del.textContent = 'Delete';
+    del.hidden = space.channels.length <= 1;
+    del.addEventListener('click', async () => {
+      if (del.dataset.confirm !== '1') {
+        del.dataset.confirm = '1';
+        del.textContent = 'Sure?';
+        setTimeout(() => { del.dataset.confirm = ''; del.textContent = 'Delete'; }, 3000);
+        return;
+      }
+      try {
+        await api('DELETE', `/channels/${c.id}`);
+      } catch (err) {
+        showSettingsError(err.message);
+      }
+    });
+    li.append(input, del);
+    return li;
+  }));
+}
+
+async function onSpaceRename(e) {
+  e.preventDefault();
+  const space = S.spaces.get(el.spaceSettings.dataset.space);
+  const name = el.spaceRenameInput.value.trim();
+  if (!space || !name || name === space.name) return;
+  try {
+    await api('PATCH', `/spaces/${space.id}`, { name });
+    showSettingsError('');
+  } catch (err) {
+    showSettingsError(err.message);
+  }
+}
+
+async function onSpaceDelete() {
+  const space = S.spaces.get(el.spaceSettings.dataset.space);
+  if (!space) return;
+  const btn = el.spaceDeleteBtn;
+  if (btn.dataset.confirm !== '1') {
+    btn.dataset.confirm = '1';
+    btn.textContent = `Yes, delete ${space.name} for everyone`;
+    setTimeout(() => { btn.dataset.confirm = ''; btn.textContent = 'Delete this space'; }, 4000);
+    return;
+  }
+  try {
+    await api('DELETE', `/spaces/${space.id}`);
+    el.spaceSettings.close();
+  } catch (err) {
+    showSettingsError(err.message);
+  }
+}
+
+async function onSpaceLeave() {
+  closeSpaceMenu();
+  const space = S.spaces.get(S.view);
+  if (!space) return;
+  if (!confirm(`Leave ${space.name}? You can come back with an invite link.`)) return;
+  try {
+    await api('POST', `/spaces/${space.id}/leave`);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// + next to "Text channels": a box for the new one's name, at the end of the list.
+function startNewChannel() {
+  const space = S.spaces.get(S.view);
+  if (!canManageSpace(space)) return;
+  let li = el.channelList.querySelector('.channel-new');
+  if (!li) {
+    li = document.createElement('li');
+    li.className = 'channel-new';
+    const input = document.createElement('input');
+    input.placeholder = 'new-channel';
+    input.maxLength = 32;
+    input.setAttribute('aria-label', 'New channel name');
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Escape') li.remove();
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const name = input.value.trim();
+      if (!name) return li.remove();
+      try {
+        const { channel } = await api('POST', `/spaces/${space.id}/channels`, { name });
+        li.remove();
+        await refreshSpaces();
+        openDm(`ch:${channel.id}`);
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    input.addEventListener('blur', () => setTimeout(() => { if (!input.value.trim()) li.remove(); }, 150));
+    li.append(input);
+    el.channelList.append(li);
+  }
+  li.querySelector('input').focus();
+}
+
 // ---------------- Friends ----------------
 
 async function refreshFriends() {
@@ -4776,6 +5379,7 @@ function onProfile(user) {
 const PRESENCE_ORDER = { online: 0, away: 1, offline: 2 };
 
 function renderFriends() {
+  renderSpaces();
   const list = [...S.friends.values()].sort((a, b) =>
     PRESENCE_ORDER[a.presence] - PRESENCE_ORDER[b.presence] || a.displayName.localeCompare(b.displayName));
   const online = list.filter((f) => f.presence !== 'offline').length;
@@ -4783,7 +5387,7 @@ function renderFriends() {
   el.friendList.replaceChildren(...list.map(friendRow));
   el.friendsEmpty.hidden = list.length > 0;
   // Their conversation is open but they're not a friend any more: close it.
-  if (S.openDm && !S.friends.has(S.openDm)) closeDm();
+  if (S.openDm && !convExists(S.openDm)) closeDm();
   else if (S.openDm) renderDmHead();
 
   const requests = [...S.incoming.map((u) => requestRow(u, true)), ...S.outgoing.map((u) => requestRow(u, false))];
@@ -4811,7 +5415,7 @@ function friendRow(f) {
   btn.className = `person ${f.presence}${S.openDm === f.id ? ' open' : ''}`;
   btn.title = `${f.displayName} (@${f.username})`;
   const inCallWith = S.inCall && S.callWith === f.id;
-  const typing = S.typingFrom.has(f.id);
+  const typing = typersIn(f.id).length > 0;
   const text = personText(f.displayName, typing ? 'typing…' : inCallWith ? 'In a call with you' : f.statusText || PRESENCE_LABEL[f.presence]);
   if (typing) text.querySelector('.person-sub').classList.add('typing-now');
   btn.append(makeFace(f, f.presence), text);
@@ -5456,6 +6060,25 @@ async function init() {
   el.menuRemove.addEventListener('click', onMenuRemove);
   // ----- The message menu -----
   el.msgReply.addEventListener('click', () => startReply(msgMenuLi));
+  // Spaces.
+  el.railHome.addEventListener('click', showHome);
+  el.railAdd.addEventListener('click', openSpaceNew);
+  el.spaceHead.addEventListener('click', openSpaceMenu);
+  el.smInvite.addEventListener('click', openInvite);
+  el.smMembers.addEventListener('click', openMembers);
+  el.smSettings.addEventListener('click', openSpaceSettings);
+  el.smLeave.addEventListener('click', onSpaceLeave);
+  el.addChannelBtn.addEventListener('click', startNewChannel);
+  el.spaceCreateForm.addEventListener('submit', onSpaceCreate);
+  el.spaceJoinForm.addEventListener('submit', onSpaceJoinCode);
+  el.spaceInviteCopy.addEventListener('click', copyInvite);
+  el.spaceJoinBtn.addEventListener('click', onJoinSpace);
+  el.spaceRenameForm.addEventListener('submit', onSpaceRename);
+  el.spaceDeleteBtn.addEventListener('click', onSpaceDelete);
+  document.addEventListener('click', (e) => {
+    if (!el.spaceMenu.hidden && !el.spaceMenu.contains(e.target) && !el.spaceHead.contains(e.target)) closeSpaceMenu();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSpaceMenu(); });
   el.msgEdit.addEventListener('click', () => startEdit(msgMenuLi));
   el.replyCancel.addEventListener('click', () => { stopReply(); el.chatInput.focus(); });
   el.msgCopy.addEventListener('click', onMessageMenuCopy);
@@ -5556,7 +6179,7 @@ async function init() {
   // ----- Conversations -----
   el.dmBack.addEventListener('click', closeDm);
   el.dmClose.addEventListener('click', closeDm);
-  el.dmWho.addEventListener('click', () => openMiniProfile(S.openDm));
+  el.dmWho.addEventListener('click', () => (isChannelKey(S.openDm) ? openMembers() : openMiniProfile(S.openDm)));
   el.dmSave.addEventListener('click', onSaveToggle);
   el.dmCallBtn.addEventListener('click', () => startCall(S.openDm));
   el.callElsewhereBtn.addEventListener('click', () => openDm(S.callWith));
@@ -5569,7 +6192,7 @@ async function init() {
   el.pwBtn.addEventListener('click', onPasswordChange);
   el.signoutBtn.addEventListener('click', onSignOut);
   // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin]) {
     d.addEventListener('click', (e) => {
       if (e.target === d || e.target.closest('[data-close]')) d.close();
     });
@@ -5663,7 +6286,7 @@ async function init() {
   const hasFiles = (e) => Boolean(e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files'));
   el.dm.addEventListener('dragenter', (e) => {
     if (!hasFiles(e) || dragDepth++) return;
-    const who = friendName(S.openDm);
+    const who = isChannelKey(S.openDm) ? `#${(S.channels.get(channelIdOf(S.openDm)) || {}).name || 'this channel'}` : friendName(S.openDm);
     const canSend = dmFor(S.openDm).save || (S.inCall && S.callWith === S.openDm && S.peer);
     el.dropText.textContent = canSend ? `Drop to attach for ${who}` : `Saving is off, so files can only go to ${who} during a call`;
     el.dropOverlay.hidden = false;

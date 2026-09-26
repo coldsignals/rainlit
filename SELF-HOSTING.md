@@ -129,6 +129,9 @@ folder: the Render disk, or the Docker volume. Keep a copy now and then:
 - **Docker:** in the folder, `git pull` (or download the new ZIP over the old folder),
   then `docker compose up -d --build`.
 
+When an update needs to change the database, Rainlit first saves a copy of it as it was
+in the `backups` folder inside the data folder. The newest three copies are kept.
+
 ## All the settings
 
 | Setting | What it does |

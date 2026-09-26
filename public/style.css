@@ -204,8 +204,107 @@ button { cursor: pointer; }
 .app {
   height: 100%;
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr);
+  grid-template-columns: 72px 290px minmax(0, 1fr);
 }
+
+/* The rail: Home, your spaces (their initials; the one you're in has a pill beside it, and
+   one with something unread a little dot), and + to make or join one. */
+.rail {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  min-height: 0; padding: 12px 0;
+  overflow-y: auto; scrollbar-width: none;
+  background: color-mix(in srgb, var(--deep) 72%, #000);
+  border-right: 1px solid var(--line);
+}
+.rail::-webkit-scrollbar { display: none; }
+.rail-spaces { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rail-btn {
+  position: relative; flex: none;
+  width: 48px; height: 48px;
+  display: grid; place-items: center;
+  border: 0; border-radius: 50%;
+  background: var(--dusk); color: var(--text);
+  font: inherit; font-weight: 700; font-size: 15px;
+  transition: border-radius 0.15s, background-color 0.15s;
+}
+.rail-btn:hover, .rail-btn.open { border-radius: 16px; }
+.rail-space { background: var(--face-bg, var(--dusk)); color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+.rail-home:hover, .rail-home.open { background: var(--dusk-hi); }
+.rail-home img { width: 26px; height: 26px; }
+.rail-btn.unread::before, .rail-btn.open::before {
+  content: ''; position: absolute; left: -12px; top: 50%;
+  width: 4px; height: 8px; border-radius: 0 4px 4px 0;
+  background: var(--text); transform: translateY(-50%);
+}
+.rail-btn.open::before { height: 36px; }
+.rail-add { color: var(--lamp); }
+.rail-add:hover { background: var(--lamp); color: var(--lamp-ink); }
+.rail-add .icon { width: 22px; height: 22px; }
+.rail-sep { flex: none; width: 32px; height: 2px; border-radius: 1px; background: var(--line); }
+
+/* The sidebar's two faces: Home (friends) and a space (its channels). */
+.side-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.space-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; border: 0; border-radius: 10px;
+  background: none; color: var(--text); font: inherit; font-weight: 700; font-size: 17px; text-align: left;
+}
+.space-head:hover, .space-head[aria-expanded="true"] { background: var(--dusk); }
+.space-head .icon { flex: none; width: 18px; height: 18px; color: var(--mist); }
+.space-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-title-row { display: flex; align-items: center; justify-content: space-between; }
+.side-add { width: 26px; height: 26px; margin: -4px -4px -4px 0; }
+.side-add .icon { width: 15px; height: 15px; }
+.channels { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.channel {
+  width: 100%; display: flex; align-items: center; gap: 7px;
+  padding: 7px 10px; border: 0; border-radius: 8px;
+  background: none; color: var(--mist); font: inherit; font-size: 15px; text-align: left;
+}
+.channel .icon { flex: none; width: 17px; height: 17px; opacity: 0.75; }
+.channel-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.channel:hover { background: var(--dusk); color: var(--text); }
+.channel.open { background: var(--dusk-hi); color: var(--text); }
+.channel.unread { color: var(--text); font-weight: 650; }
+.channel .badge { position: static; }
+.channel-new input {
+  width: 100%; padding: 7px 10px;
+  background: var(--dusk); border: 1px solid var(--line); border-radius: 8px; font-size: 15px;
+}
+.face.channel-face { background: var(--dusk-hi); color: var(--mist); }
+
+/* Spaces' dialogs. */
+.space-form { display: grid; gap: 10px; }
+.space-row { display: flex; align-items: flex-end; gap: 10px; }
+.space-row .field { flex: 1; }
+.or-line { display: flex; align-items: center; gap: 10px; margin: -4px 0; color: var(--mist); font-size: 13px; }
+.or-line::before, .or-line::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.invite-link { display: flex; gap: 8px; }
+.invite-link input {
+  flex: 1; min-width: 0; padding: 9px 12px;
+  background: var(--deep); border: 1px solid var(--line); border-radius: 10px; font-size: 14px;
+}
+.join-card { display: flex; align-items: center; gap: 14px; }
+.join-card strong { display: block; font-size: 18px; }
+.space-icon {
+  flex: none; width: 40px; height: 40px; border-radius: 12px;
+  display: grid; place-items: center;
+  background: var(--face-bg, var(--dusk-hi)); color: #fff; font-weight: 700;
+}
+.space-icon.big { width: 56px; height: 56px; border-radius: 16px; font-size: 20px; }
+.channel-admin { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 6px; }
+.channel-admin li { display: flex; align-items: center; gap: 8px; }
+.channel-admin .icon { flex: none; width: 16px; height: 16px; color: var(--mist); }
+.channel-admin input {
+  flex: 1; min-width: 0; padding: 7px 10px;
+  background: var(--deep); border: 1px solid var(--line); border-radius: 8px; font-size: 14px;
+}
+.danger-zone { display: grid; gap: 4px; justify-items: start; padding-top: 10px; border-top: 1px solid var(--line); }
+.member-list .role { margin-left: auto; color: var(--mist); font-size: 12px; font-weight: 700; text-transform: capitalize; }
+.member-list .member { display: flex; align-items: center; gap: 10px; padding: 6px 4px; }
+.member-list .member-text { display: grid; min-width: 0; }
+.member-list .member-name { font-weight: 650; }
+.member-list .member-user { color: var(--mist); font-size: 13px; }
 
 .sidebar {
   display: flex; flex-direction: column;
@@ -1261,8 +1360,13 @@ button.person.open { background: var(--dusk-hi); }
 /* ================= Small screens ================= */
 
 @media (max-width: 760px) {
-  /* Phones: the friends list is the whole screen, and a call takes over while it's on. */
-  .app { grid-template-columns: minmax(0, 1fr); }
+  /* Phones: the rail and the friends (or channels) list fill the screen, and a conversation
+     takes over when it's open. */
+  .app { grid-template-columns: 64px minmax(0, 1fr); }
+  .app.in-dm { grid-template-columns: minmax(0, 1fr); }
+  .app.in-dm .rail { display: none; }
+  .rail-btn { width: 44px; height: 44px; }
+  .rail-btn.unread::before, .rail-btn.open::before { left: -10px; }
   .sidebar { border-right: 0; }
   .app .content { display: none; }
   .app.in-dm .sidebar { display: none; }

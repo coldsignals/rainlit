@@ -19,11 +19,18 @@ apps, switching devices), and that's the part to keep getting right.
 - [x] [SELF-HOSTING.md](SELF-HOSTING.md): setting up, the relay, backups, updating
 - [x] The code is public, under the GNU AGPL v3 ([LICENSE](LICENSE))
 
-## Stage 2: Communities
+## Stage 2: Communities (in progress)
 
-Servers with more than two people: text channels, roles and permissions, invite links
-anyone can open, and moderation tools for the people running them (kick, ban, timeout,
-an audit log). Blocking and reporting.
+Groups with more than two people. On Rainlit they're called spaces, and one Rainlit
+server can hold many of them, the way Discord holds many servers.
+
+- [x] Spaces with text channels: anyone can make one, and anyone on the server can
+      join with an invite link
+- [ ] Roles and permissions
+- [ ] Moderation for the people running a space: kick, ban, timeout, deleting others'
+      messages, an audit log
+- [ ] Blocking and reporting
+- [ ] Mentions, and notifications from spaces
 
 ## Stage 3: Voice channels and group calls
 
