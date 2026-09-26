@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#151b28" />
+  <!-- Rainlit is already dark: tells dark-mode extensions (Dark Reader) not to recolor it. -->
+  <meta name="darkreader-lock" />
+  <meta name="description" content="Private calls, chat and file sharing with your friends." />
+  <title>Rainlit</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/icons/favicon.ico" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <script src="/boot.js"></script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
+      <symbol id="i-mic-off" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="M3 3l18 18"/></symbol>
+      <symbol id="i-cam" viewBox="0 0 24 24"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
+      <symbol id="i-cam-off" viewBox="0 0 24 24"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M2 2l20 20"/></symbol>
+      <symbol id="i-screen" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m9 10 3-3 3 3M12 7v6"/></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+      <symbol id="i-leave" viewBox="0 0 24 24"><path transform="translate(12 12) rotate(135) scale(0.76) translate(-12 -12)" stroke-width="2.37" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+      <symbol id="i-flip-cam" viewBox="0 0 24 24"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+      <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l8.6-8.6a4 4 0 0 1 5.7 5.7l-8.6 8.6a2 2 0 0 1-2.8-2.8l8.5-8.5"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+      <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+      <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+      <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+      <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+      <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></symbol>
+      <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
+      <symbol id="i-speaker-off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
+      <symbol id="i-react" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-7.5-8.9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/><path d="M19 2v6M16 5h6"/></symbol>
+      <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- ============ Sign in / sign up ============ -->
+  <main id="auth" class="join" hidden>
+    <div class="join-inner">
+      <div class="drop-hero" aria-hidden="true"><span class="drop-glow"></span><img src="/icons/drop-clean.svg" alt="" width="96" height="96" /></div>
+      <h1 class="wordmark"><span class="wm-rain">rain</span><span class="wm-lit">lit</span></h1>
+      <p id="server-name" class="server-name" hidden></p>
+      <p class="tagline">Calls, chat and files with your friends.</p>
+
+      <div id="auth-tabs" class="auth-tabs" role="tablist">
+        <button type="button" id="signin-tab" class="auth-tab" role="tab" aria-selected="true">Sign in</button>
+        <button type="button" id="signup-tab" class="auth-tab" role="tab" aria-selected="false">Sign up</button>
+      </div>
+
+      <form id="signin-form" class="join-form" novalidate>
+        <label class="field">
+          <span>Username or email</span>
+          <input id="signin-login" autocomplete="username" autocapitalize="off" spellcheck="false" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="signin-password" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="primary-btn" type="submit">Sign in</button>
+        <small class="hint">Forgot your password? Ask whoever runs this Rainlit for a reset link.</small>
+      </form>
+
+      <form id="signup-form" class="join-form" novalidate hidden>
+        <p id="setup-note" class="rejoin-note" hidden>You're the first one here, so this will be the admin account. The setup code is in the server's logs (on Render: your service, then Logs; with Docker: <code>docker compose logs rainlit</code>).</p>
+        <label class="field">
+          <span id="code-label">Invite code</span>
+          <input id="signup-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" required />
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input id="signup-email" type="email" autocomplete="email" required />
+          <small class="hint">Only used to help you get back in if you forget your password.</small>
+        </label>
+        <label class="field">
+          <span>Username</span>
+          <input id="signup-username" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="32" required />
+          <small class="hint">How friends find you. Letters, numbers, dots and underscores.</small>
+        </label>
+        <label class="field">
+          <span>Display name</span>
+          <input id="signup-name" autocomplete="nickname" maxlength="32" placeholder="Optional, you can change it any time" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="signup-password" type="password" autocomplete="new-password" minlength="8" required />
+          <small class="hint">At least 8 characters.</small>
+        </label>
+        <button class="primary-btn" type="submit">Create account</button>
+      </form>
+
+      <form id="reset-form" class="join-form" novalidate hidden>
+        <p class="rejoin-note">Choose a new password. You'll be signed in here, and signed out everywhere else.</p>
+        <label class="field">
+          <span>New password</span>
+          <input id="reset-password" type="password" autocomplete="new-password" minlength="8" required />
+          <small class="hint">At least 8 characters.</small>
+        </label>
+        <button class="primary-btn" type="submit">Set password</button>
+      </form>
+
+      <p id="auth-error" class="form-error auth-error" role="alert" hidden></p>
+      <p id="get-apps" class="get-apps"><a href="/downloads">Get the Windows and Android apps</a></p>
+      <p id="server-switch" class="server-switch" hidden><button type="button" id="server-switch-btn" class="text-btn">Use a different Rainlit server</button></p>
+    </div>
+  </main>
+
+  <!-- ============ The app: friends on the left, home or a call on the right ============ -->
+  <div id="app" class="app" hidden>
+    <aside class="sidebar" aria-label="Friends">
+      <header class="side-head">
+        <div id="brand" class="brand"><img class="brand-mark" src="/icons/mark.svg" alt="" width="30" height="30" /><span class="brand-name"><span class="wm-rain">rain</span><span class="wm-lit">lit</span></span></div>
+      </header>
+
+      <form id="add-friend-form" class="add-friend">
+        <input id="add-friend-input" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="33" placeholder="Add a friend by username" aria-label="Add a friend by username" />
+        <button class="icon-btn send-btn" type="submit" aria-label="Send friend request" title="Send friend request">
+          <svg class="icon"><use href="#i-user-plus"/></svg>
+        </button>
+      </form>
+
+      <div class="side-scroll">
+        <section id="requests" class="side-section" hidden aria-labelledby="requests-title">
+          <h2 id="requests-title" class="side-title">Requests</h2>
+          <ol id="request-list" class="people"></ol>
+        </section>
+        <section class="side-section" aria-labelledby="friends-title">
+          <h2 id="friends-title" class="side-title">Friends</h2>
+          <ol id="friend-list" class="people"></ol>
+          <p id="friends-empty" class="side-empty" hidden>No friends yet. Add someone by their username above.</p>
+        </section>
+      </div>
+
+      <footer class="me-card">
+        <button id="me-btn" class="me-btn" type="button" title="Your profile">
+          <span id="me-face" class="face"></span>
+          <span class="me-text">
+            <span id="me-name" class="me-name"></span>
+            <span id="me-status" class="me-status"></span>
+          </span>
+        </button>
+        <button id="admin-btn" class="icon-btn ghost" type="button" aria-label="Invites and accounts" title="Invites and accounts" hidden>
+          <svg class="icon"><use href="#i-key"/></svg>
+        </button>
+        <button id="app-settings-btn" class="icon-btn ghost" type="button" aria-label="Settings" title="Settings">
+          <svg class="icon"><use href="#i-settings"/></svg>
+        </button>
+      </footer>
+    </aside>
+
+    <section class="content">
+      <div id="home" class="home">
+        <div class="home-inner">
+          <img class="drop-small" src="/icons/mark.svg" alt="" width="44" height="44" />
+          <h2 id="home-title">Welcome</h2>
+          <p id="home-text">Pick a friend on the left to open your conversation with them.</p>
+          <div id="rejoin" class="rejoin-note rejoin" hidden>
+            <span id="rejoin-text"></span>
+            <button id="rejoin-btn" class="primary-btn small" type="button">Rejoin call</button>
+          </div>
+          <section id="history" class="history" hidden aria-labelledby="history-title">
+            <div class="history-head">
+              <h2 id="history-title">Recent calls</h2>
+              <button type="button" id="clear-history-btn" class="text-btn">Clear</button>
+            </div>
+            <ol id="history-list" class="history-list"></ol>
+          </section>
+        </div>
+      </div>
+
+      <!-- ============ A conversation, with the call on top while you're in one ============ -->
+      <div id="dm" class="dm" hidden>
+        <header class="dm-head">
+          <button id="dm-back" class="icon-btn ghost dm-back" type="button" aria-label="Back to friends" title="Back to friends">
+            <svg class="icon"><use href="#i-back"/></svg>
+          </button>
+          <button id="dm-who" class="dm-who" type="button" title="See their profile">
+            <span id="dm-face" class="face"></span>
+            <span class="me-text">
+              <span id="dm-name" class="me-name"></span>
+              <span id="dm-sub" class="me-status"></span>
+            </span>
+          </button>
+          <button id="dm-save" class="dm-save" type="button"></button>
+          <button id="dm-call-btn" class="icon-btn dm-call" type="button" aria-label="Call" title="Call">
+            <svg class="icon"><use href="#i-phone"/></svg>
+          </button>
+          <button id="dm-close" class="icon-btn ghost dm-close" type="button" aria-label="Close this conversation" title="Close this conversation">
+            <svg class="icon"><use href="#i-close"/></svg>
+          </button>
+        </header>
+
+        <div id="call-elsewhere" class="call-elsewhere" hidden>
+          <span id="call-elsewhere-text"></span>
+          <button id="call-elsewhere-btn" class="text-btn" type="button">Back to the call</button>
+        </div>
+
+  <!-- ============ Call ============ -->
+  <div id="call" class="call" hidden>
+    <header class="topbar">
+      <div class="call-with">
+        <span id="call-dot" class="call-dot" aria-hidden="true"></span>
+        <span id="room-label"></span>
+      </div>
+      <span id="call-timer" class="call-timer" title="Call length" hidden></span>
+      <div class="status" aria-live="polite">
+        <span id="status-text">Connecting to server</span>
+        <span id="status-detail" class="status-detail"></span>
+      </div>
+      <button id="settings-btn" class="icon-btn ghost" type="button" aria-label="Settings" title="Settings">
+        <svg class="icon"><use href="#i-settings"/></svg>
+      </button>
+    </header>
+
+    <div class="main">
+      <section id="stage" class="stage" aria-label="Call">
+        <video id="remote-video" class="remote-video" autoplay playsinline muted hidden></video>
+        <pre id="stream-stats" class="stream-stats" aria-label="Stream stats" hidden></pre>
+        <div id="stream-audio" class="stream-audio" hidden>
+          <button id="stream-mute" class="icon-btn ghost" type="button" aria-label="Mute the stream" title="Mute the stream">
+            <svg class="icon"><use href="#i-speaker"/></svg>
+          </button>
+          <input id="stream-volume" type="range" min="0" max="200" step="5" value="100" aria-label="Stream volume" title="Stream volume" />
+          <output id="stream-volume-value">100%</output>
+        </div>
+
+        <div id="waiting" class="waiting">
+          <img class="drop-small dim" src="/icons/mark.svg" alt="" width="44" height="44" />
+          <h2 id="waiting-title">Calling your friend</h2>
+          <p id="waiting-text"></p>
+          <button id="ring-again-btn" class="primary-btn small" type="button" hidden>Ring again</button>
+        </div>
+
+        <div id="peer-card" class="peer-card" hidden>
+          <div id="peer-avatar" class="avatar">
+            <span id="peer-initial"></span>
+            <img id="peer-photo" class="avatar-photo" alt="" hidden />
+            <span id="peer-muted" class="mute-badge" title="Muted" hidden><svg class="icon"><use href="#i-mic-off"/></svg></span>
+          </div>
+          <div class="peer-name"><span id="peer-name"></span></div>
+          <div id="peer-away" class="peer-away" hidden>
+            <p class="peer-away-title">Lost connection <span id="peer-away-time"></span></p>
+            <p>You're still in the call. They'll rejoin automatically when they're back online.</p>
+          </div>
+        </div>
+
+        <div id="offline-banner" class="offline-banner" role="status" hidden>
+          <strong>Reconnecting to Rainlit</strong>
+          <span>Your spot in the call is saved.</span>
+        </div>
+
+        <div id="video-label" class="video-label" hidden>
+          <span id="video-muted" class="label-muted" title="Muted" hidden><svg class="icon"><use href="#i-mic-off"/></svg></span>
+          <span id="video-name"></span>
+        </div>
+
+        <button id="fullscreen-btn" class="icon-btn ghost stage-btn" type="button" aria-label="Full screen" title="Full screen" hidden>
+          <svg class="icon"><use href="#i-expand"/></svg>
+        </button>
+
+        <div id="self-view" class="self-view" hidden>
+          <video id="local-video" autoplay playsinline muted></video>
+          <span class="self-label">You</span>
+        </div>
+      </section>
+
+    </div>
+
+    <nav class="controls" aria-label="Call controls">
+      <button id="mic-btn" class="ctl" type="button" aria-pressed="true">
+        <span class="ctl-icon"><svg class="icon"><use href="#i-mic"/></svg></span>
+        <span class="ctl-label">Mute</span>
+      </button>
+      <button id="cam-btn" class="ctl" type="button" aria-pressed="false">
+        <span class="ctl-icon"><svg class="icon"><use href="#i-cam-off"/></svg></span>
+        <span class="ctl-label">Camera</span>
+      </button>
+      <button id="flip-btn" class="ctl" type="button" title="Switch between your front and back cameras" hidden>
+        <span class="ctl-icon"><svg class="icon"><use href="#i-flip-cam"/></svg></span>
+        <span class="ctl-label">Flip</span>
+      </button>
+      <button id="route-btn" class="ctl" type="button" hidden>
+        <span class="ctl-icon"><svg class="icon"><use href="#i-speaker"/></svg></span>
+        <span class="ctl-label">Speaker</span>
+      </button>
+      <button id="screen-btn" class="ctl" type="button" aria-pressed="false">
+        <span class="ctl-icon"><svg class="icon"><use href="#i-screen"/></svg></span>
+        <span class="ctl-label">Share screen</span>
+      </button>
+      <button id="leave-btn" class="ctl leave" type="button">
+        <span class="ctl-icon"><svg class="icon"><use href="#i-leave"/></svg></span>
+        <span class="ctl-label">Leave</span>
+      </button>
+    </nav>
+
+  </div>
+
+        <div class="dm-body">
+          <ol id="chat-log" class="chat-log"></ol>
+          <p id="dm-notice" class="dm-notice" hidden></p>
+          <div id="typing" class="typing" aria-live="polite"></div>
+          <div id="gif-panel" class="gif-panel" role="dialog" aria-label="GIFs" hidden>
+            <input id="gif-search" class="gif-search" type="search" placeholder="Search KLIPY" aria-label="Search KLIPY" autocomplete="off" />
+            <div id="gif-grid" class="gif-grid"><div id="gif-cols" class="gif-cols"></div></div>
+            <p id="gif-status" class="gif-status" role="status"></p>
+            <p class="gif-credit">Powered by KLIPY</p>
+          </div>
+          <div id="attach-tray" class="attach-tray" aria-label="Files to send" hidden></div>
+          <div id="edit-bar" class="edit-bar" hidden>
+            <span>Editing your message. <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels.</span>
+            <button id="edit-cancel" class="icon-btn ghost" type="button" aria-label="Stop editing" title="Stop editing">
+              <svg class="icon"><use href="#i-close"/></svg>
+            </button>
+          </div>
+          <form id="chat-form" class="chat-form">
+            <button id="attach-btn" class="icon-btn ghost attach-btn" type="button" aria-label="Send a file" title="Send a file">
+              <svg class="icon"><use href="#i-clip"/></svg>
+            </button>
+            <!-- (With the file button, away from Send, so it isn't hit by mistake.) -->
+            <button id="gif-btn" class="gif-btn" type="button" aria-label="Send a GIF" title="Send a GIF" aria-expanded="false" hidden>GIF</button>
+            <input id="chat-input" autocomplete="off" maxlength="4000" placeholder="Message" aria-label="Message" />
+            <button class="icon-btn send-btn" type="submit" aria-label="Send">
+              <svg class="icon"><use href="#i-send"/></svg>
+            </button>
+          </form>
+          <input id="file-input" type="file" multiple hidden />
+        </div>
+        <div id="drop-overlay" class="drop-overlay" hidden><p id="drop-text"></p></div>
+      </div>
+    </section>
+  </div>
+
+  <canvas id="rain" class="rain" aria-hidden="true"></canvas>
+  <div id="starting" class="starting" role="status" hidden>
+    <img src="/icons/mark.svg" alt="" width="64" height="64" />
+    <p>Connecting to Rainlit…</p>
+  </div>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <!-- ============ Right-click, long-press or "..." on a message ============ -->
+  <div id="msg-menu" class="menu" role="menu" hidden>
+    <div id="msg-reacts" class="msg-reacts" role="group" aria-label="React"></div>
+    <button id="msg-edit" type="button" role="menuitem">Edit</button>
+    <button id="msg-save" type="button" role="menuitem">Save</button>
+    <button id="msg-open" type="button" role="menuitem">Open in browser</button>
+    <button id="msg-copy" type="button" role="menuitem">Copy text</button>
+    <button id="msg-delete" class="danger" type="button" role="menuitem">Delete</button>
+  </div>
+
+  <!-- ============ Right-click (or long-press) a friend ============ -->
+  <div id="menu" class="menu" role="menu" hidden>
+    <button id="menu-message" type="button" role="menuitem">Message</button>
+    <button id="menu-call" type="button" role="menuitem">Call</button>
+    <button id="menu-profile" type="button" role="menuitem">View profile</button>
+    <hr />
+    <button id="menu-remove" class="danger" type="button" role="menuitem">Remove friend</button>
+  </div>
+
+  <!-- ============ A friend is calling ============ -->
+  <div id="ring" class="ring" role="alertdialog" aria-labelledby="ring-name" aria-describedby="ring-sub" hidden>
+    <span id="ring-face" class="face big"></span>
+    <div class="ring-text">
+      <strong id="ring-name"></strong>
+      <span id="ring-sub">is calling you</span>
+    </div>
+    <button id="ring-decline" class="icon-btn ring-decline" type="button" aria-label="Decline" title="Decline">
+      <svg class="icon"><use href="#i-leave"/></svg>
+    </button>
+    <button id="ring-join" class="icon-btn ring-join" type="button" aria-label="Join the call" title="Join the call">
+      <svg class="icon"><use href="#i-phone"/></svg>
+    </button>
+  </div>
+
+  <!-- ============ A friend's profile ============ -->
+  <dialog id="mini-profile" class="settings mini-profile" aria-labelledby="mp-name">
+    <div class="settings-inner">
+      <div class="mp-top">
+        <span id="mp-face" class="face xl"></span>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <div>
+        <h2 id="mp-name" class="mp-name"></h2>
+        <p id="mp-username" class="mp-username"></p>
+      </div>
+      <p id="mp-presence" class="mp-presence"></p>
+      <p id="mp-status" class="mp-status"></p>
+      <div class="mp-actions">
+        <span class="mp-buttons">
+          <button id="mp-message" class="primary-btn" type="button">Message</button>
+          <button id="mp-call" class="primary-btn ghost-btn" type="button">Call</button>
+        </span>
+        <button id="mp-remove" class="text-btn danger" type="button">Remove friend</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ============ Your profile ============ -->
+  <dialog id="profile" class="settings" aria-labelledby="profile-title">
+    <form id="profile-form" class="settings-inner" novalidate>
+      <div class="settings-head">
+        <h2 id="profile-title">Your profile</h2>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="avatar-row">
+        <span id="profile-face" class="face xl"></span>
+        <div class="avatar-actions">
+          <span class="avatar-buttons">
+            <button id="avatar-btn" class="primary-btn small" type="button">Change picture</button>
+            <button id="avatar-remove-btn" class="text-btn" type="button">Remove</button>
+          </span>
+          <small class="hint">PNG, JPG, GIF or WebP, up to 8 MB. GIFs move!</small>
+        </div>
+        <input id="avatar-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
+      </div>
+      <label class="field">
+        <span>Display name</span>
+        <input id="profile-name" maxlength="32" autocomplete="nickname" />
+      </label>
+      <label class="field">
+        <span>Status <small id="status-count" class="hint"></small></span>
+        <input id="profile-status" maxlength="120" placeholder="What are you up to?" />
+      </label>
+      <label class="field">
+        <span>Show me as</span>
+        <select id="profile-presence">
+          <option value="auto">Online (away when idle)</option>
+          <option value="away">Away</option>
+          <option value="invisible">Appear offline</option>
+        </select>
+      </label>
+      <p id="profile-account" class="conn-info"></p>
+      <p id="profile-error" class="form-error" role="alert" hidden></p>
+      <button class="primary-btn" type="submit">Save</button>
+      <details class="pw-details">
+        <summary>Change password</summary>
+        <div class="pw-fields">
+          <label class="field">
+            <span>Current password</span>
+            <input id="pw-current" type="password" autocomplete="current-password" />
+          </label>
+          <label class="field">
+            <span>New password</span>
+            <input id="pw-next" type="password" autocomplete="new-password" minlength="8" />
+          </label>
+          <button id="pw-btn" class="primary-btn small" type="button">Change password</button>
+        </div>
+      </details>
+      <button id="signout-btn" class="text-btn danger signout" type="button">Sign out</button>
+    </form>
+  </dialog>
+
+  <!-- ============ Another Rainlit server (in the apps) ============ -->
+  <dialog id="server-dialog" class="settings server-dialog" aria-labelledby="server-title">
+    <form id="server-form" class="settings-inner" novalidate>
+      <div class="settings-head">
+        <h2 id="server-title">Connect to a Rainlit server</h2>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <p class="hint">Anyone can run their own Rainlit. Whoever runs yours can tell you its address.</p>
+      <label class="field">
+        <span>Server address</span>
+        <input id="server-input" inputmode="url" autocapitalize="off" autocomplete="url" spellcheck="false" placeholder="chat.example.com" />
+      </label>
+      <p id="server-error" class="form-error" role="alert" hidden></p>
+      <button id="server-connect-btn" class="primary-btn" type="submit">Connect</button>
+      <button id="server-default-btn" class="text-btn" type="button" hidden>Go back to rainlit.app</button>
+    </form>
+  </dialog>
+
+  <!-- ============ Admin: invites and accounts ============ -->
+  <dialog id="admin" class="settings admin" aria-labelledby="admin-title">
+    <div class="settings-inner">
+      <div class="settings-head">
+        <h2 id="admin-title">Invites and accounts</h2>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <section class="admin-section">
+        <div class="admin-head">
+          <h3>Invite codes</h3>
+          <button id="invite-btn" class="primary-btn small" type="button">Make an invite</button>
+        </div>
+        <p class="hint">Each code lets one person sign up. Send it to them along with this site's address.</p>
+        <ol id="invite-list" class="admin-list"></ol>
+      </section>
+      <section class="admin-section">
+        <h3>Accounts</h3>
+        <p class="hint">If someone forgets their password, make them a reset link. It works once, for 24 hours.</p>
+        <ol id="user-list" class="admin-list"></ol>
+      </section>
+    </div>
+  </dialog>
+
+  <!-- A file in the chat, going either way -->
+  <template id="file-tpl">
+    <li class="file-msg">
+      <span class="msg-name"><span class="file-from"></span><time></time></span>
+      <div class="file-card">
+        <div class="file-row">
+          <svg class="icon file-icon"><use href="#i-file"/></svg>
+          <div class="file-info">
+            <span class="file-name"></span>
+            <span class="file-meta"></span>
+          </div>
+          <button type="button" class="icon-btn ghost file-cancel" aria-label="Cancel" title="Cancel">
+            <svg class="icon"><use href="#i-close"/></svg>
+          </button>
+          <a class="icon-btn file-save" aria-label="Save" title="Save" hidden>
+            <svg class="icon"><use href="#i-download"/></svg>
+          </a>
+        </div>
+        <div class="file-bar"><span></span></div>
+      </div>
+    </li>
+  </template>
+
+  <!-- ============ Settings ============ -->
+  <dialog id="settings" class="settings">
+    <form method="dialog" class="settings-inner">
+      <div class="settings-head">
+        <h2>Settings</h2>
+        <button class="icon-btn ghost" value="close" aria-label="Close settings">
+          <svg class="icon"><use href="#i-close"/></svg>
+        </button>
+      </div>
+      <label class="field">
+        <span>Microphone</span>
+        <select id="mic-select"></select>
+      </label>
+      <div class="toggle-group">
+        <label class="toggle">
+          <input id="noise-input" type="checkbox" />
+          <span>Noise suppression</span>
+        </label>
+        <label class="toggle">
+          <input id="echo-input" type="checkbox" />
+          <span>Echo cancellation</span>
+        </label>
+        <label class="toggle">
+          <input id="gain-input" type="checkbox" />
+          <span>Automatic mic volume</span>
+        </label>
+        <small class="hint">Built into the browser. Only turn echo cancellation off if you wear headphones, or your friend will hear themselves.</small>
+      </div>
+      <label class="field">
+        <span>Camera</span>
+        <select id="cam-select"></select>
+      </label>
+      <label class="field" id="speaker-field">
+        <span>Speaker</span>
+        <select id="speaker-select"></select>
+      </label>
+      <label class="field">
+        <span>Screen share quality</span>
+        <select id="share-quality">
+          <option value="sharp">Sharp: text and detail (30 fps)</option>
+          <option value="smooth">Smooth: games and video (60 fps)</option>
+          <option value="saver">Data saver (720p)</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Friend's volume <output id="volume-value" class="field-value">100%</output></span>
+        <input id="volume-input" type="range" min="0" max="300" step="5" value="100" />
+        <small id="volume-hint" class="hint">Above 100% makes a quiet friend louder. It works best with headphones.</small>
+      </label>
+      <div class="ptt-field">
+        <label class="toggle">
+          <input id="ptt-input" type="checkbox" />
+          <span>Push to talk</span>
+        </label>
+        <div id="ptt-details" class="ptt-details" hidden>
+          <div class="ptt-key-row">
+            <span>Talk key</span>
+            <button id="ptt-key-btn" class="key-btn" type="button" title="Change the key"></button>
+          </div>
+          <small id="ptt-hint" class="hint">Your mic stays silent until you hold the key or hold the mic button. The key only works while Rainlit is the window you're using.</small>
+        </div>
+      </div>
+      <label class="toggle">
+        <input id="sounds-input" type="checkbox" />
+        <span>Play a sound for new messages</span>
+      </label>
+      <label class="toggle">
+        <input id="clicks-input" type="checkbox" />
+        <span>Soft click when you press things</span>
+      </label>
+      <label class="toggle">
+        <input id="stats-input" type="checkbox" />
+        <span>Show stream stats on the video <small class="toggle-note">(for when a stream looks off)</small></span>
+      </label>
+      <label class="toggle">
+        <input id="call-sounds-input" type="checkbox" />
+        <span>Sounds when someone joins or leaves a call, or shares their screen</span>
+      </label>
+      <label id="duck-field" class="toggle" hidden>
+        <input id="duck-input" type="checkbox" />
+        <span>Turn other apps down during calls <small class="toggle-note">(music keeps playing, just quieter, so it doesn't drown your friend out)</small>
+          <small id="duck-status" class="toggle-note" hidden></small></span>
+      </label>
+      <label class="toggle">
+        <input id="rain-input" type="checkbox" />
+        <span>Gentle rain over the app <small class="toggle-note">(pauses during calls)</small></span>
+      </label>
+      <p id="app-note" class="conn-info" hidden></p>
+      <p id="server-note" class="conn-info" hidden>Server: <span id="server-host"></span> · <button type="button" id="server-change-btn" class="text-btn">Change</button></p>
+      <p id="push-note" class="conn-info" hidden></p>
+      <p id="conn-info" class="conn-info"></p>
+      <p class="conn-info">Rainlit is free software (GNU AGPL). <a id="source-link" href="https://github.com/coldsignals/rainlit" target="_blank" rel="noopener">Source code</a></p>
+    </form>
+  </dialog>
+
+  <!-- ============ End-of-call summary ============ -->
+  <dialog id="summary" class="settings summary">
+    <form method="dialog" class="settings-inner">
+      <h2 id="summary-title">Call ended</h2>
+      <div class="summary-length">
+        <span id="summary-duration" class="summary-duration"></span>
+        <span id="summary-duration-label" class="summary-duration-label"></span>
+      </div>
+      <p id="summary-detail" class="summary-detail"></p>
+      <details class="summary-log">
+        <summary>Call log</summary>
+        <ol id="summary-log" class="log-list"></ol>
+      </details>
+      <button class="primary-btn" value="close">Done</button>
+    </form>
+  </dialog>
+
+  <!-- ============ Picture, full size ============ -->
+  <dialog id="emoji-dialog" class="emoji-dialog" aria-label="Pick an emoji"></dialog>
+
+  <dialog id="lightbox" class="lightbox" aria-label="Picture">
+    <img id="lightbox-img" alt="" />
+    <div class="lightbox-bar">
+      <span id="lightbox-name" class="lightbox-name"></span>
+      <a id="lightbox-save" class="icon-btn file-save" aria-label="Save" title="Save"><svg class="icon"><use href="#i-download"/></svg></a>
+      <button id="lightbox-close" class="icon-btn" type="button" aria-label="Close" title="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+    </div>
+  </dialog>
+
+  <div id="remote-audio" hidden></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

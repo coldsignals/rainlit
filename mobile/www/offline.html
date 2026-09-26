@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Rainlit</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: grid; place-items: center; text-align: center; padding: 24px;
+      background: #151b28; color: #eceaf3;
+      font: 16px/1.5 system-ui, sans-serif;
+    }
+    img { width: 72px; height: 72px; border-radius: 16px; }
+    h1 { margin: 12px 0 4px; font-size: 22px; }
+    p { margin: 0 0 20px; color: #a9b4c8; }
+    button { border: 0; border-radius: 999px; padding: 12px 24px; background: #f5b94a; color: #22190a; font: inherit; font-weight: 700; }
+    button.quiet { margin-top: 18px; padding: 8px 16px; background: none; color: #a9b4c8; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div>
+    <img src="icon.png" alt="" />
+    <h1 id="title">Can't reach Rainlit</h1>
+    <p id="text">Check your internet connection and try again.</p>
+    <button type="button" id="again">Try again</button><br />
+    <button type="button" id="home" class="quiet" hidden>Go back to rainlit.app</button>
+  </div>
+  <script>
+    // The server to try again: rainlit.app, or another Rainlit server picked in the app (which
+    // passes it along; see ServerChoice.java).
+    const picked = new URLSearchParams(location.search).get('server');
+    const server = picked && /^https:\/\/[^/]+$/.test(picked) ? picked : 'https://rainlit.app';
+    if (server !== 'https://rainlit.app') {
+      document.getElementById('title').textContent = `Can't reach ${new URL(server).host}`;
+      document.getElementById('text').textContent = "Check your internet connection, or whether that server's running.";
+      const home = document.getElementById('home');
+      home.hidden = false;
+      home.onclick = () => { location.href = 'rainlit://use-rainlit-app'; }; // (the app catches this)
+    }
+    document.getElementById('again').onclick = () => location.replace(server);
+    setTimeout(() => location.replace(server), 10000);
+  </script>
+</body>
+</html>

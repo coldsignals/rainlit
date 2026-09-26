@@ -1,0 +1,268 @@
+# Rainlit
+
+Private voice calls, video, screen sharing, messages and file sharing with your
+friends. Everyone has an account, adds friends by username, and can see who's
+online. Each friend has a conversation where messages and files are kept (or
+not, if you turn saving off). Calls, video and screen sharing go directly
+between your devices; the server only helps them find each other.
+
+**Run your own:** anyone can host a Rainlit for their friends or community, on Render in
+a few clicks or on any machine with Docker. See [SELF-HOSTING.md](SELF-HOSTING.md). Where
+it's headed is in [ROADMAP.md](ROADMAP.md).
+
+## 1. Try it on your own computer
+
+1. Install Node.js (version 24 or newer) from https://nodejs.org
+2. Open a terminal in this folder and run:
+   ```
+   npm install
+   npm start
+   ```
+3. The terminal prints a **setup code**. Open http://localhost:3000, sign up
+   with that code, and you're the admin.
+4. To try a call with yourself, open the admin panel (the key button next to
+   your name), make an invite, then open http://127.0.0.1:3000 in another tab
+   and sign up there with the invite. (That second address keeps its own
+   sign-in, so the two tabs can be two different people.) Add each other as
+   friends and call. Mute one tab so it doesn't echo.
+
+Everything is kept in a `data` folder next to `server.js`. Delete it to start
+over.
+
+## 2. Put it online
+
+[SELF-HOSTING.md](SELF-HOSTING.md) has it all: Render in a few clicks, or Docker on your
+own computer or server (with `https://` set up for you), your own address, backups and
+updating.
+
+## 3. Invite your friends
+
+Rainlit is invite-only, so strangers who find your address can't make an
+account.
+
+1. Press the key button next to your name.
+2. Press **Make an invite**. A message with your app's address and the code is
+   copied, ready to paste to your friend.
+3. They sign up with it, then add you (or you add them) by username.
+
+Each code works once. Unused codes can be deleted.
+
+**Forgot password:** in the same panel, press **Reset link** next to their
+account and send them the link. It works once, for 24 hours, and signs them
+out everywhere else.
+
+## 4. Relay and GIFs
+
+If calls get stuck on "Connecting" on some networks, add a relay (a TURN server;
+Cloudflare's is free to start). The GIF button needs a free KLIPY key. Both are in
+[SELF-HOSTING.md](SELF-HOSTING.md) (steps 5 and 6).
+
+## 5. The Android app
+
+Get it from https://rainlit.app/android (or with [Obtainium](https://github.com/ImranR98/Obtainium),
+from https://github.com/coldsignals/rainlit-android). It keeps calls going with the screen
+off, rings like a phone call, and gets notifications while it's closed if
+[ntfy](https://ntfy.sh/docs/subscribe/phone/) is installed. It opens rainlit.app; for
+another Rainlit server, press **Use a different Rainlit server** on the sign-in screen (or
+**Settings → Server → Change**). More in [mobile/README.md](mobile/README.md).
+
+## 6. Rainlit for Windows
+
+Get it from https://rainlit.app/download. It opens rainlit.app; for another Rainlit
+server, press **Use a different Rainlit server** on the sign-in screen (or **Settings →
+Server → Change**; the tray menu goes back to rainlit.app). It's the same Rainlit in its
+own window, plus:
+
+- Push to talk that works while you're in another app or a game.
+- Screen sharing with sound, with Rainlit's own sound left out so your friend
+  doesn't hear themselves.
+- It keeps running in the tray by the clock, so calls and messages still reach
+  you with the window closed, with Windows notifications and a flashing taskbar
+  button.
+- It updates itself.
+
+The installer isn't code-signed yet, so Windows shows "Windows protected your
+PC" the first time: click **More info**, then **Run anyway**. How it's built
+and released is in [desktop/README.md](desktop/README.md).
+
+## Friends and profiles
+
+- **Add a friend:** type their username in the box at the top of the list.
+  They get a request to accept. If they'd already asked you, you're friends
+  straight away.
+- **Online, away, offline:** the dot on each picture. You show as away after
+  10 minutes without touching Rainlit (except during a call). You can also
+  pick **Away** or **Appear offline** yourself.
+- **Your profile:** click your name at the bottom left. Change your picture
+  (PNG, JPG, WebP or GIF, up to 8 MB, and GIFs move), display name and a status
+  of up to 120 characters. Your password and sign out are there too.
+- **A friend's menu:** right-click a friend in the list (long-press on a phone,
+  or the "..." that appears when you hover) for **Message**, **Call**, **View
+  profile** and **Remove friend**. Clicking their name at the top of your
+  conversation shows their profile too.
+
+## Conversations
+
+Click a friend to open your conversation with them, like a Discord DM. The ✕
+at the top closes it (on a phone, the back arrow).
+
+- **Messages stay.** Send them any time, even when your friend is offline;
+  they'll see them next time they open Rainlit. Scroll up for older ones.
+- **Unread messages:** a yellow number on your friend in the list, and a yellow
+  "new messages" line above the first one you haven't seen. A soft "ding-dong"
+  plays when a message arrives in a conversation you don't have open. Turn the
+  sound off in settings. (On a phone it may not play while the app is in the
+  background.)
+- **Grouped messages:** several in a row from the same person, a few minutes
+  apart, share one name and time.
+- **Click sounds:** a soft click when you press buttons, friends and menu
+  items (not while typing). Turn it off in settings.
+- **GIFs:** press **GIF** next to the message box to see what's trending or
+  search, and click one to send it. They play in the conversation (only while
+  they're on screen, and not at all if your device is set to reduce motion,
+  then click one to play it). See step 4 to turn this on.
+- **Files:** press the paperclip, drag files onto the conversation, or paste a
+  screenshot into the message box. Pictures show in place (click one to see it
+  full size), and videos and audio play right there. Files are kept too, up to
+  100 MB each (change it with the `MAX_FILE_MB` setting; see [SELF-HOSTING.md](SELF-HOSTING.md)).
+- **Edit, copy or delete a message:** hover over it and click **⋯** on the
+  right, or right-click it (on a phone, press and hold it).
+  - **Edit** (your own messages): the text goes back into the message box.
+    Enter saves, Esc cancels, and both of you see "(edited)". In an empty
+    message box, the Up arrow edits your last message.
+  - **Copy:** copies the text, or a GIF's link.
+  - **Delete:** asks once to be sure. It disappears for both of you, and a
+    file is deleted from the server, leaving "You removed a message" for you
+    and "Alice removed a message" for your friend.
+- **Saving on or off:** the switch at the top of each conversation. Either of
+  you can flip it, and a note in the conversation says who did. While it's off,
+  nothing new is kept: messages only reach your friend if they have Rainlit
+  open, they're gone after a reload, and files can only be sent during a call
+  (straight from you to them, any size). Anything saved before stays.
+- **Calls** leave a note in the conversation: how long they lasted, or that
+  one was missed.
+
+## How calls work
+
+- **Calling:** press the phone button at the top of a conversation. It rings on
+  every device your friend has Rainlit open on, for up to a minute, with a
+  little four-note tune, and you hear the same tune (a bit softer) while you
+  wait. They can join or decline. If they decline or don't answer, you can
+  ring again.
+- **The call shows above the conversation,** so you can keep chatting and
+  sending files. If you open another conversation, a bar leads back to it.
+- **The call starts** as soon as both of you are in it. The timer at the top
+  shows how long it's been going.
+- **If someone's internet cuts out,** the other person stays in the call. They
+  see "Lost connection" with a counter, and the dropped person rejoins
+  automatically once they're back online, even if that takes several minutes.
+  If their phone died or the app closed, they open it again and press
+  **Rejoin call**, or the call button. Rejoining from a different device works
+  too.
+- **Leaving** with the Leave button doesn't end the call for the other person.
+  You can call back and pick up where you left off.
+- **Join and leave sounds:** a short rising "boop" when your friend joins or
+  rejoins the call (or when you join them), and a falling one when someone
+  drops or leaves. Turn them off in settings.
+- **Server updates don't end calls.** While the server restarts, you keep
+  talking directly; you'll see "Reconnecting to Rainlit" for a few seconds,
+  and then the call carries on with the same timer.
+- **The call ends** when the last person still in it presses Leave, or when
+  nobody has been connected for 30 minutes. You get a summary with the total
+  length and a log of joins, drops and reconnects, and the home screen keeps a
+  list of recent calls on each device.
+
+To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
+[SELF-HOSTING.md](SELF-HOSTING.md)).
+
+## During a call
+
+- **Mute:** the microphone button, or **Ctrl+Shift+M** on a computer. Your
+  friend sees a red mic badge on your picture (or next to your name on video)
+  while you're muted.
+- **Push to talk:** turn it on in settings. Your mic stays silent until you hold
+  the talk key (`` ` `` to start with; click it in settings to pick another) or
+  hold the mic button. In a browser the key only works while Rainlit is the
+  window you're using, so it won't work while you're clicked into a game. The
+  Windows app fixes that.
+- **Share screen with sound:** in Chrome's sharing window, tick the audio
+  checkbox so your friend hears videos and games too: **Share window audio**
+  when you share one app's window (just that app's sound), **Share system
+  audio** for your whole screen, or **Share tab audio** for a browser tab.
+  Rainlit's own sound (your friend's voice) is left out, so they don't hear
+  themselves. This needs Chrome or Edge: Firefox can't include sound in a
+  screen share at all. In the Windows app, tick **Share audio** in its own
+  sharing window instead.
+- **See your own stream big:** click the small "You" preview of your screen or
+  camera. It fills the call and your friend moves to the corner; click either
+  one to swap back.
+- **Pick a headset or webcam:** the settings button. You can also turn your
+  friend's volume down there, and switch the browser's noise suppression, echo
+  cancellation and automatic mic volume on or off.
+- **Full screen:** the button at the top right of your friend's video, or
+  double-click the video.
+
+## What it can't do yet
+
+- Sounds (ringing, message chimes) only start working after you've clicked
+  somewhere in Rainlit once since opening it. Browsers require that.
+- No notifications while Rainlit is closed, except in the Windows app (while
+  it's in the tray) and the Android app with [ntfy](https://ntfy.sh/docs/subscribe/phone/)
+  installed (see [mobile/README.md](mobile/README.md)).
+- Password reset emails. For now the admin makes reset links.
+- Phones can't share their screen, even in the Android app (yet).
+- In a phone's browser, the call may pause if you switch apps or turn the screen
+  off. The Android app keeps it going.
+- Calls and conversations are between two people (groups are on the
+  [roadmap](ROADMAP.md)).
+- Call history is saved on each device, not on the server.
+- A file sent straight through a call (saving off) restarts from the beginning
+  if the connection drops while it's on its way, and shares the connection with
+  the call, so on a slow connection the call can get choppier until it's done.
+
+## How it works
+
+- `server.js` serves the app and the API for accounts, profiles, friends,
+  invites and conversations. `lib/db.js` keeps them in a SQLite database (built
+  into Node) in the data folder, and `lib/dms.js` keeps conversations' files
+  in its `files` folder. Passwords are stored as scrypt hashes, and sign-ins as
+  hashed tokens in a cookie scripts can't read. Files are only ever served to
+  the two people in the conversation, and only pictures, videos and audio are
+  shown in place; everything else only downloads.
+- `lib/realtime.js` holds one WebSocket per open tab: who's online, new
+  messages, ringing, and the setup messages that let two browsers connect for a
+  call. It keeps track of each call (who's connected, who dropped, the event
+  log) and prints when calls start and end, which you can see in Render's
+  **Logs** tab.
+- `public/app.js` uses WebRTC, which is built into every modern browser, for the
+  actual audio, video and screen sharing, and a WebRTC data channel on the same
+  connection for files sent during a call. Microphone echo cancellation and
+  noise suppression come from the browser.
+- `public/sw.js` and `public/manifest.webmanifest` make it installable on phones.
+- `desktop/` is the Windows app (Electron). It opens the website in its own
+  window and adds the things a browser can't do; the page uses them through
+  `window.rainlitDesktop` when it's there.
+- `mobile/` is the Android app (Capacitor): the website in its own window, plus
+  calls that keep going, notifications, and saving files. The page uses it
+  through Capacitor's bridge when it's there.
+- Both apps open rainlit.app unless you pick another Rainlit server
+  (`desktop/servers.js`, `ServerChoice.java`); servers answer
+  `/api/server-info` so the apps can tell they've found one.
+- `Dockerfile`, `docker-compose.yml`, `Caddyfile` and `render.yaml` are for
+  running your own (see [SELF-HOSTING.md](SELF-HOSTING.md)).
+- `brand/` holds the logo and icon source files.
+
+## License
+
+Rainlit is free software under the [GNU AGPL v3](LICENSE) (or any later version). You can
+run it, change it and share it. If you run a changed version for other people, share your
+changes with them too: set `SOURCE_URL` to where your version's code is, and Settings
+links there. The emoji picker in `public/vendor/emoji-picker` keeps its own license
+(Apache 2.0).
+
+The license covers the code, not the Rainlit name and drop logo. Running Rainlit and
+calling it Rainlit is fine; a changed version you share with others should go by its own
+name, so nobody mistakes one for the other.
+
+Found a security problem? Please email rainlit.app@gmail.com rather than opening a public
+issue (see [SECURITY.md](SECURITY.md)).

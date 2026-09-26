@@ -1,0 +1,36 @@
+# Your own Rainlit on any computer or server with Docker, with https:// set up for you
+# (by Caddy, which gets a free certificate and keeps it renewed). See SELF-HOSTING.md.
+#   1. Point a domain (or subdomain) at this machine, and let ports 80 and 443 through.
+#   2. Copy .env.example to .env and fill it in (at least DOMAIN).
+#   3. docker compose up -d
+#   4. docker compose logs rainlit   (for the setup code that makes the first, admin account)
+services:
+  rainlit:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PUBLIC_URL: https://${DOMAIN}
+    volumes:
+      - rainlit-data:/data
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - rainlit
+
+volumes:
+  rainlit-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,9 @@
+# Only the server goes into the image.
+.git
+node_modules
+data
+desktop
+mobile
+brand
+*.md
+.env

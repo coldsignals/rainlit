@@ -1,0 +1,73 @@
+{
+  "name": "rainlit-desktop",
+  "productName": "Rainlit",
+  "version": "1.1.0",
+  "license": "AGPL-3.0-or-later",
+  "description": "Rainlit for Windows: calls, chat and files with your friends.",
+  "author": "Rainlit",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --server=http://localhost:3000",
+    "dist": "electron-builder --win",
+    "release": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "uiohook-napi": "^1.5.5"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.rainlit.desktop",
+    "productName": "Rainlit",
+    "copyright": "Rainlit",
+    "files": [
+      "main.js",
+      "servers.js",
+      "preload.js",
+      "picker-preload.js",
+      "picker.html",
+      "picker.js",
+      "offline.html",
+      "tray*.png",
+      "badge.png",
+      "build/icon.png",
+      "!node_modules/uiohook-napi/prebuilds/{darwin,linux}*/**"
+    ],
+    "asarUnpack": [
+      "node_modules/uiohook-napi/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "Rainlit-Setup.${ext}",
+      "shortcutName": "Rainlit",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "coldsignals",
+        "repo": "rainlit-releases",
+        "releaseType": "draft"
+      }
+    ]
+  }
+}

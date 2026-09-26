@@ -1,0 +1,6 @@
+# https:// for your Rainlit (see docker-compose.yml). Caddy gets a free certificate for
+# DOMAIN and renews it by itself.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy rainlit:3000
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The drop in one color, for Android's themed icons: the same drawing as the status-bar
+     icon (ic_stat_rainlit), the drop with two ripples spaced out below it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:translateX="27" android:translateY="25" android:scaleX="2.25" android:scaleY="2.25">
+        <group android:pivotX="12" android:pivotY="11" android:scaleX="0.86" android:scaleY="0.86" android:translateY="-1.6">
+            <path android:fillColor="#FFFFFFFF"
+                android:pathData="M12,2.5C10.6,5.6 6.5,9.6 6.5,13.6C6.5,16.8 9,19.5 12,19.5C15,19.5 17.5,16.8 17.5,13.6C17.5,9.6 13.4,5.6 12,2.5Z" />
+        </group>
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1.1"
+            android:pathData="M7.8,20.6a4.2,0.95 0,1 0,8.4 0a4.2,0.95 0,1 0,-8.4 0" />
+        <path android:strokeColor="#FFFFFFFF" android:strokeWidth="1"
+            android:pathData="M3,20.6a9,2.1 0,1 0,18 0a9,2.1 0,1 0,-18 0" />
+    </group>
+</vector>

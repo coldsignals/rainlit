@@ -1,0 +1,22 @@
+{
+  "appId": "app.rainlit",
+  "appName": "Rainlit",
+  "webDir": "www",
+  "server": {
+    "url": "https://rainlit.app",
+    "androidScheme": "https",
+    "allowNavigation": [
+      "rainlit.app",
+      "www.rainlit.app"
+    ],
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "backgroundColor": "#151b28"
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "DARK"
+    }
+  }
+}

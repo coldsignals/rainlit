@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#151b28" />
+  <!-- Rainlit is already dark: tells dark-mode extensions (Dark Reader) not to recolor it. -->
+  <meta name="darkreader-lock" />
+  <meta name="description" content="Rainlit for Windows and Android." />
+  <title>Get Rainlit</title>
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/icons/favicon.ico" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --night: #151b28; --deep: #0e121c; --dusk: #20293a; --line: #364156;
+      --mist: #a9b4c8; --text: #eceaf3; --lamp: #f5b94a; --lamp-ink: #22190a;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--night); }
+    body {
+      margin: 0; min-height: 100vh;
+      background: radial-gradient(circle at 50% -10%, rgba(245, 185, 74, 0.1), transparent 45%), var(--night);
+      color: var(--text);
+      font: 16px/1.55 "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+      padding: calc(28px + env(safe-area-inset-top, 0px)) 16px calc(48px + env(safe-area-inset-bottom, 0px));
+    }
+    main { width: min(880px, 100%); margin: 0 auto; }
+    a { color: var(--lamp); }
+    .brand { display: inline-flex; align-items: center; gap: 4px; color: inherit; text-decoration: none; font-size: 20px; letter-spacing: -0.008em; }
+    .brand img { width: 36px; height: 36px; margin: -6px 0 -6px -8px; }
+    .wm-rain { font-weight: 720; color: var(--text); }
+    .wm-lit { font-weight: 420; color: var(--mist); }
+    h1 { margin: 36px 0 6px; font-size: clamp(34px, 7vw, 48px); font-weight: 720; letter-spacing: -0.02em; line-height: 1.05; }
+    .lede { margin: 0 0 28px; color: var(--mist); font-size: 18px; max-width: 46ch; }
+    .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; }
+    .card { display: grid; align-content: start; gap: 14px; padding: 22px; background: var(--dusk); border: 1px solid var(--line); border-radius: 18px; }
+    .card h2 { margin: 0; font-size: 22px; font-weight: 700; }
+    .card .req { margin: -10px 0 0; color: var(--mist); font-size: 14px; }
+    ul, ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+    .get {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px 20px; border-radius: 999px;
+      background: var(--lamp); color: var(--lamp-ink); font-weight: 700; text-decoration: none;
+    }
+    .get:hover { filter: brightness(1.06); }
+    .get svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .note { margin: 0; padding: 12px 14px; background: var(--deep); border-radius: 12px; color: var(--mist); font-size: 14px; }
+    .note strong { color: var(--text); font-weight: 600; }
+    h3 { margin: 4px 0 -6px; font-size: 15px; font-weight: 700; }
+    .browser { margin-top: 16px; padding: 18px 22px; border: 1px dashed var(--line); border-radius: 18px; color: var(--mist); }
+    .browser p { margin: 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="brand" href="/" aria-label="Rainlit"><img src="/icons/mark.svg" alt="" width="36" height="36" /><span><span class="wm-rain">rain</span><span class="wm-lit">lit</span></span></a>
+
+    <h1>Get Rainlit</h1>
+    <p class="lede">Rainlit works in your browser. The apps add the things a browser can't do.</p>
+
+    <div class="apps">
+      <section class="card" aria-labelledby="win">
+        <h2 id="win">Windows</h2>
+        <p class="req">Windows 10 and 11</p>
+        <ul>
+          <li>Push to talk that works while you're in a game or another app.</li>
+          <li>Share your screen with its sound. Your friend won't hear their own voice come back.</li>
+          <li>Stays in the tray by the clock, so calls and messages still reach you.</li>
+          <li>Updates itself.</li>
+        </ul>
+        <a class="get" href="/download"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download for Windows</a>
+        <p class="note">The first time, Windows may say <strong>"Windows protected your PC."</strong> Click <strong>More info</strong>, then <strong>Run anyway</strong>. (The installer isn't code-signed yet.)</p>
+      </section>
+
+      <section class="card" aria-labelledby="android">
+        <h2 id="android">Android</h2>
+        <p class="req">Android 7 and up. Works without Google services, GrapheneOS included.</p>
+        <ul>
+          <li>Calls keep going when you switch apps or turn the screen off.</li>
+          <li>Notifications for calls and messages while you're in another app.</li>
+          <li>The back button works like you'd expect.</li>
+        </ul>
+        <a class="get" href="/android"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download for Android</a>
+        <h3>Installing it</h3>
+        <ol>
+          <li>Tap <strong>Download for Android</strong> on your phone, then open the file.</li>
+          <li>When asked, allow your browser to install apps.</li>
+          <li>Open Rainlit and sign in. Allow the microphone and notifications.</li>
+        </ol>
+        <p class="note"><strong>Using Obtainium?</strong> Add <a href="https://github.com/coldsignals/rainlit-android">Rainlit's GitHub</a> and it'll keep Rainlit up to date. Updates install over the old version, so there's no need to uninstall first.</p>
+        <p class="note"><strong>Calls and messages while Rainlit is closed:</strong> also install <a href="https://ntfy.sh/docs/subscribe/phone/">ntfy</a> (free, no account, no Google needed). Rainlit finds it and connects by itself. Using Obtainium? Add <a href="https://github.com/binwiederhier/ntfy-android">ntfy's GitHub</a> and pick the <strong>fdroid-release</strong> APK.</p>
+        <p class="note"><strong>Xiaomi, Redmi or Poco phone?</strong> They close apps in the background, even during calls. Go to Settings, then Apps, then Manage apps, then Rainlit. Set <strong>Battery saver</strong> to <strong>No restrictions</strong> and turn on <strong>Autostart</strong>.</p>
+      </section>
+    </div>
+
+    <section class="browser">
+      <p>On an iPhone, a Mac or Linux? Just <a href="/">open Rainlit in your browser</a>. For screen sharing with sound, use Chrome or Edge.</p>
+    </section>
+  </main>
+  <script src="/downloads.js"></script>
+</body>
+</html>

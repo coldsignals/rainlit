@@ -1,0 +1,18 @@
+# Render Blueprint: what the "Deploy to Render" button in SELF-HOSTING.md sets up. A Starter
+# instance, because accounts and files need a disk that survives restarts (the free one has none).
+services:
+  - type: web
+    name: rainlit
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    disk:
+      name: rainlit-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
