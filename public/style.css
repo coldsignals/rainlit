@@ -301,7 +301,11 @@ button { cursor: pointer; }
 }
 .danger-zone { display: grid; gap: 4px; justify-items: start; padding-top: 10px; border-top: 1px solid var(--line); }
 .member-list .role { margin-left: auto; color: var(--mist); font-size: 12px; font-weight: 700; text-transform: capitalize; }
-.member-list .member { display: flex; align-items: center; gap: 10px; padding: 6px 4px; }
+.member-list .member {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px;
+  background: none; border: 0; border-radius: 10px; text-align: left;
+}
+.member-list .member:hover { background: var(--dusk-hi); }
 .member-list .member-text { display: grid; min-width: 0; }
 .member-list .member-name { font-weight: 650; }
 .member-list .member-user { color: var(--mist); font-size: 13px; }
@@ -445,6 +449,32 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .mp-top { display: flex; justify-content: space-between; align-items: flex-start; margin-right: -8px; }
 .mp-name { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.015em; overflow-wrap: anywhere; }
 .mp-username { margin: 0; color: var(--mist); }
+.mini-profile .badge-tray { margin-top: 8px; }
+
+/* Badges: a little tray of them, each saying what it is on hover or tap */
+.badge-tray { display: flex; flex-wrap: wrap; gap: 2px; width: fit-content; padding: 3px; background: var(--deep); border-radius: 10px; }
+.user-badge { position: relative; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; background: none; border: 0; border-radius: 8px; }
+.user-badge:hover, .user-badge.show { background: var(--dusk-hi); }
+.user-badge img { display: block; width: 22px; height: 22px; }
+.badge-tip {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 5;
+  display: none; width: max-content; max-width: 220px; padding: 8px 10px;
+  background: var(--deep); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  text-align: left; font-size: 13px; line-height: 1.35; pointer-events: none;
+}
+.badge-tip strong { display: block; font-size: 14px; }
+.badge-tip span { display: block; }
+.badge-tip small { display: block; margin-top: 4px; color: var(--mist); font-size: 12px; }
+.user-badge.show .badge-tip, .user-badge:focus-visible .badge-tip { display: block; }
+@media (hover: hover) { .user-badge:hover .badge-tip { display: block; } }
+.badge-toggle {
+  display: grid; place-items: center; width: 32px; height: 32px; flex: none; padding: 0;
+  background: none; border: 1px dashed var(--line); border-radius: 10px;
+}
+.badge-toggle img { opacity: 0.35; filter: grayscale(1); }
+.badge-toggle[aria-pressed="true"] { background: var(--dusk-hi); border: 1px solid var(--lamp); }
+.badge-toggle[aria-pressed="true"] img { opacity: 1; filter: none; }
 .mp-presence { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .mp-presence::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--offline); }
 .mp-presence[data-presence="online"]::before { background: var(--online); }
@@ -457,8 +487,9 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   overflow-wrap: anywhere;
 }
 .mp-status:empty { display: none; }
-.mp-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mp-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .mp-buttons { display: flex; gap: 8px; }
+.mp-buttons button { white-space: nowrap; }
 .primary-btn.ghost-btn { background: var(--dusk-hi); color: var(--text); }
 
 .avatar-row { display: flex; align-items: center; gap: 16px; }
@@ -821,7 +852,10 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 }
 .chat-log li { overflow-wrap: anywhere; }
 .msg-name { display: block; font-size: 13px; font-weight: 600; color: var(--mist); }
-.msg-name time { font-weight: 400; margin-left: 6px; }
+.msg-name time { font-weight: 400; margin-left: 6px; color: var(--mist); }
+.chat-log li[data-author] > .msg-name { cursor: pointer; width: fit-content; }
+.chat-log li[data-author] > .msg-name:hover { color: var(--text); }
+.chat-log li[data-author] > .msg-name time { cursor: auto; }
 .msg-text { white-space: pre-wrap; }
 .msg-text a { color: var(--lamp); }
 .chat-log .sys { color: var(--mist); font-size: 14px; }

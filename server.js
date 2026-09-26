@@ -17,6 +17,7 @@ const dms = require('./lib/dms');
 const realtime = require('./lib/realtime');
 const push = require('./lib/push');
 const spaces = require('./lib/spaces');
+const badges = require('./lib/badges');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -163,12 +164,14 @@ api.post('/signup', async (req, res) => {
 
   const hash = await auth.hashPassword(b.password);
   const id = auth.newId();
+  const now = Date.now();
   try {
     transaction(() => {
       db.prepare(`
         INSERT INTO users (id, username, email, password_hash, display_name, is_admin, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(id, username, email, hash, displayName, firstAccount ? 1 : 0, Date.now());
+      `).run(id, username, email, hash, displayName, firstAccount ? 1 : 0, now);
+      badges.welcome(id, now);
       if (!firstAccount) {
         const used = db.prepare('UPDATE invites SET used_by = ?, used_at = ? WHERE code = ? AND used_by IS NULL')
           .run(id, Date.now(), code);
@@ -771,6 +774,22 @@ api.get('/admin/users', needAdmin, (_req, res) => {
   const users = db.prepare('SELECT * FROM users ORDER BY created_at').all()
     .map((u) => ({ ...people.publicUser(u), email: u.email, isAdmin: Boolean(u.is_admin), createdAt: u.created_at }));
   res.json({ users });
+});
+
+// The admin gives (and takes back) the badges that don't come by themselves.
+api.put('/admin/users/:id/badges/:badge', needAdmin, (req, res) => {
+  const u = people.userById(req.params.id);
+  if (!u) return fail(res, 404, 'Not found.');
+  if (!badges.GIVEN.has(req.params.badge)) return fail(res, 400, "That badge can't be given.");
+  badges.give(u.id, req.params.badge);
+  res.json({ user: people.publicUser(profileChanged(u.id)) });
+});
+api.delete('/admin/users/:id/badges/:badge', needAdmin, (req, res) => {
+  const u = people.userById(req.params.id);
+  if (!u) return fail(res, 404, 'Not found.');
+  if (!badges.GIVEN.has(req.params.badge)) return fail(res, 400, "That badge can't be taken back.");
+  badges.take(u.id, req.params.badge);
+  res.json({ user: people.publicUser(profileChanged(u.id)) });
 });
 
 // Makes a one-time link the admin can send to someone who forgot their password.

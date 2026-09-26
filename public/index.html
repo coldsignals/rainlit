@@ -448,6 +448,7 @@
       <div>
         <h2 id="mp-name" class="mp-name"></h2>
         <p id="mp-username" class="mp-username"></p>
+        <div id="mp-badges" class="badge-tray" hidden></div>
       </div>
       <p id="mp-presence" class="mp-presence"></p>
       <p id="mp-status" class="mp-status"></p>
@@ -455,6 +456,8 @@
         <span class="mp-buttons">
           <button id="mp-message" class="primary-btn" type="button">Message</button>
           <button id="mp-call" class="primary-btn ghost-btn" type="button">Call</button>
+          <button id="mp-add" class="primary-btn" type="button" hidden>Add friend</button>
+          <button id="mp-edit" class="primary-btn ghost-btn" type="button" hidden>Edit profile</button>
         </span>
         <button id="mp-remove" class="text-btn danger" type="button">Remove friend</button>
       </div>
@@ -495,6 +498,10 @@
           <option value="invisible">Appear offline</option>
         </select>
       </label>
+      <div class="field" hidden>
+        <span>Badges</span>
+        <div id="profile-badges" class="badge-tray"></div>
+      </div>
       <p id="profile-account" class="conn-info"></p>
       <p id="profile-error" class="form-error" role="alert" hidden></p>
       <button class="primary-btn" type="submit">Save</button>
@@ -618,7 +625,7 @@
       </section>
       <section class="admin-section">
         <h3>Accounts</h3>
-        <p class="hint">If someone forgets their password, make them a reset link. It works once, for 24 hours.</p>
+        <p class="hint">If someone forgets their password, make them a reset link. It works once, for 24 hours. The storm cloud gives someone the Stormchaser badge, for helping track down bugs.</p>
         <ol id="user-list" class="admin-list"></ol>
       </section>
     </div>

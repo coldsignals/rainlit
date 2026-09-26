@@ -87,9 +87,9 @@ for (const id of [
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-delete', 'edit-bar', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
   'ring', 'ring-face', 'ring-name', 'ring-decline', 'ring-join',
-  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-remove',
+  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-remove',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
-  'status-count', 'profile-status', 'profile-presence', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn',
+  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn',
   'admin', 'invite-btn', 'invite-list', 'user-list',
   'call', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
@@ -2577,6 +2577,11 @@ function dmFor(friendId) {
       divider: null, // the "new messages" line: { el, count, seen }
     };
     log.addEventListener('scroll', () => { if (log.scrollTop < 120) loadOlder(dm); });
+    // A name above messages opens that person's profile.
+    log.addEventListener('click', (e) => {
+      const li = e.target.closest('.msg-name') && !e.target.closest('time') && e.target.closest('li[data-author]');
+      if (li) openMiniProfile(li.dataset.author);
+    });
     S.dms.set(friendId, dm);
   }
   return dm;
@@ -4674,6 +4679,8 @@ function setMe(user) {
   S.clientId = user.id;
   S.name = user.displayName;
   renderMe();
+  if (el.miniProfile.open && miniProfileId === user.id) renderMiniProfile();
+  if (el.profile.open) renderProfileBadges();
 }
 
 // What your friends see you as.
@@ -4793,8 +4800,10 @@ async function loadMembers(spaceId) {
 
 // Messages drawn before their author's name was known.
 function refreshNames(dm, userId) {
-  for (const li of dm.log.querySelectorAll(`li[data-author="${CSS.escape(userId)}"] > .msg-name`)) {
-    if (li.firstChild && li.firstChild.nodeType === Node.TEXT_NODE) li.firstChild.nodeValue = friendName(userId);
+  for (const head of dm.log.querySelectorAll(`li[data-author="${CSS.escape(userId)}"] > .msg-name`)) {
+    const from = head.querySelector('.file-from');
+    if (from) from.textContent = friendName(userId);
+    else if (head.firstChild && head.firstChild.nodeType === Node.TEXT_NODE) head.firstChild.nodeValue = friendName(userId);
   }
 }
 
@@ -5128,7 +5137,11 @@ function renderMembers() {
   el.spaceMembersTitle.textContent = `Members of ${space.name}`;
   el.spaceMemberList.replaceChildren(...(space.members || []).map((m) => {
     const li = document.createElement('li');
-    li.className = 'member';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'member';
+    btn.addEventListener('click', () => openMiniProfile(m.id));
+    li.append(btn);
     const text = document.createElement('span');
     text.className = 'member-text';
     const name = document.createElement('span');
@@ -5141,7 +5154,7 @@ function renderMembers() {
     const role = document.createElement('span');
     role.className = 'role';
     role.textContent = m.role === 'member' ? '' : m.role;
-    li.append(makeFace(m, null), text, role);
+    btn.append(makeFace(m, null), text, role);
     return li;
   }));
 }
@@ -5365,11 +5378,15 @@ function onPresence(id, presence) {
 }
 
 function onProfile(user) {
+  const known = S.people.get(user.id);
+  if (known) Object.assign(known, user);
   const f = S.friends.get(user.id);
-  if (!f) return;
-  Object.assign(f, user);
-  renderFriends();
+  if (f) Object.assign(f, user);
+  for (const dm of S.dms.values()) refreshNames(dm, user.id);
+  if (el.spaceMembers.open) renderMembers();
   if (el.miniProfile.open) renderMiniProfile();
+  if (!f) return;
+  renderFriends();
   if (S.inCall && S.callWith === f.id) {
     el.roomLabel.textContent = f.displayName;
     renderPeer();
@@ -5551,31 +5568,139 @@ async function onMenuRemove() {
   }
 }
 
-// ---------------- A friend's profile ----------------
+// ---------------- Badges ----------------
+
+// The little marks on people's profiles, in the order they're shown. Their pictures are in
+// /badges. First Drops and Lamplighter come by themselves; the admin gives the others.
+const BADGES = {
+  lamplighter: { name: 'Lamplighter', about: 'Keeps this Rainlit server running', when: 'Since' },
+  'first-drops': { name: 'First Drops', about: 'Joined Rainlit during the alpha', when: 'Joined' },
+  stormchaser: { name: 'Stormchaser', about: 'Helped track down bugs in Rainlit', when: 'Since', given: true },
+};
+
+function badgeImg(id, size = 22) {
+  const img = document.createElement('img');
+  img.src = `/badges/${id}.svg`;
+  img.alt = '';
+  img.width = img.height = size;
+  img.draggable = false;
+  return img;
+}
+
+// A row of someone's badges. Each says what it is on hover, or when tapped.
+function renderBadges(box, badges) {
+  const order = Object.keys(BADGES);
+  const list = (badges || []).filter((b) => BADGES[b.id]).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  box.replaceChildren(...list.map((b) => {
+    const info = BADGES[b.id];
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'user-badge';
+    btn.setAttribute('aria-label', `${info.name}: ${info.about}`);
+    const tip = document.createElement('span');
+    tip.className = 'badge-tip';
+    tip.setAttribute('role', 'tooltip');
+    const name = document.createElement('strong');
+    name.textContent = info.name;
+    const about = document.createElement('span');
+    about.textContent = info.about;
+    tip.append(name, about);
+    if (b.at) {
+      const when = document.createElement('small');
+      when.textContent = `${info.when} ${new Date(b.at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
+      tip.append(when);
+    }
+    btn.append(badgeImg(b.id), tip);
+    btn.addEventListener('click', () => {
+      const show = !btn.classList.contains('show');
+      for (const other of box.querySelectorAll('.user-badge.show')) other.classList.remove('show');
+      btn.classList.toggle('show', show);
+    });
+    btn.addEventListener('blur', () => btn.classList.remove('show'));
+    return btn;
+  }));
+  box.hidden = !list.length;
+  return list.length;
+}
+
+// ---------------- Someone's profile ----------------
+//
+// A friend's, someone's from one of your spaces, or yours: what they look like to everyone.
 
 let miniProfileId = null;
 
-function openMiniProfile(id) {
+function profileOf(id) {
+  return id === S.clientId ? S.me : S.friends.get(id) || S.people.get(id) || null;
+}
+
+async function openMiniProfile(id) {
   miniProfileId = id;
   el.mpRemove.dataset.confirm = '';
+  const known = profileOf(id);
+  if (known) {
+    renderMiniProfile();
+    if (!el.miniProfile.open) el.miniProfile.showModal();
+  }
+  if (id === S.clientId || S.friends.has(id)) return;
+  // Someone from a space: get their newest profile.
+  try {
+    const { user } = await api('GET', `/users/${id}`);
+    S.people.set(id, Object.assign(S.people.get(id) || {}, user));
+  } catch {
+    return;
+  }
+  if (miniProfileId !== id || (known && !el.miniProfile.open)) return; // closed meanwhile
   renderMiniProfile();
   if (!el.miniProfile.open) el.miniProfile.showModal();
 }
 
 function renderMiniProfile() {
-  const f = S.friends.get(miniProfileId);
-  if (!f) return el.miniProfile.close(); // not friends any more
-  renderFace(el.mpFace, f, f.presence);
-  el.mpName.textContent = f.displayName;
-  el.mpUsername.textContent = `@${f.username}`;
-  el.mpPresence.textContent = PRESENCE_LABEL[f.presence];
-  el.mpPresence.dataset.presence = f.presence;
-  el.mpStatus.textContent = f.statusText;
-  const here = S.inCall && S.callWith === f.id;
-  el.mpCall.textContent = here ? 'Back to the call' : 'Call';
-  el.mpCall.disabled = S.inCall && !here;
-  el.mpCall.title = el.mpCall.disabled ? 'Leave your current call first' : '';
-  el.mpRemove.textContent = el.mpRemove.dataset.confirm ? 'Click again to remove' : 'Remove friend';
+  const id = miniProfileId;
+  const self = id === S.clientId;
+  const f = S.friends.get(id);
+  const p = profileOf(id);
+  if (!p) return el.miniProfile.close(); // not friends, or in a space together, any more
+  const presence = self ? myPresence() : f ? f.presence : null;
+  renderFace(el.mpFace, p, presence);
+  el.mpName.textContent = p.displayName;
+  el.mpUsername.textContent = `@${p.username}`;
+  renderBadges(el.mpBadges, p.badges);
+  el.mpPresence.hidden = !presence;
+  if (presence) {
+    el.mpPresence.textContent = PRESENCE_LABEL[presence];
+    el.mpPresence.dataset.presence = presence;
+  }
+  el.mpStatus.textContent = p.statusText || '';
+  // With a friend you can message or call; with anyone else, add them.
+  el.mpMessage.hidden = el.mpCall.hidden = el.mpRemove.hidden = !f;
+  el.mpAdd.hidden = self || Boolean(f);
+  el.mpEdit.hidden = !self;
+  if (f) {
+    const here = S.inCall && S.callWith === f.id;
+    el.mpCall.textContent = here ? 'Back to the call' : 'Call';
+    el.mpCall.disabled = S.inCall && !here;
+    el.mpCall.title = el.mpCall.disabled ? 'Leave your current call first' : '';
+    el.mpRemove.textContent = el.mpRemove.dataset.confirm ? 'Click again to remove' : 'Remove friend';
+  } else if (!self) {
+    const sent = S.outgoing.some((u) => u.id === id);
+    const theyAsked = S.incoming.some((u) => u.id === id);
+    el.mpAdd.textContent = sent ? 'Request sent' : theyAsked ? 'Accept friend request' : 'Add friend';
+    el.mpAdd.disabled = sent;
+  }
+}
+
+async function onProfileAddFriend() {
+  const p = profileOf(miniProfileId);
+  if (!p) return;
+  el.mpAdd.disabled = true;
+  try {
+    const { status } = await api('POST', '/friends', { username: p.username });
+    toast(status === 'friends' ? `You and ${p.displayName} are friends now.` : `Friend request sent to ${p.displayName}.`);
+    await refreshFriends();
+  } catch (err) {
+    toast(err.message);
+  }
+  if (el.miniProfile.open) renderMiniProfile();
 }
 
 async function onRemoveFriend() {
@@ -5612,12 +5737,17 @@ function openProfile() {
   el.profileStatus.value = S.me.statusText;
   el.profilePresence.value = S.me.presence;
   el.profileAccount.textContent = `@${S.me.username} · ${S.me.email}`;
+  renderProfileBadges();
   renderFace(el.profileFace, S.me, null);
   el.avatarRemoveBtn.hidden = !S.me.avatar;
   el.pwCurrent.value = el.pwNext.value = '';
   updateStatusCount();
   showProfileError('');
   el.profile.showModal();
+}
+
+function renderProfileBadges() {
+  el.profileBadges.parentElement.hidden = !renderBadges(el.profileBadges, S.me.badges);
 }
 
 async function onProfileSave(e) {
@@ -5752,7 +5882,27 @@ async function renderAdmin() {
         toast(err.message);
       }
     });
-    li.append(makeFace(u, null), who, reset);
+    const gives = Object.entries(BADGES).filter(([, b]) => b.given).map(([id, b]) => {
+      const has = (u.badges || []).some((x) => x.id === id);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'badge-toggle';
+      btn.setAttribute('aria-pressed', String(has));
+      btn.title = has ? `Take back ${b.name}` : `Give ${u.displayName} ${b.name}`;
+      btn.setAttribute('aria-label', btn.title);
+      btn.append(badgeImg(id, 20));
+      btn.addEventListener('click', async () => {
+        try {
+          await api(has ? 'DELETE' : 'PUT', `/admin/users/${u.id}/badges/${id}`);
+          toast(has ? `Took back ${b.name}.` : `Gave ${u.displayName} ${b.name}.`);
+          renderAdmin();
+        } catch (err) {
+          toast(err.message);
+        }
+      });
+      return btn;
+    });
+    li.append(makeFace(u, null), who, ...gives, reset);
     return li;
   }));
 }
@@ -6051,6 +6201,11 @@ async function init() {
     el.miniProfile.close();
     if (S.inCall && S.callWith === miniProfileId) openDm(miniProfileId);
     else startCall(miniProfileId);
+  });
+  el.mpAdd.addEventListener('click', onProfileAddFriend);
+  el.mpEdit.addEventListener('click', () => {
+    el.miniProfile.close();
+    openProfile();
   });
 
   // ----- A friend's menu -----
