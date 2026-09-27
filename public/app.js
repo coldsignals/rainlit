@@ -4429,19 +4429,12 @@ function showPreview(card, f, url) {
   const kind = previewKind(f.type);
   if (!kind) return;
   let media;
-  let shown; // what goes in the card: the picture or audio, or a video's player
-  // If you were at the bottom of the conversation, stay there as the picture or video takes up room.
-  const stayAtBottom = () => {
-    const log = card.closest('.chat-log');
-    if (log && log.scrollHeight - log.scrollTop - log.clientHeight - shown.clientHeight < 120) scrollChat(log);
-  };
   if (kind === 'image') {
     media = document.createElement('img');
     media.className = 'file-preview';
     media.alt = f.name;
     media.title = 'Click to see full size';
     media.addEventListener('click', () => openLightbox(f, url));
-    media.onload = stayAtBottom;
   } else {
     media = document.createElement(kind);
     media.className = `file-${kind}`;
@@ -4450,37 +4443,62 @@ function showPreview(card, f, url) {
     media.playsInline = true;
     if (S.devices.speaker && media.setSinkId) media.setSinkId(S.devices.speaker).catch(() => {});
   }
-  shown = kind === 'video' ? videoPlayer(card, media, f, url) : media;
-  if (kind !== 'image') media.onloadedmetadata = stayAtBottom; // (after the player has taken the video's shape)
+  const shown = kind === 'audio' ? media : mediaFrame(card, media, kind, f, url);
+  // If you were at the bottom of the conversation, stay there as the picture or video takes up
+  // room. (This runs after the frame has taken its shape.)
+  media.addEventListener(kind === 'image' ? 'load' : 'loadedmetadata', () => {
+    const log = card.closest('.chat-log');
+    if (log && log.scrollHeight - log.scrollTop - log.clientHeight - shown.clientHeight < 120) scrollChat(log);
+  });
   // Not something this browser can show after all: it can still be saved, from the card.
   media.onerror = () => {
     shown.remove();
-    card.classList.remove('has-video');
+    card.classList.remove('has-media');
   };
   media.src = url;
   card.prepend(shown);
 }
 
-// A video: its own shape (a phone video stays tall), with a big play button and how long it
-// is until it's started, then the usual controls. Once it's all here, it's all the card
-// shows, with a save button in the corner.
-function videoPlayer(card, media, f, url) {
+// A picture or video in the chat: its own shape (a phone screenshot or video stays tall), with
+// a save button in the corner. Once it's all here, it's all the card shows; the name and size
+// only show while it's on its way. A video has a big play button and how long it is until
+// it's started, then the usual controls.
+function mediaFrame(card, media, kind, f, url) {
   const box = document.createElement('div');
-  box.className = 'file-player';
-  const play = document.createElement('button');
-  play.type = 'button';
-  play.className = 'file-play';
-  play.setAttribute('aria-label', `Play ${f.name}`);
-  play.innerHTML = '<span><svg class="icon"><use href="#i-play"/></svg></span>';
-  play.addEventListener('click', () => {
-    box.classList.add('started');
-    media.controls = true;
-    media.play().catch(() => {});
-    media.focus({ preventScroll: true });
-  });
-  const length = document.createElement('span');
-  length.className = 'file-length';
-  length.hidden = true;
+  box.className = `file-media ${kind === 'video' ? 'file-player' : 'file-pic'}`;
+  box.append(media);
+  const fit = (w, h) => {
+    if (!w || !h) return;
+    box.style.setProperty('--ratio', `${w} / ${h}`);
+    if (kind === 'image') box.style.setProperty('--w', `${w}px`); // (a small picture isn't blown up)
+    box.classList.add('ready');
+  };
+  if (kind === 'image') {
+    media.addEventListener('load', () => fit(media.naturalWidth, media.naturalHeight));
+  } else {
+    const play = document.createElement('button');
+    play.type = 'button';
+    play.className = 'file-play';
+    play.setAttribute('aria-label', `Play ${f.name}`);
+    play.innerHTML = '<span><svg class="icon"><use href="#i-play"/></svg></span>';
+    play.addEventListener('click', () => {
+      box.classList.add('started');
+      media.controls = true;
+      media.play().catch(() => {});
+      media.focus({ preventScroll: true });
+    });
+    const length = document.createElement('span');
+    length.className = 'file-length';
+    length.hidden = true;
+    media.addEventListener('loadedmetadata', () => {
+      fit(media.videoWidth, media.videoHeight);
+      if (Number.isFinite(media.duration)) {
+        length.textContent = fmtClock(media.duration * 1000);
+        length.hidden = false;
+      }
+    });
+    box.append(play, length);
+  }
   const save = document.createElement('a');
   save.className = 'file-dl';
   save.href = url;
@@ -4488,15 +4506,8 @@ function videoPlayer(card, media, f, url) {
   save.title = 'Save';
   save.setAttribute('aria-label', `Save ${f.name}`);
   save.innerHTML = '<svg class="icon"><use href="#i-download"/></svg>';
-  media.addEventListener('loadedmetadata', () => {
-    if (media.videoWidth && media.videoHeight) box.style.setProperty('--ratio', `${media.videoWidth} / ${media.videoHeight}`);
-    if (Number.isFinite(media.duration)) {
-      length.textContent = fmtClock(media.duration * 1000);
-      length.hidden = false;
-    }
-  });
-  box.append(media, play, length, save);
-  card.classList.add('has-video');
+  box.append(save);
+  card.classList.add('has-media');
   return box;
 }
 
@@ -4536,7 +4547,7 @@ function renderTransfer(t) {
   u.save.hidden = t.state !== 'done';
   const dl = u.card.querySelector('.file-dl');
   if (dl) dl.hidden = u.save.hidden;
-  // (A video's name and size only show while it's on its way, or if it didn't make it.)
+  // (A picture's or video's name and size only show while it's on its way, or if it didn't make it.)
   u.li.classList.toggle('finished', t.state === 'done' || t.state === 'sent');
   u.li.classList.toggle('ended', t.state === 'cancelled' || t.state === 'failed');
   t.drawnAt = performance.now();
