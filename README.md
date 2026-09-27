@@ -5,7 +5,7 @@ friends. Everyone has an account, adds friends by username, and can see who's
 online. Each friend has a conversation where messages and files are kept (or
 not, if you turn saving off). Groups are a few friends (up to 10) with a chat and a call
 of their own. Spaces are communities with text and voice channels that anyone can make and
-invite people to. Calls between two friends (video and screen sharing too) go directly
+invite people to (or bring over from Discord, with a server template link). Calls between two friends (video and screen sharing too) go directly
 between your devices; the server only helps them find each other. Group calls and voice
 channels go through a LiveKit server, end-to-end encrypted (see
 [SELF-HOSTING.md](SELF-HOSTING.md)).

@@ -21,6 +21,7 @@ const badges = require('./lib/badges');
 const safety = require('./lib/safety');
 const voice = require('./lib/voice');
 const traces = require('./lib/traces');
+const discord = require('./lib/discord');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -1048,6 +1049,40 @@ api.put('/spaces/:spaceId/notify', needUser, needMember, (req, res) => {
   spaces.setNotify(req.space.id, req.user.id, level);
   realtime.sendToUser(req.user.id, { type: 'space-changed', space: req.space.id }); // your other devices
   res.json({ ok: true, level });
+});
+
+// ----- Bringing a Discord server over (lib/discord.js) -----
+// From a Discord server template link: first what it would make, then making it.
+
+async function discordPlan(req, res) {
+  const code = discord.templateCode(req.params.code || (req.body || {}).link);
+  if (!code) {
+    fail(res, 400, "That doesn't look like a Discord template link (they look like https://discord.new/…).");
+    return null;
+  }
+  try {
+    return discord.planFrom(await discord.fetchTemplate(code), { voice: voice.enabled });
+  } catch (err) {
+    if (!(err instanceof discord.TemplateError)) throw err;
+    fail(res, err.status === 404 ? 404 : 502, err.message);
+    return null;
+  }
+}
+
+api.get('/discord-templates/:code', needUser, async (req, res) => {
+  const plan = await discordPlan(req, res);
+  if (plan) res.json({ template: discord.summary(plan) });
+});
+
+api.post('/spaces/from-discord', needUser, async (req, res) => {
+  const plan = await discordPlan(req, res);
+  if (!plan) return;
+  const name = spaces.spaceName((req.body || {}).name);
+  if (name) plan.name = name;
+  const id = spaces.createSpaceFrom(req.user.id, plan);
+  spaces.log(id, req.user.id, 'space-import', null, { from: 'Discord', channels: plan.channels.length, roles: plan.roles.length });
+  realtime.sendToUser(req.user.id, { type: 'space-changed', space: id });
+  res.json({ space: mySpace(req.user.id, id), notes: plan.notes });
 });
 
 // Invite links: rainlit.app/join/<code>. Anyone allowed to invite people can make one.

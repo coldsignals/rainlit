@@ -310,6 +310,11 @@ button { cursor: pointer; }
 .space-row { display: flex; align-items: flex-end; gap: 10px; }
 .space-row .field { flex: 1; }
 .or-line { display: flex; align-items: center; gap: 10px; margin: -4px 0; color: var(--mist); font-size: 13px; }
+/* A Discord template, looked up before it's brought over. */
+.import-preview { display: grid; gap: 4px; padding: 10px 12px; background: var(--deep); border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.import-preview strong { font-size: 15px; }
+.import-preview .import-counts { color: var(--mist); }
+.import-preview ul { margin: 2px 0 0; padding-left: 18px; color: var(--mist); font-size: 13px; }
 .or-line::before, .or-line::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .invite-link { display: flex; gap: 8px; }
 .invite-link input {

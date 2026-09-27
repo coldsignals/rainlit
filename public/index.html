@@ -649,6 +649,13 @@
         <label class="field"><span>Join one with an invite link</span><input id="space-join-code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://rainlit.app/join/…" /></label>
         <button class="primary-btn ghost-btn" type="submit">Join</button>
       </form>
+      <p class="or-line"><span>or</span></p>
+      <form id="space-import-form" class="space-form" novalidate>
+        <label class="field"><span>Bring one over from Discord</span><input id="space-import-link" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://discord.new/…" /></label>
+        <small class="hint">Paste a server template link (in Discord: Server Settings › Server Template). Its channels, roles and permissions come over; messages and members don't.</small>
+        <div id="space-import-preview" class="import-preview" hidden></div>
+        <button id="space-import-btn" class="primary-btn ghost-btn" type="submit">Look it up</button>
+      </form>
       <p id="space-new-error" class="form-error" role="alert" hidden></p>
     </div>
   </dialog>

@@ -61,22 +61,24 @@ so people running their own Rainlit can run it too, or use LiveKit Cloud.
 
 ## Stage 4: Open the doors
 
-Free accounts on rainlit.app for anyone, no invite code needed. What has to be in place
-first:
+Free accounts on rainlit.app for anyone, no invite code needed. Everything else here comes
+first; opening sign-ups is the very last step.
 
-- [ ] A setting that opens sign-ups (on for rainlit.app; servers people run themselves
-      stay invite-only unless they turn it on)
-- [ ] Protection against spam accounts: checking email addresses, and limits on sign-ups
-- [ ] Password-reset emails (the admin can't make reset links by hand for everyone)
-- [ ] Terms of service and a privacy policy in plain language (what Rainlit keeps, why,
-      and for how long), and a minimum age
-- [ ] Reports that reach whoever runs the server, and tools to act on them
-- [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
-      10 MB)
-- [ ] Bring a Discord server over: paste a Discord server template link and get a space
+- [x] Bring a Discord server over: paste a Discord server template link and get a space
       with the same channels, roles and permissions
 - [ ] A "Switching from Discord" page: what works the same, what's different, and how to
       move a community over
+- [ ] Email: password-reset emails (the admin can't make reset links by hand for
+      everyone), and checking that email addresses are real
+- [ ] Protection against spam accounts: limits on sign-ups, and no throwaway addresses
+- [ ] Reports that reach whoever runs the server, and tools to act on them (suspending
+      an account everywhere on the server)
+- [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
+      10 MB)
+- [ ] Terms of service and a privacy policy in plain language (what Rainlit keeps, why,
+      and for how long), and a minimum age
+- [ ] Last: a setting that opens sign-ups, turned on for rainlit.app (servers people run
+      themselves stay invite-only unless they turn it on)
 
 ## Stage 5: One account everywhere, and bots
 

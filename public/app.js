@@ -99,7 +99,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -5653,6 +5653,8 @@ function openSpaceNew() {
   showSpaceNewError('');
   el.spaceCreateName.value = '';
   el.spaceJoinCode.value = '';
+  el.spaceImportLink.value = '';
+  resetDiscordImport();
   el.spaceNew.showModal();
   el.spaceCreateName.focus();
 }
@@ -5674,6 +5676,77 @@ async function onSpaceCreate(e) {
   } catch (err) {
     showSpaceNewError(err.message);
   }
+}
+
+// ----- Bringing a Discord server over -----
+// Paste a server template link: look it up (what it would make), then make it.
+
+let discordImport = { code: '', plan: null };
+
+// "https://discord.new/AbC123", "discord.com/template/AbC123", or just the code.
+function discordTemplateCode(text) {
+  const s = String(text || '').trim();
+  const m = s.match(/discord(?:app)?\.(?:new|com\/template)\/([A-Za-z0-9]+)/i);
+  if (m) return m[1];
+  return /^[A-Za-z0-9]{2,32}$/.test(s) ? s : '';
+}
+
+function resetDiscordImport() {
+  discordImport = { code: '', plan: null };
+  el.spaceImportPreview.hidden = true;
+  el.spaceImportPreview.replaceChildren();
+  el.spaceImportBtn.textContent = 'Look it up';
+}
+
+async function onSpaceImport(e) {
+  e.preventDefault();
+  showSpaceNewError('');
+  const code = discordTemplateCode(el.spaceImportLink.value);
+  if (!code) return showSpaceNewError("That doesn't look like a Discord template link (they look like https://discord.new/…).");
+  el.spaceImportBtn.disabled = true;
+  try {
+    if (discordImport.code !== code || !discordImport.plan) {
+      // First: what it would make.
+      const { template } = await api('GET', `/discord-templates/${encodeURIComponent(code)}`);
+      discordImport = { code, plan: template };
+      renderDiscordPreview(template);
+      return;
+    }
+    const { space, notes } = await api('POST', '/spaces/from-discord', { link: code });
+    el.spaceNew.close();
+    await refreshSpaces();
+    showSpace(space.id);
+    toast(`${space.name} is ready${notes && notes.length ? `. ${notes[0]}` : '.'} Invite people from the space's menu.`, 8000);
+  } catch (err) {
+    showSpaceNewError(err.message);
+  } finally {
+    el.spaceImportBtn.disabled = false;
+  }
+}
+
+function renderDiscordPreview(t) {
+  const name = document.createElement('strong');
+  name.textContent = t.name;
+  const counts = document.createElement('span');
+  counts.className = 'import-counts';
+  const parts = [`${t.textChannels} text channel${t.textChannels === 1 ? '' : 's'}`];
+  if (t.voiceChannels) parts.push(`${t.voiceChannels} voice`);
+  if (t.privateChannels) parts.push(`${t.privateChannels} private`);
+  parts.push(t.roles.length ? `${t.roles.length} role${t.roles.length === 1 ? '' : 's'}: ${t.roles.slice(0, 6).map((r) => r.name).join(', ')}${t.roles.length > 6 ? '…' : ''}` : 'no roles besides @everyone');
+  counts.textContent = parts.join(' · ');
+  const bits = [name, counts];
+  if (t.notes.length) {
+    const ul = document.createElement('ul');
+    ul.replaceChildren(...t.notes.map((n) => {
+      const li = document.createElement('li');
+      li.textContent = n;
+      return li;
+    }));
+    bits.push(ul);
+  }
+  el.spaceImportPreview.replaceChildren(...bits);
+  el.spaceImportPreview.hidden = false;
+  el.spaceImportBtn.textContent = `Make ${t.name}`;
 }
 
 // "https://rainlit.app/join/AbCd1234", or just the code.
@@ -6256,6 +6329,7 @@ function spaceLogText(e) {
   const why = d.reason ? `. Reason: ${d.reason}` : '';
   switch (e.action) {
     case 'space-rename': return `${who} renamed the space from ${d.from} to ${d.to}`;
+    case 'space-import': return `${who} brought the space over from ${d.from || 'Discord'} (${d.channels} channels, ${d.roles} roles)`;
     case 'everyone-perms': return `${who} changed what everyone can do`;
     case 'channel-create': return `${who} made #${d.name}`;
     case 'channel-rename': return `${who} renamed #${d.from} to #${d.to}`;
@@ -8946,6 +9020,10 @@ async function init() {
   el.addChannelBtn.addEventListener('click', () => startNewChannel('text'));
   el.spaceCreateForm.addEventListener('submit', onSpaceCreate);
   el.spaceJoinForm.addEventListener('submit', onSpaceJoinCode);
+  el.spaceImportForm.addEventListener('submit', onSpaceImport);
+  el.spaceImportLink.addEventListener('input', () => {
+    if (discordTemplateCode(el.spaceImportLink.value) !== discordImport.code) resetDiscordImport();
+  });
   el.spaceInviteCopy.addEventListener('click', copySpaceInvite);
   el.spaceJoinBtn.addEventListener('click', onJoinSpace);
   el.spaceRenameForm.addEventListener('submit', onSpaceRename);
