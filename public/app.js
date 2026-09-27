@@ -4802,6 +4802,17 @@ function startBoost(id, audio) {
       limiter.release.value = 0.15;
       limiter.connect(S.boostCtx.destination);
       S.boostLimiter = limiter;
+      // Never quite silent. After half a minute of pure silence (your friend quiet, with their
+      // phone's noise removal sending nothing but zeros), Chrome swaps the boost's speaker for a
+      // stand-in to save power. With the phone locked, it may not swap back when they talk
+      // again until it's unlocked, and you'd hear nothing. A level far too quiet to hear keeps
+      // the real speaker.
+      try {
+        S.boostKeeper = S.boostCtx.createConstantSource();
+        S.boostKeeper.offset.value = 1e-5;
+        S.boostKeeper.connect(S.boostCtx.destination);
+        S.boostKeeper.start();
+      } catch {}
       if (S.devices.speaker && S.boostCtx.setSinkId) S.boostCtx.setSinkId(S.devices.speaker).catch(() => {});
     }
     S.boostCtx.resume().catch(() => {});
@@ -8395,6 +8406,13 @@ function teardown({ sendLeave, keepActive = false }) {
   if (!keepActive) store.set('activeCall', 'null');
 
   closePeer();
+  // The volume boost stops with the call (never quite silent, it would keep the speaker going).
+  if (S.boostCtx) {
+    S.boostCtx.onstatechange = null;
+    S.boostCtx.close().catch(() => {});
+    S.boostCtx = null;
+    S.boostKeeper = null;
+  }
   S.peer = null;
   S.call = null;
   S.lastLogSeq = 0;
