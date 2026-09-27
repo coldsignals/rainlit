@@ -43,7 +43,7 @@ server can hold many of them, the way Discord holds many servers.
 - [x] Mentions (@name, and @everyone for roles allowed to), with their own counts, and
       notifications from spaces: all messages, only mentions, or nothing, each space
 
-## Stage 3: Voice channels and group calls (in progress)
+## Stage 3: Voice channels and group calls (done)
 
 Drop-in voice channels, and calls with more than two people. Past a few people, calls go
 through a media server instead of directly between everyone. That's LiveKit: open source,
@@ -56,7 +56,8 @@ so people running their own Rainlit can run it too, or use LiveKit Cloud.
       channels, and timeouts and kicks that reach voice too
 - [x] Groups: up to 10 friends with a chat and a call of their own (anyone in one can add
       their friends and name it), where starting a call rings everyone
-- [ ] LiveKit alongside Rainlit in the Docker setup, for one-piece self-hosting
+- [x] LiveKit alongside Rainlit in the Docker setup, for one-piece self-hosting (one
+      setting turns it on; it's reached at your own domain, `/livekit`)
 
 ## Stage 4: Open the doors
 

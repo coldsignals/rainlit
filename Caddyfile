@@ -2,5 +2,11 @@
 # DOMAIN and renews it by itself.
 {$DOMAIN} {
 	encode gzip
-	reverse_proxy rainlit:3000
+	# LiveKit, for voice channels and group calls, if it runs here too: wss://DOMAIN/livekit
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+	handle {
+		reverse_proxy rainlit:3000
+	}
 }

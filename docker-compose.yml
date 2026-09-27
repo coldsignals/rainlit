@@ -4,6 +4,8 @@
 #   2. Copy .env.example to .env and fill it in (at least DOMAIN).
 #   3. docker compose up -d
 #   4. docker compose logs rainlit   (for the setup code that makes the first, admin account)
+# For voice channels and group calls with LiveKit running here too, see step 11 of
+# SELF-HOSTING.md (it's COMPOSE_PROFILES=voice in .env, and a few settings).
 services:
   rainlit:
     build: .
@@ -29,6 +31,20 @@ services:
       - caddy-config:/config
     depends_on:
       - rainlit
+
+  # LiveKit, for voice channels and group calls (only with COMPOSE_PROFILES=voice).
+  livekit:
+    image: livekit/livekit-server:v1.13
+    profiles: [voice]
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+    ports:
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
 
 volumes:
   rainlit-data:

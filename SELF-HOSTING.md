@@ -152,10 +152,22 @@ groups have their chat but no call button. (Calls between two friends don't need
   and its secret. Add them as `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`: on
   Render under your service's **Environment**, or in your `.env` file (then
   `docker compose up -d` again).
-- **Your own LiveKit server:** it's free software too
-  (https://docs.livekit.io/home/self-hosting/deployment/). It needs its own network ports
-  (for example TCP 7881 and a range of UDP ports), so it runs on a server of your own, not
-  on Render. Point the same three settings at it.
+- **Your own LiveKit, with the Docker setup** (step 2): it comes with it. In your `.env`,
+  set these, then `docker compose up -d` again:
+  ```
+  COMPOSE_PROFILES=voice
+  LIVEKIT_URL=wss://chat.example.com/livekit
+  LIVEKIT_API_URL=http://livekit:7880
+  LIVEKIT_API_KEY=rainlit
+  LIVEKIT_API_SECRET=a-long-random-secret-of-at-least-32-characters
+  ```
+  Use your own domain in `LIVEKIT_URL` (with `/livekit` on the end), and make up a secret:
+  `openssl rand -hex 24` makes a good one. Then let **TCP 7881** and **UDP 7882** through
+  to the machine (on a home connection, forward them on your router, like 80 and 443).
+  That's where the sound and video go; everything else goes through `https://` as usual.
+- **Your own LiveKit server, elsewhere:** it's free software too
+  (https://docs.livekit.io/home/self-hosting/deployment/). It needs its own network ports,
+  so it runs on a server of your own, not on Render. Point the same three settings at it.
 
 Keep the secret private. The sound and video in voice channels and group calls are
 end-to-end encrypted with a key only your Rainlit hands out, so LiveKit (or whoever runs
@@ -172,7 +184,9 @@ it) can't listen in.
 | `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | Cloudflare's call relay (step 5). |
 | `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL` | Another call relay instead. |
 | `KLIPY_API_KEY` | GIFs (step 6). |
-| `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels (step 11). |
+| `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels and group calls (step 11). |
+| `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |
+| `COMPOSE_PROFILES` | Docker only: `voice` runs LiveKit alongside Rainlit (step 11). |
 | `MAX_FILE_MB` | The biggest file people can send, in MB (100 to start with). |
 | `RECONNECT_MINUTES` | How long someone who dropped out of a call can take to come back (30). |
 | `SOURCE_URL` | Only if you've changed Rainlit's code: where your version's code is. Rainlit's license (the AGPL) asks that the people using a changed version can get it; Settings links there. |
