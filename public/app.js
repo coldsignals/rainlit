@@ -8185,6 +8185,9 @@ async function traceStatus() {
     echo: S.micFx.echoCancellation ? undefined : 'off',
     net: netInfo(),
     battery: S.battery ? `${Math.round(S.battery.level * 100)}%${S.battery.charging ? ' charging' : ''}` : undefined,
+    // How big the page has grown (a phone short on memory closes the biggest apps first).
+    heapMB: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : undefined,
+    nodes: document.getElementsByTagName('*').length,
   };
   // Their voice as this device plays it: its player going or not (muted while the boost plays
   // it instead), and the boost's own state and how far its clock moved since last time.
