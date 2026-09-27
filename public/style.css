@@ -1,4 +1,5 @@
 :root {
+  --zoom: 1; /* Settings > Size, set on <html> with the zoom itself. Lengths that go by the window (vw, vh) divide by it. */
   --night: #151b28;
   --deep: #0e121c;
   --dusk: #20293a;
@@ -117,7 +118,7 @@ button { cursor: pointer; }
 
 .wordmark {
   margin: 0;
-  font-size: clamp(48px, 13vw, 76px);
+  font-size: clamp(48px, calc(13vw / var(--zoom)), 76px);
   font-variation-settings: "opsz" 96;
   line-height: 0.95;
 }
@@ -280,6 +281,10 @@ button { cursor: pointer; }
 .channel.open { background: var(--dusk-hi); color: var(--text); }
 .channel.unread { color: var(--text); font-weight: 650; }
 .channel .badge { position: static; }
+.channel .unread-orb {
+  flex: none; width: 9px; height: 9px; margin-right: 3px; border-radius: 50%;
+  background: var(--lamp); box-shadow: 0 0 8px 1px var(--lamp-glow), 0 0 2px var(--lamp);
+}
 .channel-new input {
   width: 100%; padding: 7px 10px;
   background: var(--dusk); border: 1px solid var(--line); border-radius: 8px; font-size: 15px;
@@ -336,7 +341,7 @@ button { cursor: pointer; }
 .role-chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--role-color, var(--mist)); }
 
 /* Space settings: tabs, roles, and who a channel is for. */
-.settings.space-settings { width: min(520px, calc(100vw - 32px)); }
+.settings.space-settings { width: min(520px, calc(100vw / var(--zoom) - 32px)); }
 .tabs { display: flex; gap: 4px; padding: 3px; overflow-x: auto; background: var(--deep); border-radius: 12px; scrollbar-width: none; }
 .tabs button { flex: 1 0 auto; white-space: nowrap; padding: 7px 10px; border: 0; border-radius: 9px; background: none; color: var(--mist); font-weight: 650; font-size: 14px; }
 .tabs button:hover { color: var(--text); }
@@ -383,7 +388,7 @@ button { cursor: pointer; }
 .voice-person { display: flex; align-items: center; gap: 8px; padding: 3px 8px; border-radius: 6px; color: var(--mist); font-size: 14px; cursor: pointer; }
 .voice-person:hover { background: var(--dusk); color: var(--text); }
 .voice-person .face { width: 22px; height: 22px; font-size: 10px; flex: none; transition: box-shadow 0.12s; }
-.voice-person.speaking .face { box-shadow: 0 0 0 2px var(--online); }
+.voice-person.speaking .face { box-shadow: 0 0 0 2px var(--lamp), 0 0 10px var(--lamp-glow); }
 .voice-person.speaking { color: var(--text); }
 .voice-person-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice-person .icon { width: 14px; height: 14px; flex: none; }
@@ -416,9 +421,11 @@ button { cursor: pointer; }
   position: relative; aspect-ratio: 16 / 9; overflow: hidden;
   display: grid; place-items: center;
   background: var(--dusk); border-radius: 14px;
-  box-shadow: inset 0 0 0 2px transparent; transition: box-shadow 0.12s;
+  box-shadow: inset 0 0 0 2px transparent; transition: box-shadow 0.1s;
 }
-.voice-tile.speaking { box-shadow: inset 0 0 0 3px var(--online); }
+.voice-tile.speaking { box-shadow: inset 0 0 0 3px var(--lamp), 0 0 26px var(--lamp-glow); }
+.voice-tile .face { transition: box-shadow 0.1s; }
+.voice-tile.speaking .face { box-shadow: 0 0 0 4px var(--lamp), 0 0 44px 10px var(--lamp-glow); }
 .voice-tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .voice-tile.screen { background: #000; }
 .voice-tile.screen video { object-fit: contain; }
@@ -634,7 +641,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   position: fixed; top: 16px; left: 50%;
   transform: translateX(-50%);
   z-index: 60;
-  width: min(420px, calc(100vw - 24px));
+  width: min(420px, calc(100vw / var(--zoom) - 24px));
   display: flex; align-items: center; gap: 12px;
   padding: 12px 12px 12px 14px;
   background: var(--dusk-hi);
@@ -654,7 +661,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 
 /* ----- Profiles ----- */
 
-.settings.mini-profile { width: min(340px, calc(100vw - 32px)); }
+.settings.mini-profile { width: min(340px, calc(100vw / var(--zoom) - 32px)); }
 .mp-top { display: flex; justify-content: space-between; align-items: flex-start; margin-right: -8px; }
 .mp-name { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.015em; overflow-wrap: anywhere; }
 .mp-username { margin: 0; color: var(--mist); }
@@ -702,7 +709,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .pw-fields .primary-btn { justify-self: start; }
 .signout { justify-self: start; padding-left: 0; }
 
-.settings.admin { width: min(560px, calc(100vw - 32px)); }
+.settings.admin { width: min(560px, calc(100vw / var(--zoom) - 32px)); }
 .admin-section { display: grid; gap: 8px; }
 .admin-section h3 { margin: 0; font-size: 16px; }
 .admin-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -982,7 +989,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 /* During a call, the call sits on top and the conversation carries on below it. */
 .dm .call { flex: none; height: 58%; min-height: 340px; border-bottom: 1px solid var(--line); }
 .dm .main { padding-top: 2px; }
-.dm .avatar { width: clamp(72px, 15vh, 136px); height: clamp(72px, 15vh, 136px); font-size: clamp(30px, 6vh, 56px); }
+.dm .avatar { width: clamp(72px, calc(15vh / var(--zoom)), 136px); height: clamp(72px, calc(15vh / var(--zoom)), 136px); font-size: clamp(30px, calc(6vh / var(--zoom)), 56px); }
 .dm-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 /* Messages from the same person a few minutes apart share one name and time, like Discord. */
@@ -1037,7 +1044,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 
 .gif-panel {
   position: absolute; left: 12px; bottom: 58px; z-index: 20; /* above the GIF button */
-  width: min(440px, calc(100% - 24px)); height: min(460px, 65vh);
+  width: min(440px, calc(100% - 24px)); height: min(460px, calc(65vh / var(--zoom)));
   display: flex; flex-direction: column; gap: 8px;
   padding: 10px;
   background: var(--dusk-hi);
@@ -1229,7 +1236,48 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   justify-self: start;
 }
 img.file-preview { cursor: zoom-in; }
-.file-video { display: block; width: 100%; max-height: 260px; border-radius: 8px; background: #000; }
+/* A video shows at its own shape (a phone video stays tall), with a big play button until
+   it's started. Once it's all here, the video is all there is: no name or size underneath. */
+.file-player {
+  --ratio: 16 / 9; /* (until it knows) */
+  position: relative; justify-self: start;
+  width: min(100%, calc(360px * var(--ratio))); aspect-ratio: var(--ratio);
+  border-radius: 10px; overflow: hidden; background: #000;
+}
+.file-video { display: block; width: 100%; height: 100%; object-fit: contain; }
+.file-play {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  padding: 0; border: 0; background: none; cursor: pointer;
+}
+.file-play span {
+  width: 56px; height: 56px; display: grid; place-items: center;
+  border-radius: 50%; background: rgba(14, 18, 28, 0.7); color: #fff;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s, background 0.12s, color 0.12s;
+}
+.file-play:hover span, .file-play:focus-visible span { transform: scale(1.06); background: var(--lamp); color: var(--lamp-ink); }
+.file-play .icon { width: 24px; height: 24px; margin-left: 3px; }
+.file-length {
+  position: absolute; right: 8px; bottom: 8px;
+  padding: 1px 7px; border-radius: 999px;
+  background: rgba(14, 18, 28, 0.7); color: #fff;
+  font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.file-dl {
+  position: absolute; top: 8px; right: 8px;
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border-radius: 9px; background: rgba(14, 18, 28, 0.7); color: #fff;
+  opacity: 0; transition: opacity 0.12s;
+}
+.file-dl:hover { background: var(--lamp); color: var(--lamp-ink); }
+.file-dl .icon { width: 18px; height: 18px; }
+.file-player:hover .file-dl, .file-dl:focus-visible { opacity: 1; }
+@media (hover: none) { .file-dl { opacity: 1; } }
+.file-player.started .file-play, .file-player.started .file-length { display: none; }
+.file-msg.finished .file-card.has-video { padding: 0; background: none; border: 0; }
+.file-msg.finished .file-card.has-video > :not(.file-player) { display: none; }
 .file-audio { display: block; width: 100%; height: 40px; }
 .file-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .file-icon { color: var(--lamp); }
@@ -1332,8 +1380,8 @@ img.file-preview { cursor: zoom-in; }
   --outline-color: var(--lamp);
   --category-font-color: var(--mist);
   --num-columns: 8;
-  width: min(360px, calc(100vw - 32px));
-  height: min(420px, calc(100vh - 120px));
+  width: min(360px, calc(100vw / var(--zoom) - 32px));
+  height: min(420px, calc(100vh / var(--zoom) - 120px));
 }
 
 .msg-edited { margin-left: 6px; color: var(--mist); font-size: 12px; white-space: nowrap; user-select: none; }
@@ -1376,7 +1424,7 @@ img.file-preview { cursor: zoom-in; }
 /* ================= Picture, full size ================= */
 
 .lightbox {
-  width: 100vw; height: 100vh;
+  width: calc(100vw / var(--zoom)); height: calc(100vh / var(--zoom));
   max-width: none; max-height: none;
   margin: 0; padding: 0; border: 0;
   background: rgba(5, 8, 13, 0.94);
@@ -1385,7 +1433,7 @@ img.file-preview { cursor: zoom-in; }
 .lightbox[open] { display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; }
 .lightbox::backdrop { background: transparent; }
 .lightbox img {
-  max-width: calc(100vw - 32px); max-height: 100%;
+  max-width: calc(100vw / var(--zoom) - 32px); max-height: 100%;
   object-fit: contain;
   padding-top: 16px;
 }
@@ -1497,7 +1545,7 @@ button.person.open { background: var(--dusk-hi); }
   position: fixed;
   left: 50%; bottom: calc(110px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   transform: translateX(-50%);
-  max-width: min(520px, calc(100vw - 32px));
+  max-width: min(520px, calc(100vw / var(--zoom) - 32px));
   background: var(--dusk-hi);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1510,7 +1558,7 @@ button.person.open { background: var(--dusk-hi); }
 /* ================= Settings ================= */
 
 .settings {
-  width: min(420px, calc(100vw - 32px));
+  width: min(420px, calc(100vw / var(--zoom) - 32px));
   padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);

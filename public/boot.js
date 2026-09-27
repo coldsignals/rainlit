@@ -48,3 +48,13 @@
     document.body.append(box);
   }, 10000);
 })();
+
+// Your Size (Settings > Size) goes on before anything is drawn, so nothing jumps.
+try {
+  const size = Number(localStorage.getItem('rainlit.uiScale'));
+  const root = document.documentElement;
+  if (size > 0 && size !== 1 && 'zoom' in root.style) {
+    root.style.zoom = String(size);
+    root.style.setProperty('--zoom', String(size));
+  }
+} catch {}

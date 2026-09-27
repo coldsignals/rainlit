@@ -97,7 +97,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -758,10 +758,10 @@ function stopAllLocal() {
 
 // ---------------- Speaking detection ----------------
 
-function makeMeter(track) {
-  if (!S.audioCtx) return null;
-  const src = S.audioCtx.createMediaStreamSource(new MediaStream([track]));
-  const an = S.audioCtx.createAnalyser();
+function makeMeter(track, ctx = S.audioCtx) {
+  if (!ctx) return null;
+  const src = ctx.createMediaStreamSource(new MediaStream([track]));
+  const an = ctx.createAnalyser();
   an.fftSize = 512;
   src.connect(an);
   const buf = new Float32Array(an.fftSize);
@@ -782,6 +782,7 @@ function makeMeter(track) {
       return buf.every((v) => v === 0);
     },
     disconnect() { try { src.disconnect(); } catch {} },
+    track,
   };
 }
 
@@ -1962,7 +1963,7 @@ function addMessageMenu(li) {
     btn.innerHTML = '<svg class="icon"><use href="#i-more"/></svg>';
     btn.addEventListener('click', () => {
       const r = btn.getBoundingClientRect();
-      openMessageMenu(li, r.right - 180, r.bottom + 4);
+      openMessageMenu(li, r.right - 180 * uiZoom(), r.bottom + 4);
     });
     tools.append(btn);
   }
@@ -2138,8 +2139,9 @@ function openMessageMenu(li, x, y) {
   delete el.msgDelete.dataset.confirm;
   el.msgMenu.hidden = false;
   const r = el.msgMenu.getBoundingClientRect();
-  el.msgMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
-  el.msgMenu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
+  const z = uiZoom();
+  el.msgMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8)) / z}px`;
+  el.msgMenu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8)) / z}px`;
   const first = el.msgMenu.querySelector('button:not([hidden])');
   if (first) first.focus({ preventScroll: true });
 }
@@ -4427,10 +4429,11 @@ function showPreview(card, f, url) {
   const kind = previewKind(f.type);
   if (!kind) return;
   let media;
+  let shown; // what goes in the card: the picture or audio, or a video's player
   // If you were at the bottom of the conversation, stay there as the picture or video takes up room.
   const stayAtBottom = () => {
     const log = card.closest('.chat-log');
-    if (log && log.scrollHeight - log.scrollTop - log.clientHeight - media.clientHeight < 120) scrollChat(log);
+    if (log && log.scrollHeight - log.scrollTop - log.clientHeight - shown.clientHeight < 120) scrollChat(log);
   };
   if (kind === 'image') {
     media = document.createElement('img');
@@ -4442,15 +4445,59 @@ function showPreview(card, f, url) {
   } else {
     media = document.createElement(kind);
     media.className = `file-${kind}`;
-    media.controls = true;
+    media.controls = kind === 'audio'; // (a video gets them once it's started)
     media.preload = 'metadata';
     media.playsInline = true;
-    media.onloadedmetadata = stayAtBottom;
     if (S.devices.speaker && media.setSinkId) media.setSinkId(S.devices.speaker).catch(() => {});
   }
-  media.onerror = () => media.remove(); // not something this browser can show after all; it can still be saved
+  shown = kind === 'video' ? videoPlayer(card, media, f, url) : media;
+  if (kind !== 'image') media.onloadedmetadata = stayAtBottom; // (after the player has taken the video's shape)
+  // Not something this browser can show after all: it can still be saved, from the card.
+  media.onerror = () => {
+    shown.remove();
+    card.classList.remove('has-video');
+  };
   media.src = url;
-  card.prepend(media);
+  card.prepend(shown);
+}
+
+// A video: its own shape (a phone video stays tall), with a big play button and how long it
+// is until it's started, then the usual controls. Once it's all here, it's all the card
+// shows, with a save button in the corner.
+function videoPlayer(card, media, f, url) {
+  const box = document.createElement('div');
+  box.className = 'file-player';
+  const play = document.createElement('button');
+  play.type = 'button';
+  play.className = 'file-play';
+  play.setAttribute('aria-label', `Play ${f.name}`);
+  play.innerHTML = '<span><svg class="icon"><use href="#i-play"/></svg></span>';
+  play.addEventListener('click', () => {
+    box.classList.add('started');
+    media.controls = true;
+    media.play().catch(() => {});
+    media.focus({ preventScroll: true });
+  });
+  const length = document.createElement('span');
+  length.className = 'file-length';
+  length.hidden = true;
+  const save = document.createElement('a');
+  save.className = 'file-dl';
+  save.href = url;
+  save.download = f.name;
+  save.title = 'Save';
+  save.setAttribute('aria-label', `Save ${f.name}`);
+  save.innerHTML = '<svg class="icon"><use href="#i-download"/></svg>';
+  media.addEventListener('loadedmetadata', () => {
+    if (media.videoWidth && media.videoHeight) box.style.setProperty('--ratio', `${media.videoWidth} / ${media.videoHeight}`);
+    if (Number.isFinite(media.duration)) {
+      length.textContent = fmtClock(media.duration * 1000);
+      length.hidden = false;
+    }
+  });
+  box.append(media, play, length, save);
+  card.classList.add('has-video');
+  return box;
 }
 
 function openLightbox(f, url) {
@@ -4487,11 +4534,36 @@ function renderTransfer(t) {
   u.fill.style.width = `${pct}%`;
   u.cancel.hidden = !ACTIVE.has(t.state) || t.state === 'finishing';
   u.save.hidden = t.state !== 'done';
+  const dl = u.card.querySelector('.file-dl');
+  if (dl) dl.hidden = u.save.hidden;
+  // (A video's name and size only show while it's on its way, or if it didn't make it.)
+  u.li.classList.toggle('finished', t.state === 'done' || t.state === 'sent');
   u.li.classList.toggle('ended', t.state === 'cancelled' || t.state === 'failed');
   t.drawnAt = performance.now();
 }
 
 // ---------------- Settings ----------------
+
+// ----- Size -----
+// Settings > Size zooms all of Rainlit, on this device (boot.js puts it on before anything's
+// drawn). A spot on the screen is then fewer of the page's own px from the corner, so menus
+// opened at a spot divide by it.
+
+function uiZoom() {
+  const root = document.documentElement;
+  return root.currentCSSZoom ?? (Number(root.style.zoom) || 1);
+}
+
+function setUiScale(size) {
+  const root = document.documentElement;
+  if (!('zoom' in root.style)) return;
+  root.style.zoom = size === 1 ? '' : String(size);
+  // (For the CSS that goes by the window's size, which the zoom would stretch past the edge.)
+  if (size === 1) root.style.removeProperty('--zoom');
+  else root.style.setProperty('--zoom', String(size));
+  store.set('uiScale', String(size));
+  renderMemberPanel();
+}
 
 async function fillDeviceLists() {
   let devices = [];
@@ -4527,6 +4599,8 @@ async function fillDeviceLists() {
   renderDuckStatus();
   el.statsInput.checked = S.showStats;
   el.rainInput.checked = S.rain;
+  const size = store.get('uiScale', '1');
+  el.uiScale.value = [...el.uiScale.options].some((o) => o.value === size) ? size : '1';
   el.pttInput.checked = S.ptt;
   el.pttDetails.hidden = !S.ptt;
   el.pttKeyBtn.textContent = S.pttKeyName;
@@ -5184,13 +5258,18 @@ function channelItem(c) {
   name.className = 'channel-name';
   name.textContent = c.name;
   b.append(name);
-  // Unread channels are bright; mentions of you get a count, like Discord.
+  // New messages light a little orb; mentions of you get a count instead, like Discord.
   if (dm.mentions && S.openDm !== key) {
     const badge = document.createElement('span');
     badge.className = 'badge mention';
     badge.textContent = dm.mentions > 99 ? '99+' : String(dm.mentions);
     badge.title = `${dm.mentions} mention${dm.mentions === 1 ? '' : 's'} of you`;
     b.append(badge);
+  } else if (dm.unread && S.openDm !== key) {
+    const orb = document.createElement('span');
+    orb.className = 'unread-orb';
+    orb.title = `${dm.unread > 99 ? '99+' : dm.unread} new message${dm.unread === 1 ? '' : 's'}`;
+    b.append(orb);
   }
   b.addEventListener('click', () => openDm(key));
   li.append(b);
@@ -5300,9 +5379,10 @@ function openSpaceMenu() {
   el.smLeave.hidden = space.role === 'owner';
   el.spaceMenu.hidden = false;
   const r = el.spaceHead.getBoundingClientRect();
-  el.spaceMenu.style.left = `${Math.max(8, r.left)}px`;
-  el.spaceMenu.style.top = `${r.bottom + 4}px`;
-  el.spaceMenu.style.minWidth = `${Math.round(r.width)}px`;
+  const z = uiZoom();
+  el.spaceMenu.style.left = `${Math.max(8, r.left) / z}px`;
+  el.spaceMenu.style.top = `${(r.bottom + 4) / z}px`;
+  el.spaceMenu.style.minWidth = `${Math.round(r.width / z)}px`;
   el.spaceHead.setAttribute('aria-expanded', 'true');
   el.spaceMenu.querySelector('button:not([hidden])').focus({ preventScroll: true });
 }
@@ -5380,7 +5460,7 @@ function renderMentionPick() {
   }));
   const form = el.chatForm.getBoundingClientRect();
   const box = el.chatForm.closest('.dm-body').getBoundingClientRect();
-  el.mentionPick.style.bottom = `${Math.round(box.bottom - form.top + 6)}px`;
+  el.mentionPick.style.bottom = `${Math.round((box.bottom - form.top) / uiZoom() + 6)}px`;
   el.mentionPick.hidden = false;
 }
 
@@ -6059,7 +6139,9 @@ function roleChip(r) {
 // roles shown separately, then everyone offline, dimmed. The button in the header hides it.
 
 S.showMembers = store.get('showMembers', 'on') !== 'off';
-const widePanel = matchMedia('(min-width: 1000px)');
+// (Wide enough counting the Size: at 150%, a window 1500px across has room for 1000.)
+const widePanel = { get matches() { return innerWidth / uiZoom() >= 1000; } };
+let panelWide = null;
 
 function presenceIn(m) {
   if (m.id === S.clientId) return myPresence();
@@ -6070,8 +6152,10 @@ function presenceIn(m) {
 function renderMemberPanel() {
   const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
   const space = c && S.spaces.get(c.spaceId);
-  const show = Boolean(space) && widePanel.matches && S.showMembers;
-  el.membersToggle.hidden = !space || !widePanel.matches;
+  const wide = widePanel.matches;
+  panelWide = wide;
+  const show = Boolean(space) && wide && S.showMembers;
+  el.membersToggle.hidden = !space || !wide;
   el.membersToggle.classList.toggle('on', show);
   el.membersToggle.setAttribute('aria-pressed', String(show));
   el.membersToggle.title = show ? 'Hide members' : 'Show members';
@@ -6666,6 +6750,7 @@ async function joinVoice(channelId) {
   const v = S.voice = {
     channelId, spaceId: c.spaceId, room: null, state: 'connecting', speak: false,
     muted: store.get('voiceMuted', 'off') === 'on', deafened: false, speaking: new Set(), tiles: new Map(),
+    meters: new Map(), meterCtx: null, meterTimer: 0,
   };
   showVoiceView();
   renderVoice();
@@ -6701,6 +6786,7 @@ async function joinVoice(channelId) {
     }
     room.startAudio().catch(() => {});
     wsSend({ type: 'voice-join', channel: channelId, muted: v.muted || !v.speak, deafened: v.deafened });
+    v.meterTimer = setInterval(() => tickVoice(v), 50);
     syncDesktopPtt();
     playCallSound(true);
     if (ANDROID) ANDROID.callStarted({ name: `#${c.name}`, echo: S.micFx.echoCancellation, duck: store.get('duck', 'on') !== 'off' }).catch(() => {});
@@ -6716,12 +6802,16 @@ async function leaveVoice({ quiet = false } = {}) {
   const v = S.voice;
   if (!v) return;
   S.voice = null;
+  clearInterval(v.meterTimer);
+  for (const m of v.meters.values()) m.disconnect();
+  if (v.meterCtx) v.meterCtx.close().catch(() => {});
   if (!quiet) playCallSound(false);
   try {
     if (v.room) await v.room.disconnect();
   } catch {}
   wsSend({ type: 'voice-leave' });
   el.voiceAudio.replaceChildren();
+  el.voiceGrid.replaceChildren(); // (or coming back finds the old tiles, you among them, still there)
   if (ANDROID) ANDROID.callEnded().catch(() => {});
   S.pttHeld = false;
   syncDesktopPtt();
@@ -6734,34 +6824,33 @@ function wireVoiceRoom(room, v) {
   const LK = window.LivekitClient;
   const E = LK.RoomEvent;
   const again = () => { if (S.voice === v) renderVoice(); };
-  room.on(E.TrackSubscribed, (track, _pub, participant) => {
+  room.on(E.TrackSubscribed, (track, pub, participant) => {
     if (track.kind === 'audio') {
       const a = track.attach();
       a.dataset.who = participant.identity;
       a.dataset.sid = track.sid;
       a.muted = v.deafened;
       el.voiceAudio.append(a);
+      if (pub.source !== LK.Track.Source.ScreenShareAudio) meterVoice(v, participant.identity, track.mediaStreamTrack);
     }
     again();
   });
   // (LiveKit may have let go of the element already, so it goes by the track's id too.)
   const dropAudio = (selector) => { for (const a of el.voiceAudio.querySelectorAll(selector)) a.remove(); };
-  room.on(E.TrackUnsubscribed, (track) => {
+  room.on(E.TrackUnsubscribed, (track, _pub, participant) => {
     for (const media of track.detach()) media.remove();
     if (track.sid) dropAudio(`[data-sid="${CSS.escape(track.sid)}"]`);
+    const m = v.meters.get(participant.identity);
+    if (m && m.track === track.mediaStreamTrack) unmeterVoice(v, participant.identity);
     again();
   });
   for (const e of [E.TrackMuted, E.TrackUnmuted, E.LocalTrackPublished, E.LocalTrackUnpublished]) room.on(e, again);
   room.on(E.ParticipantConnected, () => { playCallSound(true); again(); });
   room.on(E.ParticipantDisconnected, (participant) => {
     dropAudio(`[data-who="${CSS.escape(participant.identity)}"]`);
+    unmeterVoice(v, participant.identity);
     playCallSound(false);
     again();
-  });
-  room.on(E.ActiveSpeakersChanged, (speakers) => {
-    v.speaking = new Set(speakers.map((p) => p.identity));
-    renderTrayIcon(v.speaking.has(S.clientId));
-    renderVoiceSpeaking();
   });
   room.on(E.Reconnecting, () => { v.state = 'reconnecting'; again(); });
   room.on(E.Reconnected, () => {
@@ -6785,6 +6874,59 @@ function wireVoiceRoom(room, v) {
     if (!v.speak) toast("You can listen, but can't talk here right now.");
     again();
   });
+}
+
+// ----- Who's talking -----
+// Measured here, from each person's sound as it arrives (and yours as it leaves), so a ring
+// lights up the moment someone speaks. (LiveKit's own "who's talking" comes a beat later.)
+
+function meterVoice(v, identity, track) {
+  if (!track) return;
+  if (!v.meterCtx) {
+    try {
+      v.meterCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch {
+      return;
+    }
+  }
+  unmeterVoice(v, identity);
+  const m = makeMeter(track, v.meterCtx);
+  if (m) v.meters.set(identity, m);
+}
+
+function unmeterVoice(v, identity) {
+  const m = v.meters.get(identity);
+  if (!m) return;
+  m.disconnect();
+  v.meters.delete(identity);
+}
+
+function tickVoice(v) {
+  if (S.voice !== v || !v.room) return;
+  if (v.meterCtx && v.meterCtx.state === 'suspended') v.meterCtx.resume().catch(() => {});
+  // Your mic: a new one after a device change, none while muted.
+  const LK = window.LivekitClient;
+  const mine = v.room.localParticipant.getTrackPublication(LK.Track.Source.Microphone);
+  const myTrack = mine && mine.track && !mine.isMuted ? mine.track.mediaStreamTrack : null;
+  const metered = v.meters.get(S.clientId);
+  if (myTrack && (!metered || metered.track !== myTrack)) meterVoice(v, S.clientId, myTrack);
+  else if (!myTrack && metered) unmeterVoice(v, S.clientId);
+  let changed = false;
+  for (const [id, m] of v.meters) {
+    const on = m.read() > SPEAKING_LEVEL && (id !== S.clientId || !S.ptt || S.pttHeld);
+    if (on === v.speaking.has(id)) continue;
+    if (on) v.speaking.add(id);
+    else v.speaking.delete(id);
+    changed = true;
+  }
+  for (const id of v.speaking) {
+    if (!v.meters.has(id)) {
+      v.speaking.delete(id);
+      changed = true;
+    }
+  }
+  if (changed) renderVoiceSpeaking();
+  renderTrayIcon(v.speaking.has(S.clientId));
 }
 
 // ----- Your buttons: mute, deafen, camera, screen, leave -----
@@ -6936,6 +7078,8 @@ function renderVoiceView() {
       v.tiles.delete(key);
     }
   }
+  const current = new Set(v.tiles.values());
+  for (const tile of [...el.voiceGrid.children]) if (!current.has(tile)) tile.remove(); // (from an earlier time here)
   for (const [key, { p, source }] of wanted) {
     let tile = v.tiles.get(key);
     if (!tile) {
@@ -7194,7 +7338,7 @@ function friendRow(f) {
   li.className = 'person-row';
   const more = smallButton('i-more', `More for ${f.displayName}`, () => {
     const r = more.getBoundingClientRect();
-    openFriendMenu(f.id, r.right - 190, r.bottom + 4, more);
+    openFriendMenu(f.id, r.right - 190 * uiZoom(), r.bottom + 4, more);
   }, 'ghost person-more');
   // Right-click on a computer, long-press on a phone.
   li.addEventListener('contextmenu', (e) => {
@@ -7274,8 +7418,9 @@ function openFriendMenu(friendId, x, y, opener = null) {
   el.menu.hidden = false;
   // Next to the pointer, but never off the edge of the screen.
   const r = el.menu.getBoundingClientRect();
-  el.menu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
-  el.menu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
+  const z = uiZoom();
+  el.menu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8)) / z}px`;
+  el.menu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8)) / z}px`;
   el.menuMessage.focus();
 }
 
@@ -8056,7 +8201,7 @@ async function init() {
     store.set('showMembers', S.showMembers ? 'on' : 'off');
     renderMemberPanel();
   });
-  widePanel.addEventListener('change', renderMemberPanel);
+  addEventListener('resize', () => { if (widePanel.matches !== panelWide) renderMemberPanel(); });
   el.addVoiceBtn.addEventListener('click', () => startNewChannel('voice'));
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-voice]');
@@ -8380,6 +8525,7 @@ async function init() {
     store.set('rain', S.rain ? 'on' : 'off');
     updateRain();
   });
+  el.uiScale.addEventListener('change', () => setUiScale(Number(el.uiScale.value) || 1));
   el.statsInput.addEventListener('change', () => {
     S.showStats = el.statsInput.checked;
     store.set('streamStats', S.showStats ? 'on' : 'off');

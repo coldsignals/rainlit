@@ -58,6 +58,7 @@
       <symbol id="i-react" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-7.5-8.9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/><path d="M19 2v6M16 5h6"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.1v13.8a1 1 0 0 0 1.5.9l11-6.9a1 1 0 0 0 0-1.7l-11-6.9A1 1 0 0 0 8 5.1Z" fill="currentColor"/></symbol>
     </defs>
   </svg>
 
@@ -804,6 +805,20 @@
           <svg class="icon"><use href="#i-close"/></svg>
         </button>
       </div>
+      <label class="field">
+        <span>Size</span>
+        <select id="ui-scale">
+          <option value="0.8">80%</option>
+          <option value="0.9">90%</option>
+          <option value="1">100% (normal)</option>
+          <option value="1.1">110%</option>
+          <option value="1.25">125%</option>
+          <option value="1.5">150%</option>
+          <option value="1.75">175%</option>
+          <option value="2">200%</option>
+        </select>
+        <small class="hint">Makes everything in Rainlit bigger or smaller, on this device.</small>
+      </label>
       <label class="field">
         <span>Microphone</span>
         <select id="mic-select"></select>
