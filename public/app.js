@@ -90,14 +90,14 @@ for (const id of [
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn',
-  'admin', 'invite-btn', 'invite-list', 'user-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
+  'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-away', 'peer-away-time', 'offline-banner',
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -838,9 +838,11 @@ function connectSocket() {
 
   ws.onopen = () => {
     ws.opened = true;
+    ws.openedAt = Date.now();
     S.wsRetry = 0;
     S.lastServerMsg = Date.now();
     const wasDown = Boolean(S.wsDownSince);
+    trace('ws-open', { downS: wasDown ? Math.round((Date.now() - S.wsDownSince) / 1000) : undefined });
     S.wsDownSince = null;
     if (S.idle) wsSend({ type: 'activity', idle: true });
     if (S.androidPaused) sendBackground();
@@ -855,6 +857,7 @@ function connectSocket() {
       wsSend({ type: 'ping' });
       checkSocketHealth();
     }, 10_000);
+    sendTrace(); // (the call debug log's notes, maybe from before the app started again)
   };
 
   ws.onmessage = (ev) => {
@@ -865,12 +868,15 @@ function connectSocket() {
     handleServerMessage(msg);
   };
 
-  ws.onclose = () => socketLost(ws);
+  ws.onclose = (e) => {
+    trace('ws-close', { code: e.code, reason: e.reason, openS: ws.openedAt ? Math.round((Date.now() - ws.openedAt) / 1000) : undefined });
+    socketLost(ws);
+  };
 }
 
 function sendCallJoin() {
   wsSend({
-    type: 'call-join', with: S.callWith, state: myState(),
+    type: 'call-join', with: S.callWith, state: myState(), trace: S.trace || undefined,
     // Lets the server tell us if the call ended while we were disconnected, or, if the
     // server restarted and forgot the call, carry it on with the same start time.
     callId: S.call ? S.call.id : S.resumeCallId,
@@ -895,7 +901,10 @@ function socketLost(ws) {
 
 // If the server has gone quiet (pings unanswered), assume the connection is dead.
 function checkSocketHealth() {
-  if (wsOpen() && Date.now() - S.lastServerMsg > 25_000) socketLost(S.ws);
+  if (wsOpen() && Date.now() - S.lastServerMsg > 25_000) {
+    trace('ws-quiet', { quietS: Math.round((Date.now() - S.lastServerMsg) / 1000) });
+    socketLost(S.ws);
+  }
 }
 
 function handleServerMessage(msg) {
@@ -951,6 +960,12 @@ function handleServerMessage(msg) {
       return onDmRead(msg);
   }
   if (!S.inCall) return; // everything below is about the call you're in
+  if (TRACED_MSGS.has(msg.type)) {
+    trace(`got-${msg.type}`, {
+      reason: msg.reason, code: msg.code, call: msg.call && msg.call.id ? String(msg.call.id).slice(0, 8) : undefined,
+      peer: msg.peer ? (msg.peer.away ? 'away' : 'here') : msg.type === 'joined' ? 'none' : undefined,
+    });
+  }
 
   switch (msg.type) {
     case 'joined': {
@@ -1152,6 +1167,7 @@ function addLogEntry(e) {
 
 function createPeer() {
   closePeer();
+  trace('pc-new', { fails: S.failCount || undefined });
   const pc = new RTCPeerConnection({ iceServers: S.iceServers });
   const conn = {
     pc,
@@ -1220,7 +1236,12 @@ function createPeer() {
     if (S.conn === conn) onRemoteTrack(track);
   };
   pc.onconnectionstatechange = () => {
-    if (S.conn === conn) onConnectionState(conn);
+    if (S.conn !== conn) return;
+    trace('pc-state', { state: pc.connectionState, ice: pc.iceConnectionState });
+    onConnectionState(conn);
+  };
+  pc.oniceconnectionstatechange = () => {
+    if (S.conn === conn) trace('ice-state', { state: pc.iceConnectionState });
   };
 
   setStatus(`Connecting to ${S.peer.name}`);
@@ -1541,6 +1562,7 @@ function setOnPhone(on) {
 }
 
 function noteCall(what) {
+  trace('fix', { what });
   if (S.inCall) wsSend({ type: 'note', what });
 }
 
@@ -1557,6 +1579,7 @@ function recover(conn) {
   if (S.conn !== conn) return;
   if (!S.peer || S.peer.away) {
     // They dropped. Wait for them to come back instead of retrying.
+    trace('recover', { then: 'wait for them' });
     closePeer();
     setStatus(S.peer ? `${S.peer.name} is away` : S.call ? 'In call' : 'Ready');
     renderPeer();
@@ -1564,12 +1587,14 @@ function recover(conn) {
   }
   if (!wsOpen()) {
     // We're the one who's offline. The call is rebuilt once we're back on the server.
+    trace('recover', { then: 'wait for the server' });
     setStatus('Reconnecting');
     return;
   }
   S.failCount++;
   setStatus('Reconnecting');
   maybeShowConnectHint();
+  trace('recover', { then: S.failCount % 3 === 0 ? 'rebuild' : conn.polite ? 'wait for their restart' : 'restart ICE', fails: S.failCount });
   if (S.failCount % 3 === 0) createPeer();
   else if (!conn.polite) conn.pc.restartIce(); // one side restarts, so the two don't collide
 }
@@ -1587,6 +1612,7 @@ function startStats(conn) {
       if (!pair) stats.forEach((r) => { if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded') pair = r; });
       if (!pair) return;
       const local = stats.get(pair.localCandidateId);
+      traceRoute(conn, stats, pair, local);
       const relayed = local && local.candidateType === 'relay';
       const ping = pair.currentRoundTripTime != null ? Math.round(pair.currentRoundTripTime * 1000) : null;
       const route = relayed ? 'Via relay' : 'Direct';
@@ -1651,12 +1677,13 @@ function renderStreamStats(conn, stats, pair, route, ping) {
 function closePeer() {
   const conn = S.conn;
   if (!conn) return;
+  trace('pc-close', { state: conn.pc.connectionState });
   S.conn = null;
   clearTimeout(conn.failTimer);
   clearTimeout(conn.connectTimer);
   clearInterval(conn.statsTimer);
   const pc = conn.pc;
-  pc.onnegotiationneeded = pc.onicecandidate = pc.ontrack = pc.onconnectionstatechange = null;
+  pc.onnegotiationneeded = pc.onicecandidate = pc.ontrack = pc.onconnectionstatechange = pc.oniceconnectionstatechange = null;
   if (conn.files) conn.files.onopen = conn.files.onmessage = conn.files.onclose = null;
   pc.close();
   fileChannelLost();
@@ -2293,6 +2320,7 @@ async function catchUp() {
 const MY_BUILD = (document.querySelector('meta[name="rainlit-build"]') || {}).content || '';
 
 function onHello(msg) {
+  trace('hello', { build: String(msg.build || '').slice(0, 12) });
   if (S.voice && S.voice.state === 'connected') {
     wsSend({ type: 'voice-join', channel: S.voice.channelId, muted: S.voice.muted || !S.voice.speak, deafened: S.voice.deafened });
   }
@@ -3000,10 +3028,12 @@ function sysLine(text, at, extraClass = '') {
   return li;
 }
 
-// "Call, 12 min" or "Bea missed your call", with a phone icon.
+// "Bea started a call", "Call ended after 12 min" or "Bea missed your call", with a phone icon.
 function callLine(m) {
-  const missed = Boolean(m.meta && m.meta.missed);
-  const text = !missed ? `Call, ${fmtLong((m.meta && m.meta.durationMs) || 0)}`
+  const meta = m.meta || {};
+  const missed = Boolean(meta.missed);
+  const text = meta.started ? (m.author === S.clientId ? 'You started a call' : m.author ? `${friendName(m.author)} started a call` : 'Call started')
+    : !missed ? `Call ended after ${fmtLong(meta.durationMs || 0)}`
     : m.author === S.clientId ? `${friendName(convOf(m.dm))} missed your call`
     : `You missed a call from ${friendName(m.author)}`;
   const li = sysLine('', m.at, `call-note${missed ? ' missed' : ''}`);
@@ -3360,7 +3390,9 @@ function onDmMessage(m) {
   }
   if (!dm.loaded) {
     // Saved ones come with the history when it's opened; unsaved ones would be lost, so hold on to them.
-    if (!m.saved) dm.early.push(m);
+    // So would a saved one that arrives while the history's on its way: it may have been asked for
+    // just before this was saved. (If it's in the history after all, it's only shown once.)
+    if (!m.saved || dm.loading) dm.early.push(m);
     if (fromThem) {
       dm.unread++;
       if (dm.channelId && mentionsMe(m)) dm.mentions = (dm.mentions || 0) + 1;
@@ -4609,6 +4641,7 @@ async function fillDeviceLists() {
   el.duckInput.checked = store.get('duck', 'on') !== 'off';
   renderDuckStatus();
   el.statsInput.checked = S.showStats;
+  el.traceInput.checked = S.trace;
   el.rainInput.checked = S.rain;
   const size = store.get('uiScale', '1');
   el.uiScale.value = [...el.uiScale.options].some((o) => o.value === size) ? size : '1';
@@ -7236,8 +7269,14 @@ const EXIT_WHY = { 2: 'Android stopped it', 3: 'Android closed it to free up mem
   6: 'it stopped responding', 9: 'Android stopped it for using too much battery', 13: 'Android stopped it', 14: 'Android paused it' };
 
 async function resumeAfterRestart() {
-  if (!ANDROID || S.checkedRestart) return;
+  if (S.checkedRestart) return;
   S.checkedRestart = true;
+  if (!ANDROID) {
+    // (For the call debug log: a page that started again in the middle of a call.)
+    const a = readActiveCall();
+    if (a) trace('page-start', { discarded: document.wasDiscarded || undefined }, a.with);
+    return;
+  }
   let status;
   try {
     status = await ANDROID.callStatus();
@@ -7245,6 +7284,13 @@ async function resumeAfterRestart() {
     return; // (an older app)
   }
   const a = readActiveCall();
+  if (a) {
+    const e = status.lastExit;
+    trace('app-start', {
+      stillInCall: status.inCall, restarted: status.restarted, restarts: status.restarts || undefined,
+      exit: e ? `${EXIT_WHY[e.reason] || `reason ${e.reason}`} at ${new Date(e.at).toISOString().slice(11, 19)} UTC${e.text ? `: ${String(e.text).slice(0, 120)}` : ''}` : undefined,
+    }, a.with);
+  }
   // (Android's note about the page being closed, when the app just started it again itself,
   // is about that same thing: the app didn't close, so the rejoin message says it instead.)
   if (status.lastExit && a && !status.restarted) {
@@ -7791,12 +7837,15 @@ async function openAdmin() {
 }
 
 async function renderAdmin() {
-  let invites, users, reports;
+  let invites, users, reports, pairs;
   try {
-    [{ invites }, { users }, { reports }] = await Promise.all([api('GET', '/admin/invites'), api('GET', '/admin/users'), api('GET', '/admin/reports')]);
+    [{ invites }, { users }, { reports }, { pairs }] = await Promise.all([
+      api('GET', '/admin/invites'), api('GET', '/admin/users'), api('GET', '/admin/reports'), api('GET', '/admin/traces'),
+    ]);
   } catch (err) {
     return toast(err.message);
   }
+  renderTraceList(pairs);
   if (!reports.length) {
     const li = document.createElement('li');
     li.className = 'muted';
@@ -7937,6 +7986,215 @@ function ringAgain() {
   renderPeer();
 }
 
+// ---------------- Call debug log ----------------
+// With Settings > Call debug log on, what happens to a call's connection is noted, with the
+// time: the link to the server, the call's own link and the way it goes, the page being
+// paused, hidden or started again, the network, the battery. The notes go to the server
+// (lib/traces.js), for whoever runs it to see why a call dropped: never what's said or shared,
+// and no addresses. They wait in this device's storage until the server has them, so a phone
+// that was cut off still hands them over once it's back.
+
+S.trace = store.get('callTrace', 'off') === 'on';
+const traceQueue = [];
+try { traceQueue.push(...JSON.parse(store.get('traceQueue', '[]'))); } catch {}
+// (Saved at once: the page may not get another chance.)
+const TRACE_NOW = new Set(['ws-close', 'ws-quiet', 'pc-state', 'page-hidden', 'page-freeze', 'pagehide', 'app-hidden', 'app-start', 'call-end', 'offline']);
+const TRACED_MSGS = new Set(['joined', 'call-started', 'peer-joined', 'peer-away', 'peer-back', 'peer-moved', 'peer-left', 'call-ended', 'replaced', 'error']);
+
+// A note about the call with friendId: the one you're in, unless it's about one you were in.
+function trace(kind, data = {}, friendId = S.inCall ? S.callWith : '') {
+  if (!S.trace || !friendId) return;
+  const note = { t: Math.round(serverNow()), k: kind, w: friendId, c: (S.call && S.call.id) || S.resumeCallId || undefined, i: randomId().slice(0, 12) };
+  for (const [key, value] of Object.entries(data)) if (value !== undefined && value !== null && value !== '') note[key] = value;
+  traceQueue.push(note);
+  if (traceQueue.length > 3000) traceQueue.splice(0, traceQueue.length - 3000);
+  saveTrace(TRACE_NOW.has(kind));
+}
+
+function saveTrace(now) {
+  const write = () => {
+    S.traceSaveTimer = 0;
+    store.set('traceQueue', JSON.stringify(traceQueue));
+  };
+  if (now) {
+    clearTimeout(S.traceSaveTimer);
+    write();
+  } else if (!S.traceSaveTimer) {
+    S.traceSaveTimer = setTimeout(write, 5000);
+  }
+}
+
+// The oldest waiting notes, as many as fit in one request.
+function traceBatch(maxBytes) {
+  const batch = [];
+  let size = 0;
+  for (const note of traceQueue) {
+    const n = JSON.stringify(note).length + 1;
+    if (batch.length && (size + n > maxBytes || batch.length >= 100)) break;
+    batch.push(note);
+    size += n;
+  }
+  return batch;
+}
+
+// Hands the waiting notes to the server, a batch at a time. A page that's going away can only
+// send one and not hear back; those go again next time (the server keeps each note once).
+async function sendTrace({ leaving = false } = {}) {
+  if (!S.trace || !traceQueue.length || !S.me) return;
+  const body = (batch) => ({ device: traceDevice(), entries: batch });
+  if (leaving) {
+    try {
+      fetch(`${SERVER}/api/traces`, {
+        method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body(traceBatch(20_000))),
+      }).catch(() => {});
+    } catch {}
+    return;
+  }
+  if (S.traceSending) return;
+  S.traceSending = true;
+  try {
+    while (traceQueue.length) {
+      const batch = traceBatch(24_000);
+      try {
+        await api('POST', '/traces', body(batch));
+      } catch (err) {
+        if (err.status !== 400 && err.status !== 413) break; // (try again later; a batch it won't take is dropped)
+      }
+      traceQueue.splice(0, batch.length);
+      saveTrace(true);
+    }
+  } finally {
+    S.traceSending = false;
+  }
+}
+
+// "Android app 1.4.0, Chrome 140, Android 16, UTC-5": which device the notes are from.
+function traceDevice() {
+  const ua = navigator.userAgent;
+  const os = (ua.match(/Android [\d.]+/) || ua.match(/Windows NT [\d.]+/) || ua.match(/Mac OS X [\d_]+/) || ua.match(/Linux/) || [''])[0];
+  const [, name, v] = ua.match(/(Edg|Firefox)\/(\d+)/) || ua.match(/(Chrome)\/(\d+)/) || [];
+  const browser = name ? `${name === 'Edg' ? 'Edge' : name} ${v}` : '';
+  const app = ANDROID ? `Android app ${(S.androidApp && S.androidApp.mine) || ''}` : DESKTOP ? `Windows app ${DESKTOP.version || ''}` : 'browser';
+  const tz = -new Date().getTimezoneOffset() / 60;
+  return [app.trim(), browser, os, `UTC${tz >= 0 ? '+' : ''}${tz}`].filter(Boolean).join(', ');
+}
+
+function netInfo() {
+  const c = navigator.connection;
+  if (!c) return undefined;
+  return [c.type, c.effectiveType, c.downlink != null ? `${c.downlink}Mbps` : '', c.rtt != null ? `${c.rtt}ms` : ''].filter(Boolean).join(' ') || undefined;
+}
+
+function watchBattery() {
+  if (S.batteryWatched || !navigator.getBattery) return;
+  S.batteryWatched = true;
+  navigator.getBattery().then((b) => {
+    S.battery = b;
+    b.addEventListener('chargingchange', () => trace('battery', { charging: b.charging, level: `${Math.round(b.level * 100)}%` }));
+  }).catch(() => {});
+}
+
+// While in a call: every 5 seconds, a check that the page wasn't paused (a phone freezing the
+// app stops its timers, so the gap shows how long); every minute, how the call's doing.
+function startTraceWatch() {
+  stopTraceWatch();
+  if (!S.trace || !S.inCall) return;
+  watchBattery();
+  S.traceTickAt = Date.now();
+  S.traceTick = setInterval(() => {
+    const now = Date.now();
+    if (now - S.traceTickAt > 20_000) trace('page-paused', { forS: Math.round((now - S.traceTickAt) / 1000) });
+    S.traceTickAt = now;
+  }, 5000);
+  S.traceStatusTimer = setInterval(traceStatus, 60_000);
+  S.traceSendTimer = setInterval(sendTrace, 60_000);
+  traceStatus();
+}
+
+function stopTraceWatch() {
+  clearInterval(S.traceTick);
+  clearInterval(S.traceStatusTimer);
+  clearInterval(S.traceSendTimer);
+}
+
+// How the call's doing: its own link (and how much sound came in and went out since last
+// time), the link to the server, the page, the network and the battery.
+async function traceStatus() {
+  if (!S.trace || !S.inCall) return;
+  const s = {
+    ws: wsOpen() ? 'open' : 'down',
+    quietS: wsOpen() ? Math.round((Date.now() - S.lastServerMsg) / 1000) : undefined,
+    hidden: document.hidden || undefined,
+    paused: S.androidPaused || undefined,
+    peer: !S.peer ? 'none' : S.peer.away ? 'away' : 'here',
+    net: netInfo(),
+    battery: S.battery ? `${Math.round(S.battery.level * 100)}%${S.battery.charging ? ' charging' : ''}` : undefined,
+  };
+  const conn = S.conn;
+  if (conn) {
+    s.pc = conn.pc.connectionState;
+    try {
+      const stats = await conn.pc.getStats();
+      let inAudio = null;
+      let outAudio = null;
+      let pair = null;
+      stats.forEach((r) => {
+        if (r.type === 'inbound-rtp' && r.kind === 'audio' && (!inAudio || r.packetsReceived > inAudio.packetsReceived)) inAudio = r;
+        else if (r.type === 'outbound-rtp' && r.kind === 'audio' && (!outAudio || r.packetsSent > outAudio.packetsSent)) outAudio = r;
+        else if (r.type === 'transport' && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId);
+      });
+      const last = conn.traceLast || { got: 0, lost: 0, sent: 0 };
+      const now = { got: inAudio ? inAudio.packetsReceived : 0, lost: inAudio ? inAudio.packetsLost || 0 : 0, sent: outAudio ? outAudio.packetsSent : 0 };
+      s.soundIn = now.got - last.got;
+      s.soundOut = now.sent - last.sent;
+      if (now.lost > last.lost) s.lost = now.lost - last.lost;
+      if (inAudio && inAudio.jitter) s.jitterMs = Math.round(inAudio.jitter * 1000);
+      if (pair && pair.currentRoundTripTime != null) s.rttMs = Math.round(pair.currentRoundTripTime * 1000);
+      conn.traceLast = now;
+    } catch {}
+  }
+  trace('status', s);
+}
+
+// The way the call's sound goes: direct or through the relay, over which network. Noted when
+// it changes (a phone moving from wifi to mobile data, say). No addresses.
+function traceRoute(conn, stats, pair, local) {
+  if (!S.trace) return;
+  const remote = stats.get(pair.remoteCandidateId);
+  const route = [local && local.candidateType, local && (local.relayProtocol || local.protocol), local && local.networkType, 'to', remote && remote.candidateType]
+    .filter(Boolean).join(' ');
+  if (route === conn.traceRoute) return;
+  conn.traceRoute = route;
+  trace('route', { route });
+}
+
+// Call debug logs in the admin box: one download per pair of people, both of their sides of
+// their calls and the server's, as one timeline.
+function renderTraceList(pairs) {
+  if (!pairs.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'None yet.';
+    return el.traceList.replaceChildren(li);
+  }
+  el.traceList.replaceChildren(...pairs.map((p) => {
+    const li = document.createElement('li');
+    const who = document.createElement('span');
+    who.className = 'grow';
+    who.textContent = `${p.names.join(' and ')} · last note ${fmtWhen(p.last)}`;
+    const link = (hours, label) => {
+      const a = document.createElement('a');
+      a.className = 'text-btn';
+      a.href = `${SERVER}/api/admin/traces/${encodeURIComponent(p.pair)}?hours=${hours}`;
+      a.download = `rainlit-call-log-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.textContent = label;
+      return a;
+    };
+    li.append(who, link(24, 'Last day'), link(168, 'Week'));
+    return li;
+  }));
+}
+
 // ---------------- Starting a call ----------------
 
 // Calls a friend, answers them, or rejoins a call you dropped out of.
@@ -7985,6 +8243,8 @@ async function startCall(friendId) {
   S.callJoined = false;
   S.inCall = true;
   S.mediaDropped = false;
+  trace('call-start', { auto: S.restartNote ? true : undefined, claim: S.resumeCallId ? S.resumeCallId.slice(0, 8) : undefined, mic: S.micOn ? undefined : 'off' });
+  startTraceWatch();
   updateTitle(); // (and the corner glow)
   clearInterval(S.iceTimer);
   S.iceTimer = setInterval(refreshIce, 3 * 3600_000);
@@ -8068,6 +8328,9 @@ function onLeaveClick() {
 
 // Ends the call on this device. The connection to the server stays open: you're still online.
 function teardown({ sendLeave, keepActive = false }) {
+  trace('call-end', { how: sendLeave ? 'you left' : keepActive ? 'moved to another device' : 'ended' });
+  stopTraceWatch();
+  sendTrace();
   for (const t of S.transfers.values()) {
     if (ACTIVE.has(t.state)) endTransfer(t, 'failed', t.dir === 'out' ? 'Not sent. You left the call.' : 'Stopped. You left the call.');
   }
@@ -8249,7 +8512,12 @@ async function init() {
   el.msgOpen.addEventListener('click', onMessageMenuOpen);
   el.routeBtn.addEventListener('click', nextRoute);
   if (ANDROID) ANDROID.addListener('audioroutes', (r) => { if (S.inCall) renderRoute(r); });
-  if (ANDROID) ANDROID.addListener('phonecall', (d) => setOnPhone(Boolean(d && d.on)));
+  if (ANDROID) {
+    ANDROID.addListener('phonecall', (d) => {
+      trace('phone-call', { on: Boolean(d && d.on) });
+      setOnPhone(Boolean(d && d.on));
+    });
+  }
   // In the Android app, Save buttons (links to files) save to Downloads.
   document.addEventListener('click', (e) => {
     const a = ANDROID && e.target.closest && e.target.closest('a[download]');
@@ -8537,6 +8805,19 @@ async function init() {
     updateRain();
   });
   el.uiScale.addEventListener('change', () => setUiScale(Number(el.uiScale.value) || 1));
+  el.traceInput.addEventListener('change', () => {
+    S.trace = el.traceInput.checked;
+    store.set('callTrace', S.trace ? 'on' : 'off');
+    if (!S.trace) {
+      stopTraceWatch();
+      traceQueue.length = 0;
+      saveTrace(true);
+    } else if (S.inCall) {
+      wsSend({ type: 'trace', on: true });
+      trace('log-on');
+      startTraceWatch();
+    }
+  });
   el.statsInput.addEventListener('change', () => {
     S.showStats = el.statsInput.checked;
     store.set('streamStats', S.showStats ? 'on' : 'off');
@@ -8594,6 +8875,7 @@ async function init() {
   if (ANDROID) {
     ANDROID.addListener('visibility', (d) => {
       S.androidPaused = !(d && d.visible);
+      trace(S.androidPaused ? 'app-hidden' : 'app-visible');
       sendBackground();
       if (!S.androidPaused) syncAndroidPush();
     });
@@ -8606,6 +8888,7 @@ async function init() {
   });
 
   document.addEventListener('visibilitychange', () => {
+    trace(document.hidden ? 'page-hidden' : 'page-visible');
     if (document.visibilityState !== 'visible') return setPttHeld(false);
     if (!S.me) checkForUpdateSignedOut();
     syncAndroidPush(); // maybe ntfy was just installed
@@ -8617,10 +8900,22 @@ async function init() {
     }
   });
   // Closing the tab or losing signal counts as dropping out, not leaving: your spot stays saved.
-  window.addEventListener('offline', () => { if (S.ws) socketLost(S.ws); });
+  window.addEventListener('offline', () => {
+    trace('offline');
+    if (S.ws) socketLost(S.ws);
+  });
   window.addEventListener('online', () => {
+    trace('online');
     if (S.me && !S.ws) { S.wsRetry = 0; connectSocket(); }
   });
+  // (For the call debug log.)
+  document.addEventListener('freeze', () => trace('page-freeze'));
+  document.addEventListener('resume', () => trace('page-resume'));
+  window.addEventListener('pagehide', () => {
+    trace('pagehide');
+    sendTrace({ leaving: true });
+  });
+  if (navigator.connection) navigator.connection.addEventListener('change', () => trace('network', { net: netInfo() }));
 
   renderControls();
   updateRain();

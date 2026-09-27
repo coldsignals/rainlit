@@ -87,6 +87,12 @@ generous free allowance:
 Keep these private. Using another TURN server instead? Set `TURN_URLS` (comma-separated),
 `TURN_USERNAME` and `TURN_CREDENTIAL`.
 
+If calls drop and you want to know why, ask the people in them to turn on **Settings >
+Call debug log**. Their apps then note what happens to each call's connection (never
+what's said) and send it to your server. Under **Invites and accounts > Call debug
+logs**, you can download both sides of their calls, and what your server saw, as one
+timeline. The notes are kept for a week.
+
 ## 6. Turn on GIFs (optional)
 
 The GIF button searches [KLIPY](https://klipy.com), a free GIF library, and needs a key: at

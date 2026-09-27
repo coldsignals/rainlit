@@ -20,6 +20,7 @@ const spaces = require('./lib/spaces');
 const badges = require('./lib/badges');
 const safety = require('./lib/safety');
 const voice = require('./lib/voice');
+const traces = require('./lib/traces');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -1254,6 +1255,40 @@ api.get('/ice', needUser, async (_req, res) => {
   res.json({ iceServers: list, hasTurn });
 });
 
+// ----- The call debug log (Settings > Call debug log; lib/traces.js) -----
+
+const traceBudget = new Map(); // user id -> { since, n }: batches of notes in the last 10 minutes
+
+api.post('/traces', needUser, (req, res) => {
+  const b = req.body || {};
+  if (!Array.isArray(b.entries)) return fail(res, 400, 'Nothing to keep.');
+  const now = Date.now();
+  let budget = traceBudget.get(req.user.id);
+  if (!budget || now - budget.since > 600_000) traceBudget.set(req.user.id, (budget = { since: now, n: 0 }));
+  if (++budget.n > 120) return fail(res, 429, 'Too many notes at once. Try again in a few minutes.');
+  const kept = traces.addFromDevice(req.user.id, String(b.device || '').slice(0, 120), b.entries);
+  res.json({ ok: true, kept });
+});
+
+const traceName = (id) => {
+  const u = people.userById(id);
+  return u ? u.display_name : `someone (${id.slice(0, 8)})`;
+};
+
+api.get('/admin/traces', needAdmin, (_req, res) => {
+  res.json({ pairs: traces.pairs().map((p) => ({ ...p, names: p.pair.split(':').map(traceName) })) });
+});
+
+// One pair of people's calls as one timeline, for the last day (or up to a week).
+api.get('/admin/traces/:pair', needAdmin, (req, res) => {
+  const pair = String(req.params.pair);
+  if (!/^[A-Za-z0-9-]{1,64}:[A-Za-z0-9-]{1,64}$/.test(pair)) return fail(res, 400, 'Not a pair of people.');
+  const hours = Math.min(168, Math.max(1, Number(req.query.hours) || 24));
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="rainlit-call-log-${new Date().toISOString().slice(0, 10)}.txt"`);
+  res.send(traces.timeline(pair, Date.now() - hours * 3600_000, traceName));
+});
+
 api.use((_req, res) => fail(res, 404, 'Not found.'));
 app.use('/api', api);
 
@@ -1321,6 +1356,13 @@ app.use((err, req, res, _next) => {
 
 const server = http.createServer(app);
 realtime.attach(server, { build: BUILD });
+
+// Render stops the old server when an update goes live. Note it in the call debug log, so a
+// call that dropped then shows why.
+process.once('SIGTERM', () => {
+  try { traces.add({ pair: '*', kind: 'server-stop' }); } catch {}
+  process.exit(0);
+});
 
 server.listen(PORT, () => {
   console.log(`Rainlit${SERVER_NAME ? ` (${SERVER_NAME})` : ''} is running on http://localhost:${PORT}`);

@@ -770,6 +770,11 @@
         <p class="hint">If someone forgets their password, make them a reset link. It works once, for 24 hours.</p>
         <ol id="user-list" class="admin-list"></ol>
       </section>
+      <section class="admin-section">
+        <h3>Call debug logs</h3>
+        <p class="hint">From people who turned on Settings &gt; Call debug log: what happened to their calls' connections, from both of their devices and this server, as one timeline. Kept for a week.</p>
+        <ol id="trace-list" class="admin-list"></ol>
+      </section>
     </div>
   </dialog>
 
@@ -883,6 +888,10 @@
       <label class="toggle">
         <input id="stats-input" type="checkbox" />
         <span>Show stream stats on the video <small class="toggle-note">(for when a stream looks off)</small></span>
+      </label>
+      <label class="toggle">
+        <input id="trace-input" type="checkbox" />
+        <span>Call debug log <small class="toggle-note">(notes what happens to your calls' connections, never what's said, and sends them to whoever runs this Rainlit server, to find out why calls drop. Kept for a week.)</small></span>
       </label>
       <label class="toggle">
         <input id="call-sounds-input" type="checkbox" />
