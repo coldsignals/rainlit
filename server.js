@@ -157,6 +157,7 @@ api.post('/signup', async (req, res) => {
     return fail(res, 400, firstAccount ? "That setup code isn't right. It's in the server's logs." : "That invite code isn't right.");
   }
   if (!people.USERNAME_RE.test(username)) return fail(res, 400, 'Usernames are 2 to 32 characters: letters, numbers, dots and underscores.');
+  if (['everyone', 'here'].includes(username)) return fail(res, 409, 'That username is taken.'); // (they mean something in a message)
   if (!people.EMAIL_RE.test(email) || email.length > 254) return fail(res, 400, "That email address doesn't look right.");
   const pwProblem = checkNewPassword(b.password);
   if (pwProblem) return fail(res, 400, pwProblem);
@@ -586,9 +587,38 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     fields = { id, dm: req.dm.id, author: req.user.id, kind: 'text', text, replyTo };
   }
   const message = req.dm.save ? dms.addMessage(fields) : dms.passing(fields);
+  const mentions = req.channel && fields.kind === 'text' ? spaces.mentionsIn(fields.text, req.channel, req.member) : null;
+  if (mentions && (mentions.ids.length || mentions.everyone)) {
+    spaces.setMentions(message.id, mentions);
+    if (mentions.ids.length) message.mentions = mentions.ids;
+    if (mentions.everyone) message.everyone = true;
+  }
   tell(req, { type: 'dm-message', message });
+  if (req.channel) pushChannelMessage(req, mentions);
   res.json({ message });
 });
+
+// A channel message reaches the phones of people who don't have Rainlit open: the ones it
+// mentions, and anyone who asked to hear about everything in that space (for them, at most a
+// note a minute per channel). Never from someone they've blocked.
+const lastChannelPush = new Map();
+function pushChannelMessage(req, mentions) {
+  const ids = mentions ? mentions.ids : [];
+  const everyone = Boolean(mentions && mentions.everyone);
+  const who = req.user.display_name;
+  for (const uid of spaces.channelAudience(req.channel)) {
+    if (uid === req.user.id || realtime.isOnline(uid)) continue;
+    const mentioned = everyone || ids.includes(uid);
+    const level = spaces.notifyLevel(req.channel.space_id, uid);
+    if (level === 'none' || (level === 'mentions' && !mentioned)) continue;
+    if (safety.hasBlocked(uid, req.user.id)) continue;
+    const key = `${uid}:${req.channel.id}`;
+    if (!mentioned && Date.now() - (lastChannelPush.get(key) || 0) < 60_000) continue;
+    lastChannelPush.set(key, Date.now());
+    const name = mentioned ? `${who} mentioned you in #${req.channel.name}` : `${who} in #${req.channel.name}`;
+    push.send(uid, { type: 'message', from: { id: `ch:${req.channel.id}`, name } }, { ttl: 24 * 3600 });
+  }
+}
 
 // A GIF from KLIPY: only its links (which must be KLIPY's), size and title are kept.
 function cleanGif(g) {
@@ -642,6 +672,7 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
     const replyTo = dms.replyTarget(req.dm.id, req.get('x-reply-to'));
     const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, replyTo });
     tell(req, { type: 'dm-message', message });
+    if (req.channel) pushChannelMessage(req, null);
     res.json({ message });
   });
 });
@@ -722,7 +753,12 @@ api.patch(conv('/messages/:id'), needUser, needConv, (req, res) => {
   if (!text.trim()) return fail(res, 400, 'A message needs something in it. To remove it, delete it instead.');
   const editedAt = Date.now();
   if (m.seq) dms.editMessage(id, text, editedAt);
-  tell(req, { type: 'dm-edited', dm: req.dm.id, id, text, editedAt });
+  let mentions = null;
+  if (req.channel && m.seq) {
+    mentions = spaces.mentionsIn(text, req.channel, req.member);
+    spaces.setMentions(id, mentions);
+  }
+  tell(req, { type: 'dm-edited', dm: req.dm.id, id, text, editedAt, ...(mentions ? { mentions: mentions.ids, everyone: mentions.everyone } : {}) });
   res.json({ ok: true, editedAt });
 });
 
@@ -897,6 +933,15 @@ api.delete('/channels/:channelId', needUser, needChannel, (req, res) => {
   spaces.log(req.channel.space_id, req.user.id, 'channel-delete', req.channel.id, { name: req.channel.name });
   spaceChanged(req.channel.space_id);
   res.json({ ok: true });
+});
+
+// How much you want to hear from a space: every message, only mentions of you, or nothing.
+api.put('/spaces/:spaceId/notify', needUser, needMember, (req, res) => {
+  const level = String((req.body || {}).level || '');
+  if (!spaces.NOTIFY_LEVELS.includes(level)) return fail(res, 400, "That isn't one of the choices.");
+  spaces.setNotify(req.space.id, req.user.id, level);
+  realtime.sendToUser(req.user.id, { type: 'space-changed', space: req.space.id }); // your other devices
+  res.json({ ok: true, level });
 });
 
 // Invite links: rainlit.app/join/<code>. Anyone allowed to invite people can make one.

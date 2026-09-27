@@ -24,7 +24,7 @@ themselves.
 - [x] [SELF-HOSTING.md](SELF-HOSTING.md): setting up, the relay, backups, updating
 - [x] The code is public, under the GNU AGPL v3 ([LICENSE](LICENSE))
 
-## Stage 2: Communities (in progress)
+## Stage 2: Communities (done)
 
 Groups with more than two people. On Rainlit they're called spaces, and one Rainlit
 server can hold many of them, the way Discord holds many servers.
@@ -40,7 +40,8 @@ server can hold many of them, the way Discord holds many servers.
 - [x] Blocking and reporting: blocked people can't be your friends or message you, and their
       messages in spaces fold away; messages and people can be reported to a space's
       moderators and the server's admin
-- [ ] Mentions, and notifications from spaces
+- [x] Mentions (@name, and @everyone for roles allowed to), with their own counts, and
+      notifications from spaces: all messages, only mentions, or nothing, each space
 
 ## Stage 3: Open the doors
 

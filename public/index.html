@@ -349,6 +349,7 @@
   </div>
 
         <div class="dm-body">
+          <div id="mention-pick" class="mention-pick" role="listbox" aria-label="People to mention" hidden></div>
           <ol id="chat-log" class="chat-log"></ol>
           <p id="dm-notice" class="dm-notice" hidden></p>
           <div id="typing" class="typing" aria-live="polite"></div>
@@ -413,6 +414,13 @@
     <button id="sm-invite" type="button" role="menuitem">Invite people</button>
     <button id="sm-members" type="button" role="menuitem">Members</button>
     <button id="sm-settings" type="button" role="menuitem">Space settings</button>
+    <hr />
+    <div id="sm-notify" role="group" aria-label="Notify me about">
+      <p class="menu-label">Notify me about</p>
+      <button type="button" role="menuitemradio" data-level="all">All messages</button>
+      <button type="button" role="menuitemradio" data-level="mentions">Only @mentions of me</button>
+      <button type="button" role="menuitemradio" data-level="none">Nothing</button>
+    </div>
     <hr />
     <button id="sm-leave" class="danger" type="button" role="menuitem">Leave space</button>
   </div>

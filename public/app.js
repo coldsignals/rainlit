@@ -97,7 +97,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-leave', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -1810,8 +1810,8 @@ function renderControls() {
 function updateTitle() {
   if (S.ringing) return; // "Bea is calling" stays until the ringing stops
   const base = S.peer ? `Rainlit with ${S.peer.name}` : 'Rainlit';
-  let unread = 0; // (DMs: channels' unread show on the rail instead)
-  for (const dm of S.dms.values()) if (!dm.channelId) unread += dm.unread;
+  let unread = 0; // DMs, and mentions of you in spaces (other channel messages show on the rail)
+  for (const dm of S.dms.values()) unread += dm.channelId ? dm.mentions || 0 : dm.unread;
   document.title = unread ? `(${unread}) ${base}` : base;
   if (DESKTOP) DESKTOP.setUnread(unread);
   // The drop in the corner glows brighter while something's waiting for you, or you're in a call.
@@ -1824,11 +1824,12 @@ function formatTime(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function appendLinked(node, text) {
+// A message's words, with its links (and, in a space, its mentions).
+function appendLinked(node, text, space = null, everyone = false) {
   const re = /\bhttps?:\/\/[^\s<]+[^\s<.,:;"')\]!?]/gi;
   let last = 0;
   for (const m of text.matchAll(re)) {
-    node.append(text.slice(last, m.index));
+    appendMentions(node, text.slice(last, m.index), space, everyone);
     const a = document.createElement('a');
     a.href = m[0];
     a.textContent = m[0];
@@ -1837,8 +1838,51 @@ function appendLinked(node, text) {
     node.append(a);
     last = m.index + m[0].length;
   }
+  appendMentions(node, text.slice(last), space, everyone);
+}
+
+// "@bea" in a space shows as "@Bea", and opens her profile. "@everyone" stands out when it
+// really reached everyone. (Each keeps what was typed, for editing and copying.)
+const MENTION_RE = /(^|[^\w@.])@([a-z0-9_.]{2,32})/gi;
+
+function appendMentions(node, text, space, everyone) {
+  if (!space || !text.includes('@')) return node.append(text);
+  let last = 0;
+  for (const m of text.matchAll(MENTION_RE)) {
+    const at = m.index + m[1].length;
+    let name = m[2].toLowerCase();
+    let person = null;
+    if (name === 'everyone') {
+      if (!everyone) continue;
+    } else {
+      for (;;) {
+        person = space.byName ? space.byName.get(name) : null;
+        if (person || !name.endsWith('.') || name.length <= 2) break;
+        name = name.slice(0, -1); // "hi @bea."
+      }
+      if (!person) continue;
+    }
+    const end = at + 1 + name.length;
+    node.append(text.slice(last, at));
+    const tag = document.createElement('span');
+    tag.className = `mention${person ? '' : ' everyone'}${person && person.id === S.clientId ? ' me' : ''}`;
+    tag.dataset.raw = text.slice(at, end);
+    tag.textContent = person ? `@${person.displayName}` : '@everyone';
+    if (person) {
+      tag.title = `@${person.username}`;
+      tag.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openMiniProfile(person.id);
+      });
+    }
+    node.append(tag);
+    last = end;
+  }
   node.append(text.slice(last));
 }
+
+// Whether a message mentions you (by name, or @everyone).
+const mentionsMe = (m) => Boolean(m.everyone || (m.mentions && m.mentions.includes(S.clientId)));
 
 // ---------------- Removing things you sent ----------------
 //
@@ -2507,11 +2551,17 @@ function lastEditable() {
 }
 
 // "(edited)" goes at the end of the text, like a footnote.
-function showEdited(li, text, editedAt) {
+function showEdited(li, text, editedAt, mentions = null) {
   const body = li.querySelector('.msg-text');
   if (!body) return;
+  const c = li.dataset.channel && S.channels.get(li.dataset.channel);
+  if (mentions) {
+    body._everyone = Boolean(mentions.everyone);
+    li.classList.toggle('mentioned', li.dataset.from === 'friend' && mentionsMe(mentions));
+  }
   body.replaceChildren();
-  appendLinked(body, text);
+  body._text = text;
+  appendLinked(body, text, c ? S.spaces.get(c.spaceId) : null, body._everyone);
   const tag = document.createElement('span');
   tag.className = 'msg-edited';
   tag.textContent = '(edited)';
@@ -2523,13 +2573,14 @@ function showEdited(li, text, editedAt) {
 function messageText(li) {
   const body = li && li.querySelector('.msg-text');
   if (!body) return '';
-  return [...body.childNodes].filter((n) => !(n.classList && n.classList.contains('msg-edited'))).map((n) => n.textContent).join('');
+  return [...body.childNodes].filter((n) => !(n.classList && n.classList.contains('msg-edited')))
+    .map((n) => (n.dataset && n.dataset.raw !== undefined ? n.dataset.raw : n.textContent)).join('');
 }
 
-function onDmEdited({ dm: dmId, id, text, editedAt }) {
+function onDmEdited({ dm: dmId, id, text, editedAt, mentions, everyone }) {
   const dm = S.dms.get(convOf(dmId));
   const li = dm && dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
-  if (li) showEdited(li, text, editedAt);
+  if (li) showEdited(li, text, editedAt, dm.channelId ? { mentions, everyone } : null);
   refreshQuotes(id);
 }
 
@@ -2925,11 +2976,14 @@ function renderMessage(m) {
   const mine = m.author === S.clientId;
   const who = mine ? 'You' : friendName(m.author);
   let li;
+  const inChannel = S.channels.get(m.dm);
   if (m.kind === 'text') {
     li = document.createElement('li');
     const body = document.createElement('div');
     body.className = 'msg-text';
-    appendLinked(body, m.text);
+    body._text = m.text;
+    body._everyone = Boolean(m.everyone);
+    appendLinked(body, m.text, inChannel ? S.spaces.get(inChannel.spaceId) : null, body._everyone);
     li.append(messageHead(who, m.at), body);
   } else if (m.kind === 'file') {
     li = savedFileItem(m, who);
@@ -2949,6 +3003,7 @@ function renderMessage(m) {
     li = sysLine('', m.at);
   }
   li.dataset.id = m.id;
+  if (inChannel) li.dataset.channel = inChannel.id;
   li.dataset.from = mine ? 'me' : m.author ? 'friend' : 'system';
   li.dataset.kind = m.kind;
   li.dataset.saved = m.seq ? '1' : '';
@@ -2959,9 +3014,9 @@ function renderMessage(m) {
     li.dataset.replyTo = m.replyTo.id;
     li.prepend(replyQuote(m.replyTo));
   }
-  const channel = S.channels.get(m.dm);
+  const channel = inChannel;
   if (channel) {
-    li.dataset.channel = channel.id;
+    if (!mine && mentionsMe(m)) li.classList.add('mentioned');
     const head = li.querySelector(':scope > .msg-name');
     if (head) head.style.color = memberColor(S.spaces.get(channel.spaceId), m.author);
   }
@@ -3256,7 +3311,7 @@ function onDmMessage(m) {
   if (fromThem && dm.channelId && !S.friends.has(m.author) && !S.people.has(m.author)) {
     loadMembers(S.channels.get(dm.channelId).spaceId).then(() => refreshNames(dm, m.author));
   }
-  // (Channels don't ding or notify for every message; their unread counts show on the rail.)
+  if (fromThem && dm.channelId) notifyChannel(dm, m);
   if (fromThem && !dm.channelId && (DESKTOP || ANDROID)) {
     const body = m.kind === 'text' ? m.text : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     appNotify({ title: friendName(friendId), body }); // only shows if you're not looking at Rainlit
@@ -3266,6 +3321,7 @@ function onDmMessage(m) {
     if (!m.saved) dm.early.push(m);
     if (fromThem) {
       dm.unread++;
+      if (dm.channelId && mentionsMe(m)) dm.mentions = (dm.mentions || 0) + 1;
       renderFriends();
       updateTitle();
       if (S.sounds && !dm.channelId) playChime();
@@ -3310,10 +3366,31 @@ function onDmSaving({ dm: dmId, save }) {
 // You read it on another device.
 function onDmRead({ dm: dmId }) {
   const dm = S.dms.get(convOf(dmId));
-  if (!dm || !dm.unread) return;
+  if (!dm || !(dm.unread || dm.mentions)) return;
   dm.unread = 0;
+  dm.mentions = 0;
   renderFriends();
   updateTitle();
+}
+
+// A message in a channel: a sound and a notification if it mentions you, or if you asked to
+// hear about everything in that space (then at most one every 10 seconds per channel).
+const channelNotified = new Map();
+function notifyChannel(dm, m) {
+  const c = S.channels.get(dm.channelId);
+  const space = c && S.spaces.get(c.spaceId);
+  if (!space || (S.blocked && S.blocked.has(m.author))) return;
+  const mentioned = mentionsMe(m);
+  if (space.notify === 'none' || (space.notify !== 'all' && !mentioned)) return;
+  if (S.openDm === dm.friendId && !lookingAway()) return;
+  if (!mentioned && Date.now() - (channelNotified.get(c.id) || 0) < 10_000) return;
+  channelNotified.set(c.id, Date.now());
+  if (S.sounds && !appAsleep()) playChime();
+  if (DESKTOP || ANDROID) {
+    const body = m.kind === 'text' ? m.text : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
+    const who = friendName(m.author);
+    appNotify({ title: mentioned ? `${who} mentioned you in #${c.name}` : `${who} in #${c.name}`, body });
+  }
 }
 
 // Something new from your friend. If you're not looking at their conversation (it's
@@ -3324,6 +3401,7 @@ function notifyIncoming(dm, li) {
   if (open && !lookingAway()) return markRead(dm);
   markNew(dm, li);
   dm.unread++;
+  if (li.classList.contains('mentioned')) dm.mentions = (dm.mentions || 0) + 1;
   renderFriends();
   updateTitle();
   if (S.sounds && !dm.channelId && (!open || lookingAway())) playChime();
@@ -3333,8 +3411,9 @@ let readTimers = new Map();
 
 // Tells the server (and your other devices) you've read this conversation, at most once a second.
 function markRead(dm) {
-  if (dm.unread) {
+  if (dm.unread || dm.mentions) {
     dm.unread = 0;
+    dm.mentions = 0;
     renderFriends();
     updateTitle();
   }
@@ -4856,14 +4935,17 @@ async function refreshSpaces() {
   S.channels = new Map();
   for (const space of data.spaces) {
     const old = before.get(space.id);
-    S.spaces.set(space.id, { ...space, members: old ? old.members : null, byId: old ? old.byId : null });
+    S.spaces.set(space.id, { ...space, members: old ? old.members : null, byId: old ? old.byId : null, byName: old ? old.byName : null });
     for (const c of space.channels) {
       S.channels.set(c.id, { ...c, spaceId: space.id });
       const key = `ch:${c.id}`;
       const dm = dmFor(key);
       dm.lastAt = c.lastAt;
       // Unless you're reading it right now, the server knows best how much is unread.
-      if (!(S.openDm === key && !lookingAway())) dm.unread = c.unread;
+      if (!(S.openDm === key && !lookingAway())) {
+        dm.unread = c.unread;
+        dm.mentions = c.mentions || 0;
+      }
       kept.add(key);
     }
   }
@@ -4891,6 +4973,7 @@ async function loadMembers(spaceId) {
     if (space) {
       space.members = members;
       space.byId = new Map(members.map((m) => [m.id, m]));
+      space.byName = new Map(members.map((m) => [m.username.toLowerCase(), m]));
       paintNames(spaceId);
     }
     return members;
@@ -4968,7 +5051,20 @@ function paintNames(spaceId) {
     const dm = S.dms.get(`ch:${c.id}`);
     if (!dm) continue;
     for (const head of dm.log.querySelectorAll('li[data-author] > .msg-name')) head.style.color = memberColor(space, head.parentElement.dataset.author);
+    for (const body of dm.log.querySelectorAll('.msg-text')) {
+      if (!body._text || !body._text.includes('@')) continue;
+      const edited = body.querySelector(':scope > .msg-edited');
+      body.replaceChildren();
+      appendLinked(body, body._text, space, body._everyone);
+      if (edited) body.append(edited);
+    }
   }
+}
+
+function spaceMentions(spaceId) {
+  let n = 0;
+  for (const [id, c] of S.channels) if (c.spaceId === spaceId) n += dmFor(`ch:${id}`).mentions || 0;
+  return n;
 }
 
 function spaceUnread(spaceId) {
@@ -4990,11 +5086,18 @@ function renderRail() {
     const b = document.createElement('button');
     b.type = 'button';
     const unread = spaceUnread(space.id);
+    const mentions = spaceMentions(space.id);
     b.className = `rail-btn rail-space${S.view === space.id ? ' open' : ''}${unread ? ' unread' : ''}`;
     b.title = space.name;
-    b.setAttribute('aria-label', unread ? `${space.name} (unread)` : space.name);
+    b.setAttribute('aria-label', `${space.name}${mentions ? ` (${mentions} mention${mentions === 1 ? '' : 's'})` : unread ? ' (unread)' : ''}`);
     b.style.setProperty('--face-bg', faceColor(space.id));
     b.textContent = spaceInitials(space.name);
+    if (mentions) {
+      const pill = document.createElement('span');
+      pill.className = 'rail-mentions';
+      pill.textContent = mentions > 99 ? '99+' : String(mentions);
+      b.append(pill);
+    }
     b.addEventListener('click', () => showSpace(space.id));
     return b;
   }));
@@ -5026,10 +5129,12 @@ function channelItem(c) {
   name.className = 'channel-name';
   name.textContent = c.name;
   b.append(name);
-  if (dm.unread && S.openDm !== key) {
+  // Unread channels are bright; mentions of you get a count, like Discord.
+  if (dm.mentions && S.openDm !== key) {
     const badge = document.createElement('span');
-    badge.className = 'badge';
-    badge.textContent = dm.unread > 99 ? '99+' : String(dm.unread);
+    badge.className = 'badge mention';
+    badge.textContent = dm.mentions > 99 ? '99+' : String(dm.mentions);
+    badge.title = `${dm.mentions} mention${dm.mentions === 1 ? '' : 's'} of you`;
     b.append(badge);
   }
   b.addEventListener('click', () => openDm(key));
@@ -5133,6 +5238,7 @@ function openSpaceMenu() {
   if (!space) return;
   if (!el.spaceMenu.hidden) return closeSpaceMenu();
   el.smInvite.hidden = !canIn(space, 'invite');
+  for (const b of el.smNotify.querySelectorAll('[data-level]')) b.setAttribute('aria-checked', String(b.dataset.level === (space.notify || 'mentions')));
   el.smSettings.hidden = !canOpenSettings(space);
   el.smLeave.hidden = space.role === 'owner';
   el.spaceMenu.hidden = false;
@@ -5148,6 +5254,106 @@ function closeSpaceMenu() {
   if (el.spaceMenu.hidden) return;
   el.spaceMenu.hidden = true;
   el.spaceHead.setAttribute('aria-expanded', 'false');
+}
+
+async function onSpaceNotify(e) {
+  const b = e.target.closest('[data-level]');
+  const space = S.spaces.get(S.view);
+  if (!b || !space) return;
+  closeSpaceMenu();
+  try {
+    await api('PUT', `/spaces/${space.id}/notify`, { level: b.dataset.level });
+    space.notify = b.dataset.level;
+    toast({ all: `You'll hear about every message in ${space.name}.`, mentions: `You'll hear from ${space.name} when someone mentions you.`, none: `You won't hear from ${space.name}. Unread messages still show.` }[b.dataset.level]);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// ----- @mentions in the message box -----
+// Typing "@" in a channel offers the people who can see it (and @everyone, if you may).
+
+let mentionPick = { open: false, items: [], index: 0, start: 0 };
+
+function canSeeChannel(space, c, m) {
+  return !c.private || m.owner || isAdministrator(space, m) || m.roles.some((r) => c.seeRoles.includes(r));
+}
+
+function onMentionInput() {
+  const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
+  const space = c && S.spaces.get(c.spaceId);
+  if (!space || !space.members) return closeMentionPick();
+  const caret = el.chatInput.selectionStart;
+  const typed = el.chatInput.value.slice(0, caret).match(/(^|[^\w@.])@([\w.]{0,32})$/);
+  if (!typed) return closeMentionPick();
+  const q = typed[2].toLowerCase();
+  const items = space.members
+    .filter((p) => p.id !== S.clientId && !(S.blocked && S.blocked.has(p.id)) && canSeeChannel(space, c, p))
+    .filter((p) => p.username.startsWith(q) || p.displayName.toLowerCase().split(/\s+/).some((w) => w.startsWith(q)))
+    .slice(0, 8)
+    .map((p) => ({ person: p, insert: p.username }));
+  if (canIn(space, 'mentionEveryone') && 'everyone'.startsWith(q)) items.push({ person: null, insert: 'everyone' });
+  if (!items.length) return closeMentionPick();
+  mentionPick = { open: true, items, index: 0, start: caret - q.length - 1 };
+  renderMentionPick();
+}
+
+function renderMentionPick() {
+  el.mentionPick.replaceChildren(...mentionPick.items.map((item, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = i === mentionPick.index ? 'active' : '';
+    b.setAttribute('role', 'option');
+    b.setAttribute('aria-selected', String(i === mentionPick.index));
+    const name = document.createElement('span');
+    const sub = document.createElement('small');
+    if (item.person) {
+      name.textContent = item.person.displayName;
+      sub.textContent = `@${item.person.username}`;
+      b.append(makeFace(item.person, null), name, sub);
+    } else {
+      name.textContent = '@everyone';
+      sub.textContent = 'everyone who can see this channel';
+      b.append(name, sub);
+    }
+    // (Keep the message box focused.)
+    b.addEventListener('mousedown', (e) => e.preventDefault());
+    b.addEventListener('click', () => pickMention(item));
+    return b;
+  }));
+  const form = el.chatForm.getBoundingClientRect();
+  const box = el.chatForm.closest('.dm-body').getBoundingClientRect();
+  el.mentionPick.style.bottom = `${Math.round(box.bottom - form.top + 6)}px`;
+  el.mentionPick.hidden = false;
+}
+
+function pickMention(item) {
+  const v = el.chatInput.value;
+  const caret = el.chatInput.selectionStart;
+  const text = `@${item.insert} `;
+  el.chatInput.value = v.slice(0, mentionPick.start) + text + v.slice(caret);
+  const pos = mentionPick.start + text.length;
+  el.chatInput.setSelectionRange(pos, pos);
+  closeMentionPick();
+  el.chatInput.focus();
+}
+
+function closeMentionPick() {
+  if (!mentionPick.open) return;
+  mentionPick = { open: false, items: [], index: 0, start: 0 };
+  el.mentionPick.hidden = true;
+}
+
+function onMentionKey(e) {
+  if (!mentionPick.open) return;
+  const n = mentionPick.items.length;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') mentionPick.index = (mentionPick.index + (e.key === 'ArrowDown' ? 1 : n - 1)) % n;
+  else if (e.key === 'Enter' || e.key === 'Tab') pickMention(mentionPick.items[mentionPick.index]);
+  else if (e.key === 'Escape') closeMentionPick();
+  else return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (mentionPick.open) renderMentionPick();
 }
 
 // ----- Making and joining spaces -----
@@ -5975,6 +6181,7 @@ const PERM_INFO = [
   ['timeout', 'Time people out', "Stop people below them posting or reacting for a while."],
   ['kick', 'Kick people', 'Take people below them out of the space. They can come back with an invite.'],
   ['ban', 'Ban people', "Take people below them out for good, and lift bans."],
+  ['mentionEveryone', 'Mention @everyone', 'Notify everyone who can see a channel at once.'],
   ['invite', 'Invite people', 'Make invite links.'],
   ['send', 'Send messages', ''],
   ['files', 'Send files', ''],
@@ -7289,6 +7496,7 @@ async function init() {
   el.smInvite.addEventListener('click', openInvite);
   el.smMembers.addEventListener('click', openMembers);
   el.smSettings.addEventListener('click', openSpaceSettings);
+  el.smNotify.addEventListener('click', onSpaceNotify);
   el.smLeave.addEventListener('click', onSpaceLeave);
   el.addChannelBtn.addEventListener('click', startNewChannel);
   el.spaceCreateForm.addEventListener('submit', onSpaceCreate);
@@ -7330,6 +7538,9 @@ async function init() {
   el.msgDelete.addEventListener('click', onMessageMenuDelete);
   el.editCancel.addEventListener('click', () => { stopEdit(); el.chatInput.focus(); });
   el.chatInput.addEventListener('input', onTypingInput);
+  el.chatInput.addEventListener('input', onMentionInput);
+  el.chatInput.addEventListener('keydown', onMentionKey);
+  el.chatInput.addEventListener('blur', () => setTimeout(closeMentionPick, 150));
   el.chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && S.editing) {
       e.preventDefault();
