@@ -230,6 +230,16 @@ const S = {
 
 // ---------------- Helpers ----------------
 
+// A click outside a dialog closes it: one that started outside it too. (Selecting text in it
+// and letting go of the mouse outside doesn't.) `also` names other clicks that close it.
+function closeOnBackdrop(d, also = () => false) {
+  let startedOutside = false;
+  d.addEventListener('pointerdown', (e) => { startedOutside = e.target === d; });
+  d.addEventListener('click', (e) => {
+    if ((e.target === d && startedOutside) || also(e)) d.close();
+  });
+}
+
 function randomId() {
   const a = new Uint8Array(16);
   crypto.getRandomValues(a);
@@ -2060,7 +2070,7 @@ async function openEmojiPicker(li) {
       if (unicode) toggleReaction(emojiTarget, unicode);
     });
     el.emojiDialog.append(picker);
-    el.emojiDialog.addEventListener('click', (e) => { if (e.target === el.emojiDialog) el.emojiDialog.close(); });
+    closeOnBackdrop(el.emojiDialog);
   }
   el.emojiDialog.showModal();
 }
@@ -5517,7 +5527,7 @@ async function openInvite() {
   }
 }
 
-async function copyInvite() {
+async function copySpaceInvite() {
   const link = el.spaceInviteLink.value;
   if (!/^https?:\/\//.test(link)) return;
   try {
@@ -7969,7 +7979,7 @@ async function init() {
   el.addChannelBtn.addEventListener('click', () => startNewChannel('text'));
   el.spaceCreateForm.addEventListener('submit', onSpaceCreate);
   el.spaceJoinForm.addEventListener('submit', onSpaceJoinCode);
-  el.spaceInviteCopy.addEventListener('click', copyInvite);
+  el.spaceInviteCopy.addEventListener('click', copySpaceInvite);
   el.spaceJoinBtn.addEventListener('click', onJoinSpace);
   el.spaceRenameForm.addEventListener('submit', onSpaceRename);
   el.modForm.addEventListener('submit', onModConfirm);
@@ -8104,9 +8114,7 @@ async function init() {
   el.signoutBtn.addEventListener('click', onSignOut);
   // Dialogs close with their X, or by clicking outside them.
   for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog]) {
-    d.addEventListener('click', (e) => {
-      if (e.target === d || e.target.closest('[data-close]')) d.close();
-    });
+    closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 
   // ----- Calls -----
@@ -8175,7 +8183,7 @@ async function init() {
 
   el.lightboxClose.addEventListener('click', () => el.lightbox.close());
   // Clicking anywhere around the picture closes it, like Esc.
-  el.lightbox.addEventListener('click', (e) => { if (e.target === el.lightbox) el.lightbox.close(); });
+  closeOnBackdrop(el.lightbox);
   el.lightbox.addEventListener('close', () => el.lightboxImg.removeAttribute('src'));
 
   el.attachBtn.addEventListener('click', () => el.fileInput.click());
