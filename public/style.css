@@ -160,6 +160,14 @@ button { cursor: pointer; }
 }
 .field textarea:focus-visible { outline-offset: 0; border-color: var(--lamp); }
 .field input:focus-visible, .field select:focus-visible { outline-offset: 0; border-color: var(--lamp); }
+/* Dropdowns get our own arrow, a little in from the edge (the browser's sits right against it). */
+.field select {
+  appearance: none; -webkit-appearance: none;
+  padding-right: 46px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9b4c8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 16px center; background-size: 18px;
+  cursor: pointer;
+}
 .field-row { display: flex; gap: 10px; align-items: center; }
 .field-row input { flex: 1; min-width: 0; }
 .hint { color: var(--mist); font-size: 13px; }
@@ -1421,7 +1429,7 @@ button.person.open { background: var(--dusk-hi); }
 .settings-inner { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 16px 20px 22px; }
 .settings-head { display: flex; justify-content: space-between; align-items: center; margin-right: -8px; }
 .settings-head h2 { margin: 0; font-size: 20px; font-weight: 600; }
-.settings .field select { background: var(--deep); }
+.settings .field select { background-color: var(--deep); }
 .settings input[type="range"] { width: 100%; accent-color: var(--lamp); }
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--lamp); cursor: pointer; }
