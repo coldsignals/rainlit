@@ -66,10 +66,15 @@ first:
       stay invite-only unless they turn it on)
 - [ ] Protection against spam accounts: checking email addresses, and limits on sign-ups
 - [ ] Password-reset emails (the admin can't make reset links by hand for everyone)
-- [ ] Terms of service, a privacy policy, and a minimum age
+- [ ] Terms of service and a privacy policy in plain language (what Rainlit keeps, why,
+      and for how long), and a minimum age
 - [ ] Reports that reach whoever runs the server, and tools to act on them
 - [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
       10 MB)
+- [ ] Bring a Discord server over: paste a Discord server template link and get a space
+      with the same channels, roles and permissions
+- [ ] A "Switching from Discord" page: what works the same, what's different, and how to
+      move a community over
 
 ## Stage 5: One account everywhere, and bots
 
@@ -79,11 +84,12 @@ first:
   with its members and history.
 - The apps keep a list of your servers, like Discord's sidebar.
 - A bot API: bot accounts, events, slash commands. Close enough to Discord's that
-  existing bots are easy to bring over.
+  existing bots are easy to bring over, and adding bots to a space is always free.
 
 ## Stage 6: Keeping it going, fairly
 
-- A supporter tier, never more than $5 a month, that pays for the free tier: cosmetics
+- Only once Rainlit has a solid foundation and people using it: a supporter tier, never
+  more than $5 a month and with the price shown up front, that pays for the free tier: cosmetics
   that show on every server (profile themes, badges, animated avatars, name colors, app
   themes) and perks that cost real money to provide (bigger uploads, higher-quality
   streams through the relay). Talking to your friends and running a community stay free,
