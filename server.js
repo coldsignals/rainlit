@@ -403,15 +403,17 @@ function needFriend(req, res, next) {
   next();
 }
 
-// Only a space's members can see and use its channels. (A channel always keeps its messages.)
+// A space's channels are for the members who can see them (a private one, only for some
+// roles). Puts what you can do in it on the request. (A channel always keeps its messages.)
 function needChannel(req, res, next) {
   const channel = spaces.channel(req.params.channelId);
-  const role = channel && spaces.roleOf(channel.space_id, req.user.id);
-  if (!role) return fail(res, 404, "That channel isn't there, or you're not in its space.");
+  const member = channel && spaces.memberOf(channel.space_id, req.user.id);
+  const access = member && spaces.channelAccess(channel, member);
+  if (!access || !access.see) return fail(res, 404, "That channel isn't there, or you can't see it.");
   req.channel = channel;
-  req.role = role;
+  req.member = member;
+  req.access = access;
   req.dm = { id: channel.id, save: 1 };
-  req.audience = spaces.memberIds(channel.space_id);
   next();
 }
 
@@ -419,7 +421,7 @@ const needConv = (req, res, next) => (req.params.channelId ? needChannel : needF
 const conv = (rest = '') => [`/dms/:friendId${rest}`, `/channels/:channelId${rest}`];
 
 function tell(req, msg) {
-  for (const id of req.audience) realtime.sendToUser(id, msg);
+  for (const id of req.channel ? spaces.channelAudience(req.channel) : req.audience) realtime.sendToUser(id, msg);
   // A new message for a friend who has Rainlit closed: a push notification to their phone.
   // It says who it's from, never what it says.
   const m = msg.type === 'dm-message' && msg.message;
@@ -431,9 +433,7 @@ function tell(req, msg) {
 // Where "new messages" starts for you: what you've read, or (a channel you've never opened) when you joined its space.
 function readFloor(req) {
   const at = dms.readAt(req.dm.id, req.user.id);
-  if (at || !req.channel) return at;
-  const joined = spaces.members(req.channel.space_id).find((m) => m.id === req.user.id);
-  return joined ? joined.joinedAt : 0;
+  return at || !req.channel ? at : req.member.joinedAt;
 }
 
 api.get(conv('/messages'), needUser, needConv, (req, res) => {
@@ -458,6 +458,7 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     const again = { id, dm: passed.dm, author: passed.author, kind: passed.kind, text: String(b.text || ''), meta: b.gif || null, file: null, at: passed.at, replyTo: passed.replyTo ? { id: passed.replyTo } : null, seq: null, saved: false };
     return res.json({ message: dms.withReplies([again])[0] });
   }
+  if (req.access && !req.access.send) return fail(res, 403, "You can't send messages in this channel.");
   let fields;
   // Answering an earlier message in this conversation (anything else is just ignored).
   const replyTo = dms.replyTarget(req.dm.id, b.replyTo);
@@ -497,6 +498,7 @@ function cleanGif(g) {
 // written to disk as it arrives, so big files never have to fit in memory.
 api.post(conv('/files'), needUser, needConv, (req, res) => {
   const tooBig = `Files can be up to ${FILE_MAX_MB} MB.`;
+  if (req.access && !req.access.files) return fail(res, 403, "You can't send files in this channel.");
   if (!req.dm.save) return fail(res, 409, 'Saving is off in this conversation, so files can only be sent during a call.');
   const id = String(req.get('x-message-id') || '');
   if (!ID_RE.test(id) || dms.getRow(id)) return fail(res, 400, "That upload didn't make sense.");
@@ -554,14 +556,16 @@ function fileLinkOk(id, link) {
   return want.length === got.length && crypto.timingSafeEqual(want, got);
 }
 
-// The file, if this person may see it: they're in the DM (and still friends), or in the
-// channel's space.
+// The file, if this person may see it: they're in the DM (and still friends), or they can
+// see the channel.
 function fileFor(user, id) {
   const r = dms.getRow(id);
   if (!r || r.kind !== 'file') return null;
   if (!r.dm_id.includes(':')) {
     const channel = spaces.channel(r.dm_id);
-    return channel && spaces.isMember(channel.space_id, user.id) ? r : null;
+    const member = channel && spaces.memberOf(channel.space_id, user.id);
+    const access = member && spaces.channelAccess(channel, member);
+    return access && access.see ? r : null;
   }
   const other = r.dm_id.split(':').find((u) => u !== user.id);
   return dms.inDm(r.dm_id, user.id) && people.areFriends(user.id, other) ? r : null;
@@ -611,6 +615,7 @@ function cleanEmoji(value) {
 function reactRoute(req, res, on) {
   const emoji = cleanEmoji((req.body || {}).emoji);
   if (!emoji) return fail(res, 400, "That isn't an emoji.");
+  if (on && req.access && !req.access.react) return fail(res, 403, "You can't add reactions in this channel.");
   const r = dms.getRow(req.params.id);
   if (!r || r.dm_id !== req.dm.id || !['text', 'file', 'gif'].includes(r.kind)) return fail(res, 404, "That message isn't there any more.");
   if (!dms.react(r.id, req.user.id, emoji, on)) return fail(res, 400, 'That message has all the reactions it can take.');
@@ -642,9 +647,10 @@ api.patch('/dms/:friendId', needUser, needFriend, (req, res) => {
 
 // ----- Spaces -----
 //
-// Anyone can start a space. Its owner and admins can rename it and manage its channels;
-// any member can invite people with a link. When something about a space changes, its
-// members' apps are told to fetch it again ('space-changed'), or that it's gone for them.
+// Anyone can start a space. What its members can do depends on their roles (lib/spaces.js):
+// by default anyone can talk and invite people with a link, and the owner can do everything.
+// When something about a space changes, its members' apps are told to fetch it again
+// ('space-changed'), or that it's gone for them.
 
 function tellSpace(spaceId, msg) {
   for (const id of spaces.memberIds(spaceId)) realtime.sendToUser(id, msg);
@@ -654,13 +660,20 @@ const mySpace = (userId, spaceId) => spaces.spacesFor(userId).find((s) => s.id =
 
 function needMember(req, res, next) {
   const space = spaces.getSpace(req.params.spaceId);
-  const role = space && spaces.roleOf(space.id, req.user.id);
-  if (!role) return fail(res, 404, "That space isn't there, or you're not in it.");
+  const member = space && spaces.memberOf(space.id, req.user.id);
+  if (!member) return fail(res, 404, "That space isn't there, or you're not in it.");
   req.space = space;
-  req.role = role;
+  req.member = member;
   next();
 }
-const needManager = (req, res, next) => (spaces.canManage(req.role) ? next() : fail(res, 403, "Only the space's owner and admins can do that."));
+
+const NOT_ALLOWED = {
+  manageSpace: "You don't have permission to change this space's settings.",
+  manageChannels: "You don't have permission to manage this space's channels.",
+  manageRoles: "You don't have permission to manage roles here.",
+  invite: "You don't have permission to invite people here.",
+};
+const needPerm = (perm) => (req, res, next) => (spaces.can(req.member, perm) ? next() : fail(res, 403, NOT_ALLOWED[perm]));
 
 api.get('/spaces', needUser, (req, res) => {
   res.json({ spaces: spaces.spacesFor(req.user.id) });
@@ -678,16 +691,23 @@ api.get('/spaces/:spaceId', needUser, needMember, (req, res) => {
   res.json({ space: mySpace(req.user.id, req.space.id), members: spaces.members(req.space.id) });
 });
 
-api.patch('/spaces/:spaceId', needUser, needMember, needManager, (req, res) => {
-  const name = spaces.spaceName((req.body || {}).name);
-  if (!name) return fail(res, 400, 'A space needs a name.');
-  spaces.renameSpace(req.space.id, name);
+// Its name, and what @everyone can do.
+api.patch('/spaces/:spaceId', needUser, needMember, (req, res) => {
+  const b = req.body || {};
+  if (b.name !== undefined && !spaces.can(req.member, 'manageSpace')) return fail(res, 403, NOT_ALLOWED.manageSpace);
+  if (b.everyonePerms !== undefined && !spaces.can(req.member, 'manageRoles')) return fail(res, 403, NOT_ALLOWED.manageRoles);
+  const name = b.name === undefined ? null : spaces.spaceName(b.name);
+  if (b.name !== undefined && !name) return fail(res, 400, 'A space needs a name.');
+  if (name) spaces.renameSpace(req.space.id, name);
+  if (b.everyonePerms !== undefined) {
+    spaces.setEveryonePerms(req.space.id, spaces.allowedPerms(req.member, spaces.permBits(b.everyonePerms), req.space.everyone_perms));
+  }
   spaceChanged(req.space.id);
   res.json({ ok: true });
 });
 
 api.delete('/spaces/:spaceId', needUser, needMember, (req, res) => {
-  if (req.role !== 'owner') return fail(res, 403, 'Only the owner can delete a space.');
+  if (!req.member.owner) return fail(res, 403, 'Only the owner can delete a space.');
   const everyone = spaces.memberIds(req.space.id);
   spaces.deleteSpace(req.space.id);
   for (const id of everyone) realtime.sendToUser(id, { type: 'space-removed', space: req.space.id });
@@ -695,14 +715,14 @@ api.delete('/spaces/:spaceId', needUser, needMember, (req, res) => {
 });
 
 api.post('/spaces/:spaceId/leave', needUser, needMember, (req, res) => {
-  if (req.role === 'owner') return fail(res, 400, "You own this space, so you can't leave it. You can delete it instead.");
+  if (req.member.owner) return fail(res, 400, "You own this space, so you can't leave it. You can delete it instead.");
   spaces.removeMember(req.space.id, req.user.id);
   realtime.sendToUser(req.user.id, { type: 'space-removed', space: req.space.id });
   spaceChanged(req.space.id);
   res.json({ ok: true });
 });
 
-api.post('/spaces/:spaceId/channels', needUser, needMember, needManager, (req, res) => {
+api.post('/spaces/:spaceId/channels', needUser, needMember, needPerm('manageChannels'), (req, res) => {
   const name = spaces.channelName((req.body || {}).name);
   if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
   const id = spaces.createChannel(req.space.id, name);
@@ -711,25 +731,41 @@ api.post('/spaces/:spaceId/channels', needUser, needMember, needManager, (req, r
   res.json({ channel: { id, name } });
 });
 
+// Its name, and who it's for: private (only some roles see it) or read-only (only some
+// roles post in it), with the roles each is open to.
 api.patch('/channels/:channelId', needUser, needChannel, (req, res) => {
-  if (!spaces.canManage(req.role)) return fail(res, 403, "Only the space's owner and admins can do that.");
-  const name = spaces.channelName((req.body || {}).name);
-  if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
-  spaces.renameChannel(req.channel.id, name);
+  if (!spaces.can(req.member, 'manageChannels')) return fail(res, 403, NOT_ALLOWED.manageChannels);
+  const b = req.body || {};
+  if (b.name !== undefined) {
+    const name = spaces.channelName(b.name);
+    if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
+    spaces.renameChannel(req.channel.id, name);
+  }
+  if (['private', 'readonly', 'seeRoles', 'sendRoles'].some((key) => b[key] !== undefined)) {
+    const ours = new Set(spaces.rolesOf(req.channel.space_id).map((r) => r.id));
+    const pick = (ids) => [...new Set(Array.isArray(ids) ? ids.map(String) : [])].filter((id) => ours.has(id));
+    const before = spaces.channelRoles(req.channel.id);
+    spaces.setChannelAccess(req.channel.id, {
+      isPrivate: b.private === undefined ? req.channel.private : Boolean(b.private),
+      readonly: b.readonly === undefined ? req.channel.readonly : Boolean(b.readonly),
+      see: b.seeRoles === undefined ? before.see : pick(b.seeRoles),
+      send: b.sendRoles === undefined ? before.send : pick(b.sendRoles),
+    });
+  }
   spaceChanged(req.channel.space_id);
   res.json({ ok: true });
 });
 
 api.delete('/channels/:channelId', needUser, needChannel, (req, res) => {
-  if (!spaces.canManage(req.role)) return fail(res, 403, "Only the space's owner and admins can do that.");
+  if (!spaces.can(req.member, 'manageChannels')) return fail(res, 403, NOT_ALLOWED.manageChannels);
   if (spaces.channelsOf(req.channel.space_id).length <= 1) return fail(res, 400, 'A space needs at least one channel.');
   spaces.deleteChannel(req.channel.id);
   spaceChanged(req.channel.space_id);
   res.json({ ok: true });
 });
 
-// Invite links: rainlit.app/join/<code>. Anyone in the space can make one.
-api.post('/spaces/:spaceId/invites', needUser, needMember, (req, res) => {
+// Invite links: rainlit.app/join/<code>. Anyone allowed to invite people can make one.
+api.post('/spaces/:spaceId/invites', needUser, needMember, needPerm('invite'), (req, res) => {
   res.json({ code: spaces.createInvite(req.space.id, req.user.id) });
 });
 
@@ -754,6 +790,76 @@ api.post('/space-invites/:code', needUser, (req, res) => {
   }
   res.json({ space: mySpace(req.user.id, space.id) });
 });
+
+// ----- Roles -----
+//
+// Made, changed and given by people with Manage roles, for roles below their own highest.
+
+function needRole(req, res, next) {
+  const r = spaces.role(req.params.roleId);
+  if (!r || r.space_id !== req.space.id) return fail(res, 404, "That role isn't there any more.");
+  if (!spaces.canManageRole(req.member, r)) return fail(res, 403, 'You can only manage roles below your own highest role.');
+  req.role = r;
+  next();
+}
+
+api.post('/spaces/:spaceId/roles', needUser, needMember, needPerm('manageRoles'), (req, res) => {
+  const b = req.body || {};
+  const id = spaces.createRole(req.space.id, {
+    name: spaces.roleName(b.name) || 'new role',
+    color: spaces.roleColor(b.color),
+    perms: spaces.allowedPerms(req.member, spaces.permBits(b.perms), 0),
+    hoist: Boolean(b.hoist),
+  });
+  if (!id) return fail(res, 400, `A space can have up to ${spaces.MAX_ROLES} roles.`);
+  spaceChanged(req.space.id);
+  res.json({ role: spaces.roleJson(spaces.role(id)) });
+});
+
+api.patch('/spaces/:spaceId/roles/:roleId', needUser, needMember, needRole, (req, res) => {
+  const b = req.body || {};
+  const name = b.name === undefined ? undefined : spaces.roleName(b.name);
+  if (b.name !== undefined && !name) return fail(res, 400, 'A role needs a name.');
+  spaces.updateRole(req.role.id, {
+    name,
+    color: b.color === undefined ? undefined : spaces.roleColor(b.color),
+    perms: b.perms === undefined ? undefined : spaces.allowedPerms(req.member, spaces.permBits(b.perms), req.role.perms),
+    hoist: b.hoist === undefined ? undefined : Boolean(b.hoist),
+  });
+  spaceChanged(req.space.id);
+  res.json({ role: spaces.roleJson(spaces.role(req.role.id)) });
+});
+
+api.delete('/spaces/:spaceId/roles/:roleId', needUser, needMember, needRole, (req, res) => {
+  spaces.deleteRole(req.role.id);
+  spaceChanged(req.space.id);
+  res.json({ ok: true });
+});
+
+// One step up or down the order. Both roles have to be below your own highest.
+api.post('/spaces/:spaceId/roles/:roleId/move', needUser, needMember, needRole, (req, res) => {
+  const other = spaces.neighbour(req.role, Boolean((req.body || {}).up));
+  if (!other) return res.json({ ok: true }); // already at the top or bottom
+  if (!spaces.canManageRole(req.member, other)) return fail(res, 403, "That would move it above your own highest role.");
+  spaces.swapRoles(req.role, other);
+  spaceChanged(req.space.id);
+  res.json({ ok: true });
+});
+
+// Giving someone a role, or taking it away.
+function memberRoleRoute(on) {
+  return (req, res) => {
+    const target = spaces.memberOf(req.space.id, req.params.userId);
+    if (!target) return fail(res, 404, "They aren't in this space any more.");
+    if (!spaces.canManageMember(req.member, target)) return fail(res, 403, "You can only change the roles of people below you.");
+    if (on) spaces.giveRole(req.space.id, target.userId, req.role.id);
+    else spaces.takeRole(req.space.id, target.userId, req.role.id);
+    spaceChanged(req.space.id);
+    res.json({ ok: true });
+  };
+}
+api.put('/spaces/:spaceId/members/:userId/roles/:roleId', needUser, needMember, needRole, memberRoleRoute(true));
+api.delete('/spaces/:spaceId/members/:userId/roles/:roleId', needUser, needMember, needRole, memberRoleRoute(false));
 
 // ----- Admin: invites and accounts -----
 

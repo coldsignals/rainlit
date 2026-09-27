@@ -33,7 +33,8 @@ server can hold many of them, the way Discord holds many servers.
       join with an invite link
 - [x] Profiles you can open for anyone in your spaces, and First Leaf: a badge for
       everyone who joins during the alpha
-- [ ] Roles and permissions
+- [x] Roles and permissions: roles with names, colors and an order; what @everyone can
+      do; private channels, and channels only some roles post in
 - [ ] Moderation for the people running a space: kick, ban, timeout, deleting others'
       messages, an audit log
 - [ ] Blocking and reporting

@@ -97,7 +97,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-leave', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-leave', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -1900,6 +1900,8 @@ function quickReactButton(li, emoji) {
 // On any saved message, by either of you. The three quick ones are your most used.
 
 function canReact(li) {
+  const c = li.dataset.channel && S.channels.get(li.dataset.channel);
+  if (c && c.can && !c.can.react) return false;
   return li.dataset.saved === '1' && ['text', 'file', 'gif'].includes(li.dataset.kind) && !li.classList.contains('removed');
 }
 
@@ -2322,6 +2324,8 @@ function renderTyping() {
 // carries a little quote of it. Click the quote to go to the message it's answering.
 
 function canReply(li) {
+  const c = li.dataset.channel && S.channels.get(li.dataset.channel);
+  if (c && c.can && !c.can.send) return false;
   return ['text', 'file', 'gif'].includes(li.dataset.kind) && Boolean(li.dataset.author)
     && !['removed', 'pending', 'failed'].some((c) => li.classList.contains(c)) && !S.uploads.has(li.dataset.id);
 }
@@ -2661,7 +2665,11 @@ function closeDm() {
 }
 
 function renderDmHead() {
-  if (isChannelKey(S.openDm)) return renderChannelHead();
+  if (isChannelKey(S.openDm)) {
+    renderChannelHead();
+    return renderComposer();
+  }
+  renderComposer();
   const f = S.friends.get(S.openDm);
   if (!f) return;
   const dm = dmFor(f.id);
@@ -2915,6 +2923,12 @@ function renderMessage(m) {
   if (m.replyTo && ['text', 'file', 'gif'].includes(m.kind)) {
     li.dataset.replyTo = m.replyTo.id;
     li.prepend(replyQuote(m.replyTo));
+  }
+  const channel = S.channels.get(m.dm);
+  if (channel) {
+    li.dataset.channel = channel.id;
+    const head = li.querySelector(':scope > .msg-name');
+    if (head) head.style.color = memberColor(S.spaces.get(channel.spaceId), m.author);
   }
   if (['text', 'file', 'gif'].includes(m.kind)) {
     li.dataset.author = m.author;
@@ -3802,6 +3816,11 @@ function addPending(list) {
   const friendId = S.openDm;
   if (!files.length || !friendId) return;
   const dm = dmFor(friendId);
+  const c = dm.channelId && S.channels.get(dm.channelId);
+  if (c && c.can && !c.can.files) {
+    toast(`You can't send files in #${c.name}.`);
+    return;
+  }
   if (!canSendFiles(dm)) {
     toast(`Saving is off here, so files can only go straight to ${friendName(friendId)} during a call.`, 6000);
     return;
@@ -4759,11 +4778,12 @@ async function refreshSpaces() {
     return;
   }
   const kept = new Set();
+  const before = S.spaces;
   S.spaces = new Map();
   S.channels = new Map();
   for (const space of data.spaces) {
-    const old = S.spaces.get(space.id);
-    S.spaces.set(space.id, { ...space, members: old ? old.members : null });
+    const old = before.get(space.id);
+    S.spaces.set(space.id, { ...space, members: old ? old.members : null, byId: old ? old.byId : null });
     for (const c of space.channels) {
       S.channels.set(c.id, { ...c, spaceId: space.id });
       const key = `ch:${c.id}`;
@@ -4791,7 +4811,11 @@ async function loadMembers(spaceId) {
     const { members } = await api('GET', `/spaces/${spaceId}`);
     for (const m of members) S.people.set(m.id, m);
     const space = S.spaces.get(spaceId);
-    if (space) space.members = members;
+    if (space) {
+      space.members = members;
+      space.byId = new Map(members.map((m) => [m.id, m]));
+      paintNames(spaceId);
+    }
     return members;
   } catch {
     return [];
@@ -4810,6 +4834,7 @@ function refreshNames(dm, userId) {
 async function onSpaceChanged(spaceId) {
   await refreshSpaces();
   if (S.spaces.has(spaceId) && (S.view === spaceId || S.spaces.get(spaceId).members)) await loadMembers(spaceId);
+  else paintNames(spaceId);
   if (el.spaceMembers.open) renderMembers();
   if (el.spaceSettings.open) renderSpaceSettings();
 }
@@ -4827,7 +4852,35 @@ const spaceInitials = (name) => {
   return letters.join('').toUpperCase();
 };
 
-const canManageSpace = (space) => Boolean(space) && (space.role === 'owner' || space.role === 'admin');
+// What you can do in a space: the permissions your roles give you there (lib/spaces.js).
+const canIn = (space, perm) => Boolean(space && space.perms && space.perms.includes(perm));
+// Your highest role's place in the order; the owner is above all of them.
+const myTop = (space) => (space.top === null || space.top === undefined ? Infinity : space.top);
+const topOf = (space, m) => (m.owner ? Infinity : space.roles.reduce((top, r) => (m.roles.includes(r.id) ? Math.max(top, r.position) : top), 0));
+// Roles below your own highest; and people below you (or you), never the owner.
+const canManageRoleIn = (space, role) => canIn(space, 'manageRoles') && role.position < myTop(space);
+const canManageMemberIn = (space, m) => canIn(space, 'manageRoles') && !m.owner
+  && (space.role === 'owner' || m.id === S.clientId || topOf(space, m) < myTop(space));
+const SETTINGS_TABS = [['general', 'manageSpace'], ['roles', 'manageRoles'], ['channels', 'manageChannels']];
+const canOpenSettings = (space) => SETTINGS_TABS.some(([, perm]) => canIn(space, perm));
+
+// Someone's color in a space: their highest role that has one.
+function memberColor(space, userId) {
+  const m = space && space.byId && space.byId.get(userId);
+  const role = m && space.roles.find((r) => r.color && m.roles.includes(r.id));
+  return role ? role.color : '';
+}
+
+// Names above messages in a space's channels, in their colors.
+function paintNames(spaceId) {
+  const space = S.spaces.get(spaceId);
+  if (!space) return;
+  for (const c of space.channels) {
+    const dm = S.dms.get(`ch:${c.id}`);
+    if (!dm) continue;
+    for (const head of dm.log.querySelectorAll('li[data-author] > .msg-name')) head.style.color = memberColor(space, head.parentElement.dataset.author);
+  }
+}
 
 function spaceUnread(spaceId) {
   for (const [id, c] of S.channels) if (c.spaceId === spaceId && dmFor(`ch:${id}`).unread) return true;
@@ -4866,7 +4919,7 @@ function renderSide() {
   el.spaceHead.hidden = !space;
   if (!space) return;
   el.spaceTitle.textContent = space.name;
-  el.addChannelBtn.hidden = !canManageSpace(space);
+  el.addChannelBtn.hidden = !canIn(space, 'manageChannels');
   const adding = el.channelList.querySelector('.channel-new');
   el.channelList.replaceChildren(...space.channels.map(channelItem), ...(adding ? [adding] : []));
 }
@@ -4878,7 +4931,8 @@ function channelItem(c) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = `channel${S.openDm === key ? ' open' : ''}${dm.unread ? ' unread' : ''}`;
-  b.innerHTML = '<svg class="icon"><use href="#i-hash"/></svg>';
+  b.innerHTML = `<svg class="icon"><use href="#${c.private ? 'i-lock' : 'i-hash'}"/></svg>`;
+  if (c.private) b.title = 'Private: only some roles can see it';
   const name = document.createElement('span');
   name.className = 'channel-name';
   name.textContent = c.name;
@@ -4954,7 +5008,7 @@ function renderChannelHead() {
   el.dmFace.style.removeProperty('--face-bg');
   delete el.dmFace.dataset.presence;
   el.dmFace.classList.add('channel-face');
-  el.dmFace.innerHTML = '<svg class="icon"><use href="#i-hash"/></svg>';
+  el.dmFace.innerHTML = `<svg class="icon"><use href="#${c.private ? 'i-lock' : 'i-hash'}"/></svg>`;
   el.dmName.textContent = c.name;
   el.dmSub.textContent = space ? `${space.name} · ${space.memberCount} member${space.memberCount === 1 ? '' : 's'}` : '';
   el.dmWho.title = 'See who is here';
@@ -4963,7 +5017,19 @@ function renderChannelHead() {
   el.dmSave.hidden = true;
   el.dmCallBtn.hidden = true;
   el.dmNotice.hidden = true;
-  el.chatInput.placeholder = `Message #${c.name}`;
+}
+
+// The message box, for what you can do where you are: in a channel, that's up to your roles.
+function renderComposer() {
+  const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
+  const can = (c && c.can) || { send: true, files: true };
+  el.chatForm.classList.toggle('locked', !can.send);
+  el.chatInput.disabled = !can.send;
+  el.chatForm.querySelector('.send-btn').disabled = !can.send;
+  el.attachBtn.hidden = !can.files;
+  el.gifBtn.hidden = !S.klipyKey || !can.send;
+  if (!can.send) closeGifPanel();
+  if (c) el.chatInput.placeholder = can.send ? `Message #${c.name}` : c.readonly ? `Only some roles can post in #${c.name}` : `You can't send messages in #${c.name}`;
 }
 
 // ----- The space's menu -----
@@ -4972,7 +5038,8 @@ function openSpaceMenu() {
   const space = S.spaces.get(S.view);
   if (!space) return;
   if (!el.spaceMenu.hidden) return closeSpaceMenu();
-  el.smSettings.hidden = !canManageSpace(space);
+  el.smInvite.hidden = !canIn(space, 'invite');
+  el.smSettings.hidden = !canOpenSettings(space);
   el.smLeave.hidden = space.role === 'owner';
   el.spaceMenu.hidden = false;
   const r = el.spaceHead.getBoundingClientRect();
@@ -5120,6 +5187,7 @@ async function copyInvite() {
 
 async function openMembers() {
   closeSpaceMenu();
+  S.rolesPanelFor = '';
   const spaceId = isChannelKey(S.openDm) && S.view === 'home' ? S.channels.get(channelIdOf(S.openDm)).spaceId : S.view;
   const space = S.spaces.get(spaceId);
   if (!space) return;
@@ -5130,44 +5198,127 @@ async function openMembers() {
   renderMembers();
 }
 
+// Members in groups, like Discord's list: each role shown separately (highest first), then
+// everyone else.
+function memberGroups(space) {
+  const hoisted = space.roles.filter((r) => r.hoist);
+  const groups = new Map(hoisted.map((r) => [r.id, []]));
+  const rest = [];
+  for (const m of space.members || []) {
+    const role = hoisted.find((r) => m.roles.includes(r.id));
+    (role ? groups.get(role.id) : rest).push(m);
+  }
+  return [...hoisted.map((r) => ({ title: r.name, members: groups.get(r.id) })), { title: 'Members', members: rest }]
+    .filter((g) => g.members.length);
+}
+
 function renderMembers() {
   const space = S.spaces.get(el.spaceMembers.dataset.space);
   if (!space) return;
   el.spaceMembersTitle ||= document.getElementById('space-members-title');
   el.spaceMembersTitle.textContent = `Members of ${space.name}`;
-  el.spaceMemberList.replaceChildren(...(space.members || []).map((m) => {
-    const li = document.createElement('li');
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'member';
-    btn.addEventListener('click', () => openMiniProfile(m.id));
-    li.append(btn);
-    const text = document.createElement('span');
-    text.className = 'member-text';
-    const name = document.createElement('span');
-    name.className = 'member-name';
-    name.textContent = m.id === S.clientId ? `${m.displayName} (you)` : m.displayName;
-    const user = document.createElement('span');
-    user.className = 'member-user';
-    user.textContent = `@${m.username}`;
-    text.append(name, user);
-    const role = document.createElement('span');
-    role.className = 'role';
-    role.textContent = m.role === 'member' ? '' : m.role;
-    btn.append(makeFace(m, null), text, role);
-    return li;
+  const items = [];
+  for (const group of memberGroups(space)) {
+    const head = document.createElement('li');
+    head.className = 'member-group';
+    head.textContent = `${group.title} — ${group.members.length}`;
+    items.push(head);
+    for (const m of group.members) items.push(...memberRow(space, m));
+  }
+  el.spaceMemberList.replaceChildren(...items);
+}
+
+function memberRow(space, m) {
+  const li = document.createElement('li');
+  li.className = 'member-row';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'member';
+  btn.addEventListener('click', () => openMiniProfile(m.id));
+  const text = document.createElement('span');
+  text.className = 'member-text';
+  const name = document.createElement('span');
+  name.className = 'member-name';
+  name.textContent = m.id === S.clientId ? `${m.displayName} (you)` : m.displayName;
+  name.style.color = memberColor(space, m.id);
+  if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
+  const user = document.createElement('span');
+  user.className = 'member-user';
+  user.textContent = `@${m.username}`;
+  text.append(name, user);
+  const theirs = space.roles.filter((r) => m.roles.includes(r.id));
+  if (theirs.length) {
+    const chips = document.createElement('span');
+    chips.className = 'role-chips';
+    chips.append(...theirs.map(roleChip));
+    text.append(chips);
+  }
+  btn.append(makeFace(m, null), text);
+  li.append(btn);
+  const giveable = space.roles.filter((r) => canManageRoleIn(space, r));
+  const open = S.rolesPanelFor === m.id;
+  if (canManageMemberIn(space, m) && giveable.length) {
+    const roles = document.createElement('button');
+    roles.type = 'button';
+    roles.className = 'text-btn member-roles-btn';
+    roles.textContent = 'Roles';
+    roles.setAttribute('aria-expanded', String(open));
+    roles.addEventListener('click', () => {
+      S.rolesPanelFor = open ? '' : m.id;
+      renderMembers();
+    });
+    li.append(roles);
+  } else if (open) {
+    S.rolesPanelFor = '';
+  }
+  if (!open || S.rolesPanelFor !== m.id) return [li];
+  // Their roles, as switches: the ones you can give.
+  const panel = document.createElement('li');
+  panel.className = 'member-roles-panel';
+  panel.append(...giveable.map((r) => {
+    const label = document.createElement('label');
+    label.className = 'toggle';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = m.roles.includes(r.id);
+    box.addEventListener('change', async () => {
+      box.disabled = true;
+      try {
+        await api(box.checked ? 'PUT' : 'DELETE', `/spaces/${space.id}/members/${m.id}/roles/${r.id}`);
+      } catch (err) {
+        box.checked = !box.checked;
+        toast(err.message);
+      }
+      box.disabled = false;
+    });
+    label.append(box, roleChip(r));
+    return label;
   }));
+  return [li, panel];
+}
+
+function roleChip(r) {
+  const chip = document.createElement('span');
+  chip.className = 'role-chip';
+  if (r.color) chip.style.setProperty('--role-color', r.color);
+  chip.textContent = r.name;
+  return chip;
 }
 
 function openSpaceSettings() {
   closeSpaceMenu();
   const space = S.spaces.get(S.view);
-  if (!canManageSpace(space)) return;
+  if (!canOpenSettings(space)) return;
   el.spaceSettings.dataset.space = space.id;
+  el.spaceSettings.dataset.tab = '';
+  el.spaceSettings.dataset.role = '';
+  el.spaceSettings.dataset.channel = '';
   el.spaceRenameInput.value = space.name;
   showSettingsError('');
   renderSpaceSettings();
   el.spaceSettings.showModal();
+  // Members, for how many have each role.
+  if (!space.members) loadMembers(space.id).then(() => { if (el.spaceSettings.open) renderSpaceSettings(); });
 }
 
 function showSettingsError(text) {
@@ -5177,14 +5328,45 @@ function showSettingsError(text) {
 
 function renderSpaceSettings() {
   const space = S.spaces.get(el.spaceSettings.dataset.space);
-  if (!space) return el.spaceSettings.close();
+  if (!space || !canOpenSettings(space)) return el.spaceSettings.close();
+  const tabs = SETTINGS_TABS.filter(([, perm]) => canIn(space, perm)).map(([tab]) => tab);
+  if (!tabs.includes(el.spaceSettings.dataset.tab)) el.spaceSettings.dataset.tab = tabs[0];
+  const tab = el.spaceSettings.dataset.tab;
+  el.spaceTabs.hidden = tabs.length < 2;
+  for (const b of el.spaceTabs.querySelectorAll('[data-tab]')) {
+    b.hidden = !tabs.includes(b.dataset.tab);
+    b.setAttribute('aria-selected', String(b.dataset.tab === tab));
+  }
+  for (const panel of el.spaceSettings.querySelectorAll('.tab-panel')) panel.hidden = panel.dataset.tab !== tab;
   el.spaceDanger.hidden = space.role !== 'owner';
-  el.spaceChannelAdmin.replaceChildren(...space.channels.map((c) => {
+  keepFocus(el.spaceSettings, () => {
+    if (tab === 'roles') renderRolesPanel(space);
+    if (tab === 'channels') renderChannelsPanel(space);
+  });
+}
+
+// Re-drawing a dialog while someone's typing in it: their box keeps its text and the cursor.
+function keepFocus(root, render) {
+  const a = document.activeElement;
+  const key = a && root.contains(a) && a.dataset.keep;
+  const state = key && { value: a.value, start: a.selectionStart, end: a.selectionEnd };
+  render();
+  const b = key && root.querySelector(`[data-keep="${CSS.escape(key)}"]`);
+  if (!b || b === a) return;
+  b.value = state.value;
+  b.focus({ preventScroll: true });
+  try { b.setSelectionRange(state.start, state.end); } catch {}
+}
+
+function renderChannelsPanel(space) {
+  const open = el.spaceSettings.dataset.channel;
+  el.spaceChannelAdmin.replaceChildren(...space.channels.flatMap((c) => {
     const li = document.createElement('li');
-    li.innerHTML = '<svg class="icon"><use href="#i-hash"/></svg>';
+    li.innerHTML = `<svg class="icon"><use href="#${c.private ? 'i-lock' : 'i-hash'}"/></svg>`;
     const input = document.createElement('input');
     input.value = c.name;
     input.maxLength = 32;
+    input.dataset.keep = `channel-${c.id}`;
     input.setAttribute('aria-label', `Rename #${c.name}`);
     const rename = async () => {
       const name = input.value.trim();
@@ -5199,6 +5381,16 @@ function renderSpaceSettings() {
     };
     input.addEventListener('change', rename);
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
+    const access = document.createElement('button');
+    access.type = 'button';
+    access.className = 'text-btn';
+    access.textContent = 'Who';
+    access.title = 'Who can see it, and who can post in it';
+    access.setAttribute('aria-expanded', String(open === c.id));
+    access.addEventListener('click', () => {
+      el.spaceSettings.dataset.channel = open === c.id ? '' : c.id;
+      renderSpaceSettings();
+    });
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'text-btn danger';
@@ -5217,9 +5409,305 @@ function renderSpaceSettings() {
         showSettingsError(err.message);
       }
     });
-    li.append(input, del);
+    li.append(input, access, del);
+    return open === c.id ? [li, channelAccessEditor(space, c)] : [li];
+  }));
+}
+
+// Who a channel is for: private (only some roles see it), and read-only (only some post).
+function channelAccessEditor(space, c) {
+  const li = document.createElement('li');
+  li.className = 'channel-access';
+  const save = async (fields) => {
+    try {
+      await api('PATCH', `/channels/${c.id}`, fields);
+      showSettingsError('');
+    } catch (err) {
+      showSettingsError(err.message);
+    }
+  };
+  const section = (label, hint, on, key, listKey) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'access-part';
+    const toggle = document.createElement('label');
+    toggle.className = 'toggle';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = on;
+    box.addEventListener('change', () => save({ [key]: box.checked }));
+    const words = document.createElement('span');
+    words.textContent = label;
+    toggle.append(box, words);
+    const small = document.createElement('small');
+    small.className = 'hint';
+    small.textContent = hint;
+    wrap.append(toggle, small);
+    if (on) {
+      const picks = document.createElement('div');
+      picks.className = 'role-picks';
+      const chosen = c[listKey];
+      if (!space.roles.length) {
+        const none = document.createElement('small');
+        none.className = 'hint';
+        none.textContent = 'Make some roles in the Roles tab to pick from.';
+        picks.append(none);
+      }
+      picks.append(...space.roles.map((r) => {
+        const pick = document.createElement('label');
+        pick.className = 'toggle';
+        const pbox = document.createElement('input');
+        pbox.type = 'checkbox';
+        pbox.checked = chosen.includes(r.id);
+        pbox.addEventListener('change', () => {
+          const ids = [...picks.querySelectorAll('input')].map((b, i) => (b.checked ? space.roles[i].id : null)).filter(Boolean);
+          save({ [listKey]: ids });
+        });
+        pick.append(pbox, roleChip(r));
+        return pick;
+      }));
+      wrap.append(picks);
+    }
+    return wrap;
+  };
+  li.append(
+    section('Private channel', 'Only the roles you pick (and administrators) can see it.', c.private, 'private', 'seeRoles'),
+    section('Only some roles can post', 'Everyone who can see it can still read it and react.', c.readonly, 'readonly', 'sendRoles'),
+  );
+  return li;
+}
+
+// ----- Roles -----
+
+const PERM_INFO = [
+  ['administrator', 'Administrator', 'Can do everything, and see every channel, even private ones. Give this carefully.'],
+  ['manageSpace', 'Manage space', "Rename the space."],
+  ['manageChannels', 'Manage channels', 'Make, rename and delete channels, and choose who can see and post in them.'],
+  ['manageRoles', 'Manage roles', 'Make and change roles below their own highest role, and give them to people.'],
+  ['invite', 'Invite people', 'Make invite links.'],
+  ['send', 'Send messages', ''],
+  ['files', 'Send files', ''],
+  ['react', 'Add reactions', ''],
+];
+const ROLE_COLORS = ['#e4574e', '#f08a4b', '#f5b94a', '#e8d44d', '#5bd18b', '#3fbfad', '#4fa3e8', '#7b8cf0', '#a879e8', '#e26fb7', '#a9b4c8'];
+
+function renderRolesPanel(space) {
+  const editing = el.spaceSettings.dataset.role;
+  if (editing === 'everyone') return renderRoleEditor(space, null);
+  const role = editing && space.roles.find((r) => r.id === editing);
+  if (role) return renderRoleEditor(space, role);
+  el.spaceSettings.dataset.role = '';
+  const head = document.createElement('div');
+  head.className = 'side-title-row';
+  const title = document.createElement('h3');
+  title.className = 'side-title';
+  title.textContent = 'Roles';
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'primary-btn small';
+  add.textContent = 'Create role';
+  add.addEventListener('click', async () => {
+    try {
+      const { role: made } = await api('POST', `/spaces/${space.id}/roles`, { name: 'new role' });
+      await refreshSpaces();
+      el.spaceSettings.dataset.role = made.id;
+      renderSpaceSettings();
+      el.spaceRoles.querySelector('.role-name-input')?.select();
+    } catch (err) {
+      showSettingsError(err.message);
+    }
+  });
+  head.append(title, add);
+  const hint = document.createElement('small');
+  hint.className = 'hint';
+  hint.textContent = 'People get what each of their roles allows, on top of what everyone can do. Roles higher up come first, and people can only manage roles below their own highest one.';
+  const list = document.createElement('ol');
+  list.className = 'role-list';
+  list.append(...space.roles.map((r, i) => {
+    const li = document.createElement('li');
+    li.className = 'role-row';
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'role-open';
+    const dot = document.createElement('span');
+    dot.className = `role-dot${r.color ? '' : ' none'}`;
+    if (r.color) dot.style.setProperty('--role-color', r.color);
+    const name = document.createElement('span');
+    name.className = 'role-name';
+    name.textContent = r.name;
+    const count = document.createElement('span');
+    count.className = 'role-count';
+    const n = (space.members || []).filter((m) => m.roles.includes(r.id)).length;
+    count.textContent = space.members ? `${n} ${n === 1 ? 'person' : 'people'}` : '';
+    open.append(dot, name, count);
+    open.addEventListener('click', () => {
+      el.spaceSettings.dataset.role = r.id;
+      renderSpaceSettings();
+    });
+    li.append(open);
+    // Up and down, one step at a time, below your own highest role.
+    const above = space.roles[i - 1], below = space.roles[i + 1];
+    for (const [up, next] of [[true, above], [false, below]]) {
+      const move = document.createElement('button');
+      move.type = 'button';
+      move.className = `icon-btn ghost role-move${up ? ' up' : ''}`;
+      move.setAttribute('aria-label', `Move ${r.name} ${up ? 'up' : 'down'}`);
+      move.title = up ? 'Move up' : 'Move down';
+      move.innerHTML = '<svg class="icon"><use href="#i-chevron-down"/></svg>';
+      move.disabled = !next || !canManageRoleIn(space, r) || !canManageRoleIn(space, next);
+      move.addEventListener('click', async () => {
+        try {
+          await api('POST', `/spaces/${space.id}/roles/${r.id}/move`, { up });
+        } catch (err) {
+          showSettingsError(err.message);
+        }
+      });
+      li.append(move);
+    }
     return li;
   }));
+  const everyone = document.createElement('li');
+  everyone.className = 'role-row';
+  const eo = document.createElement('button');
+  eo.type = 'button';
+  eo.className = 'role-open';
+  eo.innerHTML = '<span class="role-dot none"></span><span class="role-name">@everyone</span><span class="role-count">what everyone can do</span>';
+  eo.addEventListener('click', () => {
+    el.spaceSettings.dataset.role = 'everyone';
+    renderSpaceSettings();
+  });
+  everyone.append(eo);
+  list.append(everyone);
+  el.spaceRoles.replaceChildren(head, hint, list);
+}
+
+// One role (or @everyone, when role is null): its name, color and what it allows.
+function renderRoleEditor(space, role) {
+  const everyone = !role;
+  const editable = everyone ? canIn(space, 'manageRoles') : canManageRoleIn(space, role);
+  const perms = everyone ? space.everyonePerms : role.perms;
+  const save = async (fields) => {
+    try {
+      if (everyone) await api('PATCH', `/spaces/${space.id}`, { everyonePerms: fields.perms });
+      else await api('PATCH', `/spaces/${space.id}/roles/${role.id}`, fields);
+      showSettingsError('');
+    } catch (err) {
+      showSettingsError(err.message);
+    }
+  };
+  const parts = [];
+  const top = document.createElement('div');
+  top.className = 'role-edit-head';
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'text-btn';
+  back.textContent = '← Roles';
+  back.addEventListener('click', () => {
+    el.spaceSettings.dataset.role = '';
+    renderSpaceSettings();
+  });
+  const title = document.createElement('h3');
+  title.className = 'side-title';
+  title.textContent = everyone ? '@everyone' : role.name;
+  if (role && role.color) title.style.color = role.color;
+  top.append(back, title);
+  parts.push(top);
+  const note = document.createElement('small');
+  note.className = 'hint';
+  note.textContent = everyone ? 'What everyone in the space can do, whatever roles they have.'
+    : editable ? '' : "This role isn't below your own highest role, so you can't change it.";
+  if (note.textContent) parts.push(note);
+  if (!everyone) {
+    const field = document.createElement('label');
+    field.className = 'field';
+    const span = document.createElement('span');
+    span.textContent = 'Name';
+    const input = document.createElement('input');
+    input.className = 'role-name-input';
+    input.value = role.name;
+    input.maxLength = 32;
+    input.disabled = !editable;
+    input.dataset.keep = `role-${role.id}`;
+    input.addEventListener('change', () => { if (input.value.trim() && input.value.trim() !== role.name) save({ name: input.value.trim() }); });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } });
+    field.append(span, input);
+    const colors = document.createElement('div');
+    colors.className = 'field';
+    const cspan = document.createElement('span');
+    cspan.textContent = 'Color';
+    const swatches = document.createElement('div');
+    swatches.className = 'swatches';
+    swatches.append(...[null, ...ROLE_COLORS].map((color) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `swatch${color ? '' : ' none'}`;
+      if (color) b.style.setProperty('--swatch', color);
+      b.setAttribute('aria-label', color ? `Color ${color}` : 'No color');
+      b.title = color ? '' : 'No color';
+      b.setAttribute('aria-pressed', String((role.color || null) === color));
+      b.disabled = !editable;
+      b.addEventListener('click', () => save({ color: color || '' }));
+      return b;
+    }));
+    colors.append(cspan, swatches);
+    const hoist = document.createElement('label');
+    hoist.className = 'toggle';
+    const hbox = document.createElement('input');
+    hbox.type = 'checkbox';
+    hbox.checked = role.hoist;
+    hbox.disabled = !editable;
+    hbox.addEventListener('change', () => save({ hoist: hbox.checked }));
+    const hwords = document.createElement('span');
+    hwords.textContent = 'Show people with this role separately in the members list';
+    hoist.append(hbox, hwords);
+    parts.push(field, colors, hoist);
+  }
+  const list = document.createElement('div');
+  list.className = 'perm-list';
+  list.append(...PERM_INFO.map(([key, name, about]) => {
+    const row = document.createElement('label');
+    const allowed = editable && canIn(space, key);
+    row.className = `perm-row${allowed ? '' : ' off'}`;
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.dataset.perm = key;
+    box.checked = perms.includes(key);
+    box.disabled = !allowed;
+    box.addEventListener('change', () => save({ perms: [...list.querySelectorAll('input:checked')].map((b) => b.dataset.perm) }));
+    const words = document.createElement('span');
+    const strong = document.createElement('strong');
+    strong.textContent = name;
+    words.append(strong);
+    if (about) {
+      const small = document.createElement('small');
+      small.textContent = about;
+      words.append(small);
+    }
+    row.append(box, words);
+    return row;
+  }));
+  parts.push(list);
+  if (!everyone && editable) {
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'text-btn danger';
+    del.textContent = 'Delete this role';
+    del.addEventListener('click', async () => {
+      if (del.dataset.confirm !== '1') {
+        del.dataset.confirm = '1';
+        del.textContent = `Yes, delete ${role.name}`;
+        setTimeout(() => { del.dataset.confirm = ''; del.textContent = 'Delete this role'; }, 4000);
+        return;
+      }
+      try {
+        await api('DELETE', `/spaces/${space.id}/roles/${role.id}`);
+        el.spaceSettings.dataset.role = '';
+      } catch (err) {
+        showSettingsError(err.message);
+      }
+    });
+    parts.push(del);
+  }
+  el.spaceRoles.replaceChildren(...parts);
 }
 
 async function onSpaceRename(e) {
@@ -5268,7 +5756,7 @@ async function onSpaceLeave() {
 // + next to "Text channels": a box for the new one's name, at the end of the list.
 function startNewChannel() {
   const space = S.spaces.get(S.view);
-  if (!canManageSpace(space)) return;
+  if (!canIn(space, 'manageChannels')) return;
   let li = el.channelList.querySelector('.channel-new');
   if (!li) {
     li = document.createElement('li');
@@ -5310,7 +5798,7 @@ async function refreshFriends() {
     S.maxFileMb = data.maxFileMb || S.maxFileMb;
     S.klipyKey = data.klipyKey || '';
     if (Array.isArray(data.quickReactions) && data.quickReactions.length) setQuickReactions(data.quickReactions);
-    el.gifBtn.hidden = !S.klipyKey;
+    renderComposer();
     for (const f of data.friends) {
       const dm = dmFor(f.id);
       dm.save = f.dm.save;
@@ -6207,6 +6695,15 @@ async function init() {
   el.spaceInviteCopy.addEventListener('click', copyInvite);
   el.spaceJoinBtn.addEventListener('click', onJoinSpace);
   el.spaceRenameForm.addEventListener('submit', onSpaceRename);
+  el.spaceTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('[data-tab]');
+    if (!tab) return;
+    el.spaceSettings.dataset.tab = tab.dataset.tab;
+    el.spaceSettings.dataset.role = '';
+    el.spaceSettings.dataset.channel = '';
+    showSettingsError('');
+    renderSpaceSettings();
+  });
   el.spaceDeleteBtn.addEventListener('click', onSpaceDelete);
   document.addEventListener('click', (e) => {
     if (!el.spaceMenu.hidden && !el.spaceMenu.contains(e.target) && !el.spaceHead.contains(e.target)) closeSpaceMenu();
@@ -6420,8 +6917,10 @@ async function init() {
   el.dm.addEventListener('dragenter', (e) => {
     if (!hasFiles(e) || dragDepth++) return;
     const who = isChannelKey(S.openDm) ? `#${(S.channels.get(channelIdOf(S.openDm)) || {}).name || 'this channel'}` : friendName(S.openDm);
+    const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
     const canSend = dmFor(S.openDm).save || (S.inCall && S.callWith === S.openDm && S.peer);
-    el.dropText.textContent = canSend ? `Drop to attach for ${who}` : `Saving is off, so files can only go to ${who} during a call`;
+    el.dropText.textContent = c && c.can && !c.can.files ? `You can't send files in ${who}`
+      : canSend ? `Drop to attach for ${who}` : `Saving is off, so files can only go to ${who} during a call`;
     el.dropOverlay.hidden = false;
   });
   el.dm.addEventListener('dragleave', (e) => {

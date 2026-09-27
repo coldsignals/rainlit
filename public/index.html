@@ -49,6 +49,8 @@
       <symbol id="i-speaker-off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
       <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+      <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3.5 8.5 8 12l4-6.5 4 6.5 4.5-3.5-1.6 10H5.1Z" fill="currentColor"/></symbol>
       <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
       <symbol id="i-reply" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
       <symbol id="i-react" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-7.5-8.9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/><path d="M19 2v6M16 5h6"/></symbol>
@@ -558,21 +560,28 @@
     </div>
   </dialog>
 
-  <dialog id="space-settings" class="settings space-dialog" aria-labelledby="space-settings-title">
+  <dialog id="space-settings" class="settings space-dialog space-settings" aria-labelledby="space-settings-title">
     <div class="settings-inner">
       <div class="settings-head"><h2 id="space-settings-title">Space settings</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
-      <form id="space-rename-form" class="space-row" novalidate>
-        <label class="field"><span>Name</span><input id="space-rename-input" maxlength="40" autocomplete="off" /></label>
-        <button class="primary-btn small" type="submit">Save</button>
-      </form>
-      <section>
-        <h3 class="side-title">Channels</h3>
-        <ol id="space-channel-admin" class="channel-admin"></ol>
-        <small class="hint">Rename one by changing its name. Deleting one deletes everything in it, for everyone.</small>
+      <div id="space-tabs" class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="general">General</button>
+        <button type="button" role="tab" data-tab="roles">Roles</button>
+        <button type="button" role="tab" data-tab="channels">Channels</button>
+      </div>
+      <section id="space-general" class="tab-panel" data-tab="general">
+        <form id="space-rename-form" class="space-row" novalidate>
+          <label class="field"><span>Name</span><input id="space-rename-input" maxlength="40" autocomplete="off" /></label>
+          <button class="primary-btn small" type="submit">Save</button>
+        </form>
+        <section id="space-danger" class="danger-zone" hidden>
+          <button id="space-delete-btn" class="text-btn danger" type="button">Delete this space</button>
+          <small class="hint">Deletes every channel and everything in them, for everyone. It can't be undone.</small>
+        </section>
       </section>
-      <section id="space-danger" class="danger-zone" hidden>
-        <button id="space-delete-btn" class="text-btn danger" type="button">Delete this space</button>
-        <small class="hint">Deletes every channel and everything in them, for everyone. It can't be undone.</small>
+      <section id="space-roles" class="tab-panel" data-tab="roles" hidden></section>
+      <section id="space-channels" class="tab-panel" data-tab="channels" hidden>
+        <ol id="space-channel-admin" class="channel-admin"></ol>
+        <small class="hint">Rename one by changing its name. <b>Who</b> sets who can see it and post in it. Deleting one deletes everything in it, for everyone.</small>
       </section>
       <p id="space-settings-error" class="form-error" role="alert" hidden></p>
     </div>
