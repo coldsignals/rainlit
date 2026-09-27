@@ -97,7 +97,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-leave', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-leave', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -882,7 +882,7 @@ function handleServerMessage(msg) {
     case 'space-changed':
       return onSpaceChanged(msg.space);
     case 'space-removed':
-      return onSpaceRemoved(msg.space);
+      return onSpaceRemoved(msg.space, msg.why);
     case 'me':
       return setMe(msg.user);
     case 'ring':
@@ -898,6 +898,8 @@ function handleServerMessage(msg) {
       return onDmMessage(msg.message);
     case 'dm-removed':
       return onDmRemoved(msg);
+    case 'dm-gone':
+      return onDmGone(msg);
     case 'dm-edited':
       return onDmEdited(msg);
     case 'dm-reactions':
@@ -2003,8 +2005,14 @@ function messageActions(li) {
   if (media) actions.push('save');
   if (media && !media.url.startsWith('blob:')) actions.push('open');
   if (kind === 'text' || (kind === 'gif' && li.dataset.copy)) actions.push('copy');
-  if (mine) actions.push('delete');
+  if (mine || canModerateMessages(li)) actions.push('delete');
   return actions;
+}
+
+// In a channel, people allowed to delete messages can remove anyone's.
+function canModerateMessages(li) {
+  const c = li.dataset.channel && S.channels.get(li.dataset.channel);
+  return Boolean(c) && canIn(S.spaces.get(c.spaceId), 'manageMessages');
 }
 
 let msgMenuLi = null;
@@ -2152,13 +2160,32 @@ function onMessageMenuDelete() {
   const li = msgMenuLi;
   if (!li) return;
   // The first press asks, the second deletes.
+  const mine = li.dataset.from === 'me';
   if (!el.msgDelete.dataset.confirm) {
     el.msgDelete.dataset.confirm = '1';
-    el.msgDelete.textContent = 'Delete for both of you?';
+    el.msgDelete.textContent = !mine ? `Delete ${friendName(li.dataset.author)}'s message?`
+      : li.dataset.channel ? 'Delete for everyone?' : 'Delete for both of you?';
     return;
   }
   closeMessageMenu();
-  deleteMine(li);
+  if (mine) deleteMine(li);
+  else deleteAsModerator(li);
+}
+
+async function deleteAsModerator(li) {
+  try {
+    await api('DELETE', `/channels/${li.dataset.channel}/messages/${li.dataset.id}`);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// "Alice removed a message", or a moderator's "Alice removed Bea's message".
+function removedText(by, byName, was, author, authorName) {
+  const thing = was === 'file' ? 'file' : 'message';
+  const who = by === S.clientId ? 'You' : byName;
+  if (!author || author === by) return `${who} removed a ${thing}`;
+  return `${who} removed ${author === S.clientId ? 'your' : `${authorName}'s`} ${thing}`;
 }
 
 // Messages that arrived while you were disconnected (they weren't pushed to you then).
@@ -2900,7 +2927,8 @@ function renderMessage(m) {
   } else if (m.kind === 'file') {
     li = savedFileItem(m, who);
   } else if (m.kind === 'removed') {
-    li = sysLine(`${who} removed ${m.meta && m.meta.was === 'file' ? 'a file' : 'a message'}`, m.at, 'removed');
+    const by = (m.meta && m.meta.by) || m.author;
+    li = sysLine(removedText(by, friendName(by), m.meta && m.meta.was, m.author, friendName(m.author)), m.at, 'removed');
   } else if (m.kind === 'saving') {
     li = sysLine(m.meta && m.meta.on
       ? `${who} turned saving on. New messages and files will be kept.`
@@ -3217,15 +3245,27 @@ function onDmMessage(m) {
   if (li && fromThem) notifyIncoming(dm, li);
 }
 
-function onDmRemoved({ dm: dmId, id, by, name, was }) {
+function onDmRemoved({ dm: dmId, id, by, name, was, author, authorName }) {
   const dm = S.dms.get(convOf(dmId));
   if (!dm) return;
   if (el.lightbox.open && el.lightbox.dataset.id === id) el.lightbox.close();
   const upload = S.uploads.get(id);
   if (upload) upload.abort();
   const li = dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
-  if (li) showRemoved(li, `${by === S.clientId ? 'You' : name} removed ${was === 'file' ? 'a file' : 'a message'}`);
+  if (li) showRemoved(li, removedText(by, name, was, author, authorName));
   refreshQuotes(id);
+}
+
+// Messages taken out altogether (a banned spammer's, say).
+function onDmGone({ dm: dmId, ids }) {
+  const dm = S.dms.get(convOf(dmId));
+  if (!dm) return;
+  for (const id of ids) {
+    const li = dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
+    if (li) li.remove();
+  }
+  regroup(dm.log);
+  for (const id of ids) refreshQuotes(id);
 }
 
 function onDmSaving({ dm: dmId, save }) {
@@ -4801,6 +4841,10 @@ async function refreshSpaces() {
     S.dms.delete(key);
   }
   if (S.view !== 'home' && !S.spaces.has(S.view)) S.view = 'home';
+  // A timeout you're in ends by itself: look again then.
+  clearTimeout(S.timeoutTimer);
+  const ends = Math.min(...[...S.spaces.values()].map((s) => s.timeoutUntil || Infinity));
+  if (ends < Infinity) S.timeoutTimer = setTimeout(refreshSpaces, Math.max(1000, ends - Date.now() + 500));
   renderSpaces();
   if (S.openDm) renderDmHead();
 }
@@ -4832,6 +4876,7 @@ function refreshNames(dm, userId) {
 }
 
 async function onSpaceChanged(spaceId) {
+  if (modState.spaceId === spaceId) modState.stale = true;
   await refreshSpaces();
   if (S.spaces.has(spaceId) && (S.view === spaceId || S.spaces.get(spaceId).members)) await loadMembers(spaceId);
   else paintNames(spaceId);
@@ -4839,11 +4884,12 @@ async function onSpaceChanged(spaceId) {
   if (el.spaceSettings.open) renderSpaceSettings();
 }
 
-function onSpaceRemoved(spaceId) {
+function onSpaceRemoved(spaceId, why) {
   const space = S.spaces.get(spaceId);
   refreshSpaces();
-  for (const d of [el.spaceMembers, el.spaceSettings, el.spaceInvite]) if (d.open && S.view === spaceId) d.close();
-  if (space) toast(`You're not in ${space.name} any more.`);
+  for (const d of [el.spaceMembers, el.spaceSettings, el.spaceInvite, el.modDialog]) if (d.open && S.view === spaceId) d.close();
+  if (!space) return;
+  toast(why === 'banned' ? `You've been banned from ${space.name}.` : why === 'kicked' ? `You were removed from ${space.name}.` : `You're not in ${space.name} any more.`);
 }
 
 const spaceInitials = (name) => {
@@ -4861,8 +4907,18 @@ const topOf = (space, m) => (m.owner ? Infinity : space.roles.reduce((top, r) =>
 const canManageRoleIn = (space, role) => canIn(space, 'manageRoles') && role.position < myTop(space);
 const canManageMemberIn = (space, m) => canIn(space, 'manageRoles') && !m.owner
   && (space.role === 'owner' || m.id === S.clientId || topOf(space, m) < myTop(space));
-const SETTINGS_TABS = [['general', 'manageSpace'], ['roles', 'manageRoles'], ['channels', 'manageChannels']];
-const canOpenSettings = (space) => SETTINGS_TABS.some(([, perm]) => canIn(space, perm));
+// A timeout, kick or ban: only on people below you, never the owner or yourself, and never
+// a timeout on an administrator.
+const isAdministrator = (space, m) => space.everyonePerms.includes('administrator')
+  || space.roles.some((r) => m.roles.includes(r.id) && r.perms.includes('administrator'));
+const canModerateIn = (space, m, perm) => canIn(space, perm) && !m.owner && m.id !== S.clientId
+  && (space.role === 'owner' || topOf(space, m) < myTop(space)) && !(perm === 'timeout' && isAdministrator(space, m));
+const SETTINGS_TABS = [['general', ['manageSpace']], ['roles', ['manageRoles']], ['channels', ['manageChannels']], ['moderation', ['timeout', 'ban', 'viewLog']]];
+const settingsTabsFor = (space) => SETTINGS_TABS.filter(([, perms]) => perms.some((p) => canIn(space, p))).map(([tab]) => tab);
+const canOpenSettings = (space) => Boolean(space) && settingsTabsFor(space).length > 0;
+
+// "3:45 PM" today, or "Sep 28, 3:45 PM".
+const untilText = (ts) => (new Date(ts).toDateString() === new Date().toDateString() ? fmtTime(ts) : fmtWhen(ts));
 
 // Someone's color in a space: their highest role that has one.
 function memberColor(space, userId) {
@@ -5029,7 +5085,12 @@ function renderComposer() {
   el.attachBtn.hidden = !can.files;
   el.gifBtn.hidden = !S.klipyKey || !can.send;
   if (!can.send) closeGifPanel();
-  if (c) el.chatInput.placeholder = can.send ? `Message #${c.name}` : c.readonly ? `Only some roles can post in #${c.name}` : `You can't send messages in #${c.name}`;
+  const space = c && S.spaces.get(c.spaceId);
+  if (c) {
+    el.chatInput.placeholder = can.send ? `Message #${c.name}`
+      : can.timedOut && space ? `You're in a timeout until ${untilText(space.timeoutUntil)}`
+      : c.readonly ? `Only some roles can post in #${c.name}` : `You can't send messages in #${c.name}`;
+  }
 }
 
 // ----- The space's menu -----
@@ -5129,6 +5190,7 @@ async function openJoin(code) {
     await refreshSpaces();
     return showSpace(info.space.id);
   }
+  if (info.banned) return toast(`You've been banned from ${info.space.name}.`);
   S.joinCode = code;
   el.spaceJoinName.textContent = info.space.name;
   el.spaceJoinCount.textContent = `${info.space.memberCount} member${info.space.memberCount === 1 ? '' : 's'}`;
@@ -5246,6 +5308,12 @@ function memberRow(space, m) {
   user.className = 'member-user';
   user.textContent = `@${m.username}`;
   text.append(name, user);
+  if (m.timeoutUntil > Date.now()) {
+    const quiet = document.createElement('span');
+    quiet.className = 'timeout-chip';
+    quiet.textContent = `In a timeout until ${untilText(m.timeoutUntil)}`;
+    text.append(quiet);
+  }
   const theirs = space.roles.filter((r) => m.roles.includes(r.id));
   if (theirs.length) {
     const chips = document.createElement('span');
@@ -5255,13 +5323,14 @@ function memberRow(space, m) {
   }
   btn.append(makeFace(m, null), text);
   li.append(btn);
-  const giveable = space.roles.filter((r) => canManageRoleIn(space, r));
+  const giveable = canManageMemberIn(space, m) ? space.roles.filter((r) => canManageRoleIn(space, r)) : [];
+  const mods = ['timeout', 'kick', 'ban'].filter((perm) => canModerateIn(space, m, perm));
   const open = S.rolesPanelFor === m.id;
-  if (canManageMemberIn(space, m) && giveable.length) {
+  if (giveable.length || mods.length) {
     const roles = document.createElement('button');
     roles.type = 'button';
     roles.className = 'text-btn member-roles-btn';
-    roles.textContent = 'Roles';
+    roles.textContent = 'Manage';
     roles.setAttribute('aria-expanded', String(open));
     roles.addEventListener('click', () => {
       S.rolesPanelFor = open ? '' : m.id;
@@ -5294,7 +5363,229 @@ function memberRow(space, m) {
     label.append(box, roleChip(r));
     return label;
   }));
+  if (mods.length) {
+    const row = document.createElement('div');
+    row.className = 'mod-actions';
+    const act = (text, onClick, danger = false) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `small-btn${danger ? ' danger' : ''}`;
+      b.textContent = text;
+      b.addEventListener('click', onClick);
+      row.append(b);
+    };
+    if (mods.includes('timeout')) {
+      if (m.timeoutUntil > Date.now()) act('End timeout', () => endTimeout(space, m));
+      else act('Time out', () => openModDialog('timeout', space, m));
+    }
+    if (mods.includes('kick')) act('Kick', () => openModDialog('kick', space, m));
+    if (mods.includes('ban')) act('Ban', () => openModDialog('ban', space, m), true);
+    panel.append(row);
+  }
   return [li, panel];
+}
+
+// ----- Moderation -----
+// A timeout, kick or ban, with a reason for the log.
+
+let modTarget = null;
+
+function openModDialog(kind, space, m) {
+  modTarget = { kind, spaceId: space.id, userId: m.id, name: m.displayName };
+  el.modTitle.textContent = { timeout: 'Time out', kick: 'Kick', ban: 'Ban' }[kind] + ` ${m.displayName}`;
+  el.modText.textContent = {
+    timeout: `They can still read ${space.name}, but can't post or react until the timeout ends.`,
+    kick: `They'll be taken out of ${space.name}. They can come back with an invite link.`,
+    ban: `They'll be taken out of ${space.name}, and can't come back, even with an invite link, unless the ban is lifted.`,
+  }[kind];
+  el.modLengthField.hidden = kind !== 'timeout';
+  el.modPurgeField.hidden = kind !== 'ban';
+  el.modLength.value = '600';
+  el.modPurge.value = '0';
+  el.modReason.value = '';
+  el.modConfirm.textContent = { timeout: 'Time out', kick: 'Kick', ban: 'Ban' }[kind];
+  el.modError.hidden = true;
+  el.modDialog.showModal();
+  el.modReason.focus();
+}
+
+async function onModConfirm(e) {
+  e.preventDefault();
+  const t = modTarget;
+  if (!t) return;
+  const body = { reason: el.modReason.value.trim() };
+  if (t.kind === 'timeout') body.seconds = Number(el.modLength.value);
+  if (t.kind === 'ban') body.purge = Number(el.modPurge.value);
+  el.modConfirm.disabled = true;
+  try {
+    const res = await api('POST', `/spaces/${t.spaceId}/members/${t.userId}/${t.kind}`, body);
+    el.modDialog.close();
+    toast(t.kind === 'timeout' ? `${t.name} is in a timeout until ${untilText(res.until)}.`
+      : t.kind === 'kick' ? `${t.name} was kicked.`
+      : `${t.name} was banned${res.removed ? `, and ${res.removed} of their messages removed` : ''}.`);
+  } catch (err) {
+    el.modError.textContent = err.message;
+    el.modError.hidden = false;
+  } finally {
+    el.modConfirm.disabled = false;
+  }
+}
+
+async function endTimeout(space, m) {
+  try {
+    await api('POST', `/spaces/${space.id}/members/${m.id}/timeout`, { seconds: 0 });
+    toast(`${m.displayName}'s timeout is over.`);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// Space settings, Moderation: who's in a timeout, who's banned, and the log.
+const modState = { spaceId: '', bans: null, log: null, more: false, stale: true, loading: false };
+
+function renderModerationPanel(space) {
+  if (modState.spaceId !== space.id) Object.assign(modState, { spaceId: space.id, bans: null, log: null, more: false, stale: true });
+  if (modState.stale && !modState.loading) loadModeration(space);
+  const parts = [];
+  const title = (text) => {
+    const h = document.createElement('h3');
+    h.className = 'side-title';
+    h.textContent = text;
+    return h;
+  };
+  const note = (text) => {
+    const p = document.createElement('small');
+    p.className = 'hint';
+    p.textContent = text;
+    return p;
+  };
+  const row = (who, detail, buttonText, onClick) => {
+    const li = document.createElement('li');
+    li.className = 'mod-row';
+    const words = document.createElement('span');
+    words.className = 'mod-row-text';
+    const name = document.createElement('strong');
+    name.textContent = who.displayName;
+    const more = document.createElement('small');
+    more.textContent = detail;
+    words.append(name, more);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'small-btn';
+    b.textContent = buttonText;
+    b.addEventListener('click', onClick);
+    li.append(makeFace(who, null), words, b);
+    return li;
+  };
+  if (canIn(space, 'timeout')) {
+    const quiet = (space.members || []).filter((m) => m.timeoutUntil > Date.now());
+    parts.push(title('In a timeout'));
+    if (!quiet.length) parts.push(note('Nobody right now.'));
+    else {
+      const list = document.createElement('ol');
+      list.className = 'mod-list';
+      list.append(...quiet.map((m) => row(m, `until ${untilText(m.timeoutUntil)}`, 'End it', () => endTimeout(space, m))));
+      parts.push(list);
+    }
+  }
+  if (canIn(space, 'ban')) {
+    parts.push(title('Banned'));
+    if (!modState.bans) parts.push(note('Loading…'));
+    else if (!modState.bans.length) parts.push(note('Nobody is banned.'));
+    else {
+      const list = document.createElement('ol');
+      list.className = 'mod-list';
+      list.append(...modState.bans.map((b) => row(b.user, [b.by ? `by ${b.by.name}` : '', fmtWhen(b.at), b.reason].filter(Boolean).join(' · '), 'Lift ban', async () => {
+        try {
+          await api('DELETE', `/spaces/${space.id}/bans/${b.user.id}`);
+          toast(`${b.user.displayName} can come back now.`);
+        } catch (err) {
+          showSettingsError(err.message);
+        }
+      })));
+      parts.push(list);
+    }
+  }
+  if (canIn(space, 'viewLog')) {
+    parts.push(title('Log'));
+    if (!modState.log) parts.push(note('Loading…'));
+    else if (!modState.log.length) parts.push(note('Nothing yet.'));
+    else {
+      const list = document.createElement('ol');
+      list.className = 'space-log';
+      list.append(...modState.log.map((e) => {
+        const li = document.createElement('li');
+        const time = document.createElement('time');
+        time.textContent = fmtWhen(e.at);
+        const words = document.createElement('span');
+        words.textContent = spaceLogText(e);
+        li.append(words, time);
+        return li;
+      }));
+      parts.push(list);
+      if (modState.more) {
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'text-btn';
+        more.textContent = 'Show older';
+        more.addEventListener('click', () => loadModeration(space, true));
+        parts.push(more);
+      }
+    }
+  }
+  el.spaceModeration.replaceChildren(...parts);
+}
+
+async function loadModeration(space, older = false) {
+  modState.loading = true;
+  modState.stale = false;
+  try {
+    const [bans, log] = await Promise.all([
+      canIn(space, 'ban') && !older ? api('GET', `/spaces/${space.id}/bans`) : null,
+      canIn(space, 'viewLog') ? api('GET', `/spaces/${space.id}/log${older && modState.log ? `?before=${modState.log.at(-1).id}` : ''}`) : null,
+    ]);
+    if (modState.spaceId !== space.id) return;
+    if (bans) modState.bans = bans.bans;
+    if (log) {
+      modState.log = older ? [...(modState.log || []), ...log.entries] : log.entries;
+      modState.more = log.entries.length === 50;
+    }
+  } catch (err) {
+    showSettingsError(err.message);
+  } finally {
+    modState.loading = false;
+  }
+  if (el.spaceSettings.open && el.spaceSettings.dataset.tab === 'moderation') renderSpaceSettings();
+}
+
+const DURATION_TEXT = { 60: '1 minute', 300: '5 minutes', 600: '10 minutes', 3600: '1 hour', 86400: '1 day', 604800: '1 week' };
+
+// One line of a space's log, like "Alice banned Bea. Reason: spam".
+function spaceLogText(e) {
+  const d = e.details || {};
+  const who = e.actor ? e.actor.name : 'Someone';
+  const why = d.reason ? `. Reason: ${d.reason}` : '';
+  switch (e.action) {
+    case 'space-rename': return `${who} renamed the space from ${d.from} to ${d.to}`;
+    case 'everyone-perms': return `${who} changed what everyone can do`;
+    case 'channel-create': return `${who} made #${d.name}`;
+    case 'channel-rename': return `${who} renamed #${d.from} to #${d.to}`;
+    case 'channel-access': return `${who} changed who can see or post in #${d.name}`;
+    case 'channel-delete': return `${who} deleted #${d.name}`;
+    case 'role-create': return `${who} made the role ${d.name}`;
+    case 'role-update': return d.from ? `${who} renamed the role ${d.from} to ${d.name}` : `${who} changed the role ${d.name}`;
+    case 'role-delete': return `${who} deleted the role ${d.name}`;
+    case 'role-move': return `${who} moved the role ${d.name} ${d.up ? 'up' : 'down'}`;
+    case 'role-give': return `${who} gave ${d.user} the role ${d.role}`;
+    case 'role-take': return `${who} took the role ${d.role} from ${d.user}`;
+    case 'message-remove': return `${who} removed ${d.user}'s ${d.was === 'file' ? 'file' : 'message'} in #${d.channel}`;
+    case 'timeout': return `${who} put ${d.user} in a timeout for ${DURATION_TEXT[d.seconds] || 'a while'}${why}`;
+    case 'timeout-end': return `${who} ended ${d.user}'s timeout`;
+    case 'kick': return `${who} kicked ${d.user}${why}`;
+    case 'ban': return `${who} banned ${d.user}${d.removed ? ` and removed ${d.removed} of their messages` : ''}${why}`;
+    case 'unban': return `${who} lifted ${d.user}'s ban`;
+    default: return `${who}: ${e.action}`;
+  }
 }
 
 function roleChip(r) {
@@ -5329,7 +5620,7 @@ function showSettingsError(text) {
 function renderSpaceSettings() {
   const space = S.spaces.get(el.spaceSettings.dataset.space);
   if (!space || !canOpenSettings(space)) return el.spaceSettings.close();
-  const tabs = SETTINGS_TABS.filter(([, perm]) => canIn(space, perm)).map(([tab]) => tab);
+  const tabs = settingsTabsFor(space);
   if (!tabs.includes(el.spaceSettings.dataset.tab)) el.spaceSettings.dataset.tab = tabs[0];
   const tab = el.spaceSettings.dataset.tab;
   el.spaceTabs.hidden = tabs.length < 2;
@@ -5342,6 +5633,7 @@ function renderSpaceSettings() {
   keepFocus(el.spaceSettings, () => {
     if (tab === 'roles') renderRolesPanel(space);
     if (tab === 'channels') renderChannelsPanel(space);
+    if (tab === 'moderation') renderModerationPanel(space);
   });
 }
 
@@ -5483,6 +5775,11 @@ const PERM_INFO = [
   ['manageSpace', 'Manage space', "Rename the space."],
   ['manageChannels', 'Manage channels', 'Make, rename and delete channels, and choose who can see and post in them.'],
   ['manageRoles', 'Manage roles', 'Make and change roles below their own highest role, and give them to people.'],
+  ['viewLog', 'See the log', 'See who changed what in the space, and every timeout, kick and ban.'],
+  ['manageMessages', 'Delete messages', "Remove anyone's messages in the channels they can see."],
+  ['timeout', 'Time people out', "Stop people below them posting or reacting for a while."],
+  ['kick', 'Kick people', 'Take people below them out of the space. They can come back with an invite.'],
+  ['ban', 'Ban people', "Take people below them out for good, and lift bans."],
   ['invite', 'Invite people', 'Make invite links.'],
   ['send', 'Send messages', ''],
   ['files', 'Send files', ''],
@@ -6695,6 +6992,7 @@ async function init() {
   el.spaceInviteCopy.addEventListener('click', copyInvite);
   el.spaceJoinBtn.addEventListener('click', onJoinSpace);
   el.spaceRenameForm.addEventListener('submit', onSpaceRename);
+  el.modForm.addEventListener('submit', onModConfirm);
   el.spaceTabs.addEventListener('click', (e) => {
     const tab = e.target.closest('[data-tab]');
     if (!tab) return;
@@ -6822,7 +7120,7 @@ async function init() {
   el.pwBtn.addEventListener('click', onPasswordChange);
   el.signoutBtn.addEventListener('click', onSignOut);
   // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog]) {
     d.addEventListener('click', (e) => {
       if (e.target === d || e.target.closest('[data-close]')) d.close();
     });

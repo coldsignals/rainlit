@@ -567,6 +567,7 @@
         <button type="button" role="tab" data-tab="general">General</button>
         <button type="button" role="tab" data-tab="roles">Roles</button>
         <button type="button" role="tab" data-tab="channels">Channels</button>
+        <button type="button" role="tab" data-tab="moderation">Moderation</button>
       </div>
       <section id="space-general" class="tab-panel" data-tab="general">
         <form id="space-rename-form" class="space-row" novalidate>
@@ -583,8 +584,43 @@
         <ol id="space-channel-admin" class="channel-admin"></ol>
         <small class="hint">Rename one by changing its name. <b>Who</b> sets who can see it and post in it. Deleting one deletes everything in it, for everyone.</small>
       </section>
+      <section id="space-moderation" class="tab-panel" data-tab="moderation" hidden></section>
       <p id="space-settings-error" class="form-error" role="alert" hidden></p>
     </div>
+  </dialog>
+
+  <!-- A timeout, kick or ban -->
+  <dialog id="mod-dialog" class="settings space-dialog" aria-labelledby="mod-title">
+    <form id="mod-form" class="settings-inner" novalidate>
+      <div class="settings-head"><h2 id="mod-title"></h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p id="mod-text" class="mod-text"></p>
+      <label id="mod-length-field" class="field" hidden>
+        <span>For</span>
+        <select id="mod-length">
+          <option value="60">1 minute</option>
+          <option value="300">5 minutes</option>
+          <option value="600">10 minutes</option>
+          <option value="3600">1 hour</option>
+          <option value="86400">1 day</option>
+          <option value="604800">1 week</option>
+        </select>
+      </label>
+      <label id="mod-purge-field" class="field" hidden>
+        <span>Also remove their messages from</span>
+        <select id="mod-purge">
+          <option value="0">Don't remove any</option>
+          <option value="3600">The last hour</option>
+          <option value="86400">The last day</option>
+          <option value="604800">The last week</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Reason <small class="hint">(optional, for the log)</small></span>
+        <input id="mod-reason" maxlength="200" autocomplete="off" />
+      </label>
+      <p id="mod-error" class="form-error" role="alert" hidden></p>
+      <button id="mod-confirm" class="primary-btn danger-btn" type="submit"></button>
+    </form>
   </dialog>
 
   <dialog id="space-join" class="settings space-dialog" aria-labelledby="space-join-title">

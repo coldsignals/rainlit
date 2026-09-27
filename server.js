@@ -393,6 +393,8 @@ api.get('/users/:id', needUser, (req, res) => {
 // everything new in it goes out live to everyone in it (every device they have open),
 // and the routes below serve both: /dms/:friendId/... and /channels/:channelId/...
 
+const TIMED_OUT = "You're in a timeout here, so you can only read for now.";
+
 // Only friends can message each other. Puts the conversation, and who's in it, on the request.
 function needFriend(req, res, next) {
   const friendId = String(req.params.friendId);
@@ -458,7 +460,7 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     const again = { id, dm: passed.dm, author: passed.author, kind: passed.kind, text: String(b.text || ''), meta: b.gif || null, file: null, at: passed.at, replyTo: passed.replyTo ? { id: passed.replyTo } : null, seq: null, saved: false };
     return res.json({ message: dms.withReplies([again])[0] });
   }
-  if (req.access && !req.access.send) return fail(res, 403, "You can't send messages in this channel.");
+  if (req.access && !req.access.send) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send messages in this channel.");
   let fields;
   // Answering an earlier message in this conversation (anything else is just ignored).
   const replyTo = dms.replyTarget(req.dm.id, b.replyTo);
@@ -498,7 +500,7 @@ function cleanGif(g) {
 // written to disk as it arrives, so big files never have to fit in memory.
 api.post(conv('/files'), needUser, needConv, (req, res) => {
   const tooBig = `Files can be up to ${FILE_MAX_MB} MB.`;
-  if (req.access && !req.access.files) return fail(res, 403, "You can't send files in this channel.");
+  if (req.access && !req.access.files) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send files in this channel.");
   if (!req.dm.save) return fail(res, 409, 'Saving is off in this conversation, so files can only be sent during a call.');
   const id = String(req.get('x-message-id') || '');
   if (!ID_RE.test(id) || dms.getRow(id)) return fail(res, 400, "That upload didn't make sense.");
@@ -578,15 +580,22 @@ api.post('/files/:id/link', needUser, (req, res) => {
   res.json({ url: `/files/${r.id}/${encodeURIComponent(r.file_name)}?link=${expires}.${linkSig(r.id, expires)}` });
 });
 
+// In a channel, someone allowed to delete messages can remove anyone's (and it's logged).
 api.delete(conv('/messages/:id'), needUser, needConv, (req, res) => {
   const id = req.params.id;
   const m = dms.getMessage(id) || dms.passingMessage(id);
-  if (!m || m.dm !== req.dm.id || m.author !== req.user.id || !['text', 'file', 'gif'].includes(m.kind)) {
+  const mine = Boolean(m) && m.author === req.user.id;
+  const asMod = Boolean(m) && !mine && Boolean(req.channel) && spaces.can(req.member, 'manageMessages');
+  if (!m || m.dm !== req.dm.id || !(mine || asMod) || !['text', 'file', 'gif'].includes(m.kind)) {
     return fail(res, 404, "That message isn't there any more.");
   }
-  if (m.seq) dms.removeMessage(id);
+  if (m.seq) dms.removeMessage(id, asMod ? req.user.id : null);
   else dms.forgetPassing(id);
-  tell(req, { type: 'dm-removed', dm: req.dm.id, id, by: req.user.id, name: req.user.display_name, was: m.kind === 'file' ? 'file' : 'message' });
+  const was = m.kind === 'file' ? 'file' : 'message';
+  const author = asMod && people.userById(m.author);
+  const authorName = author ? author.display_name : 'someone';
+  tell(req, { type: 'dm-removed', dm: req.dm.id, id, by: req.user.id, name: req.user.display_name, was, ...(asMod ? { author: m.author, authorName } : {}) });
+  if (asMod) spaces.log(req.channel.space_id, req.user.id, 'message-remove', m.author, { user: authorName, channel: req.channel.name, was });
   res.json({ ok: true });
 });
 
@@ -615,7 +624,7 @@ function cleanEmoji(value) {
 function reactRoute(req, res, on) {
   const emoji = cleanEmoji((req.body || {}).emoji);
   if (!emoji) return fail(res, 400, "That isn't an emoji.");
-  if (on && req.access && !req.access.react) return fail(res, 403, "You can't add reactions in this channel.");
+  if (on && req.access && !req.access.react) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't add reactions in this channel.");
   const r = dms.getRow(req.params.id);
   if (!r || r.dm_id !== req.dm.id || !['text', 'file', 'gif'].includes(r.kind)) return fail(res, 404, "That message isn't there any more.");
   if (!dms.react(r.id, req.user.id, emoji, on)) return fail(res, 400, 'That message has all the reactions it can take.');
@@ -672,6 +681,10 @@ const NOT_ALLOWED = {
   manageChannels: "You don't have permission to manage this space's channels.",
   manageRoles: "You don't have permission to manage roles here.",
   invite: "You don't have permission to invite people here.",
+  timeout: "You don't have permission to time people out here.",
+  kick: "You don't have permission to kick people here.",
+  ban: "You don't have permission to ban people here.",
+  viewLog: "You don't have permission to see this space's log.",
 };
 const needPerm = (perm) => (req, res, next) => (spaces.can(req.member, perm) ? next() : fail(res, 403, NOT_ALLOWED[perm]));
 
@@ -698,9 +711,14 @@ api.patch('/spaces/:spaceId', needUser, needMember, (req, res) => {
   if (b.everyonePerms !== undefined && !spaces.can(req.member, 'manageRoles')) return fail(res, 403, NOT_ALLOWED.manageRoles);
   const name = b.name === undefined ? null : spaces.spaceName(b.name);
   if (b.name !== undefined && !name) return fail(res, 400, 'A space needs a name.');
-  if (name) spaces.renameSpace(req.space.id, name);
+  if (name && name !== req.space.name) {
+    spaces.renameSpace(req.space.id, name);
+    spaces.log(req.space.id, req.user.id, 'space-rename', null, { from: req.space.name, to: name });
+  }
   if (b.everyonePerms !== undefined) {
-    spaces.setEveryonePerms(req.space.id, spaces.allowedPerms(req.member, spaces.permBits(b.everyonePerms), req.space.everyone_perms));
+    const bits = spaces.allowedPerms(req.member, spaces.permBits(b.everyonePerms), req.space.everyone_perms);
+    spaces.setEveryonePerms(req.space.id, bits);
+    if (bits !== req.space.everyone_perms) spaces.log(req.space.id, req.user.id, 'everyone-perms', null, { perms: spaces.permNames(bits) });
   }
   spaceChanged(req.space.id);
   res.json({ ok: true });
@@ -727,6 +745,7 @@ api.post('/spaces/:spaceId/channels', needUser, needMember, needPerm('manageChan
   if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
   const id = spaces.createChannel(req.space.id, name);
   if (!id) return fail(res, 400, `A space can have up to ${spaces.MAX_CHANNELS} channels.`);
+  spaces.log(req.space.id, req.user.id, 'channel-create', id, { name });
   spaceChanged(req.space.id);
   res.json({ channel: { id, name } });
 });
@@ -740,6 +759,7 @@ api.patch('/channels/:channelId', needUser, needChannel, (req, res) => {
     const name = spaces.channelName(b.name);
     if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
     spaces.renameChannel(req.channel.id, name);
+    if (name !== req.channel.name) spaces.log(req.channel.space_id, req.user.id, 'channel-rename', req.channel.id, { from: req.channel.name, to: name });
   }
   if (['private', 'readonly', 'seeRoles', 'sendRoles'].some((key) => b[key] !== undefined)) {
     const ours = new Set(spaces.rolesOf(req.channel.space_id).map((r) => r.id));
@@ -751,6 +771,8 @@ api.patch('/channels/:channelId', needUser, needChannel, (req, res) => {
       see: b.seeRoles === undefined ? before.see : pick(b.seeRoles),
       send: b.sendRoles === undefined ? before.send : pick(b.sendRoles),
     });
+    const now = spaces.channel(req.channel.id);
+    spaces.log(req.channel.space_id, req.user.id, 'channel-access', req.channel.id, { name: now.name, private: Boolean(now.private), readonly: Boolean(now.readonly) });
   }
   spaceChanged(req.channel.space_id);
   res.json({ ok: true });
@@ -760,6 +782,7 @@ api.delete('/channels/:channelId', needUser, needChannel, (req, res) => {
   if (!spaces.can(req.member, 'manageChannels')) return fail(res, 403, NOT_ALLOWED.manageChannels);
   if (spaces.channelsOf(req.channel.space_id).length <= 1) return fail(res, 400, 'A space needs at least one channel.');
   spaces.deleteChannel(req.channel.id);
+  spaces.log(req.channel.space_id, req.user.id, 'channel-delete', req.channel.id, { name: req.channel.name });
   spaceChanged(req.channel.space_id);
   res.json({ ok: true });
 });
@@ -776,6 +799,7 @@ api.get('/space-invites/:code', needUser, (req, res) => {
   res.json({
     space: { id: space.id, name: space.name, memberCount: spaces.memberIds(space.id).length },
     member: spaces.isMember(space.id, req.user.id),
+    banned: spaces.isBanned(space.id, req.user.id),
   });
 });
 
@@ -783,6 +807,7 @@ api.post('/space-invites/:code', needUser, (req, res) => {
   const invite = spaces.inviteByCode(req.params.code);
   const space = invite && spaces.getSpace(invite.space_id);
   if (!space) return fail(res, 404, "That invite link doesn't work any more.");
+  if (spaces.isBanned(space.id, req.user.id)) return fail(res, 403, "You've been banned from this space.");
   if (!spaces.isMember(space.id, req.user.id)) {
     spaces.addMember(space.id, req.user.id);
     spaces.useInvite(invite.code);
@@ -812,6 +837,7 @@ api.post('/spaces/:spaceId/roles', needUser, needMember, needPerm('manageRoles')
     hoist: Boolean(b.hoist),
   });
   if (!id) return fail(res, 400, `A space can have up to ${spaces.MAX_ROLES} roles.`);
+  spaces.log(req.space.id, req.user.id, 'role-create', id, { name: spaces.role(id).name });
   spaceChanged(req.space.id);
   res.json({ role: spaces.roleJson(spaces.role(id)) });
 });
@@ -826,12 +852,15 @@ api.patch('/spaces/:spaceId/roles/:roleId', needUser, needMember, needRole, (req
     perms: b.perms === undefined ? undefined : spaces.allowedPerms(req.member, spaces.permBits(b.perms), req.role.perms),
     hoist: b.hoist === undefined ? undefined : Boolean(b.hoist),
   });
+  const after = spaces.role(req.role.id);
+  spaces.log(req.space.id, req.user.id, 'role-update', req.role.id, { name: after.name, ...(after.name !== req.role.name ? { from: req.role.name } : {}) });
   spaceChanged(req.space.id);
-  res.json({ role: spaces.roleJson(spaces.role(req.role.id)) });
+  res.json({ role: spaces.roleJson(after) });
 });
 
 api.delete('/spaces/:spaceId/roles/:roleId', needUser, needMember, needRole, (req, res) => {
   spaces.deleteRole(req.role.id);
+  spaces.log(req.space.id, req.user.id, 'role-delete', req.role.id, { name: req.role.name });
   spaceChanged(req.space.id);
   res.json({ ok: true });
 });
@@ -842,6 +871,7 @@ api.post('/spaces/:spaceId/roles/:roleId/move', needUser, needMember, needRole, 
   if (!other) return res.json({ ok: true }); // already at the top or bottom
   if (!spaces.canManageRole(req.member, other)) return fail(res, 403, "That would move it above your own highest role.");
   spaces.swapRoles(req.role, other);
+  spaces.log(req.space.id, req.user.id, 'role-move', req.role.id, { name: req.role.name, up: Boolean((req.body || {}).up) });
   spaceChanged(req.space.id);
   res.json({ ok: true });
 });
@@ -852,14 +882,93 @@ function memberRoleRoute(on) {
     const target = spaces.memberOf(req.space.id, req.params.userId);
     if (!target) return fail(res, 404, "They aren't in this space any more.");
     if (!spaces.canManageMember(req.member, target)) return fail(res, 403, "You can only change the roles of people below you.");
+    const had = target.roleIds.includes(req.role.id);
     if (on) spaces.giveRole(req.space.id, target.userId, req.role.id);
     else spaces.takeRole(req.space.id, target.userId, req.role.id);
+    if (had !== on) {
+      spaces.log(req.space.id, req.user.id, on ? 'role-give' : 'role-take', target.userId, { role: req.role.name, user: people.userById(target.userId).display_name });
+    }
     spaceChanged(req.space.id);
     res.json({ ok: true });
   };
 }
 api.put('/spaces/:spaceId/members/:userId/roles/:roleId', needUser, needMember, needRole, memberRoleRoute(true));
 api.delete('/spaces/:spaceId/members/:userId/roles/:roleId', needUser, needMember, needRole, memberRoleRoute(false));
+
+// ----- Moderation -----
+//
+// Timeouts, kicks and bans, by people allowed to, and only on people below them. Each one
+// goes in the space's log, with the reason if there was one.
+
+function needTarget(perm) {
+  return (req, res, next) => {
+    const target = spaces.memberOf(req.space.id, req.params.userId);
+    if (!target) return fail(res, 404, "They aren't in this space any more.");
+    if (!spaces.canModerate(req.member, target, perm)) return fail(res, 403, 'You can only do that to people below you.');
+    req.target = target;
+    req.targetName = people.userById(target.userId).display_name;
+    next();
+  };
+}
+const reasonOf = (req) => people.oneLine((req.body || {}).reason, 200);
+
+const TIMEOUT_SECONDS = [60, 300, 600, 3600, 86400, 604800]; // a minute to a week
+api.post('/spaces/:spaceId/members/:userId/timeout', needUser, needMember, needPerm('timeout'), needTarget('timeout'), (req, res) => {
+  const seconds = Number((req.body || {}).seconds) || 0; // 0 ends it
+  if (seconds && !TIMEOUT_SECONDS.includes(seconds)) return fail(res, 400, "That isn't one of the timeout lengths.");
+  const until = seconds ? Date.now() + seconds * 1000 : 0;
+  spaces.setTimeoutUntil(req.space.id, req.target.userId, until);
+  spaces.log(req.space.id, req.user.id, seconds ? 'timeout' : 'timeout-end', req.target.userId, { user: req.targetName, seconds, reason: reasonOf(req) });
+  spaceChanged(req.space.id);
+  res.json({ ok: true, until });
+});
+
+// Out of the space. They can come back with an invite link.
+api.post('/spaces/:spaceId/members/:userId/kick', needUser, needMember, needPerm('kick'), needTarget('kick'), (req, res) => {
+  spaces.removeMember(req.space.id, req.target.userId);
+  spaces.log(req.space.id, req.user.id, 'kick', req.target.userId, { user: req.targetName, reason: reasonOf(req) });
+  realtime.sendToUser(req.target.userId, { type: 'space-removed', space: req.space.id, why: 'kicked' });
+  spaceChanged(req.space.id);
+  res.json({ ok: true });
+});
+
+// Out, and they can't come back. Their messages from the last hour, day or week can go too.
+const PURGE_SECONDS = [0, 3600, 86400, 604800];
+api.post('/spaces/:spaceId/members/:userId/ban', needUser, needMember, needPerm('ban'), needTarget('ban'), (req, res) => {
+  const purge = Number((req.body || {}).purge) || 0;
+  if (!PURGE_SECONDS.includes(purge)) return fail(res, 400, "That isn't one of the choices.");
+  spaces.ban(req.space.id, req.target.userId, req.user.id, reasonOf(req));
+  let removed = 0;
+  if (purge) {
+    const gone = spaces.purgeMessages(req.space.id, req.target.userId, Date.now() - purge * 1000);
+    removed = gone.count;
+    for (const [channelId, ids] of Object.entries(gone.byChannel)) {
+      const channel = spaces.channel(channelId);
+      for (const id of channel ? spaces.channelAudience(channel) : []) realtime.sendToUser(id, { type: 'dm-gone', dm: channelId, ids });
+    }
+  }
+  spaces.log(req.space.id, req.user.id, 'ban', req.target.userId, { user: req.targetName, reason: reasonOf(req), removed });
+  realtime.sendToUser(req.target.userId, { type: 'space-removed', space: req.space.id, why: 'banned' });
+  spaceChanged(req.space.id);
+  res.json({ ok: true, removed });
+});
+
+api.get('/spaces/:spaceId/bans', needUser, needMember, needPerm('ban'), (req, res) => {
+  res.json({ bans: spaces.bansOf(req.space.id) });
+});
+
+api.delete('/spaces/:spaceId/bans/:userId', needUser, needMember, needPerm('ban'), (req, res) => {
+  if (spaces.unban(req.space.id, req.params.userId)) {
+    const u = people.userById(req.params.userId);
+    spaces.log(req.space.id, req.user.id, 'unban', req.params.userId, { user: u ? u.display_name : 'someone' });
+    spaceChanged(req.space.id);
+  }
+  res.json({ ok: true });
+});
+
+api.get('/spaces/:spaceId/log', needUser, needMember, needPerm('viewLog'), (req, res) => {
+  res.json({ entries: spaces.logOf(req.space.id, Number(req.query.before) || 0) });
+});
 
 // ----- Admin: invites and accounts -----
 

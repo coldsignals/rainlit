@@ -35,8 +35,8 @@ server can hold many of them, the way Discord holds many servers.
       everyone who joins during the alpha
 - [x] Roles and permissions: roles with names, colors and an order; what @everyone can
       do; private channels, and channels only some roles post in
-- [ ] Moderation for the people running a space: kick, ban, timeout, deleting others'
-      messages, an audit log
+- [x] Moderation for the people running a space: kick, ban (and clear away their recent
+      messages), timeout, deleting others' messages, and a log of who did what
 - [ ] Blocking and reporting
 - [ ] Mentions, and notifications from spaces
 
