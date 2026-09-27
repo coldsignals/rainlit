@@ -1329,13 +1329,31 @@ function onRemoteTrack(track) {
   audio.dataset.kind = S.remoteAudio.size ? 'stream' : 'voice';
   audio.volume = Math.min(1, S.volume);
   track.onmute = track.onunmute = renderStreamAudio; // the share's sound starting and stopping
+  // (For the call debug log: their sound stopping, on its way or here, and starting again.)
+  track.addEventListener('mute', () => trace('incoming-stopped', { which: audio.dataset.kind }));
+  track.addEventListener('unmute', () => trace('incoming-back', { which: audio.dataset.kind }));
+  audio.addEventListener('pause', () => trace('sound-paused', { which: audio.dataset.kind }));
+  audio.addEventListener('playing', () => {
+    audio.blockedNoted = false;
+    trace('sound-playing', { which: audio.dataset.kind });
+  });
   if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).catch(() => {});
   el.remoteAudio.append(audio);
   S.remoteAudio.set(track.id, audio);
   applyVolume();
-  audio.play().catch(() => askForSoundTap());
+  audio.play().catch((err) => {
+    noteBlocked(audio, err);
+    askForSoundTap();
+  });
   // The first audio track is always your friend's microphone.
   if (!S.remoteMeter) S.remoteMeter = makeMeter(track);
+}
+
+// (For the call debug log: a player the device won't let play, noted once until it plays again.)
+function noteBlocked(audio, err) {
+  if (audio.blockedNoted) return;
+  audio.blockedNoted = true;
+  trace('sound-blocked', { which: audio.dataset.kind, why: (err && err.name) || undefined });
 }
 
 let soundTapPending = false;
@@ -1436,7 +1454,7 @@ function checkCallSound() {
   }
 
   for (const audio of S.remoteAudio.values()) {
-    if (audio.paused && audio.srcObject) audio.play().catch(() => {});
+    if (audio.paused && audio.srcObject) audio.play().catch((err) => noteBlocked(audio, err));
   }
   if (S.boostCtx && S.boosts.size && !boostRunning()) {
     S.boostCtx.resume().catch(() => {});
@@ -4770,7 +4788,11 @@ function startBoost(id, audio) {
   try {
     if (!S.boostCtx) {
       S.boostCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-      S.boostCtx.onstatechange = applyVolume;
+      const ctx = S.boostCtx;
+      ctx.onstatechange = () => {
+        trace('boost-state', { state: ctx.state });
+        applyVolume();
+      };
       S.boostCtxAt = Date.now();
       const limiter = S.boostCtx.createDynamicsCompressor();
       limiter.threshold.value = -3;
@@ -8127,9 +8149,26 @@ async function traceStatus() {
     hidden: document.hidden || undefined,
     paused: S.androidPaused || undefined,
     peer: !S.peer ? 'none' : S.peer.away ? 'away' : 'here',
+    out: S.audioRoute ? S.audioRoute.current : undefined,
+    vol: `${Math.round(Math.min(S.volume, volumeCap()) * 100)}%`,
+    echo: S.micFx.echoCancellation ? undefined : 'off',
     net: netInfo(),
     battery: S.battery ? `${Math.round(S.battery.level * 100)}%${S.battery.charging ? ' charging' : ''}` : undefined,
   };
+  // Their voice as this device plays it: its player going or not (muted while the boost plays
+  // it instead), and the boost's own state and how far its clock moved since last time.
+  const voice = [...S.remoteAudio.values()].find((a) => a.dataset.kind === 'voice');
+  if (voice) s.player = voice.paused ? 'paused' : voice.muted ? 'muted' : 'playing';
+  if (S.boostCtx) {
+    const clock = S.boostCtx.currentTime;
+    s.boost = S.boostCtx.state;
+    if (S.traceBoostClock !== undefined && S.traceBoostCtx === S.boostCtx) s.boostS = Math.round(clock - S.traceBoostClock);
+    S.traceBoostClock = clock;
+    S.traceBoostCtx = S.boostCtx;
+  }
+  if (ANDROID) {
+    try { s.duck = (await ANDROID.duckStatus()).state; } catch {}
+  }
   const conn = S.conn;
   if (conn) {
     s.pc = conn.pc.connectionState;
@@ -8143,9 +8182,14 @@ async function traceStatus() {
         else if (r.type === 'outbound-rtp' && r.kind === 'audio' && (!outAudio || r.packetsSent > outAudio.packetsSent)) outAudio = r;
         else if (r.type === 'transport' && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId);
       });
-      const last = conn.traceLast || { got: 0, lost: 0, sent: 0 };
-      const now = { got: inAudio ? inAudio.packetsReceived : 0, lost: inAudio ? inAudio.packetsLost || 0 : 0, sent: outAudio ? outAudio.packetsSent : 0 };
+      const last = conn.traceLast || { got: 0, lost: 0, sent: 0, played: 0 };
+      const now = {
+        got: inAudio ? inAudio.packetsReceived : 0, lost: inAudio ? inAudio.packetsLost || 0 : 0, sent: outAudio ? outAudio.packetsSent : 0,
+        // (Seconds of their sound actually played out here: it stops going up if nothing plays it.)
+        played: inAudio ? inAudio.totalSamplesDuration || (inAudio.totalSamplesReceived || 0) / 48000 : 0,
+      };
       s.soundIn = now.got - last.got;
+      s.playedS = Math.round(now.played - last.played);
       s.soundOut = now.sent - last.sent;
       if (now.lost > last.lost) s.lost = now.lost - last.lost;
       if (inAudio && inAudio.jitter) s.jitterMs = Math.round(inAudio.jitter * 1000);
@@ -8511,7 +8555,13 @@ async function init() {
   el.msgSave.addEventListener('click', onMessageMenuSave);
   el.msgOpen.addEventListener('click', onMessageMenuOpen);
   el.routeBtn.addEventListener('click', nextRoute);
-  if (ANDROID) ANDROID.addListener('audioroutes', (r) => { if (S.inCall) renderRoute(r); });
+  if (ANDROID) {
+    ANDROID.addListener('audioroutes', (r) => {
+      if (!S.inCall) return;
+      trace('audio-out', { out: r && r.current });
+      renderRoute(r);
+    });
+  }
   if (ANDROID) {
     ANDROID.addListener('phonecall', (d) => {
       trace('phone-call', { on: Boolean(d && d.on) });
