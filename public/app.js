@@ -82,7 +82,7 @@ for (const id of [
   'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty',
   'me-btn', 'me-face', 'me-name', 'me-status', 'admin-btn', 'app-settings-btn',
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
-  'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice',
+  'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'members-toggle', 'member-panel',
   'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove', 'menu-block',
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
@@ -2784,10 +2784,12 @@ function closeDm() {
   el.dm.hidden = true;
   el.home.hidden = false;
   el.app.classList.remove('in-dm');
+  renderMemberPanel();
   renderFriends();
 }
 
 function renderDmHead() {
+  renderMemberPanel();
   if (isChannelKey(S.openDm)) {
     renderChannelHead();
     return renderComposer();
@@ -5020,6 +5022,7 @@ async function loadMembers(spaceId) {
       space.byId = new Map(members.map((m) => [m.id, m]));
       space.byName = new Map(members.map((m) => [m.username.toLowerCase(), m]));
       paintNames(spaceId);
+      if (el.memberPanel.dataset.space === spaceId || (!el.memberPanel.hidden && !el.memberPanel.dataset.space)) renderMemberPanel();
     }
     return members;
   } catch {
@@ -5244,6 +5247,7 @@ function showHome() {
       el.app.classList.remove('in-dm');
     }
   }
+  renderMemberPanel();
   renderFriends();
 }
 
@@ -6049,6 +6053,80 @@ function roleChip(r) {
   return chip;
 }
 
+
+// ----- The members panel -----
+// On the right of a space's channel (on a wide enough screen): who's online, grouped by the
+// roles shown separately, then everyone offline, dimmed. The button in the header hides it.
+
+S.showMembers = store.get('showMembers', 'on') !== 'off';
+const widePanel = matchMedia('(min-width: 1000px)');
+
+function presenceIn(m) {
+  if (m.id === S.clientId) return myPresence();
+  const f = S.friends.get(m.id);
+  return (f && f.presence) || m.presence || 'offline';
+}
+
+function renderMemberPanel() {
+  const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
+  const space = c && S.spaces.get(c.spaceId);
+  const show = Boolean(space) && widePanel.matches && S.showMembers;
+  el.membersToggle.hidden = !space || !widePanel.matches;
+  el.membersToggle.classList.toggle('on', show);
+  el.membersToggle.setAttribute('aria-pressed', String(show));
+  el.membersToggle.title = show ? 'Hide members' : 'Show members';
+  el.memberPanel.hidden = !show;
+  el.memberPanel.dataset.space = show ? space.id : '';
+  if (!show) return;
+  if (!space.members) {
+    loadMembers(space.id);
+    return; // (drawn once they're here)
+  }
+  const byName = (a, b) => a.displayName.localeCompare(b.displayName);
+  const hoisted = space.roles.filter((r) => r.hoist);
+  const groups = hoisted.map((r) => ({ title: r.name, members: [] }));
+  const online = [];
+  const offline = [];
+  for (const m of [...space.members].sort(byName)) {
+    if (presenceIn(m) === 'offline') {
+      offline.push(m);
+      continue;
+    }
+    const i = hoisted.findIndex((r) => m.roles.includes(r.id));
+    (i >= 0 ? groups[i].members : online).push(m);
+  }
+  const all = [...groups, { title: 'Online', members: online }, { title: 'Offline', members: offline, dim: true }].filter((g) => g.members.length);
+  el.memberPanel.replaceChildren(...all.flatMap((g) => {
+    const head = document.createElement('h3');
+    head.className = 'panel-group';
+    head.textContent = `${g.title} — ${g.members.length}`;
+    return [head, ...g.members.map((m) => memberPanelRow(space, m, g.dim))];
+  }));
+}
+
+function memberPanelRow(space, m, dim) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = `panel-member${dim ? ' offline' : ''}`;
+  const text = document.createElement('span');
+  text.className = 'panel-member-text';
+  const name = document.createElement('span');
+  name.className = 'panel-member-name';
+  name.textContent = m.displayName;
+  name.style.color = memberColor(space, m.id);
+  if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
+  text.append(name);
+  if (m.statusText && !dim) {
+    const status = document.createElement('span');
+    status.className = 'panel-member-status';
+    status.textContent = m.statusText;
+    text.append(status);
+  }
+  b.append(makeFace(m, dim ? null : presenceIn(m)), text);
+  b.addEventListener('click', () => openMiniProfile(m.id));
+  return b;
+}
+
 function openSpaceSettings() {
   closeSpaceMenu();
   const space = S.spaces.get(S.view);
@@ -6820,6 +6898,7 @@ function showVoiceView() {
   S.view = v.spaceId;
   el.home.hidden = true;
   el.voiceView.hidden = false;
+  renderMemberPanel();
   el.app.classList.add('in-dm');
   renderSpaces();
   renderVoiceView();
@@ -7033,6 +7112,9 @@ async function resumeAfterRestart() {
 }
 
 function onPresence(id, presence) {
+  const p = S.people.get(id);
+  if (p) p.presence = presence;
+  if (!el.memberPanel.hidden) renderMemberPanel();
   const f = S.friends.get(id);
   if (!f) return;
   f.presence = presence;
@@ -7047,6 +7129,7 @@ function onProfile(user) {
   if (f) Object.assign(f, user);
   for (const dm of S.dms.values()) refreshNames(dm, user.id);
   if (el.spaceMembers.open) renderMembers();
+  if (!el.memberPanel.hidden) renderMemberPanel();
   if (el.miniProfile.open) renderMiniProfile();
   if (!f) return;
   renderFriends();
@@ -7968,6 +8051,12 @@ async function init() {
   el.smMembers.addEventListener('click', openMembers);
   el.smSettings.addEventListener('click', openSpaceSettings);
   el.smNotify.addEventListener('click', onSpaceNotify);
+  el.membersToggle.addEventListener('click', () => {
+    S.showMembers = !S.showMembers;
+    store.set('showMembers', S.showMembers ? 'on' : 'off');
+    renderMemberPanel();
+  });
+  widePanel.addEventListener('change', renderMemberPanel);
   el.addVoiceBtn.addEventListener('click', () => startNewChannel('voice'));
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-voice]');

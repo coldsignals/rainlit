@@ -51,6 +51,7 @@
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
       <symbol id="i-hash" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></symbol>
       <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
       <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3.5 8.5 8 12l4-6.5 4 6.5 4.5-3.5-1.6 10H5.1Z" fill="currentColor"/></symbol>
       <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
       <symbol id="i-reply" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
@@ -263,6 +264,8 @@
         </div>
       </div>
       <div id="voice-audio" hidden></div>
+      <!-- Who's in the space, beside its channels -->
+      <aside id="member-panel" class="member-panel" aria-label="Members" hidden></aside>
 
       <!-- ============ A conversation, with the call on top while you're in one ============ -->
       <div id="dm" class="dm" hidden>
@@ -280,6 +283,9 @@
           <button id="dm-save" class="dm-save" type="button"></button>
           <button id="dm-call-btn" class="icon-btn dm-call" type="button" aria-label="Call" title="Call">
             <svg class="icon"><use href="#i-phone"/></svg>
+          </button>
+          <button id="members-toggle" class="icon-btn ghost members-toggle" type="button" aria-label="Members" title="Members" hidden>
+            <svg class="icon"><use href="#i-users"/></svg>
           </button>
           <button id="dm-close" class="icon-btn ghost dm-close" type="button" aria-label="Close this conversation" title="Close this conversation">
             <svg class="icon"><use href="#i-close"/></svg>

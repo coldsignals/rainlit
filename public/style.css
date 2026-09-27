@@ -591,7 +591,30 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .me-name { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .me-status { color: var(--mist); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.content { position: relative; min-width: 0; min-height: 0; }
+.content { position: relative; min-width: 0; min-height: 0; display: flex; }
+.content > .home, .content > .dm, .content > .voice-view { flex: 1 1 auto; min-width: 0; }
+
+/* The members panel, on the right of a space's channels */
+.member-panel {
+  order: 2; /* (after the conversation, whatever the page's order) */
+  flex: none; width: 240px; overflow-y: auto;
+  padding: 12px 8px 16px; background: var(--deep); border-left: 1px solid var(--line);
+}
+.panel-group { margin: 14px 8px 4px; color: var(--mist); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.panel-group:first-child { margin-top: 2px; }
+.panel-member {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 5px 8px;
+  border: 0; border-radius: 8px; background: none; text-align: left;
+}
+.panel-member:hover { background: var(--dusk); }
+.panel-member .face { width: 32px; height: 32px; font-size: 13px; flex: none; }
+.panel-member-text { min-width: 0; display: grid; }
+.panel-member-name { font-weight: 650; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-member-status { color: var(--mist); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-member.offline { opacity: 0.4; }
+.panel-member.offline:hover { opacity: 0.75; }
+.members-toggle.on { color: var(--text); background: var(--dusk-hi); }
+@media (max-width: 760px) { .member-panel { display: none !important; } }
 
 .home { height: 100%; overflow-y: auto; display: grid; place-items: center; padding: 24px; }
 .home-inner { width: min(460px, 100%); text-align: center; }

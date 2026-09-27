@@ -896,7 +896,8 @@ api.post('/spaces', needUser, (req, res) => {
 });
 
 api.get('/spaces/:spaceId', needUser, needMember, (req, res) => {
-  res.json({ space: mySpace(req.user.id, req.space.id), members: spaces.members(req.space.id) });
+  const members = spaces.members(req.space.id).map((m) => ({ ...m, presence: realtime.presenceOf(m.id) }));
+  res.json({ space: mySpace(req.user.id, req.space.id), members });
 });
 
 // Its name, and what @everyone can do.
