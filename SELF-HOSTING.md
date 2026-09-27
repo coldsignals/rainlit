@@ -132,6 +132,27 @@ folder: the Render disk, or the Docker volume. Keep a copy now and then:
 When an update needs to change the database, Rainlit first saves a copy of it as it was
 in the `backups` folder inside the data folder. The newest three copies are kept.
 
+## 11. Turn on voice channels (optional)
+
+Voice channels (drop-in rooms in a space, for any number of people, with video and screen
+sharing) go through [LiveKit](https://livekit.io): a media server in the middle that
+everyone in a channel connects to. Without it, everything else works, and spaces just don't
+offer voice channels. (Calls between two friends don't need it.)
+
+- **LiveKit Cloud** (easiest; it has a free tier): make an account at
+  https://cloud.livekit.io and create a project. In the project's settings, make an API
+  key. You'll have three things: the project's URL (it starts with `wss://`), the API key,
+  and its secret. Add them as `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`: on
+  Render under your service's **Environment**, or in your `.env` file (then
+  `docker compose up -d` again).
+- **Your own LiveKit server:** it's free software too
+  (https://docs.livekit.io/home/self-hosting/deployment/). It needs its own network ports
+  (for example TCP 7881 and a range of UDP ports), so it runs on a server of your own, not
+  on Render. Point the same three settings at it.
+
+Keep the secret private. The sound and video in voice channels are end-to-end encrypted
+with a key only your Rainlit hands out, so LiveKit (or whoever runs it) can't listen in.
+
 ## All the settings
 
 | Setting | What it does |
@@ -143,6 +164,7 @@ in the `backups` folder inside the data folder. The newest three copies are kept
 | `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | Cloudflare's call relay (step 5). |
 | `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL` | Another call relay instead. |
 | `KLIPY_API_KEY` | GIFs (step 6). |
+| `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels (step 11). |
 | `MAX_FILE_MB` | The biggest file people can send, in MB (100 to start with). |
 | `RECONNECT_MINUTES` | How long someone who dropped out of a call can take to come back (30). |
 | `SOURCE_URL` | Only if you've changed Rainlit's code: where your version's code is. Rainlit's license (the AGPL) asks that the people using a changed version can get it; Settings links there. |

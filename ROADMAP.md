@@ -43,7 +43,21 @@ server can hold many of them, the way Discord holds many servers.
 - [x] Mentions (@name, and @everyone for roles allowed to), with their own counts, and
       notifications from spaces: all messages, only mentions, or nothing, each space
 
-## Stage 3: Open the doors
+## Stage 3: Voice channels and group calls (in progress)
+
+Drop-in voice channels, and calls with more than two people. Past a few people, calls go
+through a media server instead of directly between everyone. That's LiveKit: open source,
+so people running their own Rainlit can run it too, or use LiveKit Cloud.
+
+- [x] Voice channels in spaces: join and leave any time, mute and deafen, video and screen
+      sharing, push to talk, who's in each one in the sidebar, and end-to-end encryption
+      (the media server can't listen in)
+- [x] Voice permissions: who can join, who can talk (or only listen), private voice
+      channels, and timeouts and kicks that reach voice too
+- [ ] Group calls in DMs, with more than one friend
+- [ ] LiveKit alongside Rainlit in the Docker setup, for one-piece self-hosting
+
+## Stage 4: Open the doors
 
 Free accounts on rainlit.app for anyone, no invite code needed. What has to be in place
 first:
@@ -56,14 +70,6 @@ first:
 - [ ] Reports that reach whoever runs the server, and tools to act on them
 - [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
       10 MB)
-
-## Stage 4: Voice channels and group calls
-
-Drop-in voice channels, and calls with more than two people. Past a few people, calls go
-through a media server instead of directly between everyone (bundled with each Rainlit
-server; LiveKit is the likely choice), so hosting stays one piece. The media server can
-relay calls too, which should let people running their own skip setting up a separate
-relay.
 
 ## Stage 5: One account everywhere, and bots
 

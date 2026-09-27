@@ -19,6 +19,7 @@ const push = require('./lib/push');
 const spaces = require('./lib/spaces');
 const badges = require('./lib/badges');
 const safety = require('./lib/safety');
+const voice = require('./lib/voice');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -55,6 +56,19 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1); // Render sits in front: trust it about https and the visitor's address
 
+// Voice channels talk to the LiveKit server (and with LiveKit Cloud, to its regions too).
+const LIVEKIT_SRC = (() => {
+  if (!voice.enabled) return '';
+  try {
+    const u = new URL(voice.url);
+    if (u.hostname.endsWith('.livekit.cloud')) return ' wss://*.livekit.cloud https://*.livekit.cloud';
+    const secure = u.protocol === 'wss:';
+    return ` ${secure ? 'wss' : 'ws'}://${u.host} ${secure ? 'https' : 'http'}://${u.host}`;
+  } catch {
+    return '';
+  }
+})();
+
 // The page may only load its own scripts, and may only be shown on this site (not framed by another).
 const CSP = [
   "default-src 'self'",
@@ -63,7 +77,7 @@ const CSP = [
   'font-src https://fonts.gstatic.com',
   "img-src 'self' blob: data: https://*.klipy.com",
   "media-src 'self' blob: https://*.klipy.com",
-  "connect-src 'self' https://api.klipy.com",
+  `connect-src 'self' https://api.klipy.com${LIVEKIT_SRC}`,
   "frame-ancestors 'none'",
   "base-uri 'none'",
   "form-action 'self'",
@@ -328,6 +342,7 @@ api.get('/friends', needUser, (req, res) => {
   const out = {
     friends: [], incoming: [], outgoing: [], maxFileMb: FILE_MAX_MB, klipyKey: KLIPY_KEY, quickReactions: dms.quickReactions(req.user.id),
     blocked: safety.blockedBy(req.user.id).map((id) => people.userById(id)).filter(Boolean).map(people.publicUser),
+    voice: voice.enabled,
     ...(req.user.is_admin ? { openReports: safety.openReportCount() } : {}),
   };
   const convos = dms.summariesFor(req.user.id);
@@ -532,7 +547,9 @@ function needChannel(req, res, next) {
   next();
 }
 
-const needConv = (req, res, next) => (req.params.channelId ? needChannel : needFriend)(req, res, next);
+const needConv = (req, res, next) => (req.params.channelId
+  ? needChannel(req, res, () => (req.channel.kind === 'voice' ? fail(res, 400, "Voice channels don't have messages.") : next()))
+  : needFriend(req, res, next));
 const conv = (rest = '') => [`/dms/:friendId${rest}`, `/channels/:channelId${rest}`];
 
 function tell(req, msg) {
@@ -812,8 +829,38 @@ api.patch('/dms/:friendId', needUser, needFriend, (req, res) => {
 function tellSpace(spaceId, msg) {
   for (const id of spaces.memberIds(spaceId)) realtime.sendToUser(id, msg);
 }
-const spaceChanged = (spaceId) => tellSpace(spaceId, { type: 'space-changed', space: spaceId });
-const mySpace = (userId, spaceId) => spaces.spacesFor(userId).find((s) => s.id === spaceId) || null;
+function spaceChanged(spaceId) {
+  tellSpace(spaceId, { type: 'space-changed', space: spaceId });
+  recheckVoice(spaceId);
+}
+
+// Who's in each voice channel, on your spaces.
+function withVoice(list) {
+  for (const s of list) for (const c of s.channels) if (c.kind === 'voice') c.voice = realtime.voiceList(c.id);
+  return list;
+}
+const mySpace = (userId, spaceId) => withVoice(spaces.spacesFor(userId)).find((s) => s.id === spaceId) || null;
+
+// After a change (roles, a timeout, a kick or ban, a channel's settings): anyone in a voice
+// channel who may no longer be there is taken out, and anyone who may no longer talk is made
+// a listener (or the other way round).
+const voiceSpeak = new Map(); // user id -> whether their pass lets them talk
+function recheckVoice(spaceId) {
+  for (const c of spaces.channelsOf(spaceId)) {
+    if (c.kind !== 'voice') continue;
+    for (const uid of realtime.voiceMembers(c.id)) {
+      const access = spaces.channelAccess(c, spaces.memberOf(spaceId, uid));
+      if (!access || !access.connect) {
+        realtime.voiceLeave(uid);
+        realtime.sendToUser(uid, { type: 'voice-ended', channel: c.id });
+        voice.removeParticipant(c.id, uid);
+      } else if (voiceSpeak.get(uid) !== access.speak) {
+        voiceSpeak.set(uid, access.speak);
+        voice.setSpeak(c.id, uid, access.speak);
+      }
+    }
+  }
+}
 
 function needMember(req, res, next) {
   const space = spaces.getSpace(req.params.spaceId);
@@ -837,7 +884,7 @@ const NOT_ALLOWED = {
 const needPerm = (perm) => (req, res, next) => (spaces.can(req.member, perm) ? next() : fail(res, 403, NOT_ALLOWED[perm]));
 
 api.get('/spaces', needUser, (req, res) => {
-  res.json({ spaces: spaces.spacesFor(req.user.id) });
+  res.json({ spaces: withVoice(spaces.spacesFor(req.user.id)) });
 });
 
 api.post('/spaces', needUser, (req, res) => {
@@ -891,11 +938,13 @@ api.post('/spaces/:spaceId/leave', needUser, needMember, (req, res) => {
 api.post('/spaces/:spaceId/channels', needUser, needMember, needPerm('manageChannels'), (req, res) => {
   const name = spaces.channelName((req.body || {}).name);
   if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
-  const id = spaces.createChannel(req.space.id, name);
+  const kind = (req.body || {}).kind === 'voice' ? 'voice' : 'text';
+  if (kind === 'voice' && !voice.enabled) return fail(res, 400, "Voice channels aren't set up on this server yet (they need LiveKit; see SELF-HOSTING.md).");
+  const id = spaces.createChannel(req.space.id, name, kind);
   if (!id) return fail(res, 400, `A space can have up to ${spaces.MAX_CHANNELS} channels.`);
-  spaces.log(req.space.id, req.user.id, 'channel-create', id, { name });
+  spaces.log(req.space.id, req.user.id, 'channel-create', id, { name, kind });
   spaceChanged(req.space.id);
-  res.json({ channel: { id, name } });
+  res.json({ channel: { id, name, kind } });
 });
 
 // Its name, and who it's for: private (only some roles see it) or read-only (only some
@@ -929,10 +978,31 @@ api.patch('/channels/:channelId', needUser, needChannel, (req, res) => {
 api.delete('/channels/:channelId', needUser, needChannel, (req, res) => {
   if (!spaces.can(req.member, 'manageChannels')) return fail(res, 403, NOT_ALLOWED.manageChannels);
   if (spaces.channelsOf(req.channel.space_id).length <= 1) return fail(res, 400, 'A space needs at least one channel.');
+  for (const uid of realtime.voiceMembers(req.channel.id)) {
+    realtime.voiceLeave(uid);
+    realtime.sendToUser(uid, { type: 'voice-ended', channel: req.channel.id });
+  }
+  if (req.channel.kind === 'voice') voice.deleteRoom(req.channel.id);
   spaces.deleteChannel(req.channel.id);
   spaces.log(req.channel.space_id, req.user.id, 'channel-delete', req.channel.id, { name: req.channel.name });
   spaceChanged(req.channel.space_id);
   res.json({ ok: true });
+});
+
+// ----- Voice channels -----
+// A pass into a voice channel's room on the LiveKit server (lib/voice.js), what you may do
+// there, and the channel's key for its end-to-end encryption.
+api.post('/channels/:channelId/voice', needUser, needChannel, (req, res) => {
+  if (req.channel.kind !== 'voice') return fail(res, 400, "That's not a voice channel.");
+  if (!voice.enabled) return fail(res, 503, "Voice channels aren't set up on this server yet.");
+  if (!req.access.connect) return fail(res, 403, "You can't join this voice channel.");
+  voiceSpeak.set(req.user.id, req.access.speak);
+  res.json({
+    url: voice.url,
+    token: voice.joinToken({ room: req.channel.id, user: req.user, speak: req.access.speak }),
+    key: spaces.voiceKey(req.channel.id),
+    speak: req.access.speak,
+  });
 });
 
 // How much you want to hear from a space: every message, only mentions of you, or nothing.
@@ -1224,6 +1294,9 @@ app.get('/files/:id/:name', (req, res) => {
     if (err && !res.headersSent) res.sendStatus(404);
   });
 });
+
+// LiveKit's browser library (for voice channels), straight from its package.
+app.use('/vendor/livekit', express.static(path.join(__dirname, 'node_modules', 'livekit-client', 'dist'), { index: false, maxAge: '1d' }));
 
 app.use(
   express.static(path.join(__dirname, 'public'), {

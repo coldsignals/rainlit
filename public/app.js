@@ -97,7 +97,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -528,6 +528,12 @@ function applyMic() {
 
 function setPttHeld(held) {
   if (!S.ptt || S.pttHeld === held) return;
+  if (S.voice && !S.inCall) {
+    S.pttHeld = held;
+    applyVoicePtt();
+    renderTrayIcon(held);
+    return;
+  }
   if (held && !S.local.mic) {
     // Mic isn't running yet (or was blocked). Start it; the next press talks.
     toggleMic();
@@ -540,7 +546,16 @@ function setPttHeld(held) {
 
 // In the desktop app the talk key also works while you're in another app or a game.
 function syncDesktopPtt() {
-  if (DESKTOP) DESKTOP.setPushToTalk(S.ptt && S.inCall, S.pttKey).catch(() => {});
+  if (DESKTOP) DESKTOP.setPushToTalk(S.ptt && (S.inCall || Boolean(S.voice)), S.pttKey).catch(() => {});
+}
+
+// In a voice channel with push to talk, your mic sends silence until you hold the key. (It
+// isn't muted, so nobody sees you as muted.)
+function applyVoicePtt() {
+  const v = S.voice;
+  const LK = window.LivekitClient;
+  const mic = v && v.room && LK && v.room.localParticipant.getTrackPublication(LK.Track.Source.Microphone);
+  if (mic && mic.track) mic.track.mediaStreamTrack.enabled = !S.ptt || S.pttHeld;
 }
 
 async function renderPttHint() {
@@ -559,6 +574,7 @@ function setPtt(on) {
   S.ptt = on;
   S.pttHeld = false;
   syncDesktopPtt();
+  applyVoicePtt();
   store.set('ptt', on ? 'on' : 'off');
   // In push to talk the key does the muting, so you don't also show as muted to your friend.
   if (on) S.micOn = true;
@@ -775,7 +791,7 @@ function renderTrayIcon(talking) {
   if (!DESKTOP) return;
   if (talking) S.trayLitUntil = Date.now() + 600;
   const lit = talking || Date.now() < (S.trayLitUntil || 0);
-  const state = !S.inCall ? 'idle' : lit ? 'talk' : 'call';
+  const state = !(S.inCall || S.voice) ? 'idle' : lit ? 'talk' : 'call';
   if (state === S.trayState) return;
   S.trayState = state;
   if (DESKTOP.setTrayState) DESKTOP.setTrayState(state);
@@ -904,6 +920,14 @@ function handleServerMessage(msg) {
       return onDmGone(msg);
     case 'report-new':
       return onReportNew(msg);
+    case 'voice-state':
+      return onVoiceState(msg);
+    case 'voice-ended':
+      if (S.voice && S.voice.channelId === msg.channel) {
+        toast("You can't be in that voice channel any more.");
+        leaveVoice({ quiet: true });
+      }
+      return;
     case 'dm-edited':
       return onDmEdited(msg);
     case 'dm-reactions':
@@ -2257,13 +2281,16 @@ async function catchUp() {
 const MY_BUILD = (document.querySelector('meta[name="rainlit-build"]') || {}).content || '';
 
 function onHello(msg) {
+  if (S.voice && S.voice.state === 'connected') {
+    wsSend({ type: 'voice-join', channel: S.voice.channelId, muted: S.voice.muted || !S.voice.speak, deafened: S.voice.deafened });
+  }
   if (!msg.build || !MY_BUILD || msg.build === MY_BUILD) return;
   let tried = '';
   try { tried = sessionStorage.getItem('rainlit.reloadedFor') || ''; } catch {}
   if (tried === msg.build) return; // already reloaded once for this one; don't go round in circles
   if (S.updateTimer) return;
   const reloadIfQuiet = () => {
-    const busy = S.inCall || S.startingCall || S.ringing || S.editing || el.chatInput.value.trim() || S.uploads.size
+    const busy = S.inCall || S.startingCall || S.ringing || S.voice || S.editing || el.chatInput.value.trim() || S.uploads.size
       || (S.openDm && dmFor(S.openDm).pending.length) || document.querySelector('dialog[open]');
     if (busy) return;
     clearInterval(S.updateTimer);
@@ -2718,6 +2745,7 @@ async function openDm(friendId) {
   if (S.typingTo && S.typingTo !== friendId) stopTyping();
   S.openDm = friendId;
   el.home.hidden = true;
+  el.voiceView.hidden = true;
   el.dm.hidden = false;
   el.app.classList.add('in-dm');
   if (el.chatLog !== dm.log) {
@@ -4511,6 +4539,7 @@ function onMicChange() {
   S.devices.mic = el.micSelect.value;
   store.set('mic', S.devices.mic);
   restartMic();
+  voiceDevicesChanged();
 }
 
 function onMicFxChange() {
@@ -4521,6 +4550,7 @@ function onMicFxChange() {
   };
   for (const [k, on] of Object.entries(S.micFx)) store.set(k, on ? 'on' : 'off');
   restartMic();
+  voiceDevicesChanged();
   renderVolumeCap();
 }
 
@@ -4544,6 +4574,7 @@ async function onCamChange() {
 function onSpeakerChange() {
   S.devices.speaker = el.speakerSelect.value;
   store.set('speaker', S.devices.speaker);
+  voiceDevicesChanged();
   for (const a of S.remoteAudio.values()) if (a.setSinkId) a.setSinkId(S.devices.speaker).catch(() => {});
   if (S.boostCtx && S.boostCtx.setSinkId) S.boostCtx.setSinkId(S.devices.speaker || '').catch(() => {});
   routeChimes();
@@ -4938,6 +4969,10 @@ async function refreshSpaces() {
     S.spaces.set(space.id, { ...space, members: old ? old.members : null, byId: old ? old.byId : null, byName: old ? old.byName : null });
     for (const c of space.channels) {
       S.channels.set(c.id, { ...c, spaceId: space.id });
+      if (c.kind === 'voice') {
+        S.voiceStates.set(c.id, c.voice || []);
+        continue; // (voice channels have no messages)
+      }
       const key = `ch:${c.id}`;
       const dm = dmFor(key);
       dm.lastAt = c.lastAt;
@@ -5002,6 +5037,7 @@ async function onSpaceChanged(spaceId) {
 
 function onSpaceRemoved(spaceId, why) {
   const space = S.spaces.get(spaceId);
+  if (S.voice && S.voice.spaceId === spaceId) leaveVoice({ quiet: true });
   refreshSpaces();
   for (const d of [el.spaceMembers, el.spaceSettings, el.spaceInvite, el.modDialog]) if (d.open && S.view === spaceId) d.close();
   if (!space) return;
@@ -5063,12 +5099,12 @@ function paintNames(spaceId) {
 
 function spaceMentions(spaceId) {
   let n = 0;
-  for (const [id, c] of S.channels) if (c.spaceId === spaceId) n += dmFor(`ch:${id}`).mentions || 0;
+  for (const [id, c] of S.channels) if (c.spaceId === spaceId && c.kind !== 'voice') n += dmFor(`ch:${id}`).mentions || 0;
   return n;
 }
 
 function spaceUnread(spaceId) {
-  for (const [id, c] of S.channels) if (c.spaceId === spaceId && dmFor(`ch:${id}`).unread) return true;
+  for (const [id, c] of S.channels) if (c.spaceId === spaceId && c.kind !== 'voice' && dmFor(`ch:${id}`).unread) return true;
   return false;
 }
 
@@ -5113,7 +5149,13 @@ function renderSide() {
   el.spaceTitle.textContent = space.name;
   el.addChannelBtn.hidden = !canIn(space, 'manageChannels');
   const adding = el.channelList.querySelector('.channel-new');
-  el.channelList.replaceChildren(...space.channels.map(channelItem), ...(adding ? [adding] : []));
+  el.channelList.replaceChildren(...space.channels.filter((c) => c.kind !== 'voice').map(channelItem), ...(adding ? [adding] : []));
+  // Voice channels, and who's in them.
+  const voice = space.channels.filter((c) => c.kind === 'voice');
+  el.addVoiceBtn.hidden = !(canIn(space, 'manageChannels') && S.voiceEnabled);
+  el.voiceSection.hidden = !voice.length && el.addVoiceBtn.hidden;
+  const addingVoice = el.voiceList.querySelector('.channel-new');
+  el.voiceList.replaceChildren(...voice.map(voiceChannelItem), ...(addingVoice ? [addingVoice] : []));
 }
 
 function channelItem(c) {
@@ -5171,7 +5213,8 @@ async function showSpace(spaceId) {
   if (!space.members) await loadMembers(spaceId);
   if (S.view !== spaceId || phoneLayout()) return;
   const last = lastChannels()[spaceId];
-  const channel = space.channels.find((c) => c.id === last) || space.channels[0];
+  const texts = space.channels.filter((c) => c.kind !== 'voice');
+  const channel = texts.find((c) => c.id === last) || texts[0];
   if (channel && S.openDm !== `ch:${channel.id}`) openDm(`ch:${channel.id}`);
 }
 
@@ -6182,6 +6225,8 @@ const PERM_INFO = [
   ['kick', 'Kick people', 'Take people below them out of the space. They can come back with an invite.'],
   ['ban', 'Ban people', "Take people below them out for good, and lift bans."],
   ['mentionEveryone', 'Mention @everyone', 'Notify everyone who can see a channel at once.'],
+  ['connect', 'Join voice channels', ''],
+  ['speak', 'Talk in voice channels', 'And share their camera or screen there.'],
   ['invite', 'Invite people', 'Make invite links.'],
   ['send', 'Send messages', ''],
   ['files', 'Send files', ''],
@@ -6452,11 +6497,12 @@ async function onSpaceLeave() {
   }
 }
 
-// + next to "Text channels": a box for the new one's name, at the end of the list.
-function startNewChannel() {
+// + next to "Text channels" (or "Voice channels"): a box for the new one's name, at the end of the list.
+function startNewChannel(kind = 'text') {
   const space = S.spaces.get(S.view);
   if (!canIn(space, 'manageChannels')) return;
-  let li = el.channelList.querySelector('.channel-new');
+  const list = kind === 'voice' ? el.voiceList : el.channelList;
+  let li = list.querySelector('.channel-new');
   if (!li) {
     li = document.createElement('li');
     li.className = 'channel-new';
@@ -6471,20 +6517,432 @@ function startNewChannel() {
       const name = input.value.trim();
       if (!name) return li.remove();
       try {
-        const { channel } = await api('POST', `/spaces/${space.id}/channels`, { name });
+        const { channel } = await api('POST', `/spaces/${space.id}/channels`, { name, kind });
         li.remove();
         await refreshSpaces();
-        openDm(`ch:${channel.id}`);
+        if (kind === 'voice') renderSide();
+        else openDm(`ch:${channel.id}`);
       } catch (err) {
         toast(err.message);
       }
     });
     input.addEventListener('blur', () => setTimeout(() => { if (!input.value.trim()) li.remove(); }, 150));
     li.append(input);
-    el.channelList.append(li);
+    list.append(li);
   }
   li.querySelector('input').focus();
 }
+
+// ---------------- Voice channels ----------------
+// Drop-in rooms in a space, for any number of people. The sound (and video) goes through a
+// LiveKit server (see lib/voice.js), end-to-end encrypted with the channel's key, so the
+// server in the middle can't listen in. LiveKit's library only loads when you first join one.
+
+let livekitLoading = null;
+function loadLivekit() {
+  if (window.LivekitClient) return Promise.resolve(window.LivekitClient);
+  livekitLoading ||= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/vendor/livekit/livekit-client.umd.js';
+    s.onload = () => resolve(window.LivekitClient);
+    s.onerror = () => {
+      livekitLoading = null;
+      reject(new Error("Voice couldn't load. Check your connection and try again."));
+    };
+    document.head.append(s);
+  });
+  return livekitLoading;
+}
+
+// Who's in each voice channel (from the server): channel id -> [{ id, muted, deafened, video, screen }].
+S.voiceStates = new Map();
+
+function onVoiceState({ channel, members }) {
+  S.voiceStates.set(channel, members);
+  const c = S.channels.get(channel);
+  if (c && S.view === c.spaceId) renderSide();
+  if (S.voice && S.voice.channelId === channel) renderVoiceView();
+}
+
+// Joining: a pass from the server, then the room. Joining another channel (or a call) leaves this one.
+async function joinVoice(channelId) {
+  const c = S.channels.get(channelId);
+  if (!c || c.kind !== 'voice') return;
+  if (S.voice && S.voice.channelId === channelId) return showVoiceView();
+  if (!S.voiceEnabled) return toast("Voice channels aren't set up on this server yet.");
+  if (S.inCall || S.startingCall) {
+    if (!confirm(`Leave your call with ${friendName(S.callWith)} and join #${c.name}?`)) return;
+    onLeaveClick();
+  }
+  if (S.voice) await leaveVoice({ quiet: true });
+  const v = S.voice = {
+    channelId, spaceId: c.spaceId, room: null, state: 'connecting', speak: false,
+    muted: store.get('voiceMuted', 'off') === 'on', deafened: false, speaking: new Set(), tiles: new Map(),
+  };
+  showVoiceView();
+  renderVoice();
+  try {
+    const LK = await loadLivekit();
+    if (!LK.isE2EESupported()) throw new Error("This browser can't join encrypted voice channels. Try the Rainlit app, or Chrome, Edge or a recent Firefox.");
+    const pass = await api('POST', `/channels/${channelId}/voice`, {});
+    if (S.voice !== v) return;
+    const keys = new LK.ExternalE2EEKeyProvider();
+    const room = new LK.Room({
+      adaptiveStream: true,
+      dynacast: true,
+      audioCaptureDefaults: { ...S.micFx, ...(S.devices.mic ? { deviceId: S.devices.mic } : {}) },
+      ...(S.devices.speaker ? { audioOutput: { deviceId: S.devices.speaker } } : {}),
+      e2ee: { keyProvider: keys, worker: new Worker('/vendor/livekit/livekit-client.e2ee.worker.js') },
+    });
+    v.room = room;
+    v.speak = pass.speak;
+    wireVoiceRoom(room, v);
+    await keys.setKey(pass.key);
+    await room.setE2EEEnabled(true);
+    await room.connect(pass.url, pass.token);
+    if (S.voice !== v) return room.disconnect();
+    v.state = 'connected';
+    if (v.speak && !v.muted) {
+      try {
+        await room.localParticipant.setMicrophoneEnabled(true);
+        applyVoicePtt();
+      } catch (err) {
+        v.muted = true;
+        toast(mediaErrorText(err, 'Microphone'));
+      }
+    }
+    room.startAudio().catch(() => {});
+    wsSend({ type: 'voice-join', channel: channelId, muted: v.muted || !v.speak, deafened: v.deafened });
+    syncDesktopPtt();
+    playCallSound(true);
+    if (ANDROID) ANDROID.callStarted({ name: `#${c.name}`, echo: S.micFx.echoCancellation, duck: store.get('duck', 'on') !== 'off' }).catch(() => {});
+    renderVoice();
+  } catch (err) {
+    if (S.voice !== v) return;
+    toast(err.message || "Couldn't join the voice channel.");
+    leaveVoice({ quiet: true });
+  }
+}
+
+async function leaveVoice({ quiet = false } = {}) {
+  const v = S.voice;
+  if (!v) return;
+  S.voice = null;
+  if (!quiet) playCallSound(false);
+  try {
+    if (v.room) await v.room.disconnect();
+  } catch {}
+  wsSend({ type: 'voice-leave' });
+  el.voiceAudio.replaceChildren();
+  if (ANDROID) ANDROID.callEnded().catch(() => {});
+  S.pttHeld = false;
+  syncDesktopPtt();
+  renderTrayIcon(false);
+  if (!el.voiceView.hidden) hideVoiceView();
+  renderVoice();
+}
+
+function wireVoiceRoom(room, v) {
+  const LK = window.LivekitClient;
+  const E = LK.RoomEvent;
+  const again = () => { if (S.voice === v) renderVoice(); };
+  room.on(E.TrackSubscribed, (track, _pub, participant) => {
+    if (track.kind === 'audio') {
+      const a = track.attach();
+      a.dataset.who = participant.identity;
+      a.dataset.sid = track.sid;
+      a.muted = v.deafened;
+      el.voiceAudio.append(a);
+    }
+    again();
+  });
+  // (LiveKit may have let go of the element already, so it goes by the track's id too.)
+  const dropAudio = (selector) => { for (const a of el.voiceAudio.querySelectorAll(selector)) a.remove(); };
+  room.on(E.TrackUnsubscribed, (track) => {
+    for (const media of track.detach()) media.remove();
+    if (track.sid) dropAudio(`[data-sid="${CSS.escape(track.sid)}"]`);
+    again();
+  });
+  for (const e of [E.TrackMuted, E.TrackUnmuted, E.LocalTrackPublished, E.LocalTrackUnpublished]) room.on(e, again);
+  room.on(E.ParticipantConnected, () => { playCallSound(true); again(); });
+  room.on(E.ParticipantDisconnected, (participant) => {
+    dropAudio(`[data-who="${CSS.escape(participant.identity)}"]`);
+    playCallSound(false);
+    again();
+  });
+  room.on(E.ActiveSpeakersChanged, (speakers) => {
+    v.speaking = new Set(speakers.map((p) => p.identity));
+    renderTrayIcon(v.speaking.has(S.clientId));
+    renderVoiceSpeaking();
+  });
+  room.on(E.Reconnecting, () => { v.state = 'reconnecting'; again(); });
+  room.on(E.Reconnected, () => {
+    v.state = 'connected';
+    wsSend({ type: 'voice-join', channel: v.channelId, muted: v.muted || !v.speak, deafened: v.deafened });
+    again();
+  });
+  room.on(E.Disconnected, (reason) => {
+    if (S.voice !== v) return; // (you left)
+    const R = LK.DisconnectReason;
+    toast(reason === R.DUPLICATE_IDENTITY ? 'You joined the voice channel from another device.'
+      : reason === R.PARTICIPANT_REMOVED ? 'You were taken out of the voice channel.'
+      : reason === R.ROOM_DELETED ? 'The voice channel was deleted.'
+      : 'You were disconnected from the voice channel.');
+    leaveVoice({ quiet: true });
+  });
+  room.on(E.AudioPlaybackStatusChanged, again);
+  room.on(E.ParticipantPermissionsChanged, (_before, participant) => {
+    if (participant !== room.localParticipant) return;
+    v.speak = Boolean(participant.permissions && participant.permissions.canPublish);
+    if (!v.speak) toast("You can listen, but can't talk here right now.");
+    again();
+  });
+}
+
+// ----- Your buttons: mute, deafen, camera, screen, leave -----
+
+async function onVoiceControl(act) {
+  const v = S.voice;
+  if (!v) return;
+  const me = v.room && v.room.localParticipant;
+  try {
+    if (act === 'leave') return leaveVoice();
+    if (act === 'hear') return v.room.startAudio();
+    if (!me || v.state !== 'connected') return;
+    if (act === 'mute') {
+      if (!v.speak) return toast("You can't talk in this channel.");
+      v.muted = !v.muted;
+      if (!v.muted && v.deafened) v.deafened = false;
+      store.set('voiceMuted', v.muted ? 'on' : 'off');
+      await me.setMicrophoneEnabled(!v.muted);
+      applyVoicePtt();
+    } else if (act === 'deafen') {
+      v.deafened = !v.deafened;
+      if (v.deafened && !v.muted) {
+        v.muted = true;
+        await me.setMicrophoneEnabled(false);
+      } else if (!v.deafened && store.get('voiceMuted', 'off') !== 'on' && v.speak) {
+        v.muted = false;
+        await me.setMicrophoneEnabled(true);
+      }
+      for (const a of el.voiceAudio.children) a.muted = v.deafened;
+    } else if (act === 'camera') {
+      if (!v.speak) return toast("You can't share video in this channel.");
+      await me.setCameraEnabled(!me.isCameraEnabled, S.devices.cam ? { deviceId: S.devices.cam } : undefined);
+    } else if (act === 'screen') {
+      if (!v.speak) return toast("You can't share your screen in this channel.");
+      if (ANDROID) return toast("Screen sharing from Android isn't here yet.");
+      const smooth = el.shareQuality.value !== 'sharp';
+      await me.setScreenShareEnabled(!me.isScreenShareEnabled, {
+        audio: true, contentHint: smooth ? 'motion' : 'detail',
+        resolution: { width: 1920, height: 1080, frameRate: smooth ? 60 : 30 },
+      });
+      playShareSound(me.isScreenShareEnabled);
+    }
+  } catch (err) {
+    if (err && err.name === 'NotAllowedError' && act === 'screen') return; // (they cancelled the picker)
+    toast(mediaErrorText(err, act === 'camera' ? 'Camera' : act === 'screen' ? 'Screen share' : 'Microphone'));
+  }
+  wsSend({ type: 'voice-update', muted: v.muted || !v.speak, deafened: v.deafened, video: Boolean(me && me.isCameraEnabled), screen: Boolean(me && me.isScreenShareEnabled) });
+  renderVoice();
+}
+
+// Your settings, while you're in a voice channel: another mic or speaker, or new mic effects.
+function voiceDevicesChanged() {
+  const v = S.voice;
+  if (!v || !v.room || v.state !== 'connected') return;
+  if (S.devices.speaker) v.room.switchActiveDevice('audiooutput', S.devices.speaker).catch(() => {});
+  if (v.room.localParticipant.isMicrophoneEnabled) {
+    v.room.localParticipant.setMicrophoneEnabled(false)
+      .then(() => v.room.localParticipant.setMicrophoneEnabled(true, { ...S.micFx, ...(S.devices.mic ? { deviceId: S.devices.mic } : {}) }))
+      .catch((err) => toast(mediaErrorText(err, 'Microphone')));
+  }
+}
+
+// ----- Drawing it: the panel above your name, the room, and who's in each channel -----
+
+function renderVoice() {
+  const v = S.voice;
+  el.voicePanel.hidden = !v;
+  el.app.classList.toggle('in-voice', Boolean(v));
+  if (v) {
+    const c = S.channels.get(v.channelId);
+    const space = S.spaces.get(v.spaceId);
+    el.voicePanelStatus.textContent = { connecting: 'Joining…', reconnecting: 'Reconnecting…', connected: 'Voice connected' }[v.state];
+    el.voicePanelStatus.dataset.state = v.state;
+    el.voicePanelName.textContent = c ? `#${c.name}${space ? ` · ${space.name}` : ''}` : '';
+    const me = v.room && v.room.localParticipant;
+    for (const b of document.querySelectorAll('[data-voice]')) {
+      const act = b.dataset.voice;
+      const on = act === 'mute' ? v.muted || !v.speak : act === 'deafen' ? v.deafened
+        : act === 'camera' ? Boolean(me && me.isCameraEnabled) : act === 'screen' ? Boolean(me && me.isScreenShareEnabled) : false;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+      const icon = b.querySelector('use');
+      if (icon && act === 'mute') icon.setAttribute('href', on ? '#i-mic-off' : '#i-mic');
+      if (icon && act === 'deafen') icon.setAttribute('href', on ? '#i-headphones-off' : '#i-headphones');
+      if (icon && act === 'camera') icon.setAttribute('href', on ? '#i-cam' : '#i-cam-off');
+      const label = { mute: on ? 'Unmute' : 'Mute', deafen: on ? 'Undeafen' : 'Deafen', camera: on ? 'Turn camera off' : 'Turn camera on', screen: on ? 'Stop sharing' : 'Share your screen', leave: 'Leave voice' }[act];
+      if (label) {
+        b.title = label;
+        b.setAttribute('aria-label', label);
+      }
+      if (act === 'screen') b.hidden = Boolean(ANDROID) || !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+    }
+    el.voiceHear.hidden = !(v.room && !v.room.canPlaybackAudio);
+  }
+  const space = S.view !== 'home' && S.spaces.get(S.view);
+  if (space) renderSide();
+  if (!el.voiceView.hidden) renderVoiceView();
+}
+
+function showVoiceView() {
+  const v = S.voice;
+  if (!v) return;
+  if (S.openDm) {
+    closeGifPanel();
+    stopEdit();
+    stopReply();
+    stopTyping();
+    S.openDm = '';
+    el.dm.hidden = true;
+  }
+  S.view = v.spaceId;
+  el.home.hidden = true;
+  el.voiceView.hidden = false;
+  el.app.classList.add('in-dm');
+  renderSpaces();
+  renderVoiceView();
+}
+
+function hideVoiceView() {
+  el.voiceView.hidden = true;
+  if (!S.openDm) {
+    el.home.hidden = false;
+    el.app.classList.remove('in-dm');
+  }
+}
+
+// The room: a tile for each person (their camera, or their picture), and one for each screen
+// being shared. The one talking lights up.
+function renderVoiceView() {
+  const v = S.voice;
+  if (!v || el.voiceView.hidden) return;
+  const c = S.channels.get(v.channelId);
+  const space = S.spaces.get(v.spaceId);
+  el.voiceTitle.textContent = c ? c.name : '';
+  const people = v.room ? [v.room.localParticipant, ...v.room.remoteParticipants.values()] : [];
+  el.voiceSub.textContent = v.state === 'connected'
+    ? `${space ? `${space.name} · ` : ''}${people.length} here · end-to-end encrypted`
+    : v.state === 'reconnecting' ? 'Reconnecting…' : 'Joining…';
+  const wanted = new Map();
+  for (const p of people) {
+    wanted.set(`${p.identity}:cam`, { p, source: 'camera' });
+    const screen = p.getTrackPublication(window.LivekitClient.Track.Source.ScreenShare);
+    if (screen && screen.track && !screen.isMuted) wanted.set(`${p.identity}:screen`, { p, source: 'screen' });
+  }
+  for (const [key, tile] of v.tiles) {
+    if (!wanted.has(key)) {
+      tile.remove();
+      v.tiles.delete(key);
+    }
+  }
+  for (const [key, { p, source }] of wanted) {
+    let tile = v.tiles.get(key);
+    if (!tile) {
+      tile = document.createElement('div');
+      tile.className = `voice-tile${source === 'screen' ? ' screen' : ''}`;
+      tile.dataset.who = p.identity;
+      v.tiles.set(key, tile);
+    }
+    const person = profileOf(p.identity) || { id: p.identity, displayName: p.name || 'Someone', username: '' };
+    const pub = p.getTrackPublication(source === 'screen' ? window.LivekitClient.Track.Source.ScreenShare : window.LivekitClient.Track.Source.Camera);
+    const track = pub && !pub.isMuted ? pub.track : null;
+    let video = tile.querySelector('video');
+    if (track) {
+      if (!video || video.dataset.sid !== track.sid) {
+        if (video) video.remove();
+        video = track.attach();
+        video.dataset.sid = track.sid;
+        video.muted = true;
+        video.playsInline = true;
+        tile.prepend(video);
+      }
+    } else if (video) {
+      video.remove();
+    }
+    let face = tile.querySelector('.face');
+    if (!track) {
+      if (!face) {
+        face = makeFace(person, null);
+        tile.prepend(face);
+      }
+    } else if (face) {
+      face.remove();
+    }
+    let label = tile.querySelector('.voice-tile-name');
+    if (!label) {
+      label = document.createElement('span');
+      label.className = 'voice-tile-name';
+      tile.append(label);
+    }
+    const mic = p.getTrackPublication(window.LivekitClient.Track.Source.Microphone);
+    const muted = !mic || mic.isMuted;
+    label.replaceChildren(`${source === 'screen' ? `${person.displayName}'s screen` : person.id === S.clientId ? `${person.displayName} (you)` : person.displayName}`);
+    if (source !== 'screen' && muted) label.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Muted"><use href="#i-mic-off"/></svg>');
+    el.voiceGrid.append(tile);
+  }
+  el.voiceGrid.dataset.count = String(Math.min(v.tiles.size, 9));
+  renderVoiceSpeaking();
+}
+
+function renderVoiceSpeaking() {
+  const v = S.voice;
+  if (!v) return;
+  for (const [key, tile] of v.tiles) tile.classList.toggle('speaking', key.endsWith(':cam') && v.speaking.has(tile.dataset.who));
+  for (const row of el.voiceList.querySelectorAll('.voice-person')) row.classList.toggle('speaking', v.speaking.has(row.dataset.who));
+}
+
+// A voice channel in the sidebar, and who's in it.
+function voiceChannelItem(c) {
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.type = 'button';
+  const here = S.voice && S.voice.channelId === c.id;
+  b.className = `channel voice-channel${here ? ' open' : ''}`;
+  b.innerHTML = `<svg class="icon"><use href="#${c.private ? 'i-lock' : 'i-speaker'}"/></svg>`;
+  const name = document.createElement('span');
+  name.className = 'channel-name';
+  name.textContent = c.name;
+  b.append(name);
+  b.title = here ? 'Open the voice channel' : `Join #${c.name}`;
+  b.addEventListener('click', () => joinVoice(c.id));
+  li.append(b);
+  const members = S.voiceStates.get(c.id) || c.voice || [];
+  if (members.length) {
+    const list = document.createElement('ol');
+    list.className = 'voice-people';
+    list.append(...members.map((m) => {
+      const row = document.createElement('li');
+      row.className = `voice-person${S.voice && S.voice.speaking.has(m.id) ? ' speaking' : ''}`;
+      row.dataset.who = m.id;
+      const person = profileOf(m.id) || { id: m.id, displayName: 'Someone', username: '' };
+      const nm = document.createElement('span');
+      nm.className = 'voice-person-name';
+      nm.textContent = person.displayName;
+      row.append(makeFace(person, null), nm);
+      if (m.screen) row.insertAdjacentHTML('beforeend', '<span class="live-tag">LIVE</span>');
+      if (m.video) row.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Camera on"><use href="#i-cam"/></svg>');
+      if (m.deafened) row.insertAdjacentHTML('beforeend', '<svg class="icon off" aria-label="Deafened"><use href="#i-headphones-off"/></svg>');
+      else if (m.muted) row.insertAdjacentHTML('beforeend', '<svg class="icon off" aria-label="Muted"><use href="#i-mic-off"/></svg>');
+      row.addEventListener('click', () => openMiniProfile(m.id));
+      return row;
+    }));
+    li.append(list);
+  }
+  return li;
+}
+
 
 // ---------------- Friends ----------------
 
@@ -6498,6 +6956,7 @@ async function refreshFriends() {
     S.klipyKey = data.klipyKey || '';
     if (Array.isArray(data.quickReactions) && data.quickReactions.length) setQuickReactions(data.quickReactions);
     renderComposer();
+    S.voiceEnabled = Boolean(data.voice);
     S.blockedUsers = data.blocked || [];
     S.blocked = new Set(S.blockedUsers.map((u) => u.id));
     S.openReports = data.openReports || 0;
@@ -7202,6 +7661,7 @@ function onRingJoin() {
   const id = S.ringing && S.ringing.id;
   if (!id) return;
   if (S.inCall) return toast('Leave your current call first, then call them back.');
+  if (S.voice) leaveVoice();
   stopRinging();
   startCall(id);
 }
@@ -7234,6 +7694,7 @@ function ringAgain() {
 async function startCall(friendId) {
   const friend = S.friends.get(friendId);
   if (!friend) return toast('You can only call people on your friends list.');
+  if (S.voice && !S.inCall && !S.startingCall) await leaveVoice(); // (a call and a voice channel at once would talk over each other)
   if (S.inCall || S.startingCall) {
     if (S.callWith !== friendId) toast('Leave your current call first.');
     return;
@@ -7497,8 +7958,15 @@ async function init() {
   el.smMembers.addEventListener('click', openMembers);
   el.smSettings.addEventListener('click', openSpaceSettings);
   el.smNotify.addEventListener('click', onSpaceNotify);
+  el.addVoiceBtn.addEventListener('click', () => startNewChannel('voice'));
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-voice]');
+    if (b) onVoiceControl(b.dataset.voice);
+  });
+  el.voicePanelWhere.addEventListener('click', showVoiceView);
+  el.voiceBack.addEventListener('click', hideVoiceView);
   el.smLeave.addEventListener('click', onSpaceLeave);
-  el.addChannelBtn.addEventListener('click', startNewChannel);
+  el.addChannelBtn.addEventListener('click', () => startNewChannel('text'));
   el.spaceCreateForm.addEventListener('submit', onSpaceCreate);
   el.spaceJoinForm.addEventListener('submit', onSpaceJoinCode);
   el.spaceInviteCopy.addEventListener('click', copyInvite);
@@ -7856,7 +8324,7 @@ async function init() {
 
   // Push to talk: hold the talk key.
   document.addEventListener('keydown', (e) => {
-    if (!S.inCall || !S.ptt || e.code !== S.pttKey || isTyping(e.target)) return;
+    if (!(S.inCall || S.voice) || !S.ptt || e.code !== S.pttKey || isTyping(e.target)) return;
     e.preventDefault(); // e.g. Space would otherwise press whichever button has focus
     setPttHeld(true); // key repeat while holding just finds it already held
   });
@@ -7904,7 +8372,7 @@ async function init() {
   updateRain();
   addEventListener('resize', () => { if (S.rainFrame) sizeRain(); });
   // The desktop app hears the talk key while you're in another app, and tells us.
-  if (DESKTOP) DESKTOP.onPushToTalk((held) => { if (S.inCall) setPttHeld(held); });
+  if (DESKTOP) DESKTOP.onPushToTalk((held) => { if (S.inCall || S.voice) setPttHeld(held); });
   renderAppNote();
   initServerSwitch();
   el.serverSwitchBtn.addEventListener('click', openServerDialog);

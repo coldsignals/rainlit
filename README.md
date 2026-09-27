@@ -3,9 +3,10 @@
 Private voice calls, video, screen sharing, messages and file sharing with your
 friends. Everyone has an account, adds friends by username, and can see who's
 online. Each friend has a conversation where messages and files are kept (or
-not, if you turn saving off). Spaces are groups with text channels that anyone can make
-and invite people to. Calls, video and screen sharing go directly between your devices;
-the server only helps them find each other.
+not, if you turn saving off). Spaces are groups with text and voice channels that anyone
+can make and invite people to. Calls between two friends (video and screen sharing too) go
+directly between your devices; the server only helps them find each other. Voice channels
+go through a LiveKit server, end-to-end encrypted (see [SELF-HOSTING.md](SELF-HOSTING.md)).
 
 **Run your own:** anyone can host a Rainlit for their friends or community, on Render in
 a few clicks or on any machine with Docker. See [SELF-HOSTING.md](SELF-HOSTING.md). Where
