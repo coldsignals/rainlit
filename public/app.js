@@ -86,7 +86,9 @@ for (const id of [
   'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove', 'menu-block',
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
-  'ring', 'ring-face', 'ring-name', 'ring-decline', 'ring-join',
+  'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
+  'groups', 'group-list', 'groups-empty', 'new-group-btn', 'group-pick', 'group-pick-form', 'group-pick-title', 'group-pick-name-field', 'group-pick-name', 'group-pick-hint', 'group-pick-list', 'group-pick-error', 'group-pick-go',
+  'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn',
@@ -942,6 +944,10 @@ function handleServerMessage(msg) {
       return onReportNew(msg);
     case 'voice-state':
       return onVoiceState(msg);
+    case 'group-ring':
+      return onGroupRing(msg);
+    case 'group-ring-stop':
+      return stopGroupRinging(msg.channel);
     case 'voice-ended':
       if (S.voice && S.voice.channelId === msg.channel) {
         toast("You can't be in that voice channel any more.");
@@ -1891,7 +1897,7 @@ function updateTitle() {
   if (S.ringing) return; // "Bea is calling" stays until the ringing stops
   const base = S.peer ? `Rainlit with ${S.peer.name}` : 'Rainlit';
   let unread = 0; // DMs, and mentions of you in spaces (other channel messages show on the rail)
-  for (const dm of S.dms.values()) unread += dm.channelId ? dm.mentions || 0 : dm.unread;
+  for (const dm of S.dms.values()) unread += dm.channelId && !groupOfChannel(dm.channelId) ? dm.mentions || 0 : dm.unread; // (a group's messages count like a DM's)
   document.title = unread ? `(${unread}) ${base}` : base;
   if (DESKTOP) DESKTOP.setUnread(unread);
   // The drop in the corner glows brighter while something's waiting for you, or you're in a call.
@@ -2340,7 +2346,7 @@ const MY_BUILD = (document.querySelector('meta[name="rainlit-build"]') || {}).co
 function onHello(msg) {
   trace('hello', { build: String(msg.build || '').slice(0, 12) });
   if (S.voice && S.voice.state === 'connected') {
-    wsSend({ type: 'voice-join', channel: S.voice.channelId, muted: S.voice.muted || !S.voice.speak, deafened: S.voice.deafened });
+    wsSend({ type: 'voice-join', channel: S.voice.channelId, muted: S.voice.muted || !S.voice.speak, deafened: S.voice.deafened, again: true, since: S.voice.joinedAt });
   }
   if (!msg.build || !MY_BUILD || msg.build === MY_BUILD) return;
   let tried = '';
@@ -2815,8 +2821,8 @@ async function openDm(friendId) {
   if (!convExists(friendId)) return;
   const dm = dmFor(friendId);
   // The sidebar follows: Home for a DM, the space for one of its channels.
-  S.view = dm.channelId ? S.channels.get(dm.channelId).spaceId : 'home';
-  if (dm.channelId) rememberChannel(dm.channelId);
+  S.view = dm.channelId && !groupOfChannel(dm.channelId) ? S.channels.get(dm.channelId).spaceId : 'home';
+  if (dm.channelId && S.view !== 'home') rememberChannel(dm.channelId);
   closeGifPanel();
   if (S.editing && S.editing.friendId !== friendId) stopEdit();
   if (S.replying && S.replying.friendId !== friendId) stopReply();
@@ -2866,7 +2872,9 @@ function renderDmHead() {
   const f = S.friends.get(S.openDm);
   if (!f) return;
   const dm = dmFor(f.id);
-  el.dmFace.classList.remove('channel-face');
+  el.dmFace.classList.remove('channel-face', 'group-face');
+  el.dmFace.style.removeProperty('--face-bg');
+  el.dmCallBtn.classList.remove('live');
   el.dmSave.hidden = false;
   el.dmWho.title = 'See their profile';
   el.dmBack.setAttribute('aria-label', 'Back to friends');
@@ -2950,7 +2958,9 @@ function startLine(dm) {
   const li = document.createElement('li');
   li.className = 'sys dm-start';
   const channel = dm.channelId && S.channels.get(dm.channelId);
-  li.textContent = channel ? `This is the beginning of #${channel.name}.` : `This is the beginning of your conversation with ${friendName(dm.friendId)}.`;
+  const group = channel && groupOfChannel(channel.id);
+  li.textContent = group ? `This is the beginning of your group${group.name ? `, ${group.name}` : ` with ${groupTitle(group)}`}.`
+    : channel ? `This is the beginning of #${channel.name}.` : `This is the beginning of your conversation with ${friendName(dm.friendId)}.`;
   return li;
 }
 
@@ -3109,6 +3119,8 @@ function renderMessage(m) {
     li.append(messageHead(who, m.at), gifElement(m.meta || {}));
   } else if (m.kind === 'call') {
     li = callLine(m);
+  } else if (m.kind === 'group') {
+    li = sysLine(groupNoteText(m), m.at);
   } else {
     li = sysLine('', m.at);
   }
@@ -3501,7 +3513,8 @@ function notifyChannel(dm, m) {
   if (DESKTOP || ANDROID) {
     const body = m.kind === 'text' ? m.text : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     const who = friendName(m.author);
-    appNotify({ title: mentioned ? `${who} mentioned you in #${c.name}` : `${who} in #${c.name}`, body });
+    const where = isGroupSpace(space) ? groupTitle(space) : `#${c.name}`;
+    appNotify({ title: mentioned ? `${who} mentioned you in ${where}` : `${who} in ${where}`, body });
   }
 }
 
@@ -5149,6 +5162,8 @@ async function refreshSpaces() {
   S.channels = new Map();
   for (const space of data.spaces) {
     const old = before.get(space.id);
+    // (A group's people, for its name and theirs, friends of yours or not.)
+    for (const p of space.people || []) if (p.id !== S.clientId && !S.friends.has(p.id)) S.people.set(p.id, { ...(S.people.get(p.id) || {}), ...p });
     S.spaces.set(space.id, { ...space, members: old ? old.members : null, byId: old ? old.byId : null, byName: old ? old.byName : null });
     for (const c of space.channels) {
       S.channels.set(c.id, { ...c, spaceId: space.id });
@@ -5174,6 +5189,13 @@ async function refreshSpaces() {
     S.dms.delete(key);
   }
   if (S.view !== 'home' && !S.spaces.has(S.view)) S.view = 'home';
+  // Someone put you in a group: say so.
+  if (S.spacesLoaded) {
+    for (const s of data.spaces) {
+      if (s.kind === 'group' && !before.has(s.id) && s.ownerId !== S.clientId) toast(`You're in a new group: ${groupTitle(S.spaces.get(s.id))}.`, 6000);
+    }
+  }
+  S.spacesLoaded = true;
   // A timeout you're in ends by itself: look again then.
   clearTimeout(S.timeoutTimer);
   const ends = Math.min(...[...S.spaces.values()].map((s) => s.timeoutUntil || Infinity));
@@ -5217,6 +5239,7 @@ async function onSpaceChanged(spaceId) {
   else paintNames(spaceId);
   if (el.spaceMembers.open) renderMembers();
   if (el.spaceSettings.open) renderSpaceSettings();
+  if (el.groupInfo.open) renderGroupInfo();
 }
 
 function onSpaceRemoved(spaceId, why) {
@@ -5225,6 +5248,12 @@ function onSpaceRemoved(spaceId, why) {
   refreshSpaces();
   for (const d of [el.spaceMembers, el.spaceSettings, el.spaceInvite, el.modDialog]) if (d.open && S.view === spaceId) d.close();
   if (!space) return;
+  if (isGroupSpace(space)) {
+    if (el.groupInfo.open && el.groupInfo.dataset.space === spaceId) el.groupInfo.close();
+    if (S.groupRing && S.groupRing.spaceId === spaceId) stopGroupRinging();
+    if (why === 'kicked') toast(`You were taken out of ${groupTitle(space)}.`);
+    return;
+  }
   toast(why === 'banned' ? `You've been banned from ${space.name}.` : why === 'kicked' ? `You were removed from ${space.name}.` : `You're not in ${space.name} any more.`);
 }
 
@@ -5295,14 +5324,15 @@ function spaceUnread(spaceId) {
 function renderSpaces() {
   renderRail();
   renderSide();
+  renderGroups();
 }
 
 function renderRail() {
   let dmUnread = 0;
-  for (const dm of S.dms.values()) if (!dm.channelId) dmUnread += dm.unread;
+  for (const dm of S.dms.values()) if (!dm.channelId || groupOfChannel(dm.channelId)) dmUnread += dm.unread;
   el.railHome.classList.toggle('open', S.view === 'home');
   el.railHome.classList.toggle('unread', S.view !== 'home' && dmUnread > 0);
-  el.railSpaces.replaceChildren(...[...S.spaces.values()].map((space) => {
+  el.railSpaces.replaceChildren(...[...S.spaces.values()].filter((space) => !isGroupSpace(space)).map((space) => {
     const b = document.createElement('button');
     b.type = 'button';
     const unread = spaceUnread(space.id);
@@ -5434,6 +5464,8 @@ function renderChannelHead() {
   el.dmFace.replaceChildren();
   el.dmFace.style.removeProperty('--face-bg');
   delete el.dmFace.dataset.presence;
+  if (isGroupSpace(space)) return renderGroupHead(space);
+  el.dmFace.classList.remove('group-face');
   el.dmFace.classList.add('channel-face');
   el.dmFace.innerHTML = `<svg class="icon"><use href="#${c.private ? 'i-lock' : 'i-hash'}"/></svg>`;
   el.dmName.textContent = c.name;
@@ -5444,6 +5476,29 @@ function renderChannelHead() {
   el.dmSave.hidden = true;
   el.dmCallBtn.hidden = true;
   el.dmNotice.hidden = true;
+}
+
+// A group's head: its picture and name (click for its details), how many are in it, and its
+// call button (green while a call's going).
+function renderGroupHead(space) {
+  el.dmFace.classList.remove('channel-face');
+  el.dmFace.classList.add('group-face');
+  el.dmFace.style.setProperty('--face-bg', faceColor(space.id));
+  el.dmFace.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>';
+  el.dmName.textContent = groupTitle(space);
+  const calling = groupInCall(space);
+  el.dmSub.textContent = `${(space.people || []).length} people${calling ? ` · in a call (${calling} here)` : ''}`;
+  el.dmWho.title = "The group's name, people and settings";
+  el.dmBack.setAttribute('aria-label', 'Back to friends');
+  el.dmBack.title = 'Back to friends';
+  el.dmSave.hidden = true;
+  el.dmNotice.hidden = true;
+  const call = groupCallOf(space);
+  const inIt = Boolean(call && S.voice && S.voice.channelId === call.id);
+  el.dmCallBtn.hidden = !S.voiceEnabled || !call;
+  el.dmCallBtn.disabled = false;
+  el.dmCallBtn.classList.toggle('live', calling > 0);
+  el.dmCallBtn.title = inIt ? 'Back to the call' : calling ? 'Join the call' : 'Start a call (rings everyone)';
 }
 
 // The message box, for what you can do where you are: in a channel, that's up to your roles.
@@ -5457,7 +5512,9 @@ function renderComposer() {
   el.gifBtn.hidden = !S.klipyKey || !can.send;
   if (!can.send) closeGifPanel();
   const space = c && S.spaces.get(c.spaceId);
-  if (c) {
+  if (c && isGroupSpace(space)) {
+    el.chatInput.placeholder = `Message ${groupTitle(space)}`;
+  } else if (c) {
     el.chatInput.placeholder = can.send ? `Message #${c.name}`
       : can.timedOut && space ? `You're in a timeout until ${untilText(space.timeoutUntil)}`
       : c.readonly ? `Only some roles can post in #${c.name}` : `You can't send messages in #${c.name}`;
@@ -6831,6 +6888,10 @@ function onVoiceState({ channel, members }) {
   const c = S.channels.get(channel);
   if (c && S.view === c.spaceId) renderSide();
   if (S.voice && S.voice.channelId === channel) renderVoiceView();
+  if (groupOfChannel(channel)) {
+    renderGroups();
+    if (isChannelKey(S.openDm) && groupOfChannel(channelIdOf(S.openDm)) === groupOfChannel(channel)) renderDmHead();
+  }
 }
 
 // Joining: a pass from the server, then the room. Joining another channel (or a call) leaves this one.
@@ -6840,7 +6901,8 @@ async function joinVoice(channelId) {
   if (S.voice && S.voice.channelId === channelId) return showVoiceView();
   if (!S.voiceEnabled) return toast("Voice channels aren't set up on this server yet.");
   if (S.inCall || S.startingCall) {
-    if (!confirm(`Leave your call with ${friendName(S.callWith)} and join #${c.name}?`)) return;
+    const group = groupOfChannel(channelId);
+    if (!confirm(`Leave your call with ${friendName(S.callWith)} and join ${group ? `the call with ${groupTitle(group)}` : `#${c.name}`}?`)) return;
     onLeaveClick();
   }
   if (S.voice) await leaveVoice({ quiet: true });
@@ -6872,6 +6934,7 @@ async function joinVoice(channelId) {
     await room.connect(pass.url, pass.token);
     if (S.voice !== v) return room.disconnect();
     v.state = 'connected';
+    v.joinedAt = Date.now(); // (if the server restarts, the call carries on from here)
     if (v.speak && !v.muted) {
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
@@ -7097,7 +7160,7 @@ function renderVoice() {
     const space = S.spaces.get(v.spaceId);
     el.voicePanelStatus.textContent = { connecting: 'Joining…', reconnecting: 'Reconnecting…', connected: 'Voice connected' }[v.state];
     el.voicePanelStatus.dataset.state = v.state;
-    el.voicePanelName.textContent = c ? `#${c.name}${space ? ` · ${space.name}` : ''}` : '';
+    el.voicePanelName.textContent = isGroupSpace(space) ? groupTitle(space) : c ? `#${c.name}${space ? ` · ${space.name}` : ''}` : '';
     const me = v.room && v.room.localParticipant;
     for (const b of document.querySelectorAll('[data-voice]')) {
       const act = b.dataset.voice;
@@ -7134,7 +7197,7 @@ function showVoiceView() {
     S.openDm = '';
     el.dm.hidden = true;
   }
-  S.view = v.spaceId;
+  S.view = isGroupSpace(S.spaces.get(v.spaceId)) ? 'home' : v.spaceId;
   el.home.hidden = true;
   el.voiceView.hidden = false;
   renderMemberPanel();
@@ -7144,6 +7207,9 @@ function showVoiceView() {
 }
 
 function hideVoiceView() {
+  // (From a group's call, back to its chat.)
+  const group = S.voice && S.spaces.get(S.voice.spaceId);
+  if (isGroupSpace(group) && !S.openDm) return openGroup(group.id);
   el.voiceView.hidden = true;
   if (!S.openDm) {
     el.home.hidden = false;
@@ -7158,10 +7224,10 @@ function renderVoiceView() {
   if (!v || el.voiceView.hidden) return;
   const c = S.channels.get(v.channelId);
   const space = S.spaces.get(v.spaceId);
-  el.voiceTitle.textContent = c ? c.name : '';
+  el.voiceTitle.textContent = isGroupSpace(space) ? groupTitle(space) : c ? c.name : '';
   const people = v.room ? [v.room.localParticipant, ...v.room.remoteParticipants.values()] : [];
   el.voiceSub.textContent = v.state === 'connected'
-    ? `${space ? `${space.name} · ` : ''}${people.length} here · end-to-end encrypted`
+    ? `${space && !isGroupSpace(space) ? `${space.name} · ` : ''}${people.length} here · end-to-end encrypted`
     : v.state === 'reconnecting' ? 'Reconnecting…' : 'Joining…';
   const wanted = new Map();
   for (const p of people) {
@@ -7394,6 +7460,302 @@ function onProfile(user) {
 }
 
 const PRESENCE_ORDER = { online: 0, away: 1, offline: 2 };
+
+// ---------------- Group chats ----------------
+// A few friends with a chat and a call of their own (on the server, a small space of kind
+// 'group': lib/spaces.js). They're listed on Home, above your friends, not on the rail, and
+// their chat and call work like a space's channels: history, files, mentions, and an
+// encrypted call that rings everyone when it starts.
+
+const GROUP_MAX = 10;
+const isGroupSpace = (space) => Boolean(space && space.kind === 'group');
+const groupChatOf = (space) => space.channels.find((c) => c.kind !== 'voice') || null;
+const groupCallOf = (space) => space.channels.find((c) => c.kind === 'voice') || null;
+
+// The group a channel belongs to, if it's a group's.
+function groupOfChannel(channelId) {
+  const c = S.channels.get(channelId);
+  const space = c && S.spaces.get(c.spaceId);
+  return isGroupSpace(space) ? space : null;
+}
+
+// "Bea, Cleo and Dan", or "a, b and c".
+function listNames(names) {
+  return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+// Its name, or (without one) the other people's.
+function groupTitle(space) {
+  if (!space) return '';
+  if (space.name) return space.name;
+  const others = (space.people || []).filter((p) => p.id !== S.clientId).map((p) => friendName(p.id)).sort((a, b) => a.localeCompare(b));
+  if (!others.length) return 'Just you';
+  return others.length > 3 ? `${others.slice(0, 3).join(', ')} and ${others.length - 3} more` : listNames(others);
+}
+
+function groupFace(space, size = '') {
+  const face = document.createElement('span');
+  face.className = `face group-face ${size}`.trim();
+  face.style.setProperty('--face-bg', faceColor(space.id));
+  face.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-users"/></svg>';
+  return face;
+}
+
+const groupLastAt = (space) => {
+  const chat = groupChatOf(space);
+  return (chat && S.dms.has(`ch:${chat.id}`) && S.dms.get(`ch:${chat.id}`).lastAt) || 0;
+};
+const groupInCall = (space) => {
+  const call = groupCallOf(space);
+  return call ? (S.voiceStates.get(call.id) || []).length : 0;
+};
+
+// Home: your groups, the latest first.
+function renderGroups() {
+  const groups = [...S.spaces.values()].filter(isGroupSpace).sort((a, b) => groupLastAt(b) - groupLastAt(a));
+  el.groups.hidden = !groups.length && S.friends.size < 2;
+  el.newGroupBtn.hidden = S.friends.size < 2;
+  el.groupsEmpty.hidden = groups.length > 0;
+  el.groupList.replaceChildren(...groups.map(groupRow));
+}
+
+function groupRow(space) {
+  const li = document.createElement('li');
+  li.className = 'person-row';
+  const chat = groupChatOf(space);
+  const key = chat ? `ch:${chat.id}` : '';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `person${S.openDm === key ? ' open' : ''}`;
+  const title = groupTitle(space);
+  btn.title = title;
+  const calling = groupInCall(space);
+  const typing = key && typersIn(key).length > 0;
+  const text = personText(title, typing ? 'typing…' : calling ? `In a call · ${calling} here` : `${(space.people || []).length} people`);
+  if (typing) text.querySelector('.person-sub').classList.add('typing-now');
+  if (calling && !typing) text.querySelector('.person-sub').classList.add('in-call-now');
+  btn.append(groupFace(space), text);
+  const dm = key && S.dms.get(key);
+  if (dm && dm.unread) {
+    const badge = document.createElement('span');
+    badge.className = `badge${dm.mentions ? ' mention' : ''}`;
+    badge.textContent = dm.unread > 99 ? '99+' : String(dm.unread);
+    badge.title = `${dm.unread} unread`;
+    btn.append(badge);
+  }
+  btn.addEventListener('click', () => openGroup(space.id));
+  li.append(btn);
+  return li;
+}
+
+function openGroup(spaceId) {
+  const space = S.spaces.get(spaceId);
+  const chat = space && groupChatOf(space);
+  if (!chat) return;
+  if (!space.members) loadMembers(space.id); // (for @mentions, and the people panel)
+  openDm(`ch:${chat.id}`);
+}
+
+async function joinGroupCall(spaceId) {
+  const space = S.spaces.get(spaceId);
+  const call = space && groupCallOf(space);
+  if (!call) return;
+  if (!S.voiceEnabled) return toast("Calls with more than one friend aren't set up on this server yet.");
+  await joinVoice(call.id);
+}
+
+// "Bea added Cleo", "Dan left the group", "Cleo named the group “Movie night”".
+function groupNoteText(m) {
+  const meta = m.meta || {};
+  const who = m.author === S.clientId ? 'You' : friendName(m.author);
+  const names = (ids) => listNames((ids || []).map((id) => (id === S.clientId ? 'you' : friendName(id))));
+  switch (meta.action) {
+    case 'add': return `${who} added ${names(meta.people)}`;
+    case 'remove': return `${who} took ${names(meta.people)} out of the group`;
+    case 'leave': return `${who} left the group`;
+    case 'rename': return meta.name ? `${who} named the group “${meta.name}”` : `${who} took the group's name away`;
+    default: return '';
+  }
+}
+
+// ----- Making a group, or adding people to one -----
+
+let groupPick = { mode: 'new', spaceId: null };
+
+function openGroupPick(mode, spaceId = null) {
+  groupPick = { mode, spaceId };
+  const space = spaceId && S.spaces.get(spaceId);
+  el.groupPickTitle.textContent = mode === 'new' ? 'New group' : `Add people to ${groupTitle(space)}`;
+  el.groupPickNameField.hidden = mode !== 'new';
+  el.groupPickName.value = '';
+  el.groupPickGo.textContent = mode === 'new' ? 'Make the group' : 'Add them';
+  el.groupPickError.hidden = true;
+  const inGroup = new Set(space ? (space.people || []).map((p) => p.id) : []);
+  const room = GROUP_MAX - (space ? inGroup.size : 1);
+  el.groupPickHint.textContent = mode === 'new'
+    ? `Pick two or more of your friends (up to ${GROUP_MAX - 1}). You can add more later.`
+    : room > 0 ? `Pick friends of yours to add (up to ${room} more).` : `This group is full: groups can have up to ${GROUP_MAX} people.`;
+  const friends = [...S.friends.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+  el.groupPickList.replaceChildren(...friends.map((f) => {
+    const li = document.createElement('li');
+    const row = document.createElement('label');
+    row.className = 'pick-row';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.value = f.id;
+    box.checked = inGroup.has(f.id);
+    box.disabled = inGroup.has(f.id);
+    row.append(box, makeFace(f, f.presence), personText(f.displayName, inGroup.has(f.id) ? 'Already in the group' : `@${f.username}`));
+    li.append(row);
+    return li;
+  }));
+  if (!friends.length) {
+    const li = document.createElement('li');
+    li.className = 'side-empty';
+    li.textContent = 'Add some friends first.';
+    el.groupPickList.replaceChildren(li);
+  }
+  el.groupPick.showModal();
+}
+
+async function onGroupPickSubmit(e) {
+  e.preventDefault();
+  const ids = [...el.groupPickList.querySelectorAll('input:checked:not(:disabled)')].map((b) => b.value);
+  el.groupPickGo.disabled = true;
+  try {
+    if (groupPick.mode === 'new') {
+      const { space } = await api('POST', '/groups', { members: ids, name: el.groupPickName.value });
+      el.groupPick.close();
+      await refreshSpaces();
+      openGroup(space.id);
+    } else {
+      if (!ids.length) throw new Error('Pick someone to add.');
+      await api('POST', `/spaces/${groupPick.spaceId}/people`, { members: ids });
+      el.groupPick.close();
+    }
+  } catch (err) {
+    el.groupPickError.textContent = err.message;
+    el.groupPickError.hidden = false;
+  } finally {
+    el.groupPickGo.disabled = false;
+  }
+}
+
+// ----- A group's details: its name, who's in it, notifications, and leaving -----
+
+function openGroupInfo(spaceId) {
+  if (!isGroupSpace(S.spaces.get(spaceId))) return;
+  el.groupInfo.dataset.space = spaceId;
+  renderGroupInfo();
+  el.groupInfo.showModal();
+}
+
+function renderGroupInfo() {
+  const space = S.spaces.get(el.groupInfo.dataset.space);
+  if (!space) {
+    if (el.groupInfo.open) el.groupInfo.close();
+    return;
+  }
+  el.groupInfoTitle.textContent = groupTitle(space);
+  if (document.activeElement !== el.groupRenameInput) el.groupRenameInput.value = space.name;
+  el.groupRenameInput.placeholder = groupTitle({ ...space, name: '' });
+  el.groupNotify.value = space.notify || 'all';
+  const people = [...(space.people || [])].sort((a, b) => b.owner - a.owner || a.displayName.localeCompare(b.displayName));
+  el.groupPeopleTitle.textContent = `People · ${people.length}`;
+  el.groupAddBtn.disabled = people.length >= GROUP_MAX;
+  el.groupAddBtn.title = people.length >= GROUP_MAX ? `Groups can have up to ${GROUP_MAX} people` : '';
+  el.groupPeople.replaceChildren(...people.map((p) => {
+    const li = document.createElement('li');
+    li.className = 'person-row';
+    const who = document.createElement('button');
+    who.type = 'button';
+    who.className = 'person';
+    const me = p.id === S.clientId;
+    who.append(makeFace(p, presenceIn(p)), personText(me ? `${p.displayName} (you)` : p.displayName, p.owner ? 'Owner' : `@${p.username}`));
+    who.addEventListener('click', () => openMiniProfile(p.id));
+    li.append(who);
+    if (space.role === 'owner' && !me) {
+      li.append(smallButton('i-close', `Take ${p.displayName} out of the group`, () => removeFromGroup(space.id, p), 'ghost'));
+    }
+    return li;
+  }));
+}
+
+async function removeFromGroup(spaceId, p) {
+  const space = S.spaces.get(spaceId);
+  if (!space || !confirm(`Take ${p.displayName} out of ${groupTitle(space)}?`)) return;
+  try {
+    await api('DELETE', `/spaces/${spaceId}/people/${p.id}`);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+async function onGroupRename(e) {
+  e.preventDefault();
+  const spaceId = el.groupInfo.dataset.space;
+  try {
+    await api('PATCH', `/spaces/${spaceId}`, { name: el.groupRenameInput.value });
+    el.groupRenameInput.blur();
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+async function onGroupNotify() {
+  const space = S.spaces.get(el.groupInfo.dataset.space);
+  if (!space) return;
+  try {
+    await api('PUT', `/spaces/${space.id}/notify`, { level: el.groupNotify.value });
+    space.notify = el.groupNotify.value;
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+async function onGroupLeave() {
+  const space = S.spaces.get(el.groupInfo.dataset.space);
+  if (!space || !confirm(`Leave ${groupTitle(space)}? You'll stop getting its messages.`)) return;
+  try {
+    if (S.voice && S.voice.spaceId === space.id) await leaveVoice({ quiet: true });
+    await api('POST', `/spaces/${space.id}/leave`, {});
+    el.groupInfo.close();
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// ----- Being rung for a group's call -----
+// Someone started one: the same ringing card as a friend's call ("Bea is calling you and
+// Cleo"), until you join or decline, someone else answers for you on another device, or a
+// minute passes.
+
+function onGroupRing({ space: spaceId, channel, from }) {
+  if (!from || (S.voice && S.voice.channelId === channel) || S.ringing) return;
+  const space = S.spaces.get(spaceId);
+  S.groupRing = { spaceId, channel, from };
+  const caller = from.displayName || 'Someone';
+  const others = space ? (space.people || []).filter((p) => p.id !== S.clientId && p.id !== from.id).map((p) => friendName(p.id)) : [];
+  const whom = space && space.name ? space.name : `you${others.length ? ` and ${listNames(others)}` : ''}`;
+  renderFace(el.ringFace, from, null);
+  el.ringName.textContent = caller;
+  el.ringSub.textContent = `is calling ${whom}`;
+  el.ring.hidden = false;
+  document.title = `${caller} is calling`;
+  appNotify({ title: `${caller} is calling ${whom}`, body: `${ANDROID ? 'Tap' : 'Click'} to open Rainlit and join.`, call: true });
+  clearInterval(S.ringTimer);
+  playRingtone();
+  S.ringTimer = setInterval(playRingtone, RING_EVERY_MS);
+}
+
+function stopGroupRinging(channel = null) {
+  if (!S.groupRing || (channel && S.groupRing.channel !== channel)) return;
+  S.groupRing = null;
+  el.ring.hidden = true;
+  clearInterval(S.ringTimer);
+  if (ANDROID) ANDROID.clearRing().catch(() => {});
+  updateTitle();
+}
 
 function renderFriends() {
   renderSpaces();
@@ -7988,9 +8350,11 @@ function startRinging(from) {
   if (!from || !from.id || (S.inCall && S.callWith === from.id)) return;
   const f = S.friends.get(from.id);
   if (f) Object.assign(f, from);
+  if (S.groupRing) stopGroupRinging(); // (a friend's own call rings over a group's)
   S.ringing = f || from;
   renderFace(el.ringFace, S.ringing, null);
   el.ringName.textContent = S.ringing.displayName || 'A friend';
+  el.ringSub.textContent = 'is calling you';
   el.ring.hidden = false;
   document.title = `${S.ringing.displayName} is calling`;
   appNotify({ title: `${S.ringing.displayName || 'A friend'} is calling`, body: `${ANDROID ? 'Tap' : 'Click'} to open Rainlit and answer.`, call: true });
@@ -8009,6 +8373,12 @@ function stopRinging(fromId) {
 }
 
 function onRingJoin() {
+  if (S.groupRing) {
+    const { spaceId } = S.groupRing;
+    stopGroupRinging();
+    openGroup(spaceId);
+    return joinGroupCall(spaceId);
+  }
   const id = S.ringing && S.ringing.id;
   if (!id) return;
   if (S.inCall) return toast('Leave your current call first, then call them back.');
@@ -8018,6 +8388,10 @@ function onRingJoin() {
 }
 
 function onRingDecline() {
+  if (S.groupRing) {
+    wsSend({ type: 'group-ring-decline', channel: S.groupRing.channel });
+    return stopGroupRinging();
+  }
   if (!S.ringing) return;
   wsSend({ type: 'ring-decline', from: S.ringing.id });
   stopRinging();
@@ -8717,9 +9091,28 @@ async function init() {
   // ----- Conversations -----
   el.dmBack.addEventListener('click', closeDm);
   el.dmClose.addEventListener('click', closeDm);
-  el.dmWho.addEventListener('click', () => (isChannelKey(S.openDm) ? openMembers() : openMiniProfile(S.openDm)));
+  el.dmWho.addEventListener('click', () => {
+    const group = isChannelKey(S.openDm) && groupOfChannel(channelIdOf(S.openDm));
+    if (group) openGroupInfo(group.id);
+    else if (isChannelKey(S.openDm)) openMembers();
+    else openMiniProfile(S.openDm);
+  });
   el.dmSave.addEventListener('click', onSaveToggle);
-  el.dmCallBtn.addEventListener('click', () => startCall(S.openDm));
+  el.dmCallBtn.addEventListener('click', () => {
+    const group = isChannelKey(S.openDm) && groupOfChannel(channelIdOf(S.openDm));
+    if (group) joinGroupCall(group.id);
+    else startCall(S.openDm);
+  });
+  el.newGroupBtn.addEventListener('click', () => openGroupPick('new'));
+  el.groupPickForm.addEventListener('submit', onGroupPickSubmit);
+  el.groupRenameForm.addEventListener('submit', onGroupRename);
+  el.groupNotify.addEventListener('change', onGroupNotify);
+  el.groupAddBtn.addEventListener('click', () => {
+    const spaceId = el.groupInfo.dataset.space;
+    el.groupInfo.close();
+    openGroupPick('add', spaceId);
+  });
+  el.groupLeaveBtn.addEventListener('click', onGroupLeave);
   el.callElsewhereBtn.addEventListener('click', () => openDm(S.callWith));
   el.mpRemove.addEventListener('click', onRemoveFriend);
   el.profileForm.addEventListener('submit', onProfileSave);
@@ -8730,7 +9123,7 @@ async function init() {
   el.pwBtn.addEventListener('click', onPasswordChange);
   el.signoutBtn.addEventListener('click', onSignOut);
   // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 

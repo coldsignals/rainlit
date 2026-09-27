@@ -291,6 +291,20 @@ button { cursor: pointer; }
 }
 .face.channel-face { background: var(--dusk-hi); color: var(--mist); }
 
+/* Group chats: their picture (a colour, and people), the friend picker, the live call button. */
+.face.group-face .icon { width: 58%; height: 58%; color: #fff; stroke-width: 2; }
+.pick-list {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 2px;
+  max-height: min(340px, calc(45vh / var(--zoom))); overflow-y: auto;
+}
+.pick-list .side-empty { padding: 6px 2px; }
+.pick-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; cursor: pointer; }
+.pick-row:hover { background: var(--dusk); }
+.pick-row input { width: 18px; height: 18px; margin: 0; accent-color: var(--lamp); flex: none; }
+.pick-row input:disabled, .pick-row input:disabled ~ * { opacity: 0.5; cursor: default; }
+.group-people-title { margin: 0; font-size: 16px; }
+.dm-head .dm-call.live { background: var(--online); color: #0c1a12; }
+
 /* Spaces' dialogs. */
 .space-form { display: grid; gap: 10px; }
 .space-row { display: flex; align-items: flex-end; gap: 10px; }

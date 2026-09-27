@@ -620,6 +620,15 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
 // mentions, and anyone who asked to hear about everything in that space (for them, at most a
 // note a minute per channel). Never from someone they've blocked.
 const lastChannelPush = new Map();
+// A group's name as someone in it sees it: its own, or the other people's names.
+function groupTitle(spaceId, forUserId) {
+  const space = spaces.getSpace(spaceId);
+  if (space && space.name) return space.name;
+  const names = spaces.memberIds(spaceId).filter((id) => id !== forUserId).map((id) => (people.userById(id) || {}).display_name).filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+  return names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
+}
+
 function pushChannelMessage(req, mentions) {
   const ids = mentions ? mentions.ids : [];
   const everyone = Boolean(mentions && mentions.everyone);
@@ -633,7 +642,9 @@ function pushChannelMessage(req, mentions) {
     const key = `${uid}:${req.channel.id}`;
     if (!mentioned && Date.now() - (lastChannelPush.get(key) || 0) < 60_000) continue;
     lastChannelPush.set(key, Date.now());
-    const name = mentioned ? `${who} mentioned you in #${req.channel.name}` : `${who} in #${req.channel.name}`;
+    const group = spaces.isGroup(spaces.getSpace(req.channel.space_id)) && groupTitle(req.channel.space_id, uid);
+    const where = group || `#${req.channel.name}`;
+    const name = mentioned ? `${who} mentioned you in ${where}` : `${who} in ${where}`;
     push.send(uid, { type: 'message', from: { id: `ch:${req.channel.id}`, name } }, { ttl: 24 * 3600 });
   }
 }
@@ -904,6 +915,17 @@ api.get('/spaces/:spaceId', needUser, needMember, (req, res) => {
 // Its name, and what @everyone can do.
 api.patch('/spaces/:spaceId', needUser, needMember, (req, res) => {
   const b = req.body || {};
+  if (spaces.isGroup(req.space)) {
+    // Anyone in a group can name it (or clear its name, so it goes by its people's names).
+    if (b.name === undefined) return fail(res, 400, 'Nothing to change.');
+    const name = people.oneLine(b.name, spaces.NAME_MAX);
+    if (name !== req.space.name) {
+      spaces.renameSpace(req.space.id, name);
+      groupNote(req.space.id, req.user.id, { action: 'rename', name });
+    }
+    spaceChanged(req.space.id);
+    return res.json({ ok: true });
+  }
   if (b.name !== undefined && !spaces.can(req.member, 'manageSpace')) return fail(res, 403, NOT_ALLOWED.manageSpace);
   if (b.everyonePerms !== undefined && !spaces.can(req.member, 'manageRoles')) return fail(res, 403, NOT_ALLOWED.manageRoles);
   const name = b.name === undefined ? null : spaces.spaceName(b.name);
@@ -922,6 +944,7 @@ api.patch('/spaces/:spaceId', needUser, needMember, (req, res) => {
 });
 
 api.delete('/spaces/:spaceId', needUser, needMember, (req, res) => {
+  if (spaces.isGroup(req.space)) return fail(res, 400, 'A group ends when everyone has left it.');
   if (!req.member.owner) return fail(res, 403, 'Only the owner can delete a space.');
   const everyone = spaces.memberIds(req.space.id);
   spaces.deleteSpace(req.space.id);
@@ -930,6 +953,17 @@ api.delete('/spaces/:spaceId', needUser, needMember, (req, res) => {
 });
 
 api.post('/spaces/:spaceId/leave', needUser, needMember, (req, res) => {
+  if (spaces.isGroup(req.space)) {
+    const call = spaces.groupCall(req.space.id);
+    if (call && realtime.voiceChannelOf(req.user.id) === call.id) realtime.voiceLeave(req.user.id);
+    const still = spaces.leaveGroup(req.space.id, req.user.id);
+    realtime.sendToUser(req.user.id, { type: 'space-removed', space: req.space.id });
+    if (still) {
+      groupNote(req.space.id, req.user.id, { action: 'leave' });
+      spaceChanged(req.space.id);
+    }
+    return res.json({ ok: true });
+  }
   if (req.member.owner) return fail(res, 400, "You own this space, so you can't leave it. You can delete it instead.");
   spaces.removeMember(req.space.id, req.user.id);
   realtime.sendToUser(req.user.id, { type: 'space-removed', space: req.space.id });
@@ -1043,6 +1077,66 @@ api.post('/space-invites/:code', needUser, (req, res) => {
     spaceChanged(space.id);
   }
   res.json({ space: mySpace(req.user.id, space.id) });
+});
+
+// ----- Group chats -----
+// A few friends with a chat and a call of their own (lib/spaces.js). You can only put your
+// friends in one, and never someone either of you has blocked.
+
+// A note in a group's chat: someone added, taken out, leaving, or the group renamed.
+function groupNote(spaceId, authorId, meta) {
+  const chat = spaces.groupChat(spaceId);
+  if (!chat) return;
+  const message = dms.addMessage({ id: crypto.randomBytes(12).toString('hex'), dm: chat.id, author: authorId, kind: 'group', meta, at: Date.now() });
+  tellSpace(spaceId, { type: 'dm-message', message });
+}
+
+function needGroup(req, res, next) {
+  if (!spaces.isGroup(req.space)) return fail(res, 404, "That group isn't there, or you're not in it.");
+  next();
+}
+
+const canAddToGroup = (userId, otherId) => people.areFriends(userId, otherId) && !safety.hasBlocked(userId, otherId) && !safety.hasBlocked(otherId, userId);
+
+api.post('/groups', needUser, (req, res) => {
+  const b = req.body || {};
+  const others = [...new Set((Array.isArray(b.members) ? b.members : []).map(String))].filter((id) => id !== req.user.id);
+  if (others.length < 2) return fail(res, 400, 'Pick at least two friends. (For one, just message them.)');
+  if (others.length > spaces.GROUP_MAX - 1) return fail(res, 400, `A group can have up to ${spaces.GROUP_MAX} people, you included.`);
+  if (!others.every((id) => canAddToGroup(req.user.id, id))) return fail(res, 400, 'You can only add your friends to a group.');
+  const id = spaces.createGroup(req.user.id, others, people.oneLine(b.name, spaces.NAME_MAX));
+  spaceChanged(id);
+  res.json({ space: mySpace(req.user.id, id) });
+});
+
+// Adding friends of yours.
+api.post('/spaces/:spaceId/people', needUser, needMember, needGroup, (req, res) => {
+  const ids = [...new Set((Array.isArray((req.body || {}).members) ? req.body.members : []).map(String))]
+    .filter((id) => !spaces.isMember(req.space.id, id));
+  if (!ids.length) return fail(res, 400, 'Pick someone to add.');
+  if (spaces.memberIds(req.space.id).length + ids.length > spaces.GROUP_MAX) return fail(res, 400, `A group can have up to ${spaces.GROUP_MAX} people.`);
+  if (!ids.every((id) => canAddToGroup(req.user.id, id))) return fail(res, 400, 'You can only add your friends to a group.');
+  for (const id of ids) spaces.addGroupMember(req.space.id, id);
+  groupNote(req.space.id, req.user.id, { action: 'add', people: ids });
+  spaceChanged(req.space.id);
+  res.json({ ok: true });
+});
+
+// The owner taking someone out.
+api.delete('/spaces/:spaceId/people/:userId', needUser, needMember, needGroup, (req, res) => {
+  const target = String(req.params.userId);
+  if (target === req.user.id) return fail(res, 400, 'To leave, use Leave group.');
+  if (!req.member.owner) return fail(res, 403, 'Only whoever made the group (or has it now) can take people out.');
+  if (!spaces.isMember(req.space.id, target)) return fail(res, 404, "They're not in this group.");
+  if (realtime.voiceChannelOf(target) === (spaces.groupCall(req.space.id) || {}).id) {
+    realtime.voiceLeave(target);
+    voice.removeParticipant(spaces.groupCall(req.space.id).id, target);
+  }
+  spaces.leaveGroup(req.space.id, target);
+  realtime.sendToUser(target, { type: 'space-removed', space: req.space.id, why: 'kicked' });
+  groupNote(req.space.id, req.user.id, { action: 'remove', people: [target] });
+  spaceChanged(req.space.id);
+  res.json({ ok: true });
 });
 
 // ----- Roles -----

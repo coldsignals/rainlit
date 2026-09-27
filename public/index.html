@@ -185,6 +185,13 @@
           <h2 id="requests-title" class="side-title">Requests</h2>
           <ol id="request-list" class="people"></ol>
         </section>
+        <section id="groups" class="side-section" aria-labelledby="groups-title" hidden>
+          <h2 class="side-title side-title-row"><span id="groups-title">Groups</span>
+            <button id="new-group-btn" class="icon-btn ghost side-add" type="button" aria-label="New group" title="New group"><svg class="icon"><use href="#i-plus"/></svg></button>
+          </h2>
+          <ol id="group-list" class="people"></ol>
+          <p id="groups-empty" class="side-empty" hidden>Talk and call with a few friends at once.</p>
+        </section>
         <section class="side-section" aria-labelledby="friends-title">
           <h2 id="friends-title" class="side-title">Friends</h2>
           <ol id="friend-list" class="people"></ol>
@@ -499,6 +506,41 @@
       <svg class="icon"><use href="#i-phone"/></svg>
     </button>
   </div>
+
+  <!-- ============ Group chats: making one, adding people, and its details ============ -->
+  <dialog id="group-pick" class="settings space-dialog" aria-labelledby="group-pick-title">
+    <form id="group-pick-form" class="settings-inner" novalidate>
+      <div class="settings-head"><h2 id="group-pick-title">New group</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <label id="group-pick-name-field" class="field"><span>Name <small class="toggle-note">(optional: without one, it goes by its people's names)</small></span><input id="group-pick-name" maxlength="40" autocomplete="off" placeholder="Movie night" /></label>
+      <p id="group-pick-hint" class="hint"></p>
+      <ol id="group-pick-list" class="pick-list"></ol>
+      <p id="group-pick-error" class="form-error" role="alert" hidden></p>
+      <button id="group-pick-go" class="primary-btn" type="submit">Make the group</button>
+    </form>
+  </dialog>
+
+  <dialog id="group-info" class="settings space-dialog" aria-labelledby="group-info-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="group-info-title">Group</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <form id="group-rename-form" class="space-row" novalidate>
+        <label class="field"><span>Name</span><input id="group-rename-input" maxlength="40" autocomplete="off" /></label>
+        <button class="primary-btn small" type="submit">Save</button>
+      </form>
+      <label class="field"><span>Notify me about</span>
+        <select id="group-notify">
+          <option value="all">Every message</option>
+          <option value="mentions">Only mentions of me</option>
+          <option value="none">Nothing</option>
+        </select>
+      </label>
+      <div class="admin-head"><h3 id="group-people-title" class="group-people-title">People</h3><button id="group-add-btn" class="primary-btn small" type="button">Add people</button></div>
+      <ol id="group-people" class="people"></ol>
+      <section class="danger-zone">
+        <button id="group-leave-btn" class="text-btn danger" type="button">Leave group</button>
+        <small class="hint">You'll stop getting its messages. Someone still in it can add you back.</small>
+      </section>
+    </div>
+  </dialog>
 
   <!-- ============ A friend's profile ============ -->
   <dialog id="mini-profile" class="settings mini-profile" aria-labelledby="mp-name">

@@ -138,12 +138,13 @@ folder: the Render disk, or the Docker volume. Keep a copy now and then:
 When an update needs to change the database, Rainlit first saves a copy of it as it was
 in the `backups` folder inside the data folder. The newest three copies are kept.
 
-## 11. Turn on voice channels (optional)
+## 11. Turn on voice channels and group calls (optional)
 
 Voice channels (drop-in rooms in a space, for any number of people, with video and screen
-sharing) go through [LiveKit](https://livekit.io): a media server in the middle that
-everyone in a channel connects to. Without it, everything else works, and spaces just don't
-offer voice channels. (Calls between two friends don't need it.)
+sharing) and group calls (a group of friends calling together) go through
+[LiveKit](https://livekit.io): a media server in the middle that everyone in a call
+connects to. Without it, everything else works: spaces just don't offer voice channels, and
+groups have their chat but no call button. (Calls between two friends don't need it.)
 
 - **LiveKit Cloud** (easiest; it has a free tier): make an account at
   https://cloud.livekit.io and create a project. In the project's settings, make an API
@@ -156,8 +157,9 @@ offer voice channels. (Calls between two friends don't need it.)
   (for example TCP 7881 and a range of UDP ports), so it runs on a server of your own, not
   on Render. Point the same three settings at it.
 
-Keep the secret private. The sound and video in voice channels are end-to-end encrypted
-with a key only your Rainlit hands out, so LiveKit (or whoever runs it) can't listen in.
+Keep the secret private. The sound and video in voice channels and group calls are
+end-to-end encrypted with a key only your Rainlit hands out, so LiveKit (or whoever runs
+it) can't listen in.
 
 ## All the settings
 

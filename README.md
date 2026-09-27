@@ -3,10 +3,12 @@
 Private voice calls, video, screen sharing, messages and file sharing with your
 friends. Everyone has an account, adds friends by username, and can see who's
 online. Each friend has a conversation where messages and files are kept (or
-not, if you turn saving off). Spaces are groups with text and voice channels that anyone
-can make and invite people to. Calls between two friends (video and screen sharing too) go
-directly between your devices; the server only helps them find each other. Voice channels
-go through a LiveKit server, end-to-end encrypted (see [SELF-HOSTING.md](SELF-HOSTING.md)).
+not, if you turn saving off). Groups are a few friends (up to 10) with a chat and a call
+of their own. Spaces are communities with text and voice channels that anyone can make and
+invite people to. Calls between two friends (video and screen sharing too) go directly
+between your devices; the server only helps them find each other. Group calls and voice
+channels go through a LiveKit server, end-to-end encrypted (see
+[SELF-HOSTING.md](SELF-HOSTING.md)).
 
 **Run your own:** anyone can host a Rainlit for their friends or community, on Render in
 a few clicks or on any machine with Docker. See [SELF-HOSTING.md](SELF-HOSTING.md). Where
@@ -142,8 +144,8 @@ at the top closes it (on a phone, the back arrow).
   nothing new is kept: messages only reach your friend if they have Rainlit
   open, they're gone after a reload, and files can only be sent during a call
   (straight from you to them, any size). Anything saved before stays.
-- **Calls** leave a note in the conversation: how long they lasted, or that
-  one was missed.
+- **Calls** leave notes in the conversation: who started one, how long it lasted, or
+  that it was missed.
 
 ## How calls work
 

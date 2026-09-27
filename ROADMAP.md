@@ -54,7 +54,8 @@ so people running their own Rainlit can run it too, or use LiveKit Cloud.
       (the media server can't listen in)
 - [x] Voice permissions: who can join, who can talk (or only listen), private voice
       channels, and timeouts and kicks that reach voice too
-- [ ] Group calls in DMs, with more than one friend
+- [x] Groups: up to 10 friends with a chat and a call of their own (anyone in one can add
+      their friends and name it), where starting a call rings everyone
 - [ ] LiveKit alongside Rainlit in the Docker setup, for one-piece self-hosting
 
 ## Stage 4: Open the doors
