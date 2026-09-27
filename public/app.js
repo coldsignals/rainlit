@@ -84,7 +84,7 @@ for (const id of [
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
   'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'members-toggle', 'member-panel',
   'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove', 'menu-block',
-  'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
+  'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
   'ring', 'ring-face', 'ring-name', 'ring-decline', 'ring-join',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
@@ -2602,14 +2602,14 @@ function startEdit(li) {
   stopReply();
   S.editing = { id: li.dataset.id, friendId: S.openDm, draft: el.chatInput.value };
   el.editBar.hidden = false;
-  el.chatInput.value = messageText(li);
+  setChatText(messageText(li));
   el.chatInput.focus();
   el.chatInput.setSelectionRange(el.chatInput.value.length, el.chatInput.value.length);
 }
 
 function stopEdit() {
   if (!S.editing) return;
-  el.chatInput.value = S.editing.draft || '';
+  setChatText(S.editing.draft || '');
   S.editing = null;
   el.editBar.hidden = true;
 }
@@ -2782,6 +2782,26 @@ function friendName(id) {
 
 // Whether a conversation (still) exists for you.
 const convExists = (key) => (isChannelKey(key) ? S.channels.has(channelIdOf(key)) : S.friends.has(key));
+
+// ----- The message box -----
+// It grows with what you write (up to a point, then scrolls). On a computer, Enter sends and
+// Shift+Enter starts a new line; on a phone, Enter starts a new line and Send sends, like Discord.
+
+const newLineOnEnter = () => Boolean(ANDROID) || matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+function fitChatInput() {
+  const box = el.chatInput;
+  const log = S.openDm && dmFor(S.openDm).log;
+  const stick = log && nearBottom(log); // (at the bottom of the conversation: stay there as it grows)
+  box.style.height = 'auto';
+  box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`;
+  if (stick) scrollChat(log);
+}
+
+function setChatText(text) {
+  el.chatInput.value = text;
+  fitChatInput();
+}
 
 function nearBottom(log) {
   return log.scrollHeight - log.scrollTop - log.clientHeight < 80;
@@ -5545,7 +5565,7 @@ function pickMention(item) {
   const v = el.chatInput.value;
   const caret = el.chatInput.selectionStart;
   const text = `@${item.insert} `;
-  el.chatInput.value = v.slice(0, mentionPick.start) + text + v.slice(caret);
+  setChatText(v.slice(0, mentionPick.start) + text + v.slice(caret));
   const pos = mentionPick.start + text.length;
   el.chatInput.setSelectionRange(pos, pos);
   closeMentionPick();
@@ -8596,11 +8616,24 @@ async function init() {
   }, true);
   el.msgDelete.addEventListener('click', onMessageMenuDelete);
   el.editCancel.addEventListener('click', () => { stopEdit(); el.chatInput.focus(); });
+  if (newLineOnEnter()) el.editHint.textContent = 'Editing your message. Send saves it.';
+  // Sending leaves you in the message box (on a phone, the keyboard stays up).
+  el.chatForm.querySelector('.send-btn').addEventListener('mousedown', (e) => {
+    if (document.activeElement === el.chatInput) e.preventDefault();
+  });
   el.chatInput.addEventListener('input', onTypingInput);
   el.chatInput.addEventListener('input', onMentionInput);
   el.chatInput.addEventListener('keydown', onMentionKey);
   el.chatInput.addEventListener('blur', () => setTimeout(closeMentionPick, 150));
+  el.chatInput.addEventListener('input', fitChatInput);
   el.chatInput.addEventListener('keydown', (e) => {
+    // (Ctrl+Enter sends everywhere, for a phone with a keyboard. Not while an accent or a
+    // character is still being put together.)
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.keyCode !== 229 && (!newLineOnEnter() || e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      el.chatForm.requestSubmit();
+      return;
+    }
     if (e.key === 'Escape' && S.editing) {
       e.preventDefault();
       stopEdit();
@@ -8755,7 +8788,7 @@ async function init() {
     const replyTo = replyingTo(dm.friendId);
     if (text) {
       sendText(dm.friendId, text, replyTo);
-      el.chatInput.value = '';
+      setChatText('');
     }
     stopTyping();
     if (dm.pending.length) sendPending(dm, text ? null : replyTo); // (with no words, the first file answers it)

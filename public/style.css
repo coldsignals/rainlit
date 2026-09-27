@@ -42,7 +42,7 @@ body {
 
 [hidden] { display: none !important; }
 
-button, input, select { font: inherit; color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 
 :focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
@@ -501,7 +501,7 @@ button { cursor: pointer; }
 .space-log { list-style: none; margin: -6px 0 0; padding: 0; display: grid; }
 .space-log li { display: grid; gap: 1px; padding: 8px 2px; border-top: 1px solid var(--line); font-size: 14px; overflow-wrap: anywhere; }
 .space-log time { color: var(--mist); font-size: 12px; }
-.chat-form.locked input { cursor: not-allowed; }
+.chat-form.locked textarea { cursor: not-allowed; }
 
 .sidebar {
   display: flex; flex-direction: column;
@@ -1119,16 +1119,20 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 }
 .chat-empty { color: var(--mist); font-size: 14px; }
 
-.chat-form { display: flex; gap: 8px; padding: 10px 12px 4px; }
-.chat-form input {
+/* (The buttons stay at the bottom as the message box grows.) */
+.chat-form { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px 4px; }
+.chat-form textarea {
   flex: 1; min-width: 0;
   background: var(--deep);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 22px;
   padding: 9px 14px;
   font-size: 16px;
+  resize: none;
+  max-height: calc(40vh / var(--zoom));
+  overflow-y: auto;
 }
-.chat-form input:disabled { opacity: 0.55; }
+.chat-form textarea:disabled { opacity: 0.55; }
 .send-btn { background: var(--lamp); color: var(--lamp-ink); border: 0; }
 .send-btn .icon { width: 18px; height: 18px; }
 

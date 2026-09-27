@@ -417,7 +417,7 @@
             </button>
           </div>
           <div id="edit-bar" class="edit-bar" hidden>
-            <span>Editing your message. <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels.</span>
+            <span id="edit-hint">Editing your message. <kbd>Enter</kbd> saves, <kbd>Esc</kbd> cancels.</span>
             <button id="edit-cancel" class="icon-btn ghost" type="button" aria-label="Stop editing" title="Stop editing">
               <svg class="icon"><use href="#i-close"/></svg>
             </button>
@@ -428,7 +428,7 @@
             </button>
             <!-- (With the file button, away from Send, so it isn't hit by mistake.) -->
             <button id="gif-btn" class="gif-btn" type="button" aria-label="Send a GIF" title="Send a GIF" aria-expanded="false" hidden>GIF</button>
-            <input id="chat-input" autocomplete="off" maxlength="4000" placeholder="Message" aria-label="Message" />
+            <textarea id="chat-input" rows="1" autocomplete="off" maxlength="4000" placeholder="Message" aria-label="Message"></textarea>
             <button class="icon-btn send-btn" type="submit" aria-label="Send">
               <svg class="icon"><use href="#i-send"/></svg>
             </button>
