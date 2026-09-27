@@ -404,6 +404,7 @@
     <button id="msg-save" type="button" role="menuitem">Save</button>
     <button id="msg-open" type="button" role="menuitem">Open in browser</button>
     <button id="msg-copy" type="button" role="menuitem">Copy text</button>
+    <button id="msg-report" type="button" role="menuitem">Report</button>
     <button id="msg-delete" class="danger" type="button" role="menuitem">Delete</button>
   </div>
 
@@ -423,6 +424,7 @@
     <button id="menu-profile" type="button" role="menuitem">View profile</button>
     <hr />
     <button id="menu-remove" class="danger" type="button" role="menuitem">Remove friend</button>
+    <button id="menu-block" class="danger" type="button" role="menuitem">Block</button>
   </div>
 
   <!-- ============ A friend is calling ============ -->
@@ -462,6 +464,11 @@
           <button id="mp-edit" class="primary-btn ghost-btn" type="button" hidden>Edit profile</button>
         </span>
         <button id="mp-remove" class="text-btn danger" type="button">Remove friend</button>
+      </div>
+      <p id="mp-blocked" class="mp-blocked" hidden>You've blocked them. They can't message you or ask to be friends, and their messages in spaces fold away.</p>
+      <div id="mp-safety" class="mp-safety">
+        <button id="mp-report" class="text-btn" type="button">Report</button>
+        <button id="mp-block" class="text-btn danger" type="button">Block</button>
       </div>
     </div>
   </dialog>
@@ -520,6 +527,10 @@
           </label>
           <button id="pw-btn" class="primary-btn small" type="button">Change password</button>
         </div>
+      </details>
+      <details id="blocked-details" class="pw-details">
+        <summary>People you've blocked <span id="blocked-count"></span></summary>
+        <ol id="blocked-list" class="admin-list blocked-list"></ol>
       </details>
       <button id="signout-btn" class="text-btn danger signout" type="button">Sign out</button>
     </form>
@@ -587,6 +598,29 @@
       <section id="space-moderation" class="tab-panel" data-tab="moderation" hidden></section>
       <p id="space-settings-error" class="form-error" role="alert" hidden></p>
     </div>
+  </dialog>
+
+  <!-- Reporting a message or a person -->
+  <dialog id="report-dialog" class="settings space-dialog" aria-labelledby="report-title">
+    <form id="report-form" class="settings-inner" novalidate>
+      <div class="settings-head"><h2 id="report-title">Report</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p id="report-text" class="mod-text"></p>
+      <div class="report-reasons" role="radiogroup" aria-label="What's the problem?">
+        <label class="toggle"><input type="radio" name="report-reason" value="spam" /><span>Spam</span></label>
+        <label class="toggle"><input type="radio" name="report-reason" value="harassment" /><span>Harassment or hate</span></label>
+        <label class="toggle"><input type="radio" name="report-reason" value="inappropriate" /><span>Something inappropriate or disturbing</span></label>
+        <label class="toggle"><input type="radio" name="report-reason" value="danger" /><span>Someone may be in danger</span></label>
+        <label class="toggle"><input type="radio" name="report-reason" value="other" /><span>Something else</span></label>
+      </div>
+      <p id="report-danger" class="report-danger" hidden>If someone is in danger right now, please contact your local emergency services too.</p>
+      <label class="field">
+        <span>Anything to add? <small class="hint">(optional)</small></span>
+        <textarea id="report-note" maxlength="1000" rows="3"></textarea>
+      </label>
+      <label id="report-block-field" class="toggle"><input id="report-block" type="checkbox" /><span id="report-block-text">Block them too</span></label>
+      <p id="report-error" class="form-error" role="alert" hidden></p>
+      <button id="report-send" class="primary-btn" type="submit">Send report</button>
+    </form>
   </dialog>
 
   <!-- A timeout, kick or ban -->
@@ -660,6 +694,11 @@
         <h2 id="admin-title">Invites and accounts</h2>
         <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
       </div>
+      <section class="admin-section">
+        <h3>Reports</h3>
+        <p class="hint">Everything reported on this server. Reports from a space also go to its moderators.</p>
+        <ol id="report-list" class="report-list"></ol>
+      </section>
       <section class="admin-section">
         <div class="admin-head">
           <h3>Invite codes</h3>

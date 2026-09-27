@@ -37,7 +37,9 @@ server can hold many of them, the way Discord holds many servers.
       do; private channels, and channels only some roles post in
 - [x] Moderation for the people running a space: kick, ban (and clear away their recent
       messages), timeout, deleting others' messages, and a log of who did what
-- [ ] Blocking and reporting
+- [x] Blocking and reporting: blocked people can't be your friends or message you, and their
+      messages in spaces fold away; messages and people can be reported to a space's
+      moderators and the server's admin
 - [ ] Mentions, and notifications from spaces
 
 ## Stage 3: Open the doors

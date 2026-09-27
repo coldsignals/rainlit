@@ -154,6 +154,11 @@ button { cursor: pointer; }
   font-size: 16px;
 }
 .field input::placeholder { color: #6c768c; }
+.field textarea {
+  width: 100%; padding: 10px 14px; resize: vertical;
+  background: var(--deep); border: 1px solid var(--line); border-radius: var(--radius); font: inherit; font-size: 15px;
+}
+.field textarea:focus-visible { outline-offset: 0; border-color: var(--lamp); }
 .field input:focus-visible, .field select:focus-visible { outline-offset: 0; border-color: var(--lamp); }
 .field-row { display: flex; gap: 10px; align-items: center; }
 .field-row input { flex: 1; min-width: 0; }
@@ -376,6 +381,34 @@ button { cursor: pointer; }
 .small-btn.danger { color: #ffb4ae; }
 .small-btn.danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 .primary-btn.danger-btn { background: var(--danger); color: #fff; }
+
+/* Blocking and reporting */
+.mp-blocked { margin: 0; padding: 10px 12px; background: var(--deep); border-radius: 10px; color: var(--mist); font-size: 13px; }
+.mp-safety { display: flex; justify-content: flex-end; gap: 14px; margin-top: -8px; }
+.mp-safety .text-btn { font-size: 13px; }
+.blocked-list { margin-top: 10px; }
+.chat-log li.blocked-msg:not(.shown) > :not(.blocked-note) { display: none; }
+.blocked-note {
+  display: inline-flex; gap: 8px; margin: 2px 0; padding: 3px 12px;
+  border: 0; border-radius: 999px; background: var(--dusk); color: var(--mist); font-size: 13px;
+}
+.blocked-note::after { content: "Show"; color: var(--lamp); font-weight: 650; }
+.chat-log li.blocked-msg.shown > .blocked-note::after { content: "Hide"; }
+.report-reasons { display: grid; gap: 10px; }
+.report-danger { margin: -4px 0 0; padding: 10px 12px; background: var(--danger-soft); border-radius: 10px; font-size: 14px; }
+.report-list { list-style: none; margin: -6px 0 0; padding: 0; display: grid; gap: 10px; }
+.report { display: grid; gap: 6px; padding: 12px 14px; background: var(--deep); border-radius: 12px; font-size: 14px; }
+.report.resolved { opacity: 0.6; }
+.report-head { display: flex; justify-content: space-between; gap: 10px; }
+.report-head time { flex: none; color: var(--mist); font-size: 12px; }
+.report-reason { font-size: 13px; color: var(--lamp); }
+.report-reason.urgent { color: var(--danger); }
+.report-note { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.report-quote { margin: 0; padding: 6px 10px; border-left: 3px solid var(--line); color: var(--mist); overflow-wrap: anywhere; white-space: pre-wrap; max-height: 8em; overflow: auto; }
+.report > small { color: var(--mist); font-size: 12px; }
+.report-by { align-self: center; color: var(--mist); font-size: 12px; }
+#admin-btn { position: relative; }
+#admin-btn.has-reports::after { content: ""; position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
 .mod-text { margin: -6px 0 0; color: var(--mist); font-size: 14px; }
 .mod-list { list-style: none; margin: -6px 0 0; padding: 0; display: grid; gap: 4px; }
 .mod-row { display: flex; align-items: center; gap: 10px; padding: 6px 4px; }

@@ -83,14 +83,14 @@ for (const id of [
   'me-btn', 'me-face', 'me-name', 'me-status', 'admin-btn', 'app-settings-btn',
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
   'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice',
-  'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove',
-  'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-delete', 'edit-bar', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
+  'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove', 'menu-block',
+  'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
   'ring', 'ring-face', 'ring-name', 'ring-decline', 'ring-join',
-  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-remove',
+  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
-  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn',
-  'admin', 'invite-btn', 'invite-list', 'user-list',
+  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn',
+  'admin', 'invite-btn', 'invite-list', 'user-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-away', 'peer-away-time', 'offline-banner',
@@ -130,6 +130,8 @@ const S = {
   friends: new Map(), // id -> { id, username, displayName, statusText, avatar, presence }
   incoming: [], // friend requests you've been sent
   outgoing: [], // friend requests you've sent
+  blocked: new Set(), // people you've blocked (their ids)
+  blockedUsers: [],
   dms: new Map(), // friend id -> your conversation with them (see dmFor)
   openDm: '', // the friend whose conversation is on screen
   uploads: new Map(), // message id -> a file being uploaded to a saved conversation
@@ -900,6 +902,8 @@ function handleServerMessage(msg) {
       return onDmRemoved(msg);
     case 'dm-gone':
       return onDmGone(msg);
+    case 'report-new':
+      return onReportNew(msg);
     case 'dm-edited':
       return onDmEdited(msg);
     case 'dm-reactions':
@@ -2005,6 +2009,7 @@ function messageActions(li) {
   if (media) actions.push('save');
   if (media && !media.url.startsWith('blob:')) actions.push('open');
   if (kind === 'text' || (kind === 'gif' && li.dataset.copy)) actions.push('copy');
+  if (!mine && li.dataset.saved === '1') actions.push('report');
   if (mine || canModerateMessages(li)) actions.push('delete');
   return actions;
 }
@@ -2049,6 +2054,7 @@ function openMessageMenu(li, x, y) {
   el.msgSave.textContent = li.dataset.kind === 'gif' ? 'Save GIF' : 'Save';
   el.msgOpen.hidden = !actions.includes('open');
   el.msgCopy.textContent = li.dataset.kind === 'gif' ? 'Copy GIF link' : 'Copy text';
+  el.msgReport.hidden = !actions.includes('report');
   el.msgDelete.hidden = !actions.includes('delete');
   el.msgDelete.textContent = li.dataset.kind === 'file' ? 'Delete file' : 'Delete';
   delete el.msgDelete.dataset.confirm;
@@ -2304,6 +2310,7 @@ function stopTyping() {
 
 // Someone typing to you, or in one of your channels.
 function onTyping({ from, channel, on }) {
+  if (S.blocked && S.blocked.has(from)) return;
   const key = channel ? `ch:${channel}` : from;
   if (!convExists(key)) return;
   let who = S.typing.get(key);
@@ -2961,8 +2968,34 @@ function renderMessage(m) {
   if (['text', 'file', 'gif'].includes(m.kind)) {
     li.dataset.author = m.author;
     addMessageMenu(li);
+    if (channel) markBlocked(li);
   }
   return li;
+}
+
+// Someone you've blocked, in a space you share: their messages fold away, and open with a tap.
+function markBlocked(li) {
+  // (Notes like "Alice removed Cleo's message" stay as they are.)
+  const blocked = Boolean(li.dataset.channel && li.dataset.author && !li.classList.contains('sys') && S.blocked && S.blocked.has(li.dataset.author));
+  li.classList.toggle('blocked-msg', blocked);
+  let note = li.querySelector(':scope > .blocked-note');
+  if (blocked && !note) {
+    note = document.createElement('button');
+    note.type = 'button';
+    note.className = 'blocked-note';
+    note.textContent = 'Blocked message';
+    note.addEventListener('click', () => li.classList.toggle('shown'));
+    li.prepend(note);
+  } else if (!blocked && note) {
+    note.remove();
+    li.classList.remove('shown');
+  }
+}
+
+function applyBlocks() {
+  for (const dm of S.dms.values()) {
+    if (dm.channelId) for (const li of dm.log.querySelectorAll('li[data-author]')) markBlocked(li);
+  }
 }
 
 // Messages from the same person within a few minutes of each other are grouped
@@ -4913,7 +4946,7 @@ const isAdministrator = (space, m) => space.everyonePerms.includes('administrato
   || space.roles.some((r) => m.roles.includes(r.id) && r.perms.includes('administrator'));
 const canModerateIn = (space, m, perm) => canIn(space, perm) && !m.owner && m.id !== S.clientId
   && (space.role === 'owner' || topOf(space, m) < myTop(space)) && !(perm === 'timeout' && isAdministrator(space, m));
-const SETTINGS_TABS = [['general', ['manageSpace']], ['roles', ['manageRoles']], ['channels', ['manageChannels']], ['moderation', ['timeout', 'ban', 'viewLog']]];
+const SETTINGS_TABS = [['general', ['manageSpace']], ['roles', ['manageRoles']], ['channels', ['manageChannels']], ['moderation', ['timeout', 'ban', 'viewLog', 'manageMessages', 'kick']]];
 const settingsTabsFor = (space) => SETTINGS_TABS.filter(([, perms]) => perms.some((p) => canIn(space, p))).map(([tab]) => tab);
 const canOpenSettings = (space) => Boolean(space) && settingsTabsFor(space).length > 0;
 
@@ -5385,6 +5418,143 @@ function memberRow(space, m) {
   return [li, panel];
 }
 
+// ----- Reports -----
+// About a message or a person. Space reports go to its moderators; all go to the server's admin.
+
+const REPORT_REASONS = {
+  spam: 'Spam',
+  harassment: 'Harassment or hate',
+  inappropriate: 'Something inappropriate or disturbing',
+  danger: 'Someone may be in danger',
+  other: 'Something else',
+};
+
+let reportTarget = null;
+
+// { messageId } or { userId }, with who it's about and (for a person) the space it's from.
+function openReportDialog(target) {
+  reportTarget = target;
+  const c = target.messageId && S.channels.get(target.channelId);
+  const space = S.spaces.get(c ? c.spaceId : target.spaceId);
+  el.reportTitle.textContent = target.messageId ? `Report ${target.name}'s message` : `Report ${target.name}`;
+  el.reportText.textContent = `${space ? `${space.name}'s moderators and ` : ''}${space ? 'this' : 'This'} server's admin will see your report${target.messageId ? ', with a copy of the message' : ''}. ${target.name} won't be told who sent it.`;
+  for (const r of el.reportForm.querySelectorAll('input[name="report-reason"]')) r.checked = false;
+  el.reportDanger.hidden = true;
+  el.reportNote.value = '';
+  el.reportBlock.checked = false;
+  el.reportBlockField.hidden = !target.userId || S.blocked.has(target.userId) || target.userId === S.clientId;
+  el.reportBlockText.textContent = `Block ${target.name} too`;
+  el.reportError.hidden = true;
+  el.reportDialog.showModal();
+}
+
+async function onReportSend(e) {
+  e.preventDefault();
+  const t = reportTarget;
+  const reason = el.reportForm.querySelector('input[name="report-reason"]:checked');
+  if (!t) return;
+  if (!reason) {
+    el.reportError.textContent = 'Pick what the problem is.';
+    el.reportError.hidden = false;
+    return;
+  }
+  el.reportSend.disabled = true;
+  try {
+    await api('POST', '/reports', {
+      ...(t.messageId ? { messageId: t.messageId } : { userId: t.userId, spaceId: t.spaceId || null }),
+      reason: reason.value, note: el.reportNote.value.trim(), block: !el.reportBlockField.hidden && el.reportBlock.checked,
+    });
+    el.reportDialog.close();
+    toast(el.reportBlock.checked && !el.reportBlockField.hidden ? `Thanks. Your report was sent, and ${t.name} is blocked.` : 'Thanks. Your report was sent.');
+    if (el.reportBlock.checked) refreshFriends();
+  } catch (err) {
+    el.reportError.textContent = err.message;
+    el.reportError.hidden = false;
+  } finally {
+    el.reportSend.disabled = false;
+  }
+}
+
+function onReportNew({ space, quiet }) {
+  if (space) {
+    if (modState.spaceId === space) modState.stale = true;
+    refreshSpaces().then(() => { if (el.spaceSettings.open) renderSpaceSettings(); });
+  }
+  if (S.me && S.me.isAdmin) {
+    refreshFriends();
+    if (el.admin.open) renderAdmin();
+  }
+  if (quiet) return;
+  const s = space && S.spaces.get(space);
+  toast(s ? `There's a new report in ${s.name}.` : "There's a new report for this server.");
+}
+
+// One report, for a space's moderators or the server's admin.
+function reportItem(r, { spaceId = null, onResolve }) {
+  const li = document.createElement('li');
+  li.className = `report${r.resolved ? ' resolved' : ''}`;
+  const head = document.createElement('div');
+  head.className = 'report-head';
+  const who = document.createElement('span');
+  const whom = r.target ? r.target.displayName : 'someone';
+  who.textContent = `${r.reporter ? r.reporter.displayName : 'Someone'} reported ${r.messageId ? `a message from ${whom}` : whom}`;
+  const time = document.createElement('time');
+  time.textContent = fmtWhen(r.at);
+  head.append(who, time);
+  const why = document.createElement('strong');
+  why.className = `report-reason${r.reason === 'danger' ? ' urgent' : ''}`;
+  why.textContent = REPORT_REASONS[r.reason] || r.reason;
+  li.append(head, why);
+  if (r.note) {
+    const note = document.createElement('p');
+    note.className = 'report-note';
+    note.textContent = `“${r.note}”`;
+    li.append(note);
+  }
+  const s = r.snapshot || {};
+  if (r.messageId) {
+    const quote = document.createElement('blockquote');
+    quote.className = 'report-quote';
+    quote.textContent = s.text || (s.file ? `A file: ${s.file.name}` : s.gif ? `A GIF: ${s.gif.title || 'untitled'}` : '(not saved, so there is no copy)');
+    const where = document.createElement('small');
+    where.textContent = s.channel ? `in #${s.channel}${s.space && !spaceId ? ` (${s.space})` : ''}` : 'in a DM';
+    li.append(quote, where);
+  }
+  const acts = document.createElement('div');
+  acts.className = 'mod-actions';
+  const space = spaceId && S.spaces.get(spaceId);
+  if (!r.resolved && r.messageId && space && canIn(space, 'manageMessages') && S.channels.has(r.convId)) {
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'small-btn danger';
+    rm.textContent = 'Remove the message';
+    rm.addEventListener('click', async () => {
+      try {
+        await api('DELETE', `/channels/${r.convId}/messages/${r.messageId}`);
+        rm.textContent = 'Removed';
+        rm.disabled = true;
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    acts.append(rm);
+  }
+  const done = document.createElement('button');
+  done.type = 'button';
+  done.className = 'small-btn';
+  done.textContent = r.resolved ? 'Reopen' : 'Mark as dealt with';
+  done.addEventListener('click', () => onResolve(r, !r.resolved));
+  acts.append(done);
+  if (r.resolved) {
+    const by = document.createElement('small');
+    by.className = 'report-by';
+    by.textContent = `Dealt with by ${r.resolved.by ? r.resolved.by.displayName : 'someone'}, ${fmtWhen(r.resolved.at)}`;
+    acts.append(by);
+  }
+  li.append(acts);
+  return li;
+}
+
 // ----- Moderation -----
 // A timeout, kick or ban, with a reason for the log.
 
@@ -5441,10 +5611,10 @@ async function endTimeout(space, m) {
 }
 
 // Space settings, Moderation: who's in a timeout, who's banned, and the log.
-const modState = { spaceId: '', bans: null, log: null, more: false, stale: true, loading: false };
+const modState = { spaceId: '', bans: null, log: null, reports: null, more: false, stale: true, loading: false };
 
 function renderModerationPanel(space) {
-  if (modState.spaceId !== space.id) Object.assign(modState, { spaceId: space.id, bans: null, log: null, more: false, stale: true });
+  if (modState.spaceId !== space.id) Object.assign(modState, { spaceId: space.id, bans: null, log: null, reports: null, more: false, stale: true });
   if (modState.stale && !modState.loading) loadModeration(space);
   const parts = [];
   const title = (text) => {
@@ -5477,6 +5647,26 @@ function renderModerationPanel(space) {
     li.append(makeFace(who, null), words, b);
     return li;
   };
+  if (space.reports !== undefined) {
+    parts.push(title('Reports'));
+    if (!modState.reports) parts.push(note('Loading…'));
+    else if (!modState.reports.length) parts.push(note('No reports. Members can report messages and people, and they show up here.'));
+    else {
+      const list = document.createElement('ol');
+      list.className = 'report-list';
+      list.append(...modState.reports.map((r) => reportItem(r, {
+        spaceId: space.id,
+        onResolve: async (report, resolved) => {
+          try {
+            await api('POST', `/spaces/${space.id}/reports/${report.id}/resolve`, { resolved });
+          } catch (err) {
+            showSettingsError(err.message);
+          }
+        },
+      })));
+      parts.push(list);
+    }
+  }
   if (canIn(space, 'timeout')) {
     const quiet = (space.members || []).filter((m) => m.timeoutUntil > Date.now());
     parts.push(title('In a timeout'));
@@ -5540,11 +5730,13 @@ async function loadModeration(space, older = false) {
   modState.loading = true;
   modState.stale = false;
   try {
-    const [bans, log] = await Promise.all([
+    const [reports, bans, log] = await Promise.all([
+      space.reports !== undefined && !older ? api('GET', `/spaces/${space.id}/reports`) : null,
       canIn(space, 'ban') && !older ? api('GET', `/spaces/${space.id}/bans`) : null,
       canIn(space, 'viewLog') ? api('GET', `/spaces/${space.id}/log${older && modState.log ? `?before=${modState.log.at(-1).id}` : ''}`) : null,
     ]);
     if (modState.spaceId !== space.id) return;
+    if (reports) modState.reports = reports.reports;
     if (bans) modState.bans = bans.bans;
     if (log) {
       modState.log = older ? [...(modState.log || []), ...log.entries] : log.entries;
@@ -5584,6 +5776,8 @@ function spaceLogText(e) {
     case 'kick': return `${who} kicked ${d.user}${why}`;
     case 'ban': return `${who} banned ${d.user}${d.removed ? ` and removed ${d.removed} of their messages` : ''}${why}`;
     case 'unban': return `${who} lifted ${d.user}'s ban`;
+    case 'report-resolve': return `${who} dealt with a report about ${d.user}`;
+    case 'report-reopen': return `${who} reopened a report about ${d.user}`;
     default: return `${who}: ${e.action}`;
   }
 }
@@ -5628,6 +5822,7 @@ function renderSpaceSettings() {
     b.hidden = !tabs.includes(b.dataset.tab);
     b.setAttribute('aria-selected', String(b.dataset.tab === tab));
   }
+  el.spaceTabs.querySelector('[data-tab="moderation"]').textContent = space.reports ? `Moderation (${space.reports})` : 'Moderation';
   for (const panel of el.spaceSettings.querySelectorAll('.tab-panel')) panel.hidden = panel.dataset.tab !== tab;
   el.spaceDanger.hidden = space.role !== 'owner';
   keepFocus(el.spaceSettings, () => {
@@ -6096,6 +6291,13 @@ async function refreshFriends() {
     S.klipyKey = data.klipyKey || '';
     if (Array.isArray(data.quickReactions) && data.quickReactions.length) setQuickReactions(data.quickReactions);
     renderComposer();
+    S.blockedUsers = data.blocked || [];
+    S.blocked = new Set(S.blockedUsers.map((u) => u.id));
+    S.openReports = data.openReports || 0;
+    applyBlocks();
+    el.adminBtn.classList.toggle('has-reports', S.openReports > 0);
+    if (el.profile.open) renderBlockedList();
+    if (el.miniProfile.open) renderMiniProfile();
     for (const f of data.friends) {
       const dm = dmFor(f.id);
       dm.save = f.dm.save;
@@ -6419,6 +6621,7 @@ function profileOf(id) {
 async function openMiniProfile(id) {
   miniProfileId = id;
   el.mpRemove.dataset.confirm = '';
+  el.mpBlock.dataset.confirm = '';
   const known = profileOf(id);
   if (known) {
     renderMiniProfile();
@@ -6454,9 +6657,13 @@ function renderMiniProfile() {
     el.mpPresence.dataset.presence = presence;
   }
   el.mpStatus.textContent = p.statusText || '';
+  const blocked = !self && S.blocked && S.blocked.has(id);
+  el.mpBlocked.hidden = !blocked;
+  el.mpSafety.hidden = self;
+  el.mpBlock.textContent = blocked ? 'Unblock' : el.mpBlock.dataset.confirm ? `Yes, block ${p.displayName}` : 'Block';
   // With a friend you can message or call; with anyone else, add them.
   el.mpMessage.hidden = el.mpCall.hidden = el.mpRemove.hidden = !f;
-  el.mpAdd.hidden = self || Boolean(f);
+  el.mpAdd.hidden = self || Boolean(f) || blocked;
   el.mpEdit.hidden = !self;
   if (f) {
     const here = S.inCall && S.callWith === f.id;
@@ -6470,6 +6677,37 @@ function renderMiniProfile() {
     el.mpAdd.textContent = sent ? 'Request sent' : theyAsked ? 'Accept friend request' : 'Add friend';
     el.mpAdd.disabled = sent;
   }
+}
+
+// Blocking asks first; unblocking doesn't.
+async function onProfileBlock() {
+  const id = miniProfileId;
+  const p = profileOf(id);
+  if (!p) return;
+  const blocked = S.blocked.has(id);
+  if (!blocked && !el.mpBlock.dataset.confirm) {
+    el.mpBlock.dataset.confirm = '1';
+    return renderMiniProfile();
+  }
+  el.mpBlock.dataset.confirm = '';
+  await setBlocked(id, !blocked, p.displayName);
+}
+
+async function setBlocked(id, block, name) {
+  try {
+    await api(block ? 'PUT' : 'DELETE', `/blocks/${id}`);
+    await refreshFriends();
+    toast(block ? `You've blocked ${name}.` : `You've unblocked ${name}.`);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// The space someone's profile was opened in, if any: its moderators see reports about them.
+function currentSpaceId() {
+  if (S.view !== 'home') return S.view;
+  const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
+  return c ? c.spaceId : null;
 }
 
 async function onProfileAddFriend() {
@@ -6521,12 +6759,37 @@ function openProfile() {
   el.profilePresence.value = S.me.presence;
   el.profileAccount.textContent = `@${S.me.username} · ${S.me.email}`;
   renderProfileBadges();
+  renderBlockedList();
   renderFace(el.profileFace, S.me, null);
   el.avatarRemoveBtn.hidden = !S.me.avatar;
   el.pwCurrent.value = el.pwNext.value = '';
   updateStatusCount();
   showProfileError('');
   el.profile.showModal();
+}
+
+function renderBlockedList() {
+  const people = S.blockedUsers || [];
+  el.blockedCount.textContent = people.length ? `(${people.length})` : '';
+  if (!people.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = "You haven't blocked anyone.";
+    return el.blockedList.replaceChildren(li);
+  }
+  el.blockedList.replaceChildren(...people.map((u) => {
+    const li = document.createElement('li');
+    const name = document.createElement('span');
+    name.className = 'grow';
+    name.textContent = `${u.displayName} (@${u.username})`;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'text-btn';
+    b.textContent = 'Unblock';
+    b.addEventListener('click', () => setBlocked(u.id, false, u.displayName));
+    li.append(makeFace(u, null), name, b);
+    return li;
+  }));
 }
 
 function renderProfileBadges() {
@@ -6613,11 +6876,29 @@ async function openAdmin() {
 }
 
 async function renderAdmin() {
-  let invites, users;
+  let invites, users, reports;
   try {
-    [{ invites }, { users }] = await Promise.all([api('GET', '/admin/invites'), api('GET', '/admin/users')]);
+    [{ invites }, { users }, { reports }] = await Promise.all([api('GET', '/admin/invites'), api('GET', '/admin/users'), api('GET', '/admin/reports')]);
   } catch (err) {
     return toast(err.message);
+  }
+  if (!reports.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'No reports.';
+    el.reportList.replaceChildren(li);
+  } else {
+    el.reportList.replaceChildren(...reports.map((r) => reportItem(r, {
+      onResolve: async (report, resolved) => {
+        try {
+          await api('POST', `/admin/reports/${report.id}/resolve`, { resolved });
+          renderAdmin();
+          refreshFriends();
+        } catch (err) {
+          toast(err.message);
+        }
+      },
+    })));
   }
   el.inviteList.replaceChildren(...invites.map((inv) => {
     const li = document.createElement('li');
@@ -6966,6 +7247,25 @@ async function init() {
     else startCall(miniProfileId);
   });
   el.mpAdd.addEventListener('click', onProfileAddFriend);
+  el.mpBlock.addEventListener('click', onProfileBlock);
+  el.mpReport.addEventListener('click', () => {
+    const p = profileOf(miniProfileId);
+    if (!p) return;
+    const spaceId = currentSpaceId();
+    el.miniProfile.close();
+    openReportDialog({ userId: p.id, name: p.displayName, spaceId }); // (the server checks you're both in it)
+  });
+  el.reportForm.addEventListener('submit', onReportSend);
+  el.reportForm.addEventListener('change', () => {
+    const reason = el.reportForm.querySelector('input[name="report-reason"]:checked');
+    el.reportDanger.hidden = !reason || reason.value !== 'danger';
+    if (reason) el.reportError.hidden = true;
+  });
+  el.msgReport.addEventListener('click', () => {
+    const li = msgMenuLi;
+    closeMessageMenu();
+    if (li) openReportDialog({ messageId: li.dataset.id, channelId: li.dataset.channel || null, userId: li.dataset.author, name: friendName(li.dataset.author) });
+  });
   el.mpEdit.addEventListener('click', () => {
     el.miniProfile.close();
     openProfile();
@@ -6975,6 +7275,10 @@ async function init() {
   el.menuMessage.addEventListener('click', menuAction(openDm));
   el.menuCall.addEventListener('click', menuAction((id) => (S.inCall && S.callWith === id ? openDm(id) : startCall(id))));
   el.menuProfile.addEventListener('click', menuAction(openMiniProfile));
+  el.menuBlock.addEventListener('click', menuAction((id) => {
+    const f = S.friends.get(id);
+    if (f && confirm(`Block ${f.displayName}? You won't be friends any more, they can't message you or ask to be friends, and their messages in spaces fold away.`)) setBlocked(id, true, f.displayName);
+  }));
   el.menuRemove.addEventListener('click', onMenuRemove);
   // ----- The message menu -----
   el.msgReply.addEventListener('click', () => startReply(msgMenuLi));
@@ -7120,7 +7424,7 @@ async function init() {
   el.pwBtn.addEventListener('click', onPasswordChange);
   el.signoutBtn.addEventListener('click', onSignOut);
   // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog]) {
     d.addEventListener('click', (e) => {
       if (e.target === d || e.target.closest('[data-close]')) d.close();
     });

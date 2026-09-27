@@ -18,6 +18,7 @@ const realtime = require('./lib/realtime');
 const push = require('./lib/push');
 const spaces = require('./lib/spaces');
 const badges = require('./lib/badges');
+const safety = require('./lib/safety');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -323,7 +324,11 @@ api.delete('/me/avatar', needUser, (req, res) => {
 // ----- Friends -----
 
 api.get('/friends', needUser, (req, res) => {
-  const out = { friends: [], incoming: [], outgoing: [], maxFileMb: FILE_MAX_MB, klipyKey: KLIPY_KEY, quickReactions: dms.quickReactions(req.user.id) };
+  const out = {
+    friends: [], incoming: [], outgoing: [], maxFileMb: FILE_MAX_MB, klipyKey: KLIPY_KEY, quickReactions: dms.quickReactions(req.user.id),
+    blocked: safety.blockedBy(req.user.id).map((id) => people.userById(id)).filter(Boolean).map(people.publicUser),
+    ...(req.user.is_admin ? { openReports: safety.openReportCount() } : {}),
+  };
   const convos = dms.summariesFor(req.user.id);
   for (const c of people.connectionsOf(req.user.id)) {
     const u = people.publicUser(c.user);
@@ -340,6 +345,9 @@ api.post('/friends', needUser, (req, res) => {
   const target = people.userByUsername(String((req.body || {}).username || '').trim());
   if (!target) return fail(res, 404, 'No one has that username. Check the spelling?');
   if (target.id === req.user.id) return fail(res, 400, "That's you!");
+  if (safety.hasBlocked(req.user.id, target.id)) return fail(res, 400, `You've blocked ${target.display_name}. Unblock them first.`);
+  // (Someone who blocked you isn't told apart from anything else going wrong.)
+  if (safety.hasBlocked(target.id, req.user.id)) return fail(res, 400, "Your friend request didn't go through.");
   const f = people.friendship(req.user.id, target.id);
   if (f && f.status === 'accepted') return fail(res, 409, `You're already friends with ${target.display_name}.`);
   if (f && f.requested_by === req.user.id) return fail(res, 409, `You've already sent ${target.display_name} a request.`);
@@ -366,6 +374,110 @@ api.delete('/friends/:id', needUser, (req, res) => {
   }
   res.json({ ok: true });
 });
+
+// ----- Blocking -----
+
+api.put('/blocks/:id', needUser, (req, res) => {
+  const other = people.userById(req.params.id);
+  if (!other) return fail(res, 404, 'Not found.');
+  if (other.id === req.user.id) return fail(res, 400, "You can't block yourself.");
+  safety.block(req.user.id, other.id);
+  realtime.friendsChanged(req.user.id, other.id);
+  res.json({ ok: true });
+});
+
+api.delete('/blocks/:id', needUser, (req, res) => {
+  safety.unblock(req.user.id, String(req.params.id));
+  realtime.friendsChanged(req.user.id);
+  res.json({ ok: true });
+});
+
+// ----- Reports -----
+//
+// About a message (in a channel you can see, or a DM you're in) or a person you can see.
+// Space reports go to its moderators, and every report to the server's admin.
+
+// Who hears about a new report: the server's admins, and the space's moderators.
+function reportHandlers(spaceId) {
+  const ids = new Set(db.prepare('SELECT id FROM users WHERE is_admin = 1').all().map((r) => r.id));
+  if (spaceId) for (const id of spaces.memberIds(spaceId)) if (spaces.canHandleReports(spaces.memberOf(spaceId, id))) ids.add(id);
+  return ids;
+}
+
+api.post('/reports', needUser, (req, res) => {
+  const b = req.body || {};
+  if (!safety.REASONS.includes(b.reason)) return fail(res, 400, 'Pick what the problem is.');
+  if (safety.reportsLastHour(req.user.id) >= safety.REPORTS_PER_HOUR) return fail(res, 429, "You've sent a lot of reports. Try again in a while.");
+  const r = { reporterId: req.user.id, reason: b.reason, note: b.note || '' };
+  if (b.messageId) {
+    const m = dms.getMessage(String(b.messageId)) || dms.passingMessage(String(b.messageId));
+    if (!m || !['text', 'file', 'gif'].includes(m.kind)) return fail(res, 404, "That message isn't there any more.");
+    const channel = spaces.channel(m.dm);
+    if (channel) {
+      const access = spaces.channelAccess(channel, spaces.memberOf(channel.space_id, req.user.id));
+      if (!access || !access.see) return fail(res, 404, "That message isn't there any more.");
+      r.spaceId = channel.space_id;
+    } else if (!dms.inDm(m.dm, req.user.id)) {
+      return fail(res, 404, "That message isn't there any more.");
+    }
+    if (m.author === req.user.id) return fail(res, 400, "That's your own message.");
+    const space = r.spaceId && spaces.getSpace(r.spaceId);
+    Object.assign(r, {
+      targetId: m.author, convId: m.dm, messageId: m.id,
+      snapshot: {
+        kind: m.kind, text: String(m.text || '').slice(0, 2000), at: m.at,
+        file: m.file ? { name: m.file.name, type: m.file.type, size: m.file.size } : null,
+        gif: m.kind === 'gif' && m.meta ? { title: m.meta.title || '', url: m.meta.img || m.meta.mp4 || '' } : null,
+        channel: channel ? channel.name : null, space: space ? space.name : null,
+      },
+    });
+  } else {
+    const target = people.userById(String(b.userId || ''));
+    const visible = target && (people.friendship(req.user.id, target.id) || spaces.shareSpace(req.user.id, target.id));
+    if (!visible) return fail(res, 404, 'Not found.');
+    if (target.id === req.user.id) return fail(res, 400, "That's you!");
+    r.targetId = target.id;
+    // From a space's members list: that space's moderators see it too.
+    if (b.spaceId && spaces.isMember(b.spaceId, req.user.id) && spaces.isMember(b.spaceId, target.id)) r.spaceId = String(b.spaceId);
+  }
+  const already = safety.openReportFor(req.user.id, r.messageId || null, r.targetId);
+  const id = already ? already.id : safety.addReport(r);
+  if (!already) {
+    for (const uid of reportHandlers(r.spaceId)) realtime.sendToUser(uid, { type: 'report-new', space: r.spaceId || null });
+  }
+  if (b.block) {
+    safety.block(req.user.id, r.targetId);
+    realtime.friendsChanged(req.user.id, r.targetId);
+  }
+  res.json({ ok: true, id });
+});
+
+function needReportHandler(req, res, next) {
+  if (!spaces.canHandleReports(req.member)) return fail(res, 403, "Only the space's moderators can see its reports.");
+  next();
+}
+
+api.get('/spaces/:spaceId/reports', needUser, needMember, needReportHandler, (req, res) => {
+  res.json({ reports: safety.reportsForSpace(req.space.id) });
+});
+
+function resolveRoute(scope) {
+  return (req, res) => {
+    const r = safety.reportById(req.params.reportId);
+    if (!r || (scope === 'space' && r.space_id !== req.space.id)) return fail(res, 404, "That report isn't there any more.");
+    const resolved = (req.body || {}).resolved !== false;
+    safety.setResolved(r.id, req.user.id, resolved);
+    if (r.space_id && spaces.getSpace(r.space_id)) {
+      const target = people.userById(r.target_id);
+      spaces.log(r.space_id, req.user.id, resolved ? 'report-resolve' : 'report-reopen', r.target_id, { user: target ? target.display_name : 'someone', reason: r.reason });
+    }
+    for (const uid of reportHandlers(r.space_id)) realtime.sendToUser(uid, { type: 'report-new', space: r.space_id || null, quiet: true });
+    res.json({ ok: true });
+  };
+}
+api.post('/spaces/:spaceId/reports/:reportId/resolve', needUser, needMember, needReportHandler, resolveRoute('space'));
+api.get('/admin/reports', needAdmin, (_req, res) => res.json({ reports: safety.allReports() }));
+api.post('/admin/reports/:reportId/resolve', needAdmin, resolveRoute('admin'));
 
 // Push notifications for when the app is closed (lib/push.js). The phone asks for the
 // server's public key, registers with its push app (ntfy, for example), then sends its address here.
