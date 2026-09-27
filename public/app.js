@@ -250,8 +250,9 @@ function randomId() {
 
 // Talks to the server's API. Resolves with the reply, or throws an Error whose message
 // is fit to show (the server writes its errors for people, not programmers).
-async function api(method, path, body) {
+async function api(method, path, body, { timeout = 0 } = {}) {
   const opts = { method, headers: {} };
+  if (timeout) opts.signal = AbortSignal.timeout(timeout); // (then it's "can't reach Rainlit")
   if (body instanceof Blob) {
     opts.body = body;
     opts.headers['Content-Type'] = body.type || 'application/octet-stream';
@@ -8926,6 +8927,7 @@ function teardown({ sendLeave, keepActive = false }) {
 // ---------------- Wire up ----------------
 
 async function init() {
+  window.rainlitRunning = true; // (for boot.js: this started, so a wait for the server is just that)
   // ----- Signing in -----
   el.signinTab.addEventListener('click', () => showAuth('signin'));
   el.signupTab.addEventListener('click', () => showAuth('signup'));
@@ -9527,14 +9529,17 @@ async function init() {
 
   // Already signed in on this device? If the server's restarting (an update), wait for it
   // rather than showing the sign-in screen.
+  // (If the answer's slow, say what's happening; one that never comes counts as no answer.)
   let user = null;
+  const slow = setTimeout(() => { el.starting.hidden = false; }, 2500);
   for (let wait = 1500; ; wait = Math.min(wait * 1.5, 8000)) {
     try {
-      ({ user } = await api('GET', '/me'));
+      ({ user } = await api('GET', '/me', undefined, { timeout: 8000 }));
       break;
     } catch (err) {
       if (err.status === 401) break;
       if (err.status && err.status < 500) {
+        clearTimeout(slow);
         el.starting.hidden = true;
         showAuth('signin');
         return showAuthError(err.message);
@@ -9543,6 +9548,7 @@ async function init() {
       await new Promise((r) => setTimeout(r, wait));
     }
   }
+  clearTimeout(slow);
   el.starting.hidden = true;
   if (user) return signedIn(user);
   try {

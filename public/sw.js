@@ -1,6 +1,6 @@
 // Keeps the app installable and lets it open instantly. Always tries the
 // network first so updates show up right away; falls back to the saved copy.
-const CACHE = 'rainlit-v1';
+const CACHE = 'rainlit-v2'; // (v2: without the files v1 kept)
 const SHELL = ['/', '/style.css', '/app.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/favicon.svg', '/icons/mark.svg', '/icons/drop-clean.svg'];
 
 self.addEventListener('install', (e) => {
@@ -18,21 +18,35 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  // Live data and people's pictures always come straight from the server.
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/avatars/') || url.pathname === '/ws') return;
-  e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        if (res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(e.request, copy));
-          return res;
-        }
-        // The server is restarting (an update): the saved copy starts Rainlit, which then
-        // waits for the server instead of showing an error page.
-        if (res.status >= 500) return caches.match(e.request).then((r) => r || res);
-        return res;
-      })
-      .catch(() => caches.match(e.request).then((r) => r || caches.match('/')))
-  );
+  // Live data, people's pictures and the files in conversations always come straight from the
+  // server (and files aren't kept here: a phone would fill up with every photo and video).
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/avatars/') || url.pathname.startsWith('/files/') || url.pathname === '/ws') return;
+  e.respondWith(networkFirst(e.request));
 });
+
+// The network first, so updates show up right away, and the saved copy when it can't help:
+// - the network's down;
+// - the server's restarting (an update): the saved copy starts Rainlit, which then waits for
+//   the server instead of showing an error page;
+// - opening Rainlit, the network's too slow to answer (a weak signal, or a restart that
+//   holds on to requests). A late answer still updates the saved copy for next time.
+const SLOW_MS = 5000;
+function networkFirst(request) {
+  const network = fetch(request).then((res) => {
+    if (res.status === 200) {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(request, copy)).catch(() => {});
+    }
+    return res;
+  });
+  network.catch(() => {}); // (answered from the saved copy, a late failure is nobody's business)
+  const saved = () => caches.match(request).then((r) => r || (request.mode === 'navigate' ? caches.match('/') : undefined));
+  const slow = request.mode === 'navigate' ? new Promise((resolve) => setTimeout(resolve, SLOW_MS, null)) : new Promise(() => {});
+  return Promise.race([network, slow])
+    .then(async (res) => {
+      if (!res) return (await saved()) || network; // too slow: the saved copy (or keep waiting, without one)
+      if (res.status >= 500) return (await caches.match(request)) || res;
+      return res;
+    })
+    .catch(async () => (await saved()) || Response.error());
+}

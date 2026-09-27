@@ -11,12 +11,29 @@
     problems.push(`Promise: ${(r && (r.message || r.name)) || String(r)}`);
   });
 
-  setTimeout(() => {
+  const started = () => {
     const auth = document.getElementById('auth');
     const app = document.getElementById('app');
+    return Boolean(auth && app && (!auth.hidden || !app.hidden));
+  };
+  // Nothing went wrong, it's just slow (a weak signal, or the server restarting for an
+  // update): say it's connecting, and give it longer before calling it a failure.
+  let patience = 10000;
+  const look = () => {
+    if (started()) return;
     const starting = document.getElementById('starting');
-    if (!auth || !app || !auth.hidden || !app.hidden) return; // it started
-    if (starting && !starting.hidden) return; // it's waiting for the server, and says so
+    // (app.js is running, waiting for the server, and says so.)
+    if (window.rainlitRunning && starting && !starting.hidden) return setTimeout(look, 5000);
+    if (!problems.length && patience) {
+      patience = 0;
+      if (starting) starting.hidden = false;
+      return setTimeout(look, 15000);
+    }
+    fail();
+  };
+  setTimeout(look, 10000);
+
+  function fail() {
     const details = [
       ...problems,
       `Capacitor: ${window.Capacitor ? `yes (${window.Capacitor.getPlatform && window.Capacitor.getPlatform()})` : 'no'}`,
@@ -46,7 +63,13 @@
     inner.append(title, text, pre, again);
     box.append(inner);
     document.body.append(box);
-  }, 10000);
+    // (If it gets going after all, this goes away by itself.)
+    const watch = setInterval(() => {
+      if (!started()) return;
+      clearInterval(watch);
+      box.remove();
+    }, 1000);
+  }
 })();
 
 // Your Size (Settings > Size) goes on before anything is drawn, so nothing jumps.
