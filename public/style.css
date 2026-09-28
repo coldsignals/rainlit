@@ -1118,6 +1118,24 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .gif-msg { margin-top: 4px; width: min(300px, 100%); }
 .gif-msg video, .gif-msg img { display: block; width: 100%; height: auto; border-radius: 8px; background: var(--deep); }
 .dm-notice { margin: 0; padding: 6px 18px; color: var(--mist); font-size: 12.5px; }
+/* A friend in your call, waiting for you: a bar at the top of your conversation. */
+.dm-waiting {
+  display: flex; align-items: center; gap: 10px;
+  margin: 8px 12px 0; padding: 8px 10px 8px 12px;
+  background: rgba(91, 209, 139, 0.1); border: 1px solid rgba(91, 209, 139, 0.35); border-radius: 12px;
+  font-size: 14px;
+}
+.dm-waiting[hidden] { display: none; }
+.dm-waiting-icon { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 50%; background: var(--online); color: #0c1a12; animation: waiting-pulse 2s ease-in-out infinite; }
+.dm-waiting-icon .icon { width: 16px; height: 16px; }
+.dm-waiting-text { flex: 1; min-width: 0; }
+.dm-waiting .primary-btn { background: var(--online); color: #0c1a12; }
+@keyframes waiting-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(91, 209, 139, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(91, 209, 139, 0); } }
+@media (prefers-reduced-motion: reduce) { .dm-waiting-icon { animation: none; } }
+/* ...and on their row in your friends list. */
+.person .waiting-call { display: grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--online); color: #0c1a12; }
+.person .waiting-call .icon { width: 13px; height: 13px; }
+.person-sub.waiting-now { color: var(--online); }
 .chat-log .load-more { align-self: center; }
 .chat-log .day {
   display: flex; align-items: center; gap: 10px;
@@ -1647,8 +1665,8 @@ button.person.open { background: var(--dusk-hi); }
 }
 .person-more .icon { width: 18px; height: 18px; }
 .person-row:hover .person-more, .person-more:focus-visible, .person-more.open { opacity: 1; }
-.person-row:hover .badge, .person-row:focus-within .badge { visibility: hidden; }
-@media (hover: none) { .person-more { opacity: 0.6; } .person-row .badge { margin-right: 30px; } }
+.person-row:hover :is(.badge, .waiting-call), .person-row:focus-within :is(.badge, .waiting-call) { visibility: hidden; }
+@media (hover: none) { .person-more { opacity: 0.6; } .person-row :is(.badge, .waiting-call:last-child) { margin-right: 30px; } }
 
 .menu {
   position: fixed; z-index: 70;

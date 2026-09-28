@@ -183,6 +183,10 @@ at the top closes it (on a phone, the back arrow).
   too.
 - **Leaving** with the Leave button doesn't end the call for the other person.
   You can call back and pick up where you left off.
+- **Someone waiting in your call:** while your friend is in your call and you
+  aren't (the ringing stopped, or you left or dropped out), their row in your
+  friends list says so, and your conversation with them shows a green bar with
+  a **Join** button. It also says if their own connection has dropped.
 - **Join and leave sounds:** a short rising "boop" when your friend joins or
   rejoins the call (or when you join them), and a falling one when someone
   drops or leaves. Turn them off in settings.

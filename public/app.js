@@ -82,7 +82,7 @@ for (const id of [
   'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty', 'notes-row',
   'me-btn', 'me-face', 'me-name', 'me-status', 'admin-btn', 'app-settings-btn',
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
-  'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'members-toggle', 'member-panel',
+  'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'dm-waiting', 'dm-waiting-text', 'dm-waiting-join', 'members-toggle', 'member-panel',
   'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove', 'menu-block',
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'emoji-btn', 'space-emoji', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
@@ -213,6 +213,7 @@ const S = {
   embeds: store.get('embeds', 'on') !== 'off', // link previews
   callSounds: store.get('callSounds', 'on') !== 'off',
   typing: new Map(), // conversation -> who's typing in it right now -> when to stop showing it
+  waitingFor: new Map(), // friend id -> { call, away }: in your call with them, and you're not
   spaces: new Map(), // your spaces, by id: { id, name, role, memberCount, channels, members }
   channels: new Map(), // every channel in them, by id: { id, name, spaceId, ... }
   people: new Map(), // everyone in your spaces (who may not be friends), by id, for names and pictures
@@ -925,6 +926,8 @@ function handleServerMessage(msg) {
       return onProfile(msg.user);
     case 'friends-changed':
       return refreshFriends();
+    case 'call-waiting':
+      return onCallWaiting(msg);
     case 'space-changed':
       return onSpaceChanged(msg.space);
     case 'space-removed':
@@ -1767,8 +1770,8 @@ function renderPeer() {
     const who = friend ? friend.displayName : 'your friend';
     const left = S.call && S.lastPeerName;
     const [title, text] =
-      left && S.peerTimedOut ? [`${S.lastPeerName}'s connection dropped`, "The call is still going. They'll be back in it when their app reconnects, or they can rejoin from their friends list."]
-      : left ? [`${S.lastPeerName} left the call`, 'The call is still going. They can rejoin anytime from their friends list.']
+      left && S.peerTimedOut ? [`${S.lastPeerName}'s connection dropped`, "The call is still going. They'll be back in it when their app reconnects, or they can join again from your conversation."]
+      : left ? [`${S.lastPeerName} left the call`, 'The call is still going. They can join again anytime from your conversation.']
       : S.resumeCallId ? [`Waiting for ${who}`, `Your call is still on. ${who} will be back in it when their app reconnects. If their app is closed, ring them.`]
       : S.callAnswer === 'declined' ? [`${who} can't answer right now`, 'Try again in a bit.']
       : S.callAnswer === 'no-answer' ? [`${who} didn't answer`, 'You can ring them again, or try later.']
@@ -2434,6 +2437,35 @@ async function uploadEmoji(space, files) {
   renderSpaceSettings();
 }
 
+// ----- A friend waiting for you in your call -----
+// They're in it (after the ringing stopped, or still going after you dropped out or left) and
+// you're not: their row says so, and their conversation has a bar to join (see lib/realtime.js).
+
+function onCallWaiting({ with: friendId, on, call, away }) {
+  if (on) S.waitingFor.set(friendId, { call: Boolean(call), away: Boolean(away) });
+  else S.waitingFor.delete(friendId);
+  renderFriends(); // (the row, and the conversation if it's open)
+}
+
+// Connected (again): who's waiting as of now. It may have changed while the connection was cut.
+function setWaiting(list) {
+  const was = JSON.stringify([...S.waitingFor]);
+  S.waitingFor.clear();
+  for (const w of list || []) if (w.on) S.waitingFor.set(w.with, { call: Boolean(w.call), away: Boolean(w.away) });
+  if (JSON.stringify([...S.waitingFor]) !== was) renderFriends();
+}
+
+// Waiting for you, and you could join: not already in that call.
+const waitingForYou = (friendId) => S.waitingFor.has(friendId) && !(S.inCall && S.callWith === friendId);
+
+// What their row says, and what the bar in your conversation says.
+function waitingText(friendId, name) {
+  const w = S.waitingFor.get(friendId);
+  if (w.away) return name ? `${name} is still in your call, but away right now.` : 'In your call (away)';
+  if (w.call) return name ? `${name} is still in your call.` : 'Still in your call';
+  return name ? `${name} is in a call, waiting for you.` : 'In a call, waiting for you';
+}
+
 // ---------------- Notes ----------------
 //
 // A conversation with yourself (Telegram's "Saved Messages"; Discord doesn't let you message
@@ -2874,6 +2906,7 @@ const MY_BUILD = (document.querySelector('meta[name="rainlit-build"]') || {}).co
 
 function onHello(msg) {
   trace('hello', { build: String(msg.build || '').slice(0, 12) });
+  setWaiting(msg.waiting);
   if (S.voice && S.voice.state === 'connected') {
     wsSend({ type: 'voice-join', channel: S.voice.channelId, muted: S.voice.muted || !S.voice.speak, deafened: S.voice.deafened, again: true, since: S.voice.joinedAt });
   }
@@ -3402,6 +3435,7 @@ function closeDm() {
 
 function renderDmHead() {
   renderMemberPanel();
+  el.dmWaiting.hidden = true; // (only a friend's conversation has it: see below)
   if (isChannelKey(S.openDm)) {
     renderChannelHead();
     return renderComposer();
@@ -3434,9 +3468,17 @@ function renderDmHead() {
   el.dmNotice.hidden = dm.save;
   el.dmNotice.textContent = `Saving is off. New messages aren't kept, and only reach ${f.displayName} while they have Rainlit open. Files can only be sent during a call.`;
   const here = S.inCall && S.callWith === f.id;
+  const waiting = waitingForYou(f.id);
   el.dmCallBtn.hidden = here;
   el.dmCallBtn.disabled = S.inCall && !here;
-  el.dmCallBtn.title = el.dmCallBtn.disabled ? 'Leave your current call first' : `Call ${f.displayName}`;
+  el.dmCallBtn.classList.toggle('live', waiting);
+  el.dmCallBtn.title = el.dmCallBtn.disabled ? 'Leave your current call first' : waiting ? `Join ${f.displayName} in your call` : `Call ${f.displayName}`;
+  el.dmWaiting.hidden = !waiting;
+  if (waiting) {
+    el.dmWaitingText.textContent = waitingText(f.id, f.displayName);
+    el.dmWaitingJoin.disabled = S.inCall;
+    el.dmWaitingJoin.title = S.inCall ? 'Leave your current call first' : '';
+  }
   el.chatInput.placeholder = `Message ${f.displayName}`;
 }
 
@@ -5629,7 +5671,7 @@ function showSummary(sm) {
   el.summaryDetail.textContent = sm.ended
     ? `With ${sm.withName}, started ${fmtWhen(sm.startedAt).replace('Today, ', 'today at ')}.` +
       (sm.whileAway ? ' It ended while you were disconnected.' : '')
-    : `${sm.stillWith} is still in it. You can rejoin anytime from your friends list.`;
+    : `${sm.stillWith} is still in it. You can join again anytime from your conversation.`;
   el.summaryLog.innerHTML = '';
   for (const e of sm.log) el.summaryLog.append(logItem(e));
   el.summary.showModal();
@@ -8602,9 +8644,18 @@ function friendRow(f) {
   btn.title = `${f.displayName} (@${f.username})`;
   const inCallWith = S.inCall && S.callWith === f.id;
   const typing = typersIn(f.id).length > 0;
-  const text = personText(f.displayName, typing ? 'typing…' : inCallWith ? 'In a call with you' : f.statusText || PRESENCE_LABEL[f.presence]);
+  const waiting = waitingForYou(f.id);
+  const text = personText(f.displayName, typing ? 'typing…' : inCallWith ? 'In a call with you' : waiting ? waitingText(f.id) : f.statusText || PRESENCE_LABEL[f.presence]);
   if (typing) text.querySelector('.person-sub').classList.add('typing-now');
+  else if (waiting) text.querySelector('.person-sub').classList.add('waiting-now');
   btn.append(makeFace(f, f.presence), text);
+  if (waiting) {
+    const w = document.createElement('span');
+    w.className = 'waiting-call';
+    w.title = waitingText(f.id, f.displayName);
+    w.innerHTML = '<svg class="icon"><use href="#i-phone"/></svg>';
+    btn.append(w);
+  }
   const unread = S.dms.has(f.id) ? S.dms.get(f.id).unread : 0;
   if (unread) {
     const badge = document.createElement('span');
@@ -9975,6 +10026,7 @@ async function init() {
     else if (!isNotes(S.openDm)) openMiniProfile(S.openDm);
   });
   el.dmSave.addEventListener('click', onSaveToggle);
+  el.dmWaitingJoin.addEventListener('click', () => startCall(S.openDm));
   el.dmCallBtn.addEventListener('click', () => {
     const group = isChannelKey(S.openDm) && groupOfChannel(channelIdOf(S.openDm));
     if (group) joinGroupCall(group.id);
