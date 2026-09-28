@@ -91,7 +91,7 @@ for (const id of [
   'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
-  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn',
+  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
@@ -939,7 +939,7 @@ function handleServerMessage(msg) {
     case 'no-answer':
       return callNotAnswered(msg.id, msg.type);
     case 'signed-out':
-      return signedOut('You were signed out because your password was changed.');
+      return signedOut(msg.why === 'deleted' ? 'This account was deleted.' : 'You were signed out because your password was changed.');
     case 'dm-message':
       return onDmMessage(msg.message);
     case 'dm-removed':
@@ -5462,6 +5462,7 @@ async function signedIn(user) {
   connectSocket();
   syncAndroidPush();
   followJoinLink();
+  followDeleteLink();
 }
 
 // ---------------- Push, for when the Android app is closed ----------------
@@ -6813,6 +6814,7 @@ function spaceLogText(e) {
   switch (e.action) {
     case 'space-rename': return `${who} renamed the space from ${d.from} to ${d.to}`;
     case 'space-import': return `${who} brought the space over from ${d.from || 'Discord'} (${d.channels} channels, ${d.roles} roles)`;
+    case 'owner-deleted': return `The owner deleted their account, so the space passed to ${d.user || 'its most senior member'}`;
     case 'everyone-perms': return `${who} changed what everyone can do`;
     case 'channel-create': return `${who} made #${d.name}`;
     case 'channel-rename': return `${who} renamed #${d.from} to #${d.to}`;
@@ -7938,6 +7940,9 @@ async function refreshFriends() {
     if (err.status === 401) signedOut('You were signed out. Sign in again.');
     return;
   }
+  // A friend who's gone (they removed you, or deleted their account) takes their conversation
+  // with them. (Not in the middle of a call with them: the call has its own goodbye.)
+  if (S.openDm && !isChannelKey(S.openDm) && !S.friends.has(S.openDm) && !(S.inCall && S.callWith === S.openDm)) closeDm();
   renderFriends();
   renderRejoin();
   updateTitle();
@@ -8703,9 +8708,71 @@ function openProfile() {
   renderFace(el.profileFace, S.me, null);
   el.avatarRemoveBtn.hidden = !S.me.avatar;
   el.pwCurrent.value = el.pwNext.value = '';
+  el.deleteDetails.open = false;
+  el.deletePassword.value = '';
+  showDeleteError('');
   updateStatusCount();
   showProfileError('');
   el.profile.showModal();
+}
+
+// ----- Deleting your account (see lib/accounts.js) -----
+
+function showDeleteError(text) {
+  el.deleteError.textContent = text;
+  el.deleteError.hidden = !text;
+}
+
+// Before anyone confirms: what happens to the spaces they own.
+async function renderDeletion() {
+  el.deleteSpaces.hidden = true;
+  el.deleteBtn.disabled = false;
+  showDeleteError('');
+  let p;
+  try {
+    p = await api('GET', '/me/deletion');
+  } catch {
+    return;
+  }
+  if (p.lastAdmin) {
+    el.deleteBtn.disabled = true;
+    return showDeleteError("You're the only admin of this Rainlit server, so your account can't be deleted: nobody would be left to look after it.");
+  }
+  el.deleteSpaces.replaceChildren(...p.spaces.map((s) => {
+    const li = document.createElement('li');
+    li.textContent = s.heir
+      ? `${s.name} passes to ${s.heir.name}, who'll own it.`
+      : `${s.name} is deleted (nobody else is in it).`;
+    return li;
+  }));
+  el.deleteSpaces.hidden = !p.spaces.length;
+}
+
+async function onDeleteAccount() {
+  showDeleteError('');
+  const password = el.deletePassword.value;
+  if (!password) return showDeleteError('Type your password first.');
+  if (!confirm('Delete your Rainlit account for good? This can\'t be undone.')) return;
+  el.deleteBtn.disabled = true;
+  try {
+    await api('DELETE', '/me', { password });
+  } catch (err) {
+    el.deleteBtn.disabled = false;
+    return showDeleteError(err.message);
+  }
+  store.set('history', '[]'); // (this device's list of recent calls)
+  signedOut('Your account has been deleted. Take care.');
+  el.signinLogin.value = '';
+}
+
+// rainlit.app/delete-account (where the app stores send people who want to delete theirs):
+// straight to it, once you're signed in.
+function followDeleteLink() {
+  if (!/^\/delete-account\/?$/.test(location.pathname)) return;
+  history.replaceState(null, '', '/');
+  openProfile();
+  el.deleteDetails.open = true;
+  el.deletePassword.focus();
 }
 
 function renderBlockedList() {
@@ -9692,6 +9759,8 @@ async function init() {
   el.avatarRemoveBtn.addEventListener('click', onAvatarRemove);
   el.pwBtn.addEventListener('click', onPasswordChange);
   el.signoutBtn.addEventListener('click', onSignOut);
+  el.deleteDetails.addEventListener('toggle', () => { if (el.deleteDetails.open) renderDeletion(); });
+  el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them.
   for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));

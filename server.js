@@ -22,6 +22,7 @@ const safety = require('./lib/safety');
 const voice = require('./lib/voice');
 const traces = require('./lib/traces');
 const discord = require('./lib/discord');
+const accounts = require('./lib/accounts');
 const embeds = require('./lib/embeds');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
@@ -109,7 +110,7 @@ const INDEX_HTML = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')
   .replace('<meta charset="utf-8" />', `<meta charset="utf-8" />\n  <meta name="rainlit-build" content="${BUILD}" />` +
     `\n  <meta name="rainlit-source" content="${attr(SOURCE_URL)}" />` +
     (SERVER_NAME ? `\n  <meta name="rainlit-server-name" content="${attr(SERVER_NAME)}" />` : ''));
-app.get(['/', '/index.html', '/join/:code'], (_req, res) => {
+app.get(['/', '/index.html', '/join/:code', '/delete-account'], (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.type('html').send(INDEX_HTML);
 });
@@ -304,6 +305,41 @@ api.post('/me/password', needUser, async (req, res) => {
   const token = auth.tokenFrom(req);
   auth.endOtherSessions(req.user.id, token);
   realtime.closeOtherSessions(req.user.id, token);
+  res.json({ ok: true });
+});
+
+// ----- Deleting your account (lib/accounts.js) -----
+
+// What deleting it would do (the spaces you own, and who each passes to), to show first.
+api.get('/me/deletion', needUser, (req, res) => {
+  res.json(accounts.preview(req.user.id));
+});
+
+// For good. Your password first, so a device someone else picked up can't do it.
+api.delete('/me', needUser, async (req, res) => {
+  if (ipTries.blocked(req.ip)) return fail(res, 429, 'Too many tries. Wait 15 minutes and try again.');
+  if (!(await auth.checkPassword(String((req.body || {}).password || ''), req.user.password_hash))) {
+    ipTries.fail(req.ip);
+    return fail(res, 400, "That password isn't right.");
+  }
+  if (accounts.lastAdmin(req.user.id)) {
+    return fail(res, 400, "You're the only admin of this Rainlit server, so your account can't be deleted: nobody would be left to look after it.");
+  }
+  const userId = req.user.id;
+  realtime.forgetUser(userId); // (out of any call, and signed out everywhere)
+  const done = accounts.deleteAccount(userId);
+  if (done) {
+    for (const h of done.handedOver) {
+      spaces.log(h.space, null, 'owner-deleted', h.heir, { user: h.heirName });
+    }
+    for (const [channelId, ids] of Object.entries(done.gone)) {
+      const channel = spaces.channel(channelId);
+      for (const id of channel ? spaces.channelAudience(channel) : []) realtime.sendToUser(id, { type: 'dm-gone', dm: channelId, ids });
+    }
+    for (const id of done.spaces) spaceChanged(id);
+    realtime.friendsChanged(...done.friends);
+  }
+  auth.clearSessionCookie(res);
   res.json({ ok: true });
 });
 
