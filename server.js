@@ -77,8 +77,8 @@ const LIVEKIT_SRC = (() => {
 const CSP = [
   "default-src 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  'font-src https://fonts.gstatic.com',
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'", // (Rainlit's typeface is served from here: public/fonts)
   "img-src 'self' blob: data: https://*.klipy.com",
   "media-src 'self' blob: https://*.klipy.com",
   `connect-src 'self' https://api.klipy.com${LIVEKIT_SRC}`,
@@ -1538,6 +1538,8 @@ app.use(
     setHeaders(res, filePath) {
       // Always check for a fresh copy of the app shell so updates show up right away.
       if (/\.(html|js|css|webmanifest)$/.test(filePath)) res.set('Cache-Control', 'no-cache');
+      // The typeface never changes under the same name.
+      else if (/\.woff2$/.test(filePath)) res.set('Cache-Control', 'public, max-age=31536000, immutable');
     },
   })
 );

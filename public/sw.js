@@ -1,7 +1,7 @@
 // Keeps the app installable and lets it open instantly. Always tries the
 // network first so updates show up right away; falls back to the saved copy.
 const CACHE = 'rainlit-v2'; // (v2: without the files v1 kept)
-const SHELL = ['/', '/style.css', '/app.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/favicon.svg', '/icons/mark.svg', '/icons/drop-clean.svg'];
+const SHELL = ['/', '/style.css', '/app.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/favicon.svg', '/icons/mark.svg', '/icons/drop-clean.svg', '/fonts/fonts.css', '/fonts/bricolage-grotesque-latin.woff2'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
