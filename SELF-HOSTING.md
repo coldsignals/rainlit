@@ -188,6 +188,7 @@ it) can't listen in.
 | `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |
 | `COMPOSE_PROFILES` | Docker only: `voice` runs LiveKit alongside Rainlit (step 11). |
 | `MAX_FILE_MB` | The biggest file people can send, in MB (100 to start with). |
+| `NOTES_MAX`, `NOTES_MB` | How many notes each person's Notes holds (100), and how much their files can add up to, in MB (500). |
 | `PRIVACY_URL`, `TERMS_URL` | Links to your own privacy policy and terms. Without them, /privacy and /terms show rainlit.app's, which say they're for rainlit.app. |
 | `LINK_PREVIEWS` | `off` turns off link previews (an X post, a video, or a page's title and picture under links in messages). They're on to start with: your server fetches the links people send, and passes their pictures along. |
 | `RECONNECT_MINUTES` | How long someone who dropped out of a call can take to come back (30). Someone whose phone froze the app mid-call, while the call's sound still gets through, isn't counted as dropped. |

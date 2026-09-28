@@ -71,6 +71,8 @@ first; opening sign-ups is the very last step.
 - [x] Link previews, like Discord's: X posts (with their pictures, and videos that play
       in the chat), YouTube and TikTok videos, and other pages' titles and pictures.
       The server fetches them, so the sites don't see who's looking
+- [x] Notes: a conversation with yourself (Discord doesn't let you message yourself), for
+      notes and files to have on all your devices, up to 100 of them
 - [ ] Custom emoji: each space uploads its own, and its members use them anywhere they chat
 - [ ] A "Switching from Discord" page: what works the same, what's different, and how to
       move a community over

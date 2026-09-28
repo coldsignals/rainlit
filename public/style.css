@@ -488,6 +488,10 @@ button { cursor: pointer; }
 .primary-btn.danger-btn { background: var(--danger); color: #fff; }
 .delete-what { margin: 0; color: var(--mist); font-size: 14px; line-height: 1.45; }
 .signup-legal { text-align: center; }
+/* Notes: a conversation with yourself, at the top of Home. */
+.notes-row { margin-bottom: 6px; }
+.face.notes-face { background: var(--dusk-hi); color: var(--lamp); }
+.face.notes-face .icon { width: 22px; height: 22px; }
 .signup-legal a { color: var(--lamp); }
 .delete-spaces { display: grid; gap: 4px; margin: 0; padding-left: 18px; font-size: 14px; }
 .delete-spaces li::marker { color: var(--mist); }

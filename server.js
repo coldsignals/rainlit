@@ -31,6 +31,9 @@ const PORT = Number(process.env.PORT) || 3000;
 const AVATAR_MAX = 8 * 1024 * 1024;
 const RESET_LINK_HOURS = 24;
 const FILE_MAX_MB = Number(process.env.MAX_FILE_MB) || 100;
+// Your notes (a conversation with yourself) hold this many, and their files this much.
+const NOTES_MAX = Number(process.env.NOTES_MAX) || 100;
+const NOTES_MB = Number(process.env.NOTES_MB) || 500;
 const MESSAGE_MAX = 4000;
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 // GIFs come from KLIPY (https://klipy.com). Browsers search it and load its GIFs directly,
@@ -576,6 +579,13 @@ const TIMED_OUT = "You're in a timeout here, so you can only read for now.";
 // Only friends can message each other. Puts the conversation, and who's in it, on the request.
 function needFriend(req, res, next) {
   const friendId = String(req.params.friendId);
+  // Your notes: a conversation with yourself, on all your devices, and always kept.
+  if (friendId === req.user.id) {
+    req.notes = true;
+    req.dm = dms.getDm(req.user.id, req.user.id);
+    req.audience = [req.user.id];
+    return next();
+  }
   if (!people.areFriends(req.user.id, friendId)) return fail(res, 404, 'You can only message people on your friends list.');
   req.friendId = friendId;
   req.dm = dms.getDm(req.user.id, friendId);
@@ -621,7 +631,8 @@ function readFloor(req) {
 api.get(conv('/messages'), needUser, needConv, (req, res) => {
   if (req.query.after) return res.json({ messages: dms.since(req.dm.id, Number(req.query.after) || 0) });
   const page = dms.history(req.dm.id, Number(req.query.before) || 0);
-  res.json({ ...page, save: Boolean(req.dm.save), readAt: readFloor(req) });
+  const notes = req.notes ? { ...dms.notesUsage(req.dm.id), max: NOTES_MAX, maxBytes: NOTES_MB * 1024 * 1024 } : undefined;
+  res.json({ ...page, save: Boolean(req.dm.save), readAt: readFloor(req), notes });
 });
 
 api.post(conv('/messages'), needUser, needConv, (req, res) => {
@@ -641,6 +652,7 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     return res.json({ message: dms.withReplies([again])[0] });
   }
   if (req.access && !req.access.send) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send messages in this channel.");
+  if (req.notes && dms.notesUsage(req.dm.id).count >= NOTES_MAX) return fail(res, 409, NOTES_FULL);
   let fields;
   // Answering an earlier message in this conversation (anything else is just ignored).
   const replyTo = dms.replyTarget(req.dm.id, b.replyTo);
@@ -660,7 +672,7 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     if (mentions.ids.length) message.mentions = mentions.ids;
     if (mentions.everyone) message.everyone = true;
   }
-  tell(req, { type: 'dm-message', message });
+  tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
   if (req.channel) pushChannelMessage(req, mentions);
   res.json({ message });
 });
@@ -718,8 +730,17 @@ function cleanGif(g) {
 
 // A file, sent as the raw request body with its name and type in headers. It's
 // written to disk as it arrives, so big files never have to fit in memory.
+const NOTES_FULL = `Your notes are full (${NOTES_MAX} of ${NOTES_MAX}). Delete some to make room.`;
+
 api.post(conv('/files'), needUser, needConv, (req, res) => {
   const tooBig = `Files can be up to ${FILE_MAX_MB} MB.`;
+  if (req.notes) {
+    const used = dms.notesUsage(req.dm.id);
+    if (used.count >= NOTES_MAX) return fail(res, 409, NOTES_FULL);
+    if (used.bytes + Number(req.get('content-length') || 0) > NOTES_MB * 1024 * 1024) {
+      return fail(res, 413, `Files in your notes can add up to ${NOTES_MB} MB, and this one won't fit. Delete some to make room.`);
+    }
+  }
   if (req.access && !req.access.files) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send files in this channel.");
   if (!req.dm.save) return fail(res, 409, 'Saving is off in this conversation, so files can only be sent during a call.');
   const id = String(req.get('x-message-id') || '');
@@ -749,7 +770,7 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
     fs.renameSync(partial, final);
     const replyTo = dms.replyTarget(req.dm.id, req.get('x-reply-to'));
     const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, replyTo });
-    tell(req, { type: 'dm-message', message });
+    tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
     if (req.channel) pushChannelMessage(req, null);
     res.json({ message });
   });
@@ -791,6 +812,7 @@ function fileFor(user, id) {
     return access && access.see ? r : null;
   }
   const other = r.dm_id.split(':').find((u) => u !== user.id);
+  if (!other) return r.dm_id === `${user.id}:${user.id}` ? r : null; // (your notes)
   return dms.inDm(r.dm_id, user.id) && people.areFriends(user.id, other) ? r : null;
 }
 
@@ -809,6 +831,11 @@ api.delete(conv('/messages/:id'), needUser, needConv, (req, res) => {
   const asMod = Boolean(m) && !mine && Boolean(req.channel) && spaces.can(req.member, 'manageMessages');
   if (!m || m.dm !== req.dm.id || !(mine || asMod) || !['text', 'file', 'gif'].includes(m.kind)) {
     return fail(res, 404, "That message isn't there any more.");
+  }
+  if (req.notes) {
+    dms.deleteMessage(id);
+    tell(req, { type: 'dm-gone', dm: req.dm.id, ids: [id], notes: dms.notesUsage(req.dm.id) });
+    return res.json({ ok: true });
   }
   if (m.seq) dms.removeMessage(id, asMod ? req.user.id : null);
   else dms.forgetPassing(id);
@@ -870,6 +897,7 @@ api.post(conv('/read'), needUser, needConv, (req, res) => {
 
 // Turn saving on or off. Either person can, and a note saying who goes in the conversation.
 api.patch('/dms/:friendId', needUser, needFriend, (req, res) => {
+  if (req.notes) return fail(res, 400, 'Your notes are always kept.');
   const save = Boolean((req.body || {}).save);
   if (save !== Boolean(req.dm.save)) {
     dms.setSave(req.dm.id, save);

@@ -126,6 +126,11 @@ at the top closes it (on a phone, the back arrow).
   search, and click one to send it. They play in the conversation (only while
   they're on screen, and not at all if your device is set to reduce motion,
   then click one to play it). See step 4 to turn this on.
+- **Notes:** a conversation with yourself, at the top of Home, for notes, links
+  and files you want on all your devices (send a file from your phone, open it
+  on your computer). Only you see it, and it's always kept. It holds 100 notes,
+  and up to 500 MB of files (`NOTES_MAX` and `NOTES_MB`; see
+  [SELF-HOSTING.md](SELF-HOSTING.md)).
 - **Link previews:** a link in a message shows what it is underneath, like
   Discord: an X post shows the post (who posted it, what they said, its
   pictures, and its video, which plays right there), a YouTube or TikTok link

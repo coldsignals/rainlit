@@ -79,7 +79,7 @@ for (const id of [
   'auth', 'signin-tab', 'signup-tab', 'signin-form', 'signin-login', 'signin-password',
   'signup-form', 'setup-note', 'code-label', 'signup-code', 'signup-email', 'signup-username', 'signup-name', 'signup-password',
   'reset-form', 'reset-password', 'auth-error',
-  'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty',
+  'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty', 'notes-row',
   'me-btn', 'me-face', 'me-name', 'me-status', 'admin-btn', 'app-settings-btn',
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
   'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'members-toggle', 'member-panel',
@@ -941,6 +941,7 @@ function handleServerMessage(msg) {
     case 'signed-out':
       return signedOut(msg.why === 'deleted' ? 'This account was deleted.' : 'You were signed out because your password was changed.');
     case 'dm-message':
+      setNotesUsage(msg.notes); // (one of your notes)
       return onDmMessage(msg.message);
     case 'dm-removed':
       return onDmRemoved(msg);
@@ -2295,6 +2296,58 @@ function embedFoot(e) {
   return foot;
 }
 
+// ---------------- Notes ----------------
+//
+// A conversation with yourself (Telegram's "Saved Messages"; Discord doesn't let you message
+// yourself): notes, links and files to have on all your devices. Only you see it, it's always
+// kept, and it holds so many (the server says how many; see NOTES_MAX in server.js).
+
+const isNotes = (key) => Boolean(key) && key === S.clientId;
+
+function notesRow() {
+  const li = document.createElement('li');
+  li.className = 'person-row';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = `person notes${isNotes(S.openDm) ? ' open' : ''}`;
+  btn.title = 'Notes: just for you, on all your devices';
+  const face = document.createElement('span');
+  face.className = 'face notes-face';
+  face.innerHTML = '<svg class="icon"><use href="#i-note"/></svg>';
+  btn.append(face, personText('Notes', 'Just for you, on all your devices'));
+  btn.addEventListener('click', () => openDm(S.clientId));
+  li.append(btn);
+  return li;
+}
+
+function renderNotesHead() {
+  const dm = dmFor(S.clientId);
+  el.dmFace.replaceChildren();
+  el.dmFace.style.removeProperty('--face-bg');
+  delete el.dmFace.dataset.presence;
+  el.dmFace.classList.remove('channel-face', 'group-face');
+  el.dmFace.classList.add('notes-face');
+  el.dmFace.innerHTML = '<svg class="icon"><use href="#i-note"/></svg>';
+  el.dmName.textContent = 'Notes';
+  const n = dm.notes;
+  el.dmSub.textContent = `Just for you, on all your devices${n && n.max ? ` · ${n.count} of ${n.max}` : ''}`;
+  el.dmWho.title = '';
+  el.dmBack.setAttribute('aria-label', 'Back to friends');
+  el.dmBack.title = 'Back to friends';
+  el.dmSave.hidden = true;
+  el.dmCallBtn.hidden = true;
+  el.dmNotice.hidden = true;
+  el.chatInput.placeholder = 'Write a note, or add a file';
+}
+
+// How full they are, as the server counts them (it says, whenever one's added or deleted).
+function setNotesUsage(usage) {
+  const dm = S.dms.get(S.clientId);
+  if (!dm || !usage) return;
+  dm.notes = { ...(dm.notes || {}), ...usage };
+  if (isNotes(S.openDm)) renderNotesHead();
+}
+
 // ---------------- Removing things you sent ----------------
 //
 // You can remove your own messages and files. They're replaced by "You removed a
@@ -2752,7 +2805,7 @@ const TYPING_FOR_MS = 6000; // and it shows on their screen this long after the 
 
 function onTypingInput() {
   const key = S.openDm;
-  if (!key || S.editing) return;
+  if (!key || S.editing || isNotes(key)) return;
   if (!el.chatInput.value.trim()) return stopTyping();
   if (Date.now() - S.typingSentAt < TYPING_EVERY_MS && S.typingTo === key) return;
   S.typingSentAt = Date.now();
@@ -3024,7 +3077,12 @@ async function deleteMine(li) {
   const what = li.classList.contains('file-msg') ? 'a file' : 'a message'; // before the server's own notice replaces it
   try {
     await api('DELETE', `${convPath(dm.friendId)}/messages/${id}`);
-    showRemoved(li, `You removed ${what}`);
+    if (isNotes(dm.friendId)) {
+      li.remove();
+      regroup(dm.log);
+    } else {
+      showRemoved(li, `You removed ${what}`);
+    }
   } catch (err) {
     toast(err.message);
   }
@@ -3104,7 +3162,8 @@ const convPath = (key) => (isChannelKey(key) ? `/channels/${channelIdOf(key)}` :
 // The conversation a server id belongs to: a channel of yours, or your friend's DM.
 function convOf(dmId) {
   if (S.channels.has(dmId)) return `ch:${dmId}`;
-  return String(dmId).split(':').find((id) => id !== S.clientId) || '';
+  const ids = String(dmId).split(':');
+  return ids.find((id) => id !== S.clientId) || (ids[0] === S.clientId ? S.clientId : ''); // (you:you is your notes)
 }
 
 // Anyone's name: a friend's, or someone's from one of your spaces.
@@ -3114,7 +3173,7 @@ function friendName(id) {
 }
 
 // Whether a conversation (still) exists for you.
-const convExists = (key) => (isChannelKey(key) ? S.channels.has(channelIdOf(key)) : S.friends.has(key));
+const convExists = (key) => (isChannelKey(key) ? S.channels.has(channelIdOf(key)) : S.friends.has(key) || isNotes(key));
 
 // ----- The message box -----
 // It grows with what you write (up to a point, then scrolls). On a computer, Enter sends and
@@ -3194,6 +3253,10 @@ function renderDmHead() {
   if (isChannelKey(S.openDm)) {
     renderChannelHead();
     return renderComposer();
+  }
+  if (isNotes(S.openDm)) {
+    renderComposer();
+    return renderNotesHead();
   }
   renderComposer();
   const f = S.friends.get(S.openDm);
@@ -3287,7 +3350,9 @@ function startLine(dm) {
   const channel = dm.channelId && S.channels.get(dm.channelId);
   const group = channel && groupOfChannel(channel.id);
   li.textContent = group ? `This is the beginning of your group${group.name ? `, ${group.name}` : ` with ${groupTitle(group)}`}.`
-    : channel ? `This is the beginning of #${channel.name}.` : `This is the beginning of your conversation with ${friendName(dm.friendId)}.`;
+    : channel ? `This is the beginning of #${channel.name}.`
+    : isNotes(dm.friendId) ? 'Your notes start here. Only you can see them, on all your devices. Write something, or add a file to have it everywhere.'
+    : `This is the beginning of your conversation with ${friendName(dm.friendId)}.`;
   return li;
 }
 
@@ -3298,6 +3363,7 @@ async function loadDmHistory(dm) {
     const page = await api('GET', `${convPath(dm.friendId)}/messages`);
     dm.save = page.save;
     dm.readAt = page.readAt;
+    if (page.notes) dm.notes = page.notes;
     // Anything already showing (a file being sent, messages that just arrived) goes back after the history.
     const live = [...dm.log.children].filter((li) => li.dataset.id);
     dm.log.replaceChildren();
@@ -3798,7 +3864,8 @@ function onDmRemoved({ dm: dmId, id, by, name, was, author, authorName }) {
 }
 
 // Messages taken out altogether (a banned spammer's, say).
-function onDmGone({ dm: dmId, ids }) {
+function onDmGone({ dm: dmId, ids, notes }) {
+  setNotesUsage(notes);
   const dm = S.dms.get(convOf(dmId));
   if (!dm) return;
   for (const id of ids) {
@@ -7940,10 +8007,7 @@ async function refreshFriends() {
     if (err.status === 401) signedOut('You were signed out. Sign in again.');
     return;
   }
-  // A friend who's gone (they removed you, or deleted their account) takes their conversation
-  // with them. (Not in the middle of a call with them: the call has its own goodbye.)
-  if (S.openDm && !isChannelKey(S.openDm) && !S.friends.has(S.openDm) && !(S.inCall && S.callWith === S.openDm)) closeDm();
-  renderFriends();
+  renderFriends(); // (a friend who's gone takes their conversation with them)
   renderRejoin();
   updateTitle();
   if (el.miniProfile.open) renderMiniProfile();
@@ -8334,6 +8398,7 @@ function renderFriends() {
   el.friendsTitle.textContent = list.length ? `Friends · ${online} online` : 'Friends';
   el.friendList.replaceChildren(...list.map(friendRow));
   el.friendsEmpty.hidden = list.length > 0;
+  if (S.clientId) el.notesRow.replaceChildren(notesRow());
   // Their conversation is open but they're not a friend any more: close it.
   if (S.openDm && !convExists(S.openDm)) closeDm();
   else if (S.openDm) renderDmHead();
@@ -9732,7 +9797,7 @@ async function init() {
     const group = isChannelKey(S.openDm) && groupOfChannel(channelIdOf(S.openDm));
     if (group) openGroupInfo(group.id);
     else if (isChannelKey(S.openDm)) openMembers();
-    else openMiniProfile(S.openDm);
+    else if (!isNotes(S.openDm)) openMiniProfile(S.openDm);
   });
   el.dmSave.addEventListener('click', onSaveToggle);
   el.dmCallBtn.addEventListener('click', () => {
