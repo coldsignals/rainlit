@@ -33,6 +33,9 @@
   const TAPES = { plain: 'Plain', stripes: 'Stripes', dots: 'Dots', checks: 'Checks' };
   const PAPERS = { lined: 'Lined', grid: 'Grid', dotted: 'Dotted', plain: 'Plain', sticky: 'Sticky note', kraft: 'Kraft', torn: 'Torn' };
   const ME_STYLES = { card: 'Card', sticker: 'Sticker', plain: 'Plain' };
+  const COUNTERS = { odometer: 'Odometer', led: 'LED', plain: 'Plain' };
+  const GUESTBOOKS = { paper: 'Paper', retro: '1999', dark: 'Dark' };
+  const MUSICS = { tunebox: 'Tunebox', cassette: 'Cassette', plain: 'Plain' };
   const PATTERNS = { dots: 'Polka dots', stripes: 'Stripes', checks: 'Checks', gingham: 'Gingham', grid: 'Grid', hearts: 'Hearts', stars: 'Stars', flowers: 'Flowers', zigzag: 'Zigzag', clouds: 'Clouds' };
   const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts' };
 
@@ -360,7 +363,256 @@
     node.append(card);
   }
 
-  const DRAW = { text: textPiece, image: imagePiece, sticker: stickerPiece, tape: tapePiece, paper: paperPiece, me: mePiece };
+  // ---------- Old-web touches ----------
+
+  // The visitor counter: how many visits the page has had, like the hit counters of old.
+  function counterPiece(node, p, ctx) {
+    node.classList.add(`hp-counter-${COUNTERS[p.style] ? p.style : 'odometer'}`);
+    node.style.setProperty('--tint', hex(p.color, '#39ff6a'));
+    const views = Math.max(0, Number(ctx.views) || 0);
+    const digits = document.createElement('span');
+    digits.className = 'hp-digits';
+    for (const d of String(views).padStart(6, '0')) {
+      const s = document.createElement('span');
+      s.textContent = d;
+      digits.append(s);
+    }
+    const label = document.createElement('span');
+    label.className = 'hp-count-label';
+    label.textContent = p.label || '';
+    node.append(inside(digits, label));
+  }
+
+  // What's in a piece that sizes itself by the piece (see "container" in homepage.css): in a
+  // box of its own, since a piece can't size its own spacing that way.
+  function inside(...kids) {
+    const box = document.createElement('div');
+    box.className = 'hp-in';
+    box.append(...kids);
+    return box;
+  }
+
+  // The guestbook: what visitors wrote, newest first, and a way to sign it. (The entries come
+  // from the server when the page is shown; see lib/homepages.js.)
+  function guestbookPiece(node, p, ctx) {
+    node.classList.add(`hp-guestbook-${GUESTBOOKS[p.style] ? p.style : 'paper'}`);
+    const c = hex(p.color, '#fffdf6');
+    node.style.setProperty('--gb', c);
+    node.style.setProperty('--gb-ink', light(c) ? '#2b2233' : '#f6f2fb');
+    const f = FONTS[p.font] || FONTS.hand;
+    const title = document.createElement('div');
+    title.className = 'hp-gb-title';
+    title.style.fontFamily = f.css;
+    title.textContent = p.title || '';
+    const list = document.createElement('ol');
+    list.className = 'hp-gb-list';
+    const foot = document.createElement('div');
+    foot.className = 'hp-gb-foot';
+    node.append(title, list, foot);
+    if (ctx.edit) {
+      const li = document.createElement('li');
+      li.className = 'hp-gb-empty';
+      li.textContent = 'What visitors write shows up here.';
+      list.append(li);
+      return;
+    }
+    loadGuestbook(node, ctx);
+  }
+
+  const shortDate = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+
+  async function guestbookCall(ctx, method = 'GET', path = '', body) {
+    const res = await fetch(`/api/homepages/${encodeURIComponent(ctx.owner.id)}/guestbook${path}`, {
+      method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong. Try again.');
+    return data;
+  }
+
+  async function loadGuestbook(node, ctx, data = null) {
+    const list = node.querySelector('.hp-gb-list');
+    const foot = node.querySelector('.hp-gb-foot');
+    try {
+      data = data || (await guestbookCall(ctx));
+    } catch {
+      return;
+    }
+    list.replaceChildren(...data.entries.map((e) => {
+      const li = document.createElement('li');
+      const who = document.createElement('span');
+      who.className = 'hp-gb-who';
+      who.append(avatarEl(e.author), document.createTextNode(e.author.displayName));
+      const when = document.createElement('time');
+      when.dateTime = new Date(e.at).toISOString();
+      when.textContent = shortDate(e.at);
+      const words = document.createElement('p');
+      words.textContent = e.text;
+      li.append(who, when, words);
+      if (e.canDelete) {
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'hp-gb-delete';
+        x.textContent = '×';
+        x.title = 'Delete this';
+        x.addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          if (!x.dataset.sure) {
+            x.dataset.sure = '1';
+            x.textContent = 'Delete?';
+            return;
+          }
+          try {
+            loadGuestbook(node, ctx, await guestbookCall(ctx, 'DELETE', `/${e.id}`));
+          } catch (err) {
+            x.textContent = '×';
+          }
+        });
+        li.append(x);
+      }
+      return li;
+    }));
+    if (!data.entries.length) {
+      const li = document.createElement('li');
+      li.className = 'hp-gb-empty';
+      li.textContent = 'Nobody has signed it yet.';
+      list.append(li);
+    }
+    foot.replaceChildren();
+    if (data.canSign) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'hp-gb-sign';
+      b.textContent = 'Sign it';
+      b.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openSign(node, ctx);
+      });
+      foot.append(b);
+    } else if (!data.signedIn) {
+      const a = document.createElement('a');
+      a.className = 'hp-gb-sign';
+      a.href = `/?homepage=${encodeURIComponent(`@${ctx.owner.username}`)}`;
+      a.textContent = 'Sign in to sign it';
+      foot.append(a);
+    }
+  }
+
+  // Writing in someone's guestbook.
+  function openSign(node, ctx) {
+    let d = document.getElementById('hp-sign');
+    if (!d) {
+      d = document.createElement('dialog');
+      d.id = 'hp-sign';
+      d.className = 'hp-sign';
+      const form = document.createElement('form');
+      const h = document.createElement('h2');
+      const box = document.createElement('textarea');
+      box.maxLength = 300;
+      box.rows = 4;
+      box.required = true;
+      box.placeholder = 'say hi!';
+      const error = document.createElement('p');
+      error.className = 'hp-sign-error';
+      error.hidden = true;
+      const row = document.createElement('div');
+      row.className = 'hp-sign-row';
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'hp-sign-cancel';
+      cancel.textContent = 'Cancel';
+      cancel.addEventListener('click', () => d.close());
+      const send = document.createElement('button');
+      send.type = 'submit';
+      send.className = 'hp-sign-send';
+      send.textContent = 'Sign it';
+      row.append(cancel, send);
+      form.append(h, box, error, row);
+      d.append(form);
+      document.body.append(d);
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const { node: target, ctx: c } = d.for;
+        send.disabled = true;
+        try {
+          const data = await guestbookCall(c, 'POST', '', { text: box.value });
+          d.close();
+          loadGuestbook(target, c, data);
+        } catch (err) {
+          error.textContent = err.message;
+          error.hidden = false;
+        } finally {
+          send.disabled = false;
+        }
+      });
+    }
+    d.for = { node, ctx };
+    d.querySelector('h2').textContent = `Sign ${ctx.owner.displayName}'s guestbook`;
+    d.querySelector('textarea').value = '';
+    d.querySelector('.hp-sign-error').hidden = true;
+    d.showModal();
+    d.querySelector('textarea').focus();
+  }
+
+  // The music player: the owner's song, when a visitor presses play (never by itself), over and over.
+  // Only one plays at a time.
+  function musicPiece(node, p, ctx) {
+    node.classList.add(`hp-music-${MUSICS[p.style] ? p.style : 'tunebox'}`);
+    node.style.setProperty('--tint', hex(p.color, '#a57bff'));
+    const audio = document.createElement('audio');
+    audio.preload = 'none';
+    audio.loop = true;
+    audio.src = ctx.fileUrl(p.file);
+    const play = document.createElement('button');
+    play.type = 'button';
+    play.className = 'hp-play';
+    play.setAttribute('aria-label', 'Play');
+    const title = document.createElement('span');
+    title.className = 'hp-song';
+    const words = document.createElement('span');
+    words.textContent = p.title || 'a song';
+    title.append(words);
+    const bars = document.createElement('span');
+    bars.className = 'hp-bars';
+    bars.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 4; i++) bars.append(document.createElement('i'));
+    if (p.style === 'cassette') {
+      const reels = document.createElement('span');
+      reels.className = 'hp-reels';
+      reels.setAttribute('aria-hidden', 'true');
+      reels.append(document.createElement('i'), document.createElement('i'));
+      node.append(inside(title, reels, play), audio);
+    } else {
+      node.append(inside(play, title, bars), audio);
+    }
+    play.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (audio.paused) {
+        for (const other of document.querySelectorAll('.hp-music audio')) if (other !== audio) other.pause();
+        audio.play().catch(() => {});
+      } else {
+        audio.pause();
+      }
+    });
+    audio.addEventListener('play', () => {
+      node.classList.add('hp-playing');
+      play.setAttribute('aria-label', 'Pause');
+    });
+    audio.addEventListener('pause', () => {
+      node.classList.remove('hp-playing');
+      play.setAttribute('aria-label', 'Play');
+    });
+  }
+
+  // Everything playing on the page stops (it's closing, or being drawn again).
+  function hush(page) {
+    for (const a of page.querySelectorAll('audio')) a.pause();
+  }
+
+  const DRAW = {
+    text: textPiece, image: imagePiece, sticker: stickerPiece, tape: tapePiece, paper: paperPiece, me: mePiece,
+    counter: counterPiece, guestbook: guestbookPiece, music: musicPiece,
+  };
 
   // One piece, placed and turned. (In the editor, links don't go anywhere.)
   function pieceEl(p, ctx) {
@@ -403,7 +655,8 @@
   // pieces, scaled to fit. Returns { doc, canvas, fit }.
   function mount(page, data, opts = {}) {
     const doc = data.doc || starter();
-    const ctx = { owner: data.owner || {}, fileUrl: (id) => `/homepage-files/${id}`, edit: Boolean(opts.edit) };
+    const ctx = { owner: data.owner || {}, views: data.views || 0, fileUrl: (id) => `/homepage-files/${id}`, edit: Boolean(opts.edit) };
+    hush(page);
     page.replaceChildren();
     page.classList.add('hp-page');
     Object.assign(page.style, backgroundStyle(doc.bg, ctx.fileUrl));
@@ -435,6 +688,9 @@
 
   window.Homepage = {
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PIXEL, PIXEL_NAMES,
-    pixelSrc, pixelRatio, backgroundStyle, pieceEl, starter, mount, setSky, light,
+    COUNTERS, GUESTBOOKS, MUSICS,
+    pixelSrc, pixelRatio, backgroundStyle, pieceEl, starter, mount, setSky, light, hush,
+    // (someone signed a guestbook that's showing: read it again)
+    reloadGuestbooks: (page, ctx) => { for (const n of page.querySelectorAll('.hp-guestbook')) loadGuestbook(n, ctx); },
   };
 })();

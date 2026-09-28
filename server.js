@@ -631,7 +631,8 @@ api.get('/homepages/:who', (req, res) => {
       : 'This homepage is just for their friends and people in their spaces.';
     return res.status(403).json({ error, locked: true });
   }
-  if (!req.user || req.user.id !== owner.id) homepages.countView(owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip));
+  // (This visit counts too, on the counter it's about to show.)
+  if ((!req.user || req.user.id !== owner.id) && homepages.countView(owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip))) page.views++;
   res.json(homepages.forViewer(owner, page, req.user));
 });
 
@@ -642,8 +643,8 @@ api.put('/homepages/me', needUser, (req, res) => {
   res.json(homepages.forViewer(req.user, page, req.user));
 });
 
-// A picture for your page. It stays as long as it's on the page.
-api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit: homepages.IMAGE_MAX + 1024 }), (req, res) => {
+// A picture (or a song) for your page. It stays as long as it's on the page.
+api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit: homepages.AUDIO_MAX + 1024 }), (req, res) => {
   try {
     const file = homepages.addFile(req.user.id, Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0));
     res.json({ file: { ...file, url: `/homepage-files/${file.id}` }, usage: homepages.usage(req.user.id) });
@@ -651,6 +652,56 @@ api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit:
     if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
     throw err;
   }
+});
+
+// The guestbook on someone's page: anyone who can see the page can read it, and sign it if they're
+// signed in. What they wrote, they can delete; the page's owner can delete anything in it.
+function guestbookPage(req, res) {
+  const owner = homepages.ownerFor(req.params.who);
+  const page = owner && homepages.get(owner.id);
+  if (!owner || !homepages.canView(req.user, owner, page.visibility)) {
+    fail(res, 404, "That homepage isn't there.");
+    return null;
+  }
+  return { owner, page };
+}
+const guestbookJson = (owner, page, user) => ({
+  entries: homepages.guestbookFor(owner.id, user),
+  canSign: Boolean(user && user.id !== owner.id && homepages.hasGuestbook(page.doc)),
+  signedIn: Boolean(user),
+});
+
+api.get('/homepages/:who/guestbook', (req, res) => {
+  const found = guestbookPage(req, res);
+  if (found) res.json(guestbookJson(found.owner, found.page, req.user));
+});
+
+api.post('/homepages/:who/guestbook', needUser, (req, res) => {
+  const found = guestbookPage(req, res);
+  if (!found) return;
+  const { owner, page } = found;
+  if (owner.id === req.user.id) return fail(res, 400, "That's your own guestbook.");
+  if (!homepages.hasGuestbook(page.doc)) return fail(res, 400, "There's no guestbook on this page.");
+  try {
+    homepages.sign(owner.id, req.user.id, (req.body || {}).text);
+  } catch (err) {
+    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    throw err;
+  }
+  realtime.sendToUser(owner.id, { type: 'guestbook-new', from: req.user.display_name });
+  res.json(guestbookJson(owner, page, req.user));
+});
+
+api.delete('/homepages/:who/guestbook/:entryId', needUser, (req, res) => {
+  const found = guestbookPage(req, res);
+  if (!found) return;
+  try {
+    homepages.unsign(found.owner.id, req.params.entryId, req.user.id);
+  } catch (err) {
+    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    throw err;
+  }
+  res.json(guestbookJson(found.owner, found.page, req.user));
 });
 
 // ----- Conversations -----
@@ -1714,7 +1765,7 @@ app.use(
 app.use((err, req, res, _next) => {
   if (err.type === 'entity.too.large' || err.status === 413) {
     return fail(res, 413, req.path.includes('avatar') ? 'Profile pictures can be up to 8 MB.'
-      : req.path.includes('homepages') ? 'Pictures can be up to 5 MB.' : "That's too big.");
+      : req.path.includes('homepages') ? 'Pictures can be up to 5 MB, and songs 10 MB.' : "That's too big.");
   }
   if (err.status && err.status < 500) return fail(res, err.status, "That request didn't make sense.");
   console.error(err);

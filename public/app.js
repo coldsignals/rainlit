@@ -928,6 +928,10 @@ function handleServerMessage(msg) {
       return refreshFriends();
     case 'call-waiting':
       return onCallWaiting(msg);
+    case 'guestbook-new':
+      // (If your homepage is open, it shows it; otherwise a note.)
+      if (!Homepage.onSigned(msg.from)) toast(`${msg.from} signed your guestbook.`);
+      return;
     case 'space-changed':
       return onSpaceChanged(msg.space);
     case 'space-removed':

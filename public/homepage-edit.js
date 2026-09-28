@@ -95,6 +95,7 @@
     $('hp-view-actions').hidden = true;
     $('hp-edit-actions').hidden = true;
     if (!dialog.open) dialog.showModal();
+    $('hp-page').focus({ preventScroll: true }); // (so the keyboard scrolls it)
     let data;
     try {
       data = await app.api('GET', `/homepages/${encodeURIComponent(who)}`);
@@ -119,7 +120,7 @@
   function draw() {
     const page = $('hp-page');
     const top = page.scrollTop;
-    state.mounted = H.mount(page, { owner: state.data.owner, doc: state.doc }, { edit: state.editing });
+    state.mounted = H.mount(page, { owner: state.data.owner, doc: state.doc, views: state.data.views }, { edit: state.editing });
     H.setSky($('hp-sky'), state.doc.bg.sky);
     page.scrollTop = top;
     if (state.editing) drawPicked();
@@ -375,7 +376,9 @@
     const l0 = local(start);
     const before = snapshot();
     let moved = false;
-    page.setPointerCapture(e.pointerId);
+    try {
+      page.setPointerCapture(e.pointerId);
+    } catch {} // (a pointer that's already up)
 
     const move = (ev) => {
       if (ev.pointerId !== e.pointerId) return;
@@ -593,6 +596,36 @@
     }
   }
 
+  // A song for a music player: a new player, or a different song for one (`piece`).
+  async function uploadSong(file, piece = null) {
+    if (file.size > 10 * 1024 * 1024) return note(`${file.name} is too big: songs can be up to 10 MB.`);
+    setSaved('Uploading…');
+    try {
+      const { file: f, usage } = await app.api('POST', '/homepages/me/files', file);
+      state.data.usage = usage;
+      if (f.kind !== 'audio') {
+        setSaved(state.dirty ? 'Saving…' : 'Saved');
+        return note(`${file.name} isn't a song. Songs can be MP3, M4A, OGG, FLAC or WAV.`);
+      }
+      const title = file.name.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/_+/g, ' ').trim().slice(0, 80);
+      if (piece) change(() => Object.assign(piece, { file: f.id, title: title || piece.title }));
+      else add({ t: 'music', file: f.id, title, style: 'tunebox', color: '#a57bff', w: 300, h: 64 });
+    } catch (err) {
+      note(err.message);
+      setSaved(state.dirty ? 'Saving…' : 'Saved');
+    }
+  }
+
+  function songButton(label, piece = null) {
+    const input = el('input', { type: 'file', accept: 'audio/*,.mp3,.m4a,.ogg,.oga,.opus,.flac,.wav' });
+    input.addEventListener('change', () => {
+      const f = input.files[0];
+      input.value = '';
+      if (f) uploadSong(f, piece);
+    });
+    return el('label', { class: 'hp-item wide hp-upload-btn' }, el('span', { text: label }), input);
+  }
+
   function sizeOf(url) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -604,7 +637,7 @@
 
   // ---------- The drawer ----------
 
-  const TABS = [['write', 'Write'], ['stickers', 'Stickers'], ['pictures', 'Pictures'], ['tape', 'Tape & paper'], ['page', 'Page']];
+  const TABS = [['write', 'Write'], ['stickers', 'Stickers'], ['pictures', 'Pictures'], ['tape', 'Tape & paper'], ['oldweb', 'Old web'], ['page', 'Page']];
 
   function renderTabs() {
     const tabs = $('hp-tabs');
@@ -624,7 +657,7 @@
     const tray = $('hp-tray');
     const top = tray.scrollTop;
     const p = piece(state.picked);
-    tray.replaceChildren(...(p ? pickedPanel(p) : { write: writeTab, stickers: stickersTab, pictures: picturesTab, tape: tapeTab, page: pageTab }[state.tab]()));
+    tray.replaceChildren(...(p ? pickedPanel(p) : { write: writeTab, stickers: stickersTab, pictures: picturesTab, tape: tapeTab, oldweb: oldWebTab, page: pageTab }[state.tab]()));
     if (p) tray.scrollTop = top;
   }
 
@@ -707,6 +740,23 @@
     return [h3('Tape'), el('div', { class: 'hp-grid' }, ...tapes), h3('Paper (put words on it)'), el('div', { class: 'hp-grid' }, ...papers)];
   }
 
+  function oldWebTab() {
+    return [
+      h3('From the old web'),
+      el('div', { class: 'hp-grid' },
+        el('button', {
+          class: 'hp-item wide', type: 'button', text: 'Visitor counter',
+          onclick: () => add({ t: 'counter', style: 'odometer', label: 'visitors', color: '#39ff6a', w: 240, h: 80 }),
+        }),
+        el('button', {
+          class: 'hp-item wide', type: 'button', text: 'Guestbook',
+          onclick: () => add({ t: 'guestbook', style: 'paper', title: 'sign my guestbook!', color: '#fffdf6', font: 'hand', w: 300, h: 380 }),
+        }),
+        songButton('Music player (pick a song)…')),
+      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play.' }),
+    ];
+  }
+
   function chips(options, current, onPick, style) {
     return el('div', { class: 'hp-chips' }, ...Object.entries(options).map(([key, label]) => el('button', {
       class: 'hp-chip', type: 'button', 'aria-pressed': String(current === key), text: label,
@@ -787,7 +837,13 @@
   // The picked piece's settings.
   function pickedPanel(p) {
     const set = (fields) => change(() => Object.assign(p, fields));
-    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card' };
+    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter', guestbook: 'Guestbook', music: 'Music player' };
+    const words = (label, key, max, placeholder) => {
+      const input = el('input', { type: 'text', maxlength: String(max), value: p[key] || '', placeholder });
+      input.addEventListener('change', () => set({ [key]: input.value.trim() }));
+      return field(label, input);
+    };
+    const fonts = (key) => chips(Object.fromEntries(Object.entries(H.FONTS).map(([k, f]) => [k, f.label])), p[key], (font) => set({ [key]: font }), (k) => ({ fontFamily: H.FONTS[k].css }));
     const head = el('div', { class: 'hp-picked-head' },
       el('strong', { text: names[p.t] || 'Piece' }),
       el('button', { class: 'hp-tool', type: 'button', text: 'To front', title: 'On top of everything', onclick: () => restack(1) }),
@@ -876,6 +932,23 @@
         field(p.style === 'card' ? 'Card color' : 'Name color', colors(p.color, (color) => set({ color }))),
         field('Font', chips(Object.fromEntries(Object.entries(H.FONTS).map(([k, f]) => [k, f.label])), p.font, (font) => set({ font }),
           (k) => ({ fontFamily: H.FONTS[k].css }))));
+    } else if (p.t === 'counter') {
+      out.push(el('p', { class: 'hp-note-small', text: `It counts visits from everyone but you (${state.data.views} so far), each visitor once every few hours.` }),
+        field('Kind', chips(H.COUNTERS, p.style, (style) => set({ style }))),
+        words('Words with it', 'label', 40, 'visitors'),
+        field('Color', colors(p.color, (color) => set({ color }))));
+    } else if (p.t === 'guestbook') {
+      out.push(el('p', { class: 'hp-note-small', text: 'Anyone who can see your page can sign it (they can delete what they wrote). Delete anything in it with its ×.' }),
+        words('Its title', 'title', 40, 'sign my guestbook!'),
+        field('Kind', chips(H.GUESTBOOKS, p.style, (style) => set({ style }))),
+        field(p.style === 'retro' ? 'Color (for "Dark" and "Paper")' : 'Color', colors(p.color, (color) => set({ color }))),
+        field('Title font', fonts('font')));
+    } else if (p.t === 'music') {
+      out.push(el('p', { class: 'hp-note-small', text: 'It plays when a visitor presses play, over and over, never by itself.' }),
+        words("The song's name", 'title', 80, 'a song'),
+        field('Kind', chips(H.MUSICS, p.style, (style) => set({ style }))),
+        field('Color', colors(p.color, (color) => set({ color }))),
+        el('div', { class: 'hp-grid' }, songButton('A different song…', p)));
     }
     return out;
   }
@@ -905,6 +978,7 @@
       if (back()) e.preventDefault();
     });
     dialog.addEventListener('close', () => {
+      H.hush($('hp-page'));
       if (state.dirty) save();
       state.editing = false;
       dialog.classList.remove('hp-editing');
@@ -920,5 +994,13 @@
     }).observe(page);
   }
 
-  Object.assign(H, { connect, open, close, back, isOpen: () => $('homepage').open });
+  // Someone signed your guestbook: if your page is showing, it shows what they wrote.
+  function onSigned(from) {
+    if (!$('homepage').open || !state.data || !state.data.mine) return false;
+    if (!state.editing) H.reloadGuestbooks($('hp-page'), state.mounted.ctx);
+    note(`${from} signed your guestbook!`);
+    return true;
+  }
+
+  Object.assign(H, { connect, open, close, back, onSigned, isOpen: () => $('homepage').open });
 })();

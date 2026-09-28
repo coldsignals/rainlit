@@ -120,6 +120,12 @@ from your own (**Your homepage**, then **Edit**).
   window from 1998); pixel stickers, any emoji and your spaces' emoji; tape
   and paper. Drag to move; the handles resize and turn (or press **R**).
   **To front** and **To back** stack them, and **Undo** takes anything back.
+- **The old web:** a visitor counter (each visitor counts once every few
+  hours; you don't), a guestbook anyone who can see your page can sign (they
+  can delete what they wrote, and you can delete anything in it; you hear
+  when someone signs it), and a music player for a song of yours (MP3, M4A,
+  OGG, FLAC or WAV, up to 10 MB), as a tunebox, a cassette or just a button.
+  It only plays when a visitor presses play.
 - **The page:** a pattern, a color or your own picture behind it, weather
   over it (rain, snow, sparkles, floating hearts), and a name for it.
 - **Who can see it:** your friends, people in your spaces too (like your
@@ -128,7 +134,7 @@ from your own (**Your homepage**, then **Edit**).
 - Everyone starts with an "under construction" page until they make theirs.
 - It's built from pieces, not code: pages can't run anything, and their
   pictures come from Rainlit itself. A page can be reported like a message.
-  Pictures can be up to 5 MB each, and 40 MB in all.
+  Pictures can be up to 5 MB each, songs 10 MB, and 40 MB in all.
 
 ## Conversations
 

@@ -115,8 +115,9 @@ profile card. The card stays, as the quick look, with a way into the homepage.
       old windows), pixel stickers and emoji, text in fun fonts, tape and paper. Drag, resize,
       turn and layer them
 - [ ] 88x31 buttons, to make and to link to friends' pages
-- [ ] Old-web touches: a music player (your song, when a visitor presses play), a guestbook
-      friends sign (and an "ask me anything" box that can be anonymous), a visitor counter
+- [x] Old-web touches: a music player (your song, when a visitor presses play), a guestbook
+      visitors sign, a visitor counter
+- [ ] An "ask me anything" box that can be anonymous
 - [ ] Shelves to show off favourite games, music and shows, with their covers
 - [x] Who can see it: friends, people in your spaces, or anyone with its link
       (rainlit.app/@name), to put in a bio anywhere
