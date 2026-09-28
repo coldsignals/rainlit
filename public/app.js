@@ -101,7 +101,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -213,6 +213,7 @@ const S = {
   sounds: store.get('sounds', 'on') !== 'off',
   clickSounds: store.get('clickSounds', 'on') !== 'off',
   embeds: store.get('embeds', 'on') !== 'off', // link previews
+  compactChat: store.get('compactChat', 'off') === 'on', // messages without people's pictures beside them
   callSounds: store.get('callSounds', 'on') !== 'off',
   typing: new Map(), // conversation -> who's typing in it right now -> when to stop showing it
   waitingFor: new Map(), // friend id -> { call, away }: in your call with them, and you're not
@@ -3340,9 +3341,9 @@ function dmFor(friendId) {
       divider: null, // the "new messages" line: { el, count, seen }
     };
     log.addEventListener('scroll', () => { if (log.scrollTop < 120) loadOlder(dm); });
-    // A name above messages opens that person's profile.
+    // A name above messages (or the picture beside them) opens that person's profile.
     log.addEventListener('click', (e) => {
-      const li = e.target.closest('.msg-name') && !e.target.closest('time') && e.target.closest('li[data-author]');
+      const li = ((e.target.closest('.msg-name') && !e.target.closest('time')) || e.target.closest('.msg-face')) && e.target.closest('li[data-author]');
       if (li) openMiniProfile(li.dataset.author);
     });
     S.dms.set(friendId, dm);
@@ -3746,6 +3747,7 @@ function renderMessage(m) {
   }
   if (['text', 'file', 'gif'].includes(m.kind)) {
     li.dataset.author = m.author;
+    addFace(li, m.author);
     addMessageMenu(li);
     if (channel) markBlocked(li);
   }
@@ -5125,6 +5127,7 @@ function addFileCard(t) {
   const dm = dmFor(S.callWith);
   const li = fileCard(t, mine ? 'You' : friendName(S.callWith), Date.now());
   li.dataset.author = mine ? S.clientId : S.callWith;
+  addFace(li, li.dataset.author);
   if (mine) {
     li.dataset.kind = 'file';
     addMessageMenu(li);
@@ -5449,6 +5452,7 @@ async function fillDeviceLists() {
   el.soundsInput.checked = S.sounds;
   el.clicksInput.checked = S.clickSounds;
   el.embedsInput.checked = S.embeds;
+  el.compactInput.checked = S.compactChat;
   el.callSoundsInput.checked = S.callSounds;
   el.duckField.hidden = !ANDROID;
   el.duckInput.checked = store.get('duck', 'on') !== 'off';
@@ -5855,6 +5859,7 @@ function setMe(user) {
   S.clientId = user.id;
   S.name = user.displayName;
   renderMe();
+  for (const dm of S.dms.values()) refreshFaces(dm, user.id);
   if (el.miniProfile.open && miniProfileId === user.id) renderMiniProfile();
   if (el.profile.open) renderProfileBadges();
 }
@@ -6001,8 +6006,23 @@ async function loadMembers(spaceId) {
   }
 }
 
+// A person's picture beside their message (see .msg-face in style.css).
+function addFace(li, userId) {
+  const face = makeFace(profileOf(userId) || { id: userId, displayName: friendName(userId) }, null, 'msg-face');
+  face.setAttribute('aria-hidden', 'true');
+  li.prepend(face);
+}
+
+// Someone's new picture (or name), on the messages already showing.
+function refreshFaces(dm, userId) {
+  const user = profileOf(userId);
+  if (!user) return;
+  for (const face of dm.log.querySelectorAll(`li[data-author="${CSS.escape(userId)}"] > .msg-face`)) renderFace(face, user, null);
+}
+
 // Messages drawn before their author's name was known.
 function refreshNames(dm, userId) {
+  refreshFaces(dm, userId);
   for (const head of dm.log.querySelectorAll(`li[data-author="${CSS.escape(userId)}"] > .msg-name`)) {
     const from = head.querySelector('.file-from');
     if (from) from.textContent = friendName(userId);
@@ -9900,6 +9920,7 @@ function teardown({ sendLeave, keepActive = false }) {
 
 async function init() {
   window.rainlitRunning = true; // (for boot.js: this started, so a wait for the server is just that)
+  document.body.classList.toggle('compact-chat', S.compactChat);
   // ----- Signing in -----
   el.signinTab.addEventListener('click', () => showAuth('signin'));
   el.signupTab.addEventListener('click', () => showAuth('signup'));
@@ -10435,6 +10456,11 @@ async function init() {
     S.callSounds = el.callSoundsInput.checked;
     store.set('callSounds', S.callSounds ? 'on' : 'off');
     playCallSound(true); // so you hear what you turned on
+  });
+  el.compactInput.addEventListener('change', () => {
+    S.compactChat = el.compactInput.checked;
+    store.set('compactChat', S.compactChat ? 'on' : 'off');
+    document.body.classList.toggle('compact-chat', S.compactChat);
   });
   el.embedsInput.addEventListener('change', () => {
     S.embeds = el.embedsInput.checked;

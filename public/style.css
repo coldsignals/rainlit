@@ -1054,6 +1054,15 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .chat-log li.cont { margin-top: -8px; }
 .chat-log li.cont > .msg-name { display: none; }
 
+/* People's pictures beside their messages, like Discord (Settings > Compact messages hides them):
+   on the first of a run of messages, next to the name. */
+body:not(.compact-chat) .chat-log li[data-author] { padding-left: 54px; }
+body:not(.compact-chat) .chat-log li.mentioned[data-author] { padding-left: 64px; }
+.face.msg-face { position: absolute; left: 0; top: 2px; width: 40px; height: 40px; font-size: 16px; cursor: pointer; }
+.chat-log li.mentioned > .msg-face { left: 10px; }
+.chat-log li[data-reply-to] > .msg-face { top: 23px; }
+.chat-log li.cont > .msg-face, .compact-chat .msg-face { display: none; }
+
 /* ----- GIFs ----- */
 
 .gif-btn {
