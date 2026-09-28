@@ -23,6 +23,8 @@ const voice = require('./lib/voice');
 const traces = require('./lib/traces');
 const discord = require('./lib/discord');
 const accounts = require('./lib/accounts');
+const emojis = require('./lib/emoji');
+const { imageKind } = require('./lib/images');
 const embeds = require('./lib/embeds');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
@@ -128,6 +130,16 @@ for (const [page, setting] of [['privacy', 'PRIVACY_URL'], ['terms', 'TERMS_URL'
     res.sendFile(`${page}.html`, { root: path.join(__dirname, 'public') });
   });
 }
+
+// A custom emoji's picture (lib/emoji.js). Anyone can load one: whoever sees a message sees its emoji.
+app.get('/emoji/:id', (req, res) => {
+  const e = /^[a-f0-9]{8,32}$/.test(req.params.id) && emojis.byId(req.params.id);
+  if (!e) return res.sendStatus(404);
+  res.set({ 'Cache-Control': 'public, max-age=31536000, immutable', 'Content-Security-Policy': "default-src 'none'; sandbox" });
+  res.sendFile(e.file, { root: emojis.EMOJI_DIR }, (err) => {
+    if (err && !res.headersSent) res.sendStatus(404);
+  });
+});
 
 app.get('/downloads', (_req, res) => {
   res.set('Cache-Control', 'no-cache');
@@ -356,16 +368,6 @@ api.delete('/me', needUser, async (req, res) => {
   auth.clearSessionCookie(res);
   res.json({ ok: true });
 });
-
-// What kind of picture a file really is, from its first bytes (not from what it claims to be).
-function imageKind(buf) {
-  if (buf.length < 12) return null;
-  if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
-  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
-  if (/^GIF8[79]a$/.test(buf.subarray(0, 6).toString('latin1'))) return 'gif';
-  if (buf.subarray(0, 4).toString('latin1') === 'RIFF' && buf.subarray(8, 12).toString('latin1') === 'WEBP') return 'webp';
-  return null;
-}
 
 function removeAvatarFile(name) {
   if (name) fs.rm(path.join(AVATAR_DIR, name), { force: true }, () => {});
@@ -874,9 +876,13 @@ function cleanEmoji(value) {
   return s.length <= 32 && EMOJI_RE.test(s) && /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3/u.test(s) ? s : null;
 }
 
+// A reaction: an emoji, or a custom one from a space you're in (see lib/emoji.js). Taking one
+// off works whatever became of its emoji.
+const CUSTOM_RE = /^<a?:[A-Za-z0-9_]{2,32}:[a-f0-9]{8,32}>$/;
 function reactRoute(req, res, on) {
-  const emoji = cleanEmoji((req.body || {}).emoji);
-  if (!emoji) return fail(res, 400, "That isn't an emoji.");
+  const raw = (req.body || {}).emoji;
+  const emoji = cleanEmoji(raw) || (on ? emojis.tokenFor(raw, req.user.id) : CUSTOM_RE.test(String(raw || '')) && String(raw));
+  if (!emoji) return fail(res, 400, CUSTOM_RE.test(String(raw || '')) ? "You can only use emoji from spaces you're in." : "That isn't an emoji.");
   if (on && req.access && !req.access.react) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't add reactions in this channel.");
   const r = dms.getRow(req.params.id);
   if (!r || r.dm_id !== req.dm.id || !['text', 'file', 'gif'].includes(r.kind)) return fail(res, 404, "That message isn't there any more.");
@@ -1182,6 +1188,56 @@ api.get('/embeds', needUser, async (req, res) => {
 
 // Their pictures and videos, which come through here so the sites don't see who's looking.
 api.get('/embeds/media', needUser, (req, res) => embeds.proxy(req, res));
+
+// ----- A space's custom emoji (lib/emoji.js) -----
+
+function emojiFail(res, err) {
+  if (!(err instanceof emojis.EmojiError)) throw err;
+  fail(res, err.status, err.message);
+}
+
+api.get('/spaces/:spaceId/emoji', needUser, needMember, (req, res) => {
+  res.json({ emoji: emojis.list(req.space.id), max: emojis.MAX_PER_SPACE });
+});
+
+// The picture is the body; its name comes along as ?name=.
+api.post('/spaces/:spaceId/emoji', needUser, needMember, needPerm('manageEmoji'), express.raw({ type: () => true, limit: '300kb' }), (req, res) => {
+  if (spaces.isGroup(req.space)) return fail(res, 400, "Groups don't have their own emoji.");
+  try {
+    const e = emojis.add(req.space.id, req.user.id, req.query.name, Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0));
+    spaces.log(req.space.id, req.user.id, 'emoji-add', null, { name: e.name });
+    spaceChanged(req.space.id);
+    res.json({ emoji: e });
+  } catch (err) {
+    emojiFail(res, err);
+  }
+});
+
+api.patch('/spaces/:spaceId/emoji/:emojiId', needUser, needMember, needPerm('manageEmoji'), (req, res) => {
+  try {
+    const { was, emoji: e } = emojis.rename(req.space.id, req.params.emojiId, (req.body || {}).name);
+    // (Reactions with it take its new name too, so they stay one.)
+    for (const a of ['', 'a']) {
+      db.prepare('UPDATE OR IGNORE reactions SET emoji = ? WHERE emoji = ?').run(`<${a}:${e.name}:${e.id}>`, `<${a}:${was}:${e.id}>`);
+    }
+    if (was !== e.name) spaces.log(req.space.id, req.user.id, 'emoji-rename', null, { from: was, to: e.name });
+    spaceChanged(req.space.id);
+    res.json({ emoji: e });
+  } catch (err) {
+    emojiFail(res, err);
+  }
+});
+
+api.delete('/spaces/:spaceId/emoji/:emojiId', needUser, needMember, needPerm('manageEmoji'), (req, res) => {
+  try {
+    const e = emojis.remove(req.space.id, req.params.emojiId);
+    spaces.log(req.space.id, req.user.id, 'emoji-remove', null, { name: e.name });
+    spaceChanged(req.space.id);
+    res.json({ ok: true });
+  } catch (err) {
+    emojiFail(res, err);
+  }
+});
 
 // Invite links: rainlit.app/join/<code>. Anyone allowed to invite people can make one.
 api.post('/spaces/:spaceId/invites', needUser, needMember, needPerm('invite'), (req, res) => {

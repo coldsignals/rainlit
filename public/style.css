@@ -488,6 +488,20 @@ button { cursor: pointer; }
 .primary-btn.danger-btn { background: var(--danger); color: #fff; }
 .delete-what { margin: 0; color: var(--mist); font-size: 14px; line-height: 1.45; }
 .signup-legal { text-align: center; }
+/* Custom emoji: in text, the size of the words around them; big in a message that's only emoji. */
+.emoji-img { width: 1.375em; height: 1.375em; object-fit: contain; vertical-align: -0.3em; }
+.msg-text.jumbo { font-size: 40px; line-height: 1.25; }
+.msg-text.jumbo .emoji-img { width: 48px; height: 48px; vertical-align: -8px; }
+.msg-text.jumbo .msg-edited { font-size: 12px; }
+.reaction .emoji .emoji-img { width: 18px; height: 18px; vertical-align: -4px; }
+.msg-reacts .emoji-img { width: 22px; height: 22px; vertical-align: -5px; }
+.mention-pick .emoji-img { width: 24px; height: 24px; }
+.emoji-btn { flex: none; align-self: center; }
+.emoji-admin-head { display: flex; align-items: center; gap: 12px; justify-content: space-between; color: var(--mist); }
+.emoji-admin { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.emoji-admin li { display: flex; align-items: center; gap: 10px; }
+.emoji-admin .emoji-img { width: 32px; height: 32px; flex: none; }
+.emoji-admin input { flex: 1; min-width: 0; padding: 8px 10px; background: var(--dusk); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: inherit; font-size: 14px; }
 /* Notes: a conversation with yourself, at the top of Home. */
 .notes-row { margin-bottom: 6px; }
 .face.notes-face { background: var(--dusk-hi); color: var(--lamp); }

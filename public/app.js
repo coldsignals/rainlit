@@ -84,7 +84,7 @@ for (const id of [
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
   'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'members-toggle', 'member-panel',
   'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove', 'menu-block',
-  'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
+  'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'emoji-btn', 'space-emoji', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
   'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
   'groups', 'group-list', 'groups-empty', 'new-group-btn', 'group-pick', 'group-pick-form', 'group-pick-title', 'group-pick-name-field', 'group-pick-name', 'group-pick-hint', 'group-pick-list', 'group-pick-error', 'group-pick-go',
@@ -1969,7 +1969,7 @@ function appendLinked(node, text, space = null, everyone = false) {
 const MENTION_RE = /(^|[^\w@.])@([a-z0-9_.]{2,32})/gi;
 
 function appendMentions(node, text, space, everyone) {
-  if (!space || !text.includes('@')) return node.append(text);
+  if (!space || !text.includes('@')) return appendEmoji(node, text);
   let last = 0;
   for (const m of text.matchAll(MENTION_RE)) {
     const at = m.index + m[1].length;
@@ -1986,7 +1986,7 @@ function appendMentions(node, text, space, everyone) {
       if (!person) continue;
     }
     const end = at + 1 + name.length;
-    node.append(text.slice(last, at));
+    appendEmoji(node, text.slice(last, at));
     const tag = document.createElement('span');
     tag.className = `mention${person ? '' : ' everyone'}${person && person.id === S.clientId ? ' me' : ''}`;
     tag.dataset.raw = text.slice(at, end);
@@ -2001,7 +2001,7 @@ function appendMentions(node, text, space, everyone) {
     node.append(tag);
     last = end;
   }
-  node.append(text.slice(last));
+  appendEmoji(node, text.slice(last));
 }
 
 // Whether a message mentions you (by name, or @everyone).
@@ -2296,6 +2296,144 @@ function embedFoot(e) {
   return foot;
 }
 
+// ---------------- Custom emoji (see lib/emoji.js) ----------------
+//
+// Each space's own, used anywhere its members chat. In a message, one is <:name:id> (<a:...>
+// if it moves); its picture loads from the server by its id, so anyone who sees the message
+// sees it. One that's been deleted shows as :name:.
+
+const EMOJI_TOKEN_RE = /<(a?):([A-Za-z0-9_]{2,32}):([a-f0-9]{8,32})>/g;
+const emojiToken = (e) => `<${e.animated ? 'a' : ''}:${e.name}:${e.id}>`;
+// For plain text (notifications, the reply bar): :name:.
+const plainEmoji = (text) => String(text || '').replace(EMOJI_TOKEN_RE, ':$2:');
+
+function emojiImg(name, id) {
+  const img = document.createElement('img');
+  img.className = 'emoji-img';
+  img.src = `${SERVER}/emoji/${id}`;
+  img.alt = img.title = `:${name}:`;
+  img.draggable = false;
+  img.addEventListener('error', () => img.replaceWith(`:${name}:`), { once: true });
+  return img;
+}
+
+// Text, with any custom emoji in it as their pictures.
+function appendEmoji(node, text) {
+  if (!text.includes('<')) return node.append(text);
+  let last = 0;
+  for (const m of text.matchAll(EMOJI_TOKEN_RE)) {
+    node.append(text.slice(last, m.index));
+    const img = emojiImg(m[2], m[3]);
+    img.dataset.raw = m[0]; // (copied and edited as it was written)
+    node.append(img);
+    last = m.index + m[0].length;
+  }
+  node.append(text.slice(last));
+}
+
+// A message that's only emoji (up to 27, like Discord) shows them big.
+const JUMBO_RE = /^(?:\s|<a?:[A-Za-z0-9_]{2,32}:[a-f0-9]{8,32}>|\p{Extended_Pictographic}|\p{Emoji_Component}|\u200d|\ufe0f)+$/u;
+function isJumbo(text) {
+  const t = String(text || '').trim();
+  if (!t || !JUMBO_RE.test(t) || /^[\d#*\s]+$/.test(t)) return false; // (digits and # count as emoji parts)
+  const n = (t.match(EMOJI_TOKEN_RE) || []).length + (t.replace(EMOJI_TOKEN_RE, '').match(/\p{Extended_Pictographic}/gu) || []).length;
+  return n > 0 && n <= 27;
+}
+
+// Every custom emoji you can use: your spaces', each with its space's name.
+function myEmoji() {
+  return [...S.spaces.values()].filter((s) => s.emoji && s.emoji.length && !isGroupSpace(s))
+    .flatMap((s) => s.emoji.map((e) => ({ ...e, space: s.name })));
+}
+
+// ----- A space's emoji, in its settings -----
+
+function renderEmojiPanel(space) {
+  const list = space.emoji || [];
+  const head = document.createElement('div');
+  head.className = 'emoji-admin-head';
+  const count = document.createElement('span');
+  count.textContent = `${list.length} of 50`;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/png,image/gif,image/webp,image/jpeg';
+  input.multiple = true;
+  input.hidden = true;
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'primary-btn small';
+  add.textContent = 'Upload emoji';
+  add.disabled = list.length >= 50;
+  add.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => uploadEmoji(space, [...input.files]));
+  head.append(count, add, input);
+  const hint = document.createElement('small');
+  hint.className = 'hint';
+  hint.textContent = "PNG, GIF, WebP or JPG, up to 256 KB each (they're shown small, so square ones about 128 pixels look best). Everyone in the space can use them anywhere they chat: type : and their name, or pick them from the emoji button.";
+  const ul = document.createElement('ul');
+  ul.className = 'emoji-admin';
+  for (const e of list) {
+    const li = document.createElement('li');
+    const img = emojiImg(e.name, e.id);
+    const name = document.createElement('input');
+    name.value = e.name;
+    name.maxLength = 32;
+    name.dataset.keep = `emoji-${e.id}`;
+    name.setAttribute('aria-label', 'Emoji name');
+    const save = async () => {
+      const v = name.value.trim().replace(/^:+|:+$/g, '');
+      if (!v || v === e.name) return (name.value = e.name);
+      try {
+        await api('PATCH', `/spaces/${space.id}/emoji/${e.id}`, { name: v });
+        showSettingsError('');
+      } catch (err) {
+        name.value = e.name;
+        showSettingsError(err.message);
+      }
+    };
+    name.addEventListener('change', save);
+    name.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); name.blur(); } });
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'icon-btn ghost';
+    del.title = `Delete :${e.name}:`;
+    del.setAttribute('aria-label', `Delete :${e.name}:`);
+    del.innerHTML = '<svg class="icon"><use href="#i-trash"/></svg>';
+    del.addEventListener('click', async () => {
+      if (!confirm(`Delete :${e.name}:? Where it's been used, it'll show as its name.`)) return;
+      try {
+        await api('DELETE', `/spaces/${space.id}/emoji/${e.id}`);
+        showSettingsError('');
+      } catch (err) {
+        showSettingsError(err.message);
+      }
+    });
+    li.append(img, name, del);
+    ul.append(li);
+  }
+  el.spaceEmoji.replaceChildren(head, hint, ul);
+}
+
+async function uploadEmoji(space, files) {
+  showSettingsError('');
+  for (const file of files) {
+    if (file.size > 256 * 1024) {
+      showSettingsError(`${file.name} is too big: emoji can be up to 256 KB.`);
+      continue;
+    }
+    try {
+      const res = await fetch(`${SERVER}/api/spaces/${space.id}/emoji?name=${encodeURIComponent(file.name)}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file,
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "That emoji didn't upload. Try again.");
+    } catch (err) {
+      showSettingsError(err.message);
+    }
+  }
+  await refreshSpaces();
+  renderSpaceSettings();
+}
+
 // ---------------- Notes ----------------
 //
 // A conversation with yourself (Telegram's "Saved Messages"; Discord doesn't let you message
@@ -2461,10 +2599,10 @@ function renderReactions(li, reactions) {
     chip.type = 'button';
     chip.className = `reaction${r.users.includes(S.clientId) ? ' mine' : ''}`;
     const who = r.users.map((id) => (id === S.clientId ? 'You' : friendName(id))).join(' and ');
-    chip.title = `${who} reacted with ${r.emoji}`;
+    chip.title = `${who} reacted with ${plainEmoji(r.emoji)}`;
     const e = document.createElement('span');
     e.className = 'emoji';
-    e.textContent = r.emoji;
+    appendEmoji(e, r.emoji);
     chip.append(e, String(r.users.length));
     chip.addEventListener('click', () => toggleReaction(li, r.emoji));
     row.append(chip);
@@ -2480,11 +2618,14 @@ function onDmReactions({ dm: dmId, id, reactions }) {
   if (li) renderReactions(li, reactions);
 }
 
-// Any emoji, from the full picker (loaded the first time it's opened).
+// Any emoji, from the full picker (loaded the first time it's opened): to react with (li), or
+// to put in the message box (li null). Your spaces' own emoji come first.
 let emojiTarget = null;
+let emojiCaret = null;
 async function openEmojiPicker(li) {
   closeMessageMenu();
   emojiTarget = li;
+  emojiCaret = li ? null : [el.chatInput.selectionStart, el.chatInput.selectionEnd];
   if (!el.emojiDialog.firstElementChild) {
     try {
       await import('/vendor/emoji-picker/index.js');
@@ -2495,13 +2636,23 @@ async function openEmojiPicker(li) {
     picker.className = 'dark';
     picker.dataSource = '/vendor/emoji-picker/data.json';
     picker.addEventListener('emoji-click', (e) => {
-      const unicode = e.detail && e.detail.unicode;
+      const d = e.detail || {};
+      const custom = !d.unicode && d.emoji && d.emoji.url && myEmoji().find((x) => `${SERVER}/emoji/${x.id}` === d.emoji.url);
+      const picked = d.unicode || (custom && emojiToken(custom));
       el.emojiDialog.close();
-      if (unicode) toggleReaction(emojiTarget, unicode);
+      if (!picked) return;
+      if (emojiTarget) return toggleReaction(emojiTarget, picked);
+      // Into the message box, where the cursor was.
+      const [a, b] = emojiCaret || [el.chatInput.value.length, el.chatInput.value.length];
+      const v = el.chatInput.value;
+      setChatText(v.slice(0, a) + picked + v.slice(b));
+      el.chatInput.focus();
+      el.chatInput.setSelectionRange(a + picked.length, a + picked.length);
     });
     el.emojiDialog.append(picker);
     closeOnBackdrop(el.emojiDialog);
   }
+  el.emojiDialog.firstElementChild.customEmoji = myEmoji().map((x) => ({ name: x.name, shortcodes: [x.name], url: `${SERVER}/emoji/${x.id}`, category: x.space }));
   el.emojiDialog.showModal();
 }
 
@@ -2543,8 +2694,8 @@ function openMessageMenu(li, x, y) {
     el.msgReacts.replaceChildren(...S.quickReactions.map((emoji) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = emoji;
-      b.setAttribute('aria-label', `React with ${emoji}`);
+      appendEmoji(b, emoji);
+      b.setAttribute('aria-label', `React with ${plainEmoji(emoji)}`);
       b.addEventListener('click', () => toggleReaction(li, emoji));
       return b;
     }));
@@ -2885,7 +3036,7 @@ function startReply(li) {
   const { name, text } = quoteOf(li);
   S.replying = { friendId: S.openDm, id: li.dataset.id };
   el.replyName.textContent = name;
-  el.replySnippet.textContent = text;
+  el.replySnippet.textContent = plainEmoji(text);
   el.replyBar.hidden = false;
   el.chatInput.focus();
 }
@@ -2948,7 +3099,7 @@ function fillQuote(q) {
   who.textContent = name;
   const what = document.createElement('span');
   what.className = 'rq-text';
-  what.textContent = text;
+  appendEmoji(what, text);
   q.replaceChildren(...(name ? [who] : []), what);
 }
 
@@ -2958,7 +3109,7 @@ function refreshQuotes(id) {
   if (S.replying && S.replying.id === id) {
     const li = document.querySelector(`.chat-log li[data-id="${CSS.escape(id)}"]`);
     if (!li || li.classList.contains('removed')) stopReply();
-    else el.replySnippet.textContent = quoteOf(li).text;
+    else el.replySnippet.textContent = plainEmoji(quoteOf(li).text);
   }
 }
 
@@ -3032,6 +3183,7 @@ function showEdited(li, text, editedAt, mentions = null) {
   body.replaceChildren();
   body._text = text;
   appendLinked(body, text, c ? S.spaces.get(c.spaceId) : null, body._everyone);
+  body.classList.toggle('jumbo', isJumbo(text));
   const tag = document.createElement('span');
   tag.className = 'msg-edited';
   tag.textContent = '(edited)';
@@ -3497,6 +3649,7 @@ function renderMessage(m) {
     body._text = m.text;
     body._everyone = Boolean(m.everyone);
     appendLinked(body, m.text, inChannel ? S.spaces.get(inChannel.spaceId) : null, body._everyone);
+    body.classList.toggle('jumbo', isJumbo(m.text));
     li.append(messageHead(who, m.at), body);
     showEmbeds(li, m.text);
   } else if (m.kind === 'file') {
@@ -3829,7 +3982,7 @@ function onDmMessage(m) {
   }
   if (fromThem && dm.channelId) notifyChannel(dm, m);
   if (fromThem && !dm.channelId && (DESKTOP || ANDROID)) {
-    const body = m.kind === 'text' ? m.text : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
+    const body = m.kind === 'text' ? plainEmoji(m.text) : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     appNotify({ title: friendName(friendId), body }); // only shows if you're not looking at Rainlit
   }
   if (!dm.loaded) {
@@ -3906,7 +4059,7 @@ function notifyChannel(dm, m) {
   channelNotified.set(c.id, Date.now());
   if (S.sounds && !appAsleep()) playChime();
   if (DESKTOP || ANDROID) {
-    const body = m.kind === 'text' ? m.text : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
+    const body = m.kind === 'text' ? plainEmoji(m.text) : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     const who = friendName(m.author);
     const where = isGroupSpace(space) ? groupTitle(space) : `#${c.name}`;
     appNotify({ title: mentioned ? `${who} mentioned you in ${where}` : `${who} in ${where}`, body });
@@ -5829,7 +5982,7 @@ const isAdministrator = (space, m) => space.everyonePerms.includes('administrato
   || space.roles.some((r) => m.roles.includes(r.id) && r.perms.includes('administrator'));
 const canModerateIn = (space, m, perm) => canIn(space, perm) && !m.owner && m.id !== S.clientId
   && (space.role === 'owner' || topOf(space, m) < myTop(space)) && !(perm === 'timeout' && isAdministrator(space, m));
-const SETTINGS_TABS = [['general', ['manageSpace']], ['roles', ['manageRoles']], ['channels', ['manageChannels']], ['moderation', ['timeout', 'ban', 'viewLog', 'manageMessages', 'kick']]];
+const SETTINGS_TABS = [['general', ['manageSpace']], ['roles', ['manageRoles']], ['channels', ['manageChannels']], ['emoji', ['manageEmoji']], ['moderation', ['timeout', 'ban', 'viewLog', 'manageMessages', 'kick']]];
 const settingsTabsFor = (space) => SETTINGS_TABS.filter(([, perms]) => perms.some((p) => canIn(space, p))).map(([tab]) => tab);
 const canOpenSettings = (space) => Boolean(space) && settingsTabsFor(space).length > 0;
 
@@ -6122,6 +6275,17 @@ function canSeeChannel(space, c, m) {
 }
 
 function onMentionInput() {
+  const caretAt = el.chatInput.selectionStart;
+  const colon = el.chatInput.value.slice(0, caretAt).match(/(^|[^\w:<])[:]([A-Za-z0-9_]{2,32})$/);
+  if (colon) {
+    const q = colon[2].toLowerCase();
+    const found = myEmoji().filter((e) => e.name.toLowerCase().includes(q))
+      .sort((a, b) => Number(!a.name.toLowerCase().startsWith(q)) - Number(!b.name.toLowerCase().startsWith(q)) || a.name.localeCompare(b.name));
+    if (found.length) {
+      mentionPick = { open: true, items: found.slice(0, 8).map((e) => ({ emoji: e, insert: emojiToken(e) })), index: 0, start: caretAt - q.length - 1 };
+      return renderMentionPick();
+    }
+  }
   const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
   const space = c && S.spaces.get(c.spaceId);
   if (!space || !space.members) return closeMentionPick();
@@ -6149,7 +6313,11 @@ function renderMentionPick() {
     b.setAttribute('aria-selected', String(i === mentionPick.index));
     const name = document.createElement('span');
     const sub = document.createElement('small');
-    if (item.person) {
+    if (item.emoji) {
+      name.textContent = `:${item.emoji.name}:`;
+      sub.textContent = item.emoji.space;
+      b.append(emojiImg(item.emoji.name, item.emoji.id), name, sub);
+    } else if (item.person) {
       name.textContent = item.person.displayName;
       sub.textContent = `@${item.person.username}`;
       b.append(makeFace(item.person, null), name, sub);
@@ -6172,7 +6340,7 @@ function renderMentionPick() {
 function pickMention(item) {
   const v = el.chatInput.value;
   const caret = el.chatInput.selectionStart;
-  const text = `@${item.insert} `;
+  const text = item.emoji ? `${item.insert} ` : `@${item.insert} `;
   setChatText(v.slice(0, mentionPick.start) + text + v.slice(caret));
   const pos = mentionPick.start + text.length;
   el.chatInput.setSelectionRange(pos, pos);
@@ -6880,6 +7048,9 @@ function spaceLogText(e) {
   const why = d.reason ? `. Reason: ${d.reason}` : '';
   switch (e.action) {
     case 'space-rename': return `${who} renamed the space from ${d.from} to ${d.to}`;
+    case 'emoji-add': return `${who} added the emoji :${d.name}:`;
+    case 'emoji-rename': return `${who} renamed the emoji :${d.from}: to :${d.to}:`;
+    case 'emoji-remove': return `${who} deleted the emoji :${d.name}:`;
     case 'space-import': return `${who} brought the space over from ${d.from || 'Discord'} (${d.channels} channels, ${d.roles} roles)`;
     case 'owner-deleted': return `The owner deleted their account, so the space passed to ${d.user || 'its most senior member'}`;
     case 'everyone-perms': return `${who} changed what everyone can do`;
@@ -7030,6 +7201,7 @@ function renderSpaceSettings() {
     if (tab === 'roles') renderRolesPanel(space);
     if (tab === 'channels') renderChannelsPanel(space);
     if (tab === 'moderation') renderModerationPanel(space);
+    if (tab === 'emoji') renderEmojiPanel(space);
   });
 }
 
@@ -7177,6 +7349,7 @@ const PERM_INFO = [
   ['kick', 'Kick people', 'Take people below them out of the space. They can come back with an invite.'],
   ['ban', 'Ban people', "Take people below them out for good, and lift bans."],
   ['mentionEveryone', 'Mention @everyone', 'Notify everyone who can see a channel at once.'],
+  ['manageEmoji', 'Manage emoji', "Add, rename and delete the space's own emoji."],
   ['connect', 'Join voice channels', ''],
   ['speak', 'Talk in voice channels', 'And share their camera or screen there.'],
   ['invite', 'Invite people', 'Make invite links.'],
@@ -9777,6 +9950,8 @@ async function init() {
 
   // ----- GIFs -----
   el.gifBtn.addEventListener('click', () => (el.gifPanel.hidden ? openGifPanel() : closeGifPanel()));
+  el.emojiBtn.addEventListener('mousedown', (e) => e.preventDefault()); // (the message box keeps its cursor)
+  el.emojiBtn.addEventListener('click', () => openEmojiPicker(null));
   el.gifSearch.addEventListener('input', () => {
     clearTimeout(gifs.timer);
     gifs.timer = setTimeout(() => loadGifs(el.gifSearch.value.trim(), true), 400); // wait until you pause typing

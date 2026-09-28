@@ -126,6 +126,11 @@ at the top closes it (on a phone, the back arrow).
   search, and click one to send it. They play in the conversation (only while
   they're on screen, and not at all if your device is set to reduce motion,
   then click one to play it). See step 4 to turn this on.
+- **Custom emoji:** a space's owner and admins (and roles with "Manage emoji")
+  add up to 50 in the space's settings: PNG, GIF (they can move), WebP or JPG.
+  Everyone in the space can use them anywhere they chat, in a DM too (on Discord
+  that takes Nitro): type `:` and a name, or pick one from the emoji button,
+  and react with them. A message that's only emoji shows them big.
 - **Notes:** a conversation with yourself, at the top of Home, for notes, links
   and files you want on all your devices (send a file from your phone, open it
   on your computer). Only you see it, and it's always kept. It holds 100 notes,
