@@ -189,7 +189,7 @@ it) can't listen in.
 | `COMPOSE_PROFILES` | Docker only: `voice` runs LiveKit alongside Rainlit (step 11). |
 | `MAX_FILE_MB` | The biggest file people can send, in MB (100 to start with). |
 | `LINK_PREVIEWS` | `off` turns off link previews (an X post, a video, or a page's title and picture under links in messages). They're on to start with: your server fetches the links people send, and passes their pictures along. |
-| `RECONNECT_MINUTES` | How long someone who dropped out of a call can take to come back (30). |
+| `RECONNECT_MINUTES` | How long someone who dropped out of a call can take to come back (30). Someone whose phone froze the app mid-call, while the call's sound still gets through, isn't counted as dropped. |
 | `SOURCE_URL` | Only if you've changed Rainlit's code: where your version's code is. Rainlit's license (the AGPL) asks that the people using a changed version can get it; Settings links there. |
 
 ## Being in charge

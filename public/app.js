@@ -1063,9 +1063,11 @@ function handleServerMessage(msg) {
       if (S.peer && S.peer.id === msg.id) {
         S.peer.away = true;
         S.peer.awaySince = msg.awaySince;
-        playCallSound(false);
-        // If audio is somehow still flowing directly between you, keep it going.
+        // If audio is still flowing directly between you, keep it going: their phone has frozen
+        // Rainlit's page, most likely, which doesn't stop the call. For you, nothing's changed
+        // (so no "left" sound either), and your app tells the server they're still here.
         if (!S.conn || S.conn.pc.connectionState !== 'connected') {
+          playCallSound(false);
           closePeer();
           setStatus(`${S.peer.name} is away`);
         }
@@ -1077,8 +1079,11 @@ function handleServerMessage(msg) {
       if (S.peer && S.peer.id === msg.peer.id) {
         S.peer = msg.peer;
         S.failCount = 0;
-        playCallSound(true);
-        if (!S.conn || S.conn.pc.connectionState !== 'connected') createPeer();
+        // (Still talking all along, their page just asleep: no "joined" sound.)
+        if (!S.conn || S.conn.pc.connectionState !== 'connected') {
+          playCallSound(true);
+          createPeer();
+        }
         renderPeer();
         resendDeletes();
       }
@@ -1826,6 +1831,26 @@ function renderTick() {
   if (S.peer && S.peer.away && S.peer.awaySince) el.peerAwayTime.textContent = fmtClock(now - S.peer.awaySince);
   el.offlineBanner.hidden = !(S.wsDownSince && Date.now() - S.wsDownSince > 3000);
   checkSocketHealth();
+  vouchForPeer();
+}
+
+// Your friend's page has gone quiet to the server (a phone that's been locked a while freezes
+// it, even mid-call), but their side of the call still reaches you. Now and then, tell the
+// server so: it holds their place in the call, rather than taking them out after half an hour
+// (and ending a call that's going fine).
+async function vouchForPeer() {
+  const conn = S.conn;
+  if (!S.peer || !S.peer.away || !conn || conn.pc.connectionState !== 'connected') return;
+  if (Date.now() - (conn.vouchedAt || 0) < 20_000) return;
+  conn.vouchedAt = Date.now();
+  let bytes = 0;
+  try {
+    (await conn.pc.getStats()).forEach((s) => { if (s.type === 'transport') bytes += s.bytesReceived || 0; });
+  } catch {
+    return;
+  }
+  if (bytes > (conn.vouchBytes || 0) && S.conn === conn) wsSend({ type: 'peer-heard' });
+  conn.vouchBytes = bytes;
 }
 
 // Full screen for the call. On computers it's the browser's own. The Android app's WebView
@@ -9969,9 +9994,13 @@ async function init() {
     trace('online');
     if (S.me && !S.ws) { S.wsRetry = 0; connectSocket(); }
   });
-  // (For the call debug log.)
-  document.addEventListener('freeze', () => trace('page-freeze'));
-  document.addEventListener('resume', () => trace('page-resume'));
+  document.addEventListener('freeze', () => {
+    trace('page-freeze'); // (for the call debug log)
+    // The phone's freezing this page (it's been locked a while). The call itself carries on
+    // without it, so tell the server this isn't a goodbye: it holds your place.
+    if (S.inCall && S.conn && S.conn.pc.connectionState === 'connected') wsSend({ type: 'frozen' });
+  });
+  document.addEventListener('resume', () => trace('page-resume')); // (for the call debug log)
   window.addEventListener('pagehide', () => {
     trace('pagehide');
     sendTrace({ leaving: true });
