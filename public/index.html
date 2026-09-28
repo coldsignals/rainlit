@@ -377,11 +377,11 @@
     </div>
 
     <nav class="controls" aria-label="Call controls">
-      <button id="mic-btn" class="ctl" type="button" aria-pressed="true">
+      <button id="mic-btn" class="ctl" type="button" aria-pressed="true" data-sound>
         <span class="ctl-icon"><svg class="icon"><use href="#i-mic"/></svg></span>
         <span class="ctl-label">Mute</span>
       </button>
-      <button id="cam-btn" class="ctl" type="button" aria-pressed="false">
+      <button id="cam-btn" class="ctl" type="button" aria-pressed="false" data-sound>
         <span class="ctl-icon"><svg class="icon"><use href="#i-cam-off"/></svg></span>
         <span class="ctl-label">Camera</span>
       </button>
@@ -389,15 +389,15 @@
         <span class="ctl-icon"><svg class="icon"><use href="#i-flip-cam"/></svg></span>
         <span class="ctl-label">Flip</span>
       </button>
-      <button id="route-btn" class="ctl" type="button" hidden>
+      <button id="route-btn" class="ctl" type="button" hidden data-sound>
         <span class="ctl-icon"><svg class="icon"><use href="#i-speaker"/></svg></span>
         <span class="ctl-label">Speaker</span>
       </button>
-      <button id="screen-btn" class="ctl" type="button" aria-pressed="false">
+      <button id="screen-btn" class="ctl" type="button" aria-pressed="false" data-sound>
         <span class="ctl-icon"><svg class="icon"><use href="#i-screen"/></svg></span>
         <span class="ctl-label">Share screen</span>
       </button>
-      <button id="leave-btn" class="ctl leave" type="button">
+      <button id="leave-btn" class="ctl leave" type="button" data-sound>
         <span class="ctl-icon"><svg class="icon"><use href="#i-leave"/></svg></span>
         <span class="ctl-label">Leave</span>
       </button>
@@ -932,7 +932,7 @@
       </label>
       <label class="toggle">
         <input id="clicks-input" type="checkbox" />
-        <span>Soft click when you press things</span>
+        <span>Soft click when you press things <small class="toggle-note">(in calls, mute, deafen, camera and switching speaker each have their own sound)</small></span>
       </label>
       <label class="toggle">
         <input id="stats-input" type="checkbox" />

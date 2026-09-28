@@ -517,6 +517,7 @@ async function toggleMic() {
     try {
       S.micOn = true;
       await setMicTrack(await getMicTrack(S.devices.mic));
+      playControlSound('unmute');
     } catch (err) {
       S.micOn = false;
       toast(mediaErrorText(err, 'Microphone'), 6000);
@@ -524,6 +525,7 @@ async function toggleMic() {
   } else {
     S.micOn = !S.micOn;
     applyMic();
+    playControlSound(S.micOn ? 'unmute' : 'mute');
   }
   renderControls();
   sendState();
@@ -615,6 +617,7 @@ async function toggleCam() {
   if (S.local.cam) {
     const t = S.local.cam;
     S.local.cam = null;
+    playControlSound('camera-off');
     if (!S.local.screen) await setOutgoingVideo(null);
     t.stop();
   } else {
@@ -624,6 +627,7 @@ async function toggleCam() {
       const t = S.facing && isPhone() ? await getFacingTrack(S.facing).catch(() => getCamTrack(S.devices.cam)) : await getCamTrack(S.devices.cam);
       if (!S.inCall) { t.stop(); return; }
       useCamTrack(t);
+      playControlSound('camera-on');
       if (!S.local.screen) await setOutgoingVideo(t);
       countCameras();
     } catch (err) {
@@ -2404,6 +2408,7 @@ async function nextRoute() {
   if (!next || next === r.current) return;
   try {
     renderRoute(await ANDROID.setAudioRoute({ route: next }));
+    playControlSound('route');
   } catch {}
 }
 
@@ -3969,6 +3974,40 @@ function updateRingback() {
   }
 }
 
+// Your own call buttons each have their own sound (with "Soft click when you press things"
+// on), so you can tell by ear what you just did: mute falls and unmute rises, deafen does the
+// same, lower and rounder; the camera is a shutter tick with a note going up (on) or down
+// (off); switching between speaker, earpiece and headset is a quick double tick. (Sharing
+// your screen has the bell pair everyone in the call hears, and leaving the call's "left".)
+function playControlSound(kind) {
+  const ctx = S.soundCtx;
+  if (!S.clickSounds || !ctx || ctx.state !== 'running') return;
+  const t = ctx.currentTime + 0.01;
+  const note = (freq, at, { type = 'sine', level = 0.11, length = 0.12, to = null } = {}) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, at);
+    if (to) osc.frequency.exponentialRampToValueAtTime(to, at + length * 0.8);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(level, at + 0.006);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + length);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(at);
+    osc.stop(at + length + 0.02);
+  };
+  switch (kind) {
+    case 'mute': note(740, t); note(494, t + 0.07); break; // F#5, then B4
+    case 'unmute': note(494, t); note(740, t + 0.07); break;
+    case 'deafen': note(440, t, { type: 'triangle', level: 0.14 }); note(294, t + 0.08, { type: 'triangle', level: 0.14, length: 0.16 }); break; // A4, then D4
+    case 'undeafen': note(294, t, { type: 'triangle', level: 0.14 }); note(440, t + 0.08, { type: 'triangle', level: 0.14, length: 0.16 }); break;
+    case 'camera-on': playClick(); note(1320, t + 0.02, { level: 0.06, length: 0.09, to: 1760 }); break;
+    case 'camera-off': playClick(); note(1320, t + 0.02, { level: 0.06, length: 0.09, to: 990 }); break;
+    case 'route': note(880, t, { level: 0.07, length: 0.05 }); note(880, t + 0.085, { level: 0.07, length: 0.05 }); break;
+    default: playClick();
+  }
+}
+
 // Chimes play through the same speaker you picked for your friend's voice.
 // A soft, short "tick" for pressing buttons, like a quiet switch: a few milliseconds
 // of filtered noise with a tiny low thump under it. Made once, then reused.
@@ -4596,6 +4635,7 @@ function mediaFrame(card, media, kind, f, url) {
 }
 
 function openLightbox(f, url) {
+  resetLbZoom();
   el.lightbox.dataset.id = f.id;
   el.lightboxImg.src = url;
   el.lightboxImg.alt = f.name;
@@ -4603,6 +4643,129 @@ function openLightbox(f, url) {
   el.lightboxSave.href = url;
   el.lightboxSave.download = f.name;
   el.lightbox.showModal();
+}
+
+// ----- Zooming the full-size picture -----
+// Pinch to zoom (or the mouse wheel), drag to look around, and double-tap (or double-click)
+// to zoom in on a spot, or back out. It opens fitted to the screen. A tap on the dark around
+// the picture closes it.
+
+const lbZoom = { scale: 1, x: 0, y: 0, pointers: new Map(), pinch: null, travel: 0, lastTap: null };
+const LB_MAX = 6;
+
+// The picture as it's painted, fitted and centered, before any zoom: its size, and the space
+// it has (all in the page's px, around the middle of the picture's box).
+function lbPicture() {
+  const img = el.lightboxImg;
+  const cs = getComputedStyle(img);
+  const cw = img.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const ch = img.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+  const fit = Math.min(1, cw / (img.naturalWidth || 1), ch / (img.naturalHeight || 1));
+  return { w: (img.naturalWidth || 0) * fit, h: (img.naturalHeight || 0) * fit, cw, ch };
+}
+
+// Where a pointer is, from the middle of the picture's box (which a zoom doesn't move).
+function lbPoint(e) {
+  const box = el.lightbox.getBoundingClientRect();
+  const z = uiZoom();
+  const img = el.lightboxImg;
+  return { x: (e.clientX - box.left) / z - img.offsetLeft - img.clientWidth / 2, y: (e.clientY - box.top) / z - img.offsetTop - img.clientHeight / 2 };
+}
+
+function applyLbZoom() {
+  const p = lbPicture();
+  // (Never dragged further than the zoomed picture reaches.)
+  const maxX = Math.max(0, (p.w * lbZoom.scale - p.cw) / 2);
+  const maxY = Math.max(0, (p.h * lbZoom.scale - p.ch) / 2);
+  lbZoom.x = Math.max(-maxX, Math.min(maxX, lbZoom.x));
+  lbZoom.y = Math.max(-maxY, Math.min(maxY, lbZoom.y));
+  el.lightboxImg.style.transform = lbZoom.scale > 1 ? `translate(${lbZoom.x}px, ${lbZoom.y}px) scale(${lbZoom.scale})` : '';
+  el.lightbox.classList.toggle('zoomed', lbZoom.scale > 1);
+}
+
+function resetLbZoom() {
+  Object.assign(lbZoom, { scale: 1, x: 0, y: 0, pinch: null, travel: 0, lastTap: null });
+  lbZoom.pointers.clear();
+  applyLbZoom();
+}
+
+// Zooms to a new scale, keeping the spot at q (from the middle) where it is.
+function lbZoomAt(q, scale) {
+  const s0 = lbZoom.scale;
+  const s1 = Math.max(1, Math.min(LB_MAX, scale));
+  lbZoom.x = q.x - (s1 * (q.x - lbZoom.x)) / s0;
+  lbZoom.y = q.y - (s1 * (q.y - lbZoom.y)) / s0;
+  lbZoom.scale = s1;
+  if (s1 === 1) lbZoom.x = lbZoom.y = 0;
+  applyLbZoom();
+}
+
+function onLbDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  el.lightboxImg.setPointerCapture(e.pointerId);
+  lbZoom.pointers.set(e.pointerId, lbPoint(e));
+  if (lbZoom.pointers.size === 1) {
+    lbZoom.travel = 0;
+    lbZoom.downAt = e.timeStamp;
+  }
+  if (lbZoom.pointers.size === 2) {
+    const [a, b] = [...lbZoom.pointers.values()];
+    lbZoom.pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, scale: lbZoom.scale, x: lbZoom.x, y: lbZoom.y };
+    lbZoom.travel = Infinity; // (a pinch is never a tap)
+  }
+}
+
+function onLbMove(e) {
+  const before = lbZoom.pointers.get(e.pointerId);
+  if (!before) return;
+  const p = lbPoint(e);
+  lbZoom.pointers.set(e.pointerId, p);
+  lbZoom.travel += Math.hypot(p.x - before.x, p.y - before.y);
+  if (lbZoom.pinch && lbZoom.pointers.size === 2) {
+    const [a, b] = [...lbZoom.pointers.values()];
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const pin = lbZoom.pinch;
+    const s1 = Math.max(1, Math.min(LB_MAX, (pin.scale * Math.hypot(a.x - b.x, a.y - b.y)) / pin.dist));
+    // The spot where the fingers started stays under them, as they spread and move.
+    lbZoom.x = mid.x - (s1 * (pin.mid.x - pin.x)) / pin.scale;
+    lbZoom.y = mid.y - (s1 * (pin.mid.y - pin.y)) / pin.scale;
+    lbZoom.scale = s1;
+    applyLbZoom();
+  } else if (lbZoom.pointers.size === 1 && lbZoom.scale > 1) {
+    lbZoom.x += p.x - before.x;
+    lbZoom.y += p.y - before.y;
+    applyLbZoom();
+  }
+}
+
+function onLbUp(e) {
+  if (!lbZoom.pointers.delete(e.pointerId)) return;
+  if (lbZoom.pointers.size < 2) lbZoom.pinch = null;
+  if (lbZoom.scale < 1.05 && lbZoom.scale !== 1) lbZoomAt({ x: 0, y: 0 }, 1); // (let go nearly fitted: fitted)
+  // (A quick press that didn't move is a tap. Taps are told apart here rather than from
+  // clicks, which a phone can hold back or merge when they come quickly.)
+  if (e.type === 'pointerup' && !lbZoom.pointers.size && lbZoom.travel <= 10 && e.timeStamp - lbZoom.downAt < 500) onLbTap(e);
+}
+
+// A tap: outside the picture (not zoomed) closes it; two quick taps on it zoom in there,
+// or back out.
+function onLbTap(e) {
+  const q = lbPoint(e);
+  const p = lbPicture();
+  if (lbZoom.scale === 1 && (Math.abs(q.x) > p.w / 2 || Math.abs(q.y) > p.h / 2)) return el.lightbox.close();
+  const now = performance.now();
+  const last = lbZoom.lastTap;
+  if (last && now - last.at < 350 && Math.hypot(q.x - last.x, q.y - last.y) < 40) {
+    lbZoom.lastTap = null;
+    lbZoomAt(q, lbZoom.scale > 1 ? 1 : 2.5);
+  } else {
+    lbZoom.lastTap = { at: now, x: q.x, y: q.y };
+  }
+}
+
+function onLbWheel(e) {
+  e.preventDefault();
+  lbZoomAt(lbPoint(e), lbZoom.scale * Math.exp(-e.deltaY * 0.0015));
 }
 
 // Progress moves many times a second; redraw a few times a second at most.
@@ -7171,7 +7334,10 @@ async function onVoiceControl(act) {
   if (!v) return;
   const me = v.room && v.room.localParticipant;
   try {
-    if (act === 'leave') return leaveVoice();
+    if (act === 'leave') {
+      if (!S.callSounds) playClick();
+      return leaveVoice();
+    }
     if (act === 'hear') return v.room.startAudio();
     if (!me || v.state !== 'connected') return;
     if (act === 'mute') {
@@ -7179,10 +7345,12 @@ async function onVoiceControl(act) {
       v.muted = !v.muted;
       if (!v.muted && v.deafened) v.deafened = false;
       store.set('voiceMuted', v.muted ? 'on' : 'off');
+      playControlSound(v.muted ? 'mute' : 'unmute');
       await me.setMicrophoneEnabled(!v.muted);
       applyVoicePtt();
     } else if (act === 'deafen') {
       v.deafened = !v.deafened;
+      playControlSound(v.deafened ? 'deafen' : 'undeafen');
       if (v.deafened && !v.muted) {
         v.muted = true;
         await me.setMicrophoneEnabled(false);
@@ -7194,7 +7362,9 @@ async function onVoiceControl(act) {
     } else if (act === 'camera') {
       if (!v.speak) return toast("You can't share video in this channel.");
       await me.setCameraEnabled(!me.isCameraEnabled, S.devices.cam ? { deviceId: S.devices.cam } : undefined);
+      playControlSound(me.isCameraEnabled ? 'camera-on' : 'camera-off');
     } else if (act === 'screen') {
+      if (!S.callSounds) playClick(); // (its own sound is a call sound; without those, the plain click)
       if (!v.speak) return toast("You can't share your screen in this channel.");
       if (ANDROID) return toast("Screen sharing from Android isn't here yet.");
       const smooth = el.shareQuality.value !== 'sharp';
@@ -8831,6 +9001,7 @@ function renderRejoin() {
 
 function onLeaveClick() {
   if (S.inCall) playCallSound(false);
+  if (!S.callSounds) playClick(); // (without call sounds, it's still a button you pressed)
   let summary = null;
   if (S.call) {
     const now = serverNow();
@@ -9240,7 +9411,10 @@ async function init() {
   }
   el.micBtn.addEventListener('contextmenu', (e) => { if (S.ptt) e.preventDefault(); }); // long press on a phone
   el.camBtn.addEventListener('click', toggleCam);
-  el.screenBtn.addEventListener('click', toggleScreen);
+  el.screenBtn.addEventListener('click', () => {
+    if (!S.callSounds) playClick(); // (its own sound is a call sound; without those, the plain click)
+    toggleScreen();
+  });
   el.leaveBtn.addEventListener('click', onLeaveClick);
   el.fullscreenBtn.addEventListener('click', () => setStageFull(!stageFull()));
   el.flipBtn.addEventListener('click', flipCam);
@@ -9274,7 +9448,18 @@ async function init() {
   el.lightboxClose.addEventListener('click', () => el.lightbox.close());
   // Clicking anywhere around the picture closes it, like Esc.
   closeOnBackdrop(el.lightbox);
-  el.lightbox.addEventListener('close', () => el.lightboxImg.removeAttribute('src'));
+  el.lightbox.addEventListener('close', () => {
+    el.lightboxImg.removeAttribute('src');
+    resetLbZoom();
+  });
+  el.lightboxImg.addEventListener('pointerdown', onLbDown);
+  el.lightboxImg.addEventListener('pointermove', onLbMove);
+  for (const type of ['pointerup', 'pointercancel']) el.lightboxImg.addEventListener(type, onLbUp);
+  el.lightboxImg.addEventListener('wheel', onLbWheel, { passive: false });
+  el.lightboxImg.addEventListener('dragstart', (e) => e.preventDefault()); // (a drag moves it, not the file)
+  // (A tap that closed it doesn't also press whatever was underneath: on a phone, its click
+  // comes just after the picture has gone.)
+  el.lightboxImg.addEventListener('touchend', (e) => { if (!el.lightbox.open) e.preventDefault(); });
 
   el.attachBtn.addEventListener('click', () => el.fileInput.click());
   el.fileInput.addEventListener('change', () => {
@@ -9418,7 +9603,7 @@ async function init() {
   // Pressing anything clickable makes a soft click (if that's on in settings).
   document.addEventListener('click', (e) => {
     const target = e.target.closest && e.target.closest(CLICKABLE);
-    if (target && !target.disabled && e.target !== el.clicksInput) playClick();
+    if (target && !target.disabled && e.target !== el.clicksInput && !target.closest('[data-sound], [data-voice]:not([data-voice="hear"])')) playClick();
   }, true);
   el.soundsInput.addEventListener('change', () => {
     S.sounds = el.soundsInput.checked;

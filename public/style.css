@@ -1463,14 +1463,19 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .lightbox img {
   flex: 1 1 auto; min-height: 0;
   width: 100%;
-  padding: 16px 16px 0;
+  padding: 16px;
   object-fit: scale-down;
+  touch-action: none; /* (pinching and dragging zoom the picture, not the page) */
+  user-select: none; -webkit-user-drag: none;
 }
+.lightbox.zoomed img { cursor: grab; }
+.lightbox.zoomed img:active { cursor: grabbing; }
+.lightbox .lightbox-bar { position: relative; z-index: 1; } /* (above a zoomed picture) */
 .lightbox-bar {
   display: flex; align-items: center; gap: 10px;
   align-self: center;
   width: min(640px, 100%);
-  padding: 12px 16px calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  padding: 0 16px calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
 }
 .lightbox-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
