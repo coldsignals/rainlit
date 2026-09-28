@@ -115,6 +115,17 @@ app.get(['/', '/index.html', '/join/:code', '/delete-account'], (_req, res) => {
   res.type('html').send(INDEX_HTML);
 });
 
+// The privacy policy and terms. These are rainlit.app's (they say so); a server someone else
+// runs can point them at its own with PRIVACY_URL and TERMS_URL.
+for (const [page, setting] of [['privacy', 'PRIVACY_URL'], ['terms', 'TERMS_URL']]) {
+  app.get(`/${page}`, (_req, res) => {
+    const own = String(process.env[setting] || '').trim();
+    if (own) return res.redirect(302, own);
+    res.set('Cache-Control', 'no-cache');
+    res.sendFile(`${page}.html`, { root: path.join(__dirname, 'public') });
+  });
+}
+
 app.get('/downloads', (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.sendFile('downloads.html', { root: path.join(__dirname, 'public') });

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#151b28" />
+  <meta name="darkreader-lock" />
+  <meta name="description" content="What Rainlit keeps about you, why, and for how long." />
+  <title>Rainlit privacy policy</title>
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/icons/favicon.ico" sizes="32x32" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/legal.css" />
+</head>
+<body>
+  <main>
+    <a class="brand" href="/" aria-label="Rainlit"><img src="/icons/mark.svg" alt="" width="36" height="36" /><span><span class="wm-rain">rain</span><span class="wm-lit">lit</span></span></a>
+    <h1>Privacy policy</h1>
+    <p class="updated">Last updated September 28, 2026</p>
+    <p class="lede">Rainlit keeps as little about you as it can, only for as long as it needs to, and never
+      sells it, shows you ads, or uses your messages to train AI.</p>
+    <p>This page says what rainlit.app keeps, why, for how long, and who else is involved. Rainlit is run
+      by one person, its developer. You can reach them at <a href="mailto:rainlit.app@gmail.com">rainlit.app@gmail.com</a>.</p>
+    <p class="note">Rainlit is free software, and anyone can run their own Rainlit server. This policy is for
+      rainlit.app. If you use a Rainlit server someone else runs, they look after your information,
+      and their own policy applies.</p>
+
+    <h2>What Rainlit keeps, and why</h2>
+
+    <h3>Your account</h3>
+    <ul>
+      <li><strong>Your email address</strong>, to sign in with and to help you get back in if you forget your
+        password. Other people don't see it.</li>
+      <li><strong>Your username, display name, profile picture and status</strong>, so people can find you and
+        see who they're talking to.</li>
+      <li><strong>Your password</strong>, only as a scrambled version that can't be turned back into it
+        (scrypt).</li>
+      <li><strong>When you joined</strong>, your badges, and how you've chosen to show up (online, away or
+        offline).</li>
+    </ul>
+
+    <h3>Your conversations</h3>
+    <ul>
+      <li><strong>Messages, files, reactions and replies</strong> you send, so you and the people you sent them
+        to can see them later. They stay until you delete them (a space's moderators can remove them there
+        too), or until you delete your account.</li>
+      <li><strong>With saving turned off</strong> in a conversation, messages pass through Rainlit's server
+        without being kept. For a day, the server remembers only that you sent one (not what it said), so
+        you can still take it back. Files go straight between your devices, during a call.</li>
+      <li><strong>Messages aren't end-to-end encrypted yet.</strong> That means whoever runs the server could
+        read ones that are kept. We don't. The only time we'd look at a message is if someone reports it
+        to us.</li>
+      <li><strong>Your friends, the people you've blocked, the spaces you're in</strong>, your roles in them,
+        and how far you've read in each conversation.</li>
+    </ul>
+
+    <h3>Calls</h3>
+    <ul>
+      <li><strong>Calls aren't recorded.</strong> A call between two people goes straight between your devices
+        when it can, or else through Cloudflare's relay. It's encrypted either way, so the relay can't
+        listen.</li>
+      <li><strong>Voice channels and group calls</strong> go through LiveKit, encrypted with keys only the
+        people in the call (and Rainlit's server, which hands them out) have, so LiveKit can't listen.</li>
+      <li>The conversation shows when a call started and how long it lasted.</li>
+      <li><strong>The call debug log</strong> is off unless you turn it on. Then it notes what happens to your
+        calls' connections (like the kind of network and device, and when a connection drops), never
+        what's said, to find out why calls drop. Those notes are kept for 7 days.</li>
+    </ul>
+
+    <h3>Everything else</h3>
+    <ul>
+      <li><strong>Your signed-in devices</strong>: a scrambled copy of each device's sign-in, and when it was
+        last used. A sign-in lasts up to a year after it was last used.</li>
+      <li><strong>Notifications</strong>: the address your phone's notification app gives Rainlit. What's sent
+        there is encrypted for your phone and never includes your messages ("Bea is calling", "New
+        message from Bea").</li>
+      <li><strong>Reports</strong>: when you report something, a copy of it and who reported it, for whoever
+        handles it. Reports that have been dealt with are deleted after a year.</li>
+      <li><strong>Space logs</strong>: what's been done in a space (like moderation), with the names as they
+        were then, for the people who look after it. A space keeps its newest 1,000.</li>
+      <li><strong>Copies made before an update</strong> of Rainlit, in case the update goes wrong. They're
+        deleted after 30 days, so anything you delete is gone from them within a month.</li>
+    </ul>
+
+    <h3>What Rainlit doesn't keep</h3>
+    <ul>
+      <li>Your IP address. The server only holds it in memory for a little while to slow down password
+        guessing. (Render, the company whose computers run the server, keeps its own logs for a short
+        time, and those can include IP addresses.)</li>
+      <li>Your location, contacts, or anything about what you do outside Rainlit. There are no ads,
+        trackers or analytics.</li>
+    </ul>
+
+    <h3>On your device</h3>
+    <p>A cookie keeps you signed in. Your settings (volumes, sounds and so on) and a list of your recent
+      calls are kept in your browser or the app, on your device only.</p>
+
+    <h2>Who else is involved</h2>
+    <ul>
+      <li><strong>The people you talk to</strong> see what you send them. People in a space see what you post
+        there. Your friends and the people in your spaces can see your profile.</li>
+      <li><strong>Render</strong> runs the computers Rainlit's server is on.</li>
+      <li><strong>Cloudflare</strong> relays calls that can't go straight between devices.</li>
+      <li><strong>LiveKit</strong> carries voice channels and group calls (encrypted, as above).</li>
+      <li><strong>KLIPY</strong> runs GIF search. Your searches go straight from your device to KLIPY, and the
+        GIFs load from there.</li>
+      <li><strong>Google Fonts</strong> serves Rainlit's typeface, so your device fetches it from Google.</li>
+      <li><strong>Your phone's notification app</strong> (like ntfy), if you use one, delivers notifications.
+        It can't read them.</li>
+      <li><strong>Link previews</strong>: when someone sends a link, Rainlit's server fetches the page to show
+        what it is. The site sees Rainlit's server, not you, and its pictures come to you through Rainlit.</li>
+    </ul>
+    <p>Rainlit only hands anything to anyone else if the law requires it. When it can, it will tell you first.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li>Change your profile, and delete your messages and files, any time.</li>
+      <li>Turn saving off in a conversation, so new messages aren't kept.</li>
+      <li><strong>Delete your account</strong> in the app (Your profile › Delete your account) or at
+        <a href="/delete-account">rainlit.app/delete-account</a>. Everything you've sent goes with it, and so
+        do your conversations with friends, your friends and your profile. Groups carry on without you, and
+        a space you own passes to its most senior member.</li>
+      <li>Ask for a copy of what Rainlit keeps about you, or for anything to be corrected, at
+        <a href="mailto:rainlit.app@gmail.com">rainlit.app@gmail.com</a>. Depending on where you live (like the
+        EU or UK), you have these rights by law, and you can also complain to your data protection
+        authority.</li>
+    </ul>
+
+    <h2>Children</h2>
+    <p>Rainlit isn't for anyone under 13, or older where your country's law says so. If we learn that an
+      account belongs to someone younger than that, we delete it.</p>
+
+    <h2>Keeping it safe</h2>
+    <p>Rainlit only talks over encrypted connections (HTTPS), keeps passwords and sign-ins scrambled, and
+      keeps what it stores to what's written here. No system is perfectly safe, though. If something
+      ever goes wrong with your information, we'll tell you.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes, the new version goes here with its date. For anything big, Rainlit will
+      tell you in the app first.</p>
+
+    <p class="also">See also the <a href="/terms">terms of service</a>. Questions:
+      <a href="mailto:rainlit.app@gmail.com">rainlit.app@gmail.com</a>.</p>
+  </main>
+</body>
+</html>

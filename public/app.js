@@ -9757,6 +9757,12 @@ async function init() {
   el.avatarBtn.addEventListener('click', () => el.avatarInput.click());
   el.avatarInput.addEventListener('change', onAvatarPicked);
   el.avatarRemoveBtn.addEventListener('click', onAvatarRemove);
+  for (const a of document.querySelectorAll('a.legal-link')) {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      openUrl(a.getAttribute('href'));
+    });
+  }
   el.pwBtn.addEventListener('click', onPasswordChange);
   el.signoutBtn.addEventListener('click', onSignOut);
   el.deleteDetails.addEventListener('toggle', () => { if (el.deleteDetails.open) renderDeletion(); });
