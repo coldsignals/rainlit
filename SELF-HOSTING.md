@@ -173,6 +173,21 @@ Keep the secret private. The sound and video in voice channels and group calls a
 end-to-end encrypted with a key only your Rainlit hands out, so LiveKit (or whoever runs
 it) can't listen in.
 
+## 12. Send email (optional)
+
+With email, people can reset a forgotten password themselves ("Forgot your password?" on
+the sign-in screen), and confirm their email address. Without it, you make reset links for
+them (Admin, then Accounts). Rainlit sends email through [Resend](https://resend.com) (free
+for 3,000 emails a month):
+
+1. Make a Resend account, and under **Domains** add your domain (or a part of it, like
+   `mail.example.com`). Add the DNS records Resend shows you where your domain's DNS is, and
+   wait for Resend to say it's verified.
+2. Under **API Keys**, create one with sending access only.
+3. Set `RESEND_API_KEY` to it, and `MAIL_FROM` to who emails are from, on that domain:
+   `Rainlit <noreply@example.com>`. Set `MAIL_REPLY_TO` to where replies should go (an
+   address you read). Set `PUBLIC_URL` too, so links in emails go to your Rainlit's address.
+
 ## All the settings
 
 | Setting | What it does |
@@ -184,6 +199,7 @@ it) can't listen in.
 | `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN` | Cloudflare's call relay (step 5). |
 | `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL` | Another call relay instead. |
 | `KLIPY_API_KEY` | GIFs (step 6). |
+| `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO` | Email: password resets and confirming addresses (step 12). |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels and group calls (step 11). |
 | `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |
 | `COMPOSE_PROFILES` | Docker only: `voice` runs LiveKit alongside Rainlit (step 11). |

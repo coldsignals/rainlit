@@ -90,7 +90,19 @@
           <input id="signin-password" type="password" autocomplete="current-password" required />
         </label>
         <button class="primary-btn" type="submit">Sign in</button>
-        <small class="hint">Forgot your password? Ask whoever runs this Rainlit for a reset link.</small>
+        <button id="forgot-btn" class="text-btn forgot-btn" type="button" hidden>Forgot your password?</button>
+        <small id="forgot-hint" class="hint">Forgot your password? Ask whoever runs this Rainlit for a reset link.</small>
+      </form>
+
+      <form id="forgot-form" class="join-form" novalidate hidden>
+        <p class="rejoin-note">Forgot your password? Type your username or email, and we'll email you a link to choose a new one.</p>
+        <label class="field">
+          <span>Username or email</span>
+          <input id="forgot-login" autocomplete="username" autocapitalize="off" spellcheck="false" required />
+        </label>
+        <button id="forgot-send" class="primary-btn" type="submit">Email me a link</button>
+        <p id="forgot-sent" class="rejoin-note" role="status" hidden></p>
+        <button id="forgot-back" class="text-btn" type="button">Back to signing in</button>
       </form>
 
       <form id="signup-form" class="join-form" novalidate hidden>
@@ -629,6 +641,10 @@
         <div id="profile-badges" class="badge-tray"></div>
       </div>
       <p id="profile-account" class="conn-info"></p>
+      <p id="email-row" class="email-row" hidden>
+        <span id="email-state" class="email-state"></span>
+        <button id="email-confirm-btn" class="text-btn" type="button">Send me a link to confirm it</button>
+      </p>
       <p id="profile-error" class="form-error" role="alert" hidden></p>
       <button class="primary-btn" type="submit">Save</button>
       <details class="pw-details">
@@ -643,6 +659,20 @@
             <input id="pw-next" type="password" autocomplete="new-password" minlength="8" />
           </label>
           <button id="pw-btn" class="primary-btn small" type="button">Change password</button>
+        </div>
+      </details>
+      <details class="pw-details">
+        <summary>Change your email</summary>
+        <div class="pw-fields">
+          <label class="field">
+            <span>New email</span>
+            <input id="email-next" type="email" autocomplete="email" />
+          </label>
+          <label class="field">
+            <span>Your password</span>
+            <input id="email-password" type="password" autocomplete="current-password" />
+          </label>
+          <button id="email-btn" class="primary-btn small" type="button">Change email</button>
         </div>
       </details>
       <details id="blocked-details" class="pw-details">

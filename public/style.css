@@ -487,6 +487,12 @@ button { cursor: pointer; }
 .small-btn.danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 .primary-btn.danger-btn { background: var(--danger); color: #fff; }
 .delete-what { margin: 0; color: var(--mist); font-size: 14px; line-height: 1.45; }
+/* Email: forgot your password, and whether yours is confirmed (in your profile). */
+.forgot-btn { justify-self: center; padding: 4px; font-size: 14px; }
+.email-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: -10px 0 0; font-size: 14px; color: var(--mist); }
+.email-state::before { content: '\2022'; margin-right: 6px; color: var(--away); }
+.email-state.confirmed::before { content: '\2713'; color: var(--online); }
+.email-row .text-btn { padding: 2px 0; color: var(--lamp); }
 .signup-legal { text-align: center; }
 /* Custom emoji: in text, the size of the words around them; big in a message that's only emoji. */
 .emoji-img { width: 1.375em; height: 1.375em; object-fit: contain; vertical-align: -0.3em; }

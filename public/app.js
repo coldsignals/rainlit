@@ -79,6 +79,8 @@ for (const id of [
   'auth', 'signin-tab', 'signup-tab', 'signin-form', 'signin-login', 'signin-password',
   'signup-form', 'setup-note', 'code-label', 'signup-code', 'signup-email', 'signup-username', 'signup-name', 'signup-password',
   'reset-form', 'reset-password', 'auth-error',
+  'forgot-btn', 'forgot-hint', 'forgot-form', 'forgot-login', 'forgot-send', 'forgot-sent', 'forgot-back',
+  'email-row', 'email-state', 'email-confirm-btn', 'email-next', 'email-password', 'email-btn',
   'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty', 'notes-row',
   'me-btn', 'me-face', 'me-name', 'me-status', 'admin-btn', 'app-settings-btn',
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
@@ -5700,14 +5702,18 @@ function showAuth(mode) {
   el.signinForm.hidden = mode !== 'signin';
   el.signupForm.hidden = mode !== 'signup';
   el.resetForm.hidden = mode !== 'reset';
-  el.signinTab.parentElement.hidden = mode === 'reset' || S.setupNeeded;
+  el.forgotForm.hidden = mode !== 'forgot';
+  // (A server that sends email can send a reset link; otherwise its admin makes one.)
+  el.forgotBtn.hidden = !S.mailEnabled;
+  el.forgotHint.hidden = S.mailEnabled;
+  el.signinTab.parentElement.hidden = mode === 'reset' || mode === 'forgot' || S.setupNeeded;
   el.signinTab.setAttribute('aria-selected', String(mode === 'signin'));
   el.signupTab.setAttribute('aria-selected', String(mode === 'signup'));
   // The very first account is made with the setup code from the server's logs, not an invite.
   el.setupNote.hidden = !S.setupNeeded;
   el.codeLabel.textContent = S.setupNeeded ? 'Setup code' : 'Invite code';
   showAuthError('');
-  const first = { signin: el.signinLogin, signup: el.signupCode, reset: el.resetPassword }[mode];
+  const first = { signin: el.signinLogin, signup: el.signupCode, reset: el.resetPassword, forgot: el.forgotLogin }[mode];
   if (first && matchMedia('(pointer: fine)').matches) first.focus();
 }
 
@@ -8242,6 +8248,7 @@ async function refreshFriends() {
     if (Array.isArray(data.quickReactions) && data.quickReactions.length) setQuickReactions(data.quickReactions);
     renderComposer();
     S.voiceEnabled = Boolean(data.voice);
+    S.mailEnabled = Boolean(data.mail);
     S.blockedUsers = data.blocked || [];
     S.blocked = new Set(S.blockedUsers.map((u) => u.id));
     S.openReports = data.openReports || 0;
@@ -9035,6 +9042,7 @@ function openProfile() {
   el.profileStatus.value = S.me.statusText;
   el.profilePresence.value = S.me.presence;
   el.profileAccount.textContent = `@${S.me.username} · ${S.me.email}`;
+  renderEmailRow();
   renderProfileBadges();
   renderBlockedList();
   renderFace(el.profileFace, S.me, null);
@@ -9181,6 +9189,80 @@ async function onAvatarRemove() {
     el.avatarRemoveBtn.hidden = true;
   } catch (err) {
     showProfileError(err.message);
+  }
+}
+
+// ----- Your email: confirming it, and changing it -----
+
+function renderEmailRow() {
+  el.emailRow.hidden = false;
+  el.emailState.textContent = S.me.emailConfirmed ? 'Your email is confirmed.' : "Your email isn't confirmed yet.";
+  el.emailState.classList.toggle('confirmed', Boolean(S.me.emailConfirmed));
+  el.emailConfirmBtn.hidden = Boolean(S.me.emailConfirmed) || !S.mailEnabled;
+}
+
+async function onSendConfirm() {
+  el.emailConfirmBtn.disabled = true;
+  try {
+    const r = await api('POST', '/me/confirm-email', {});
+    if (r.already) {
+      S.me.emailConfirmed = true;
+      renderEmailRow();
+    } else {
+      toast(`Sent! Check ${S.me.email} (and your spam folder) for a link.`, 6000);
+    }
+  } catch (err) {
+    toast(err.message, 6000);
+  } finally {
+    el.emailConfirmBtn.disabled = false;
+  }
+}
+
+async function onEmailChange() {
+  showProfileError('');
+  el.emailBtn.disabled = true;
+  try {
+    const { user } = await api('POST', '/me/email', { email: el.emailNext.value.trim(), password: el.emailPassword.value });
+    setMe(user);
+    el.emailNext.value = el.emailPassword.value = '';
+    el.emailBtn.closest('details').open = false;
+    el.profileAccount.textContent = `@${S.me.username} · ${S.me.email}`;
+    renderEmailRow();
+    toast(S.mailEnabled ? `Your email is now ${user.email}. We sent it a link to confirm it.` : `Your email is now ${user.email}.`, 7000);
+  } catch (err) {
+    showProfileError(err.message);
+  } finally {
+    el.emailBtn.disabled = false;
+  }
+}
+
+// The link in a confirmation email opens Rainlit with its token (signed in or not).
+async function confirmEmailLink(token) {
+  try {
+    const r = await api('POST', '/confirm-email', { token });
+    if (r.user) setMe(r.user);
+    else if (S.me && S.me.email === r.email) S.me.emailConfirmed = true;
+    toast(`Thanks! ${r.email} is confirmed.`, 6000);
+  } catch (err) {
+    toast(err.message, 9000);
+  }
+}
+
+// "Forgot your password?", on the sign-in screen.
+async function onForgot(e) {
+  e.preventDefault();
+  const login = el.forgotLogin.value.trim();
+  if (!login) return showAuthError('Type your username or email.');
+  showAuthError('');
+  el.forgotSend.disabled = true;
+  try {
+    await api('POST', '/forgot', { login });
+    el.forgotSent.textContent = "If there's an account with that, it'll get an email with a link in a minute or two (check your spam folder too). The link works for an hour.";
+    el.forgotSent.hidden = false;
+  } catch (err) {
+    showAuthError(err.message);
+  } finally {
+    el.forgotSend.disabled = false;
   }
 }
 
@@ -9829,7 +9911,9 @@ async function init() {
     submitAuth(el.signupForm, () => api('POST', '/signup', {
       code: el.signupCode.value, email: el.signupEmail.value, username: el.signupUsername.value,
       displayName: el.signupName.value, password: el.signupPassword.value,
-    }));
+    })).then(() => {
+      if (S.me && S.mailEnabled) toast(`Welcome! We sent ${S.me.email} a link to confirm it's yours.`, 7000);
+    });
   });
   el.resetForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -10112,6 +10196,15 @@ async function init() {
     });
   }
   el.pwBtn.addEventListener('click', onPasswordChange);
+  el.emailBtn.addEventListener('click', onEmailChange);
+  el.emailConfirmBtn.addEventListener('click', onSendConfirm);
+  el.forgotForm.addEventListener('submit', onForgot);
+  el.forgotBtn.addEventListener('click', () => {
+    el.forgotLogin.value = el.signinLogin.value.trim();
+    el.forgotSent.hidden = true;
+    showAuth('forgot');
+  });
+  el.forgotBack.addEventListener('click', () => showAuth('signin'));
   el.signoutBtn.addEventListener('click', onSignOut);
   el.deleteDetails.addEventListener('toggle', () => { if (el.deleteDetails.open) renderDeletion(); });
   el.deleteBtn.addEventListener('click', onDeleteAccount);
@@ -10452,6 +10545,16 @@ async function init() {
   }
 
   // A password reset link opens straight to "choose a new password".
+  // (A link from an email pasted into a Rainlit that's already open changes only the part after
+  // the #, which doesn't start the page again. Start it again, to follow the link.)
+  window.addEventListener('hashchange', () => {
+    if (/(^#|&)(reset|confirm)=/.test(location.hash)) location.reload();
+  });
+  const confirmToken = new URLSearchParams(location.hash.slice(1)).get('confirm') || '';
+  if (confirmToken) {
+    history.replaceState(null, '', location.pathname);
+    confirmEmailLink(confirmToken);
+  }
   S.resetToken = new URLSearchParams(location.hash.slice(1)).get('reset') || '';
   if (S.resetToken) return showAuth('reset');
 
@@ -10488,7 +10591,9 @@ async function init() {
   el.starting.hidden = true;
   if (user) return signedIn(user);
   try {
-    S.setupNeeded = Boolean((await api('GET', '/config')).setupNeeded);
+    const config = await api('GET', '/config');
+    S.setupNeeded = Boolean(config.setupNeeded);
+    S.mailEnabled = Boolean(config.mail);
   } catch {}
   showAuth(S.setupNeeded ? 'signup' : 'signin');
 }

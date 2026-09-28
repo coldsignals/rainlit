@@ -100,7 +100,13 @@ and released is in [desktop/README.md](desktop/README.md).
   pick **Away** or **Appear offline** yourself.
 - **Your profile:** click your name at the bottom left. Change your picture
   (PNG, JPG, WebP or GIF, up to 8 MB, and GIFs move), display name and a status
-  of up to 120 characters. Your password and sign out are there too.
+  of up to 120 characters. Your password, your email and sign out are there too.
+- **Your email:** new accounts get a link to confirm their email address (your
+  profile says whether it's confirmed, and sends another). Forgot your password?
+  **Forgot your password?** on the sign-in screen emails a link, good for an
+  hour. Changing your email needs your password, and the old address is told.
+  (A Rainlit that doesn't send email: its admin makes reset links instead. See
+  [SELF-HOSTING.md](SELF-HOSTING.md) to turn email on.)
 - **A friend's menu:** right-click a friend in the list (long-press on a phone,
   or the "..." that appears when you hover) for **Message**, **Call**, **View
   profile** and **Remove friend**. Clicking their name at the top of your

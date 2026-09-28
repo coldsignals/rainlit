@@ -27,12 +27,15 @@ const emojis = require('./lib/emoji');
 const homepages = require('./lib/homepages');
 const { imageKind } = require('./lib/images');
 const embeds = require('./lib/embeds');
+const mail = require('./lib/mail');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
 const PORT = Number(process.env.PORT) || 3000;
 const AVATAR_MAX = 8 * 1024 * 1024;
-const RESET_LINK_HOURS = 24;
+const RESET_LINK_HOURS = 24; // (a link the admin makes)
+const RESET_EMAIL_MINUTES = 60; // (one sent by email)
+const CONFIRM_DAYS = 3;
 const FILE_MAX_MB = Number(process.env.MAX_FILE_MB) || 100;
 // Your notes (a conversation with yourself) hold this many, and their files this much.
 const NOTES_MAX = Number(process.env.NOTES_MAX) || 100;
@@ -59,6 +62,7 @@ let setupCode = people.countUsers() === 0 ? people.makeCode() : null;
 const signupTries = auth.limiter(20, 3600_000);
 const loginTries = auth.limiter(8, 15 * 60_000); // per person being signed in to
 const ipTries = auth.limiter(40, 15 * 60_000); // per visitor, across everyone
+const forgotTries = auth.limiter(5, 3600_000); // "Forgot your password?", per visitor
 
 // ---------- HTTP ----------
 
@@ -216,8 +220,31 @@ function signIn(req, res, userId) {
 }
 
 api.get('/config', (_req, res) => {
-  res.json({ setupNeeded: Boolean(setupCode) });
+  res.json({ setupNeeded: Boolean(setupCode), mail: mail.enabled });
 });
+
+// ----- Email (lib/mail.js) -----
+
+// Where links in emails go: this server's address (PUBLIC_URL, or the one it was reached at).
+function publicUrl(req) {
+  const own = String(process.env.PUBLIC_URL || '').trim().replace(/\/+$/, '');
+  return /^https?:\/\//i.test(own) ? own : `${req.protocol}://${req.get('host')}`;
+}
+
+// Emails someone a link to confirm their address. Not if one went in the last minute (unless
+// the address just changed), or five already today. Returns whether it sent one.
+function sendConfirm(req, user, { changed = false } = {}) {
+  if (!mail.enabled) return false;
+  const today = db.prepare('SELECT created_at FROM email_confirms WHERE user_id = ? AND created_at > ? ORDER BY created_at DESC')
+    .all(user.id, Date.now() - 86_400_000);
+  if (today.length >= 5 || (!changed && today[0] && Date.now() - today[0].created_at < 60_000)) return false;
+  const token = crypto.randomBytes(24).toString('base64url');
+  const now = Date.now();
+  db.prepare('INSERT INTO email_confirms (token_hash, user_id, email, created_at, expires_at) VALUES (?, ?, ?, ?, ?)')
+    .run(auth.sha256(token), user.id, user.email, now, now + CONFIRM_DAYS * 86_400_000);
+  mail.sendLater(mail.confirmEmail(user, user.email, `${publicUrl(req)}/#confirm=${token}`), 'a confirmation email');
+  return true;
+}
 
 // For the apps, when you point one at a server: yes, this is Rainlit, and here's its name.
 api.get('/server-info', (_req, res) => {
@@ -277,6 +304,7 @@ api.post('/signup', async (req, res) => {
   } else {
     console.log(`[accounts] New account: @${username}`);
   }
+  sendConfirm(req, people.userById(id));
   signIn(req, res, id);
 });
 
@@ -303,7 +331,25 @@ api.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-// A one-time link from the admin (or, later, an email) to set a new password.
+// "Forgot your password?": a link by email, good once for an hour. The answer's the same
+// whether or not there's such an account (and it's sent after answering, so how long it takes
+// doesn't say either).
+api.post('/forgot', (req, res) => {
+  if (!mail.enabled) return fail(res, 400, "This Rainlit can't send emails. Ask whoever runs it for a reset link.");
+  if (forgotTries.blocked(req.ip)) return fail(res, 429, 'Too many tries. Wait a while and try again.');
+  forgotTries.fail(req.ip);
+  const user = people.userByLogin(String((req.body || {}).login || ''));
+  res.json({ ok: true });
+  // (Three an hour at most for any account, whoever's asking.)
+  if (!user || db.prepare('SELECT COUNT(*) n FROM password_resets WHERE user_id = ? AND by_email = 1 AND created_at > ?').get(user.id, Date.now() - 3600_000).n >= 3) return;
+  const token = crypto.randomBytes(24).toString('base64url');
+  const now = Date.now();
+  db.prepare('INSERT INTO password_resets (token_hash, user_id, created_at, expires_at, by_email) VALUES (?, ?, ?, ?, 1)')
+    .run(auth.sha256(token), user.id, now, now + RESET_EMAIL_MINUTES * 60_000);
+  mail.sendLater(mail.resetEmail(user, `${publicUrl(req)}/#reset=${token}`), 'a reset email');
+});
+
+// A one-time link, from the admin or an email, to set a new password.
 api.post('/reset', async (req, res) => {
   if (ipTries.blocked(req.ip)) return fail(res, 429, 'Too many tries. Wait 15 minutes and try again.');
   const b = req.body || {};
@@ -319,6 +365,8 @@ api.post('/reset', async (req, res) => {
     db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, row.user_id);
     db.prepare('UPDATE password_resets SET used_at = ? WHERE token_hash = ?').run(Date.now(), row.token_hash);
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(row.user_id); // sign out everywhere else
+    // (A link that came by email shows the address is theirs.)
+    if (row.by_email) db.prepare('UPDATE users SET email_confirmed_at = COALESCE(email_confirmed_at, ?) WHERE id = ?').run(Date.now(), row.user_id);
   });
   realtime.closeOtherSessions(row.user_id, null);
   signIn(req, res, row.user_id);
@@ -355,6 +403,56 @@ api.patch('/me', needUser, (req, res) => {
     db.prepare(`UPDATE users SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`).run(...cols.map((c) => set[c]), req.user.id);
   }
   res.json({ user: people.selfUser(profileChanged(req.user.id)) });
+});
+
+// The link in a confirmation email (the app passes its token here). Works signed in or not.
+api.post('/confirm-email', (req, res) => {
+  if (ipTries.blocked(req.ip)) return fail(res, 429, 'Too many tries. Wait 15 minutes and try again.');
+  const row = db.prepare('SELECT * FROM email_confirms WHERE token_hash = ?').get(auth.sha256(String((req.body || {}).token || '')));
+  const user = row && people.userById(row.user_id);
+  if (!row || !user || row.expires_at < Date.now() || user.email !== row.email) {
+    ipTries.fail(req.ip);
+    return fail(res, 400, "That link has expired, or it's for an email address that's been changed since. You can send a new one from your profile.");
+  }
+  if (!row.used_at) {
+    db.prepare('UPDATE email_confirms SET used_at = ? WHERE token_hash = ?').run(Date.now(), row.token_hash);
+    db.prepare('UPDATE users SET email_confirmed_at = COALESCE(email_confirmed_at, ?) WHERE id = ?').run(Date.now(), user.id);
+  }
+  res.json({ ok: true, email: user.email, ...(req.user && req.user.id === user.id ? { user: people.selfUser(people.userById(user.id)) } : {}) });
+});
+
+// Another confirmation email (from your profile).
+api.post('/me/confirm-email', needUser, (req, res) => {
+  if (!mail.enabled) return fail(res, 400, "This Rainlit can't send emails.");
+  if (req.user.email_confirmed_at) return res.json({ ok: true, already: true });
+  if (!sendConfirm(req, req.user)) return fail(res, 429, 'One was just sent. Give it a minute, and check your spam folder.');
+  res.json({ ok: true });
+});
+
+// A new email address (your password first). It needs confirming, and the old address is told.
+api.post('/me/email', needUser, async (req, res) => {
+  const b = req.body || {};
+  if (ipTries.blocked(req.ip)) return fail(res, 429, 'Too many tries. Wait 15 minutes and try again.');
+  if (!(await auth.checkPassword(String(b.password || ''), req.user.password_hash))) {
+    ipTries.fail(req.ip);
+    return fail(res, 400, "Your password isn't right.");
+  }
+  const email = String(b.email || '').trim().toLowerCase();
+  if (!people.EMAIL_RE.test(email) || email.length > 254) return fail(res, 400, "That email address doesn't look right.");
+  if (email === req.user.email) return fail(res, 400, "That's already your email.");
+  if (people.userByLogin(email)) return fail(res, 409, 'An account already uses that email.');
+  try {
+    db.prepare('UPDATE users SET email = ?, email_confirmed_at = NULL WHERE id = ?').run(email, req.user.id);
+  } catch (err) {
+    if (/UNIQUE/.test(err.message)) return fail(res, 409, 'An account already uses that email.');
+    throw err;
+  }
+  const user = people.userById(req.user.id);
+  if (mail.enabled) {
+    mail.sendLater(mail.changedEmail(user, req.user.email, email, publicUrl(req)), 'a changed-email notice');
+    sendConfirm(req, user, { changed: true });
+  }
+  res.json({ user: people.selfUser(user) });
 });
 
 api.post('/me/password', needUser, async (req, res) => {
@@ -437,6 +535,7 @@ api.get('/friends', needUser, (req, res) => {
     friends: [], incoming: [], outgoing: [], maxFileMb: FILE_MAX_MB, klipyKey: KLIPY_KEY, quickReactions: dms.quickReactions(req.user.id),
     blocked: safety.blockedBy(req.user.id).map((id) => people.userById(id)).filter(Boolean).map(people.publicUser),
     voice: voice.enabled,
+    mail: mail.enabled,
     ...(req.user.is_admin ? { openReports: safety.openReportCount() } : {}),
   };
   const convos = dms.summariesFor(req.user.id);

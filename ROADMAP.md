@@ -76,8 +76,8 @@ first; opening sign-ups is the very last step.
 - [x] Custom emoji: each space uploads its own, and its members use them anywhere they chat
 - [ ] A "Switching from Discord" page: what works the same, what's different, and how to
       move a community over
-- [ ] Email: password-reset emails (the admin can't make reset links by hand for
-      everyone), and checking that email addresses are real
+- [x] Email: password-reset emails (the admin can't make reset links by hand for
+      everyone), and confirming that email addresses are real (through Resend)
 - [ ] Protection against spam accounts: limits on sign-ups, and no throwaway addresses
 - [ ] A cap on new sign-ups, with a waitlist, so a sudden wave from Discord (like the one
       that knocked Fluxer and Stoat over in February 2026) can't sink the server
