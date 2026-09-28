@@ -66,6 +66,9 @@ first; opening sign-ups is the very last step.
 
 - [x] Bring a Discord server over: paste a Discord server template link and get a space
       with the same channels, roles and permissions
+- [x] Link previews, like Discord's: X posts (with their pictures, and videos that play
+      in the chat), YouTube and TikTok videos, and other pages' titles and pictures.
+      The server fetches them, so the sites don't see who's looking
 - [ ] A "Switching from Discord" page: what works the same, what's different, and how to
       move a community over
 - [ ] Email: password-reset emails (the admin can't make reset links by hand for

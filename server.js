@@ -22,6 +22,7 @@ const safety = require('./lib/safety');
 const voice = require('./lib/voice');
 const traces = require('./lib/traces');
 const discord = require('./lib/discord');
+const embeds = require('./lib/embeds');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -1084,6 +1085,28 @@ api.post('/spaces/from-discord', needUser, async (req, res) => {
   realtime.sendToUser(req.user.id, { type: 'space-changed', space: id });
   res.json({ space: mySpace(req.user.id, id), notes: plan.notes });
 });
+
+// ----- Link previews (lib/embeds.js) -----
+// Under a message with a link: an X post, a video, or a page's title and picture.
+
+const embedBudget = new Map(); // user id -> { since, n }: previews looked up afresh in the last 10 minutes
+
+api.get('/embeds', needUser, async (req, res) => {
+  const link = embeds.linkOf(req.query.url);
+  if (!link) return fail(res, 400, "That isn't a link.");
+  if (!embeds.enabled) return res.json({ embed: null });
+  if (!embeds.known(link)) {
+    const now = Date.now();
+    let budget = embedBudget.get(req.user.id);
+    if (!budget || now - budget.since > 600_000) embedBudget.set(req.user.id, (budget = { since: now, n: 0 }));
+    if (++budget.n > 150) return fail(res, 429, 'Too many link previews at once. Try again in a few minutes.');
+  }
+  res.set('Cache-Control', 'private, max-age=600');
+  res.json({ embed: await embeds.embedFor(link) });
+});
+
+// Their pictures and videos, which come through here so the sites don't see who's looking.
+api.get('/embeds/media', needUser, (req, res) => embeds.proxy(req, res));
 
 // Invite links: rainlit.app/join/<code>. Anyone allowed to invite people can make one.
 api.post('/spaces/:spaceId/invites', needUser, needMember, needPerm('invite'), (req, res) => {

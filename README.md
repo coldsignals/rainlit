@@ -126,6 +126,13 @@ at the top closes it (on a phone, the back arrow).
   search, and click one to send it. They play in the conversation (only while
   they're on screen, and not at all if your device is set to reduce motion,
   then click one to play it). See step 4 to turn this on.
+- **Link previews:** a link in a message shows what it is underneath, like
+  Discord: an X post shows the post (who posted it, what they said, its
+  pictures, and its video, which plays right there), a YouTube or TikTok link
+  its video, and other pages their title, description and picture. Rainlit's
+  server fetches them and passes their pictures along, so the sites don't see
+  who's looking. Wrap a link in `<` and `>` for no preview, or turn them all off
+  in settings.
 - **Files:** press the paperclip, drag files onto the conversation, or paste a
   screenshot into the message box. Pictures show in place (click one to see it
   full size), and videos and audio play right there. Files are kept too, up to

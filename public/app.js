@@ -99,7 +99,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -210,6 +210,7 @@ const S = {
   showStats: store.get('streamStats', 'off') === 'on',
   sounds: store.get('sounds', 'on') !== 'off',
   clickSounds: store.get('clickSounds', 'on') !== 'off',
+  embeds: store.get('embeds', 'on') !== 'off', // link previews
   callSounds: store.get('callSounds', 'on') !== 'off',
   typing: new Map(), // conversation -> who's typing in it right now -> when to stop showing it
   spaces: new Map(), // your spaces, by id: { id, name, role, memberCount, channels, members }
@@ -1915,19 +1916,24 @@ function formatTime(ts) {
   return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-// A message's words, with its links (and, in a space, its mentions).
+const LINK_RE = /\bhttps?:\/\/[^\s<>]+[^\s<>.,:;"')\]!?]/gi;
+
+// A message's words, with its links (and, in a space, its mentions). A link wrapped in <…>, for
+// no preview (like Discord), shows without its brackets.
 function appendLinked(node, text, space = null, everyone = false) {
-  const re = /\bhttps?:\/\/[^\s<]+[^\s<.,:;"')\]!?]/gi;
   let last = 0;
-  for (const m of text.matchAll(re)) {
-    appendMentions(node, text.slice(last, m.index), space, everyone);
+  for (const m of text.matchAll(LINK_RE)) {
+    const end = m.index + m[0].length;
+    const quiet = m.index > last && text[m.index - 1] === '<' && text[end] === '>';
+    appendMentions(node, text.slice(last, quiet ? m.index - 1 : m.index), space, everyone);
     const a = document.createElement('a');
     a.href = m[0];
     a.textContent = m[0];
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
+    if (quiet) a.dataset.raw = `<${m[0]}>`; // (copied and edited as it was typed)
     node.append(a);
-    last = m.index + m[0].length;
+    last = quiet ? end + 1 : end;
   }
   appendMentions(node, text.slice(last), space, everyone);
 }
@@ -1974,6 +1980,295 @@ function appendMentions(node, text, space, everyone) {
 
 // Whether a message mentions you (by name, or @everyone).
 const mentionsMe = (m) => Boolean(m.everyone || (m.mentions && m.mentions.includes(S.clientId)));
+
+// ---------------- Link previews ----------------
+//
+// A link in a message gets a preview under it, like Discord: an X post shows the post itself
+// (who posted it, what they said, its pictures or video), a YouTube or TikTok link its video,
+// and anything else its page's title, description and picture. The server looks them up (see
+// lib/embeds.js) and passes their pictures along, so the sites never see who's looking. A link
+// wrapped in <…> gets none, and Settings can turn them all off.
+
+const EMBEDS_MAX = 3; // (previews under one message)
+const embedCache = new Map(); // link -> its preview (null: none), once known
+const embedLoads = new Map(); // link -> its lookup, while it's under way
+const compactCount = new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 });
+
+// The links in a message that get a preview: not ones in <…>, not Rainlit's own, a few at most.
+function embedLinks(text) {
+  const out = [];
+  for (const m of String(text || '').matchAll(LINK_RE)) {
+    if (text[m.index - 1] === '<' && text[m.index + m[0].length] === '>') continue;
+    let u;
+    try {
+      u = new URL(m[0]);
+    } catch {
+      continue;
+    }
+    if (u.origin === SERVER || u.origin === location.origin) continue;
+    u.hash = '';
+    if (!out.includes(u.href)) out.push(u.href);
+    if (out.length === EMBEDS_MAX) break;
+  }
+  return out;
+}
+
+function loadEmbed(link) {
+  if (embedCache.has(link)) return Promise.resolve(embedCache.get(link));
+  if (!embedLoads.has(link)) {
+    embedLoads.set(link, api('GET', `/embeds?url=${encodeURIComponent(link)}`)
+      .then(({ embed }) => {
+        embedCache.set(link, embed || null);
+        return embed || null;
+      })
+      .catch((err) => {
+        if (err.status && err.status < 500 && err.status !== 429) embedCache.set(link, null); // (a link it can't do)
+        return null;
+      })
+      .finally(() => embedLoads.delete(link)));
+  }
+  return embedLoads.get(link);
+}
+
+// Previews are looked up as their messages come into view, not all at once for a long history.
+const embedWatcher = new IntersectionObserver((entries) => {
+  for (const e of entries) {
+    if (!e.isIntersecting) continue;
+    embedWatcher.unobserve(e.target);
+    fillEmbeds(e.target);
+  }
+});
+
+// A message's previews, under its words. (Again after an edit: a link that's gone takes its
+// preview with it, and a new one gets one.)
+function showEmbeds(li, text) {
+  const links = S.embeds ? embedLinks(text) : [];
+  let box = li.querySelector(':scope > .embeds');
+  if (box && box._links.join(' ') === links.join(' ')) return;
+  if (box) {
+    embedWatcher.unobserve(box);
+    box.remove();
+  }
+  const body = li.querySelector(':scope > .msg-text');
+  if (!links.length || !body) return;
+  box = document.createElement('div');
+  box.className = 'embeds';
+  box._links = links;
+  body.after(box);
+  // Already known (the message drawn again, or a link seen before): right away, without a jump.
+  if (links.every((l) => embedCache.has(l))) putEmbeds(box, links.map((l) => embedCache.get(l)));
+  else embedWatcher.observe(box);
+}
+
+async function fillEmbeds(box) {
+  const found = await Promise.all(box._links.map(loadEmbed));
+  if (!box.isConnected) return;
+  const log = box.closest('.chat-log');
+  const stick = log && nearBottom(log);
+  putEmbeds(box, found);
+  if (stick) scrollChat(log); // (at the bottom of the conversation, stay there)
+}
+
+function putEmbeds(box, list) {
+  const cards = list.filter(Boolean).map(embedCard);
+  if (cards.length) box.replaceChildren(...cards);
+  else box.remove();
+}
+
+function embedLink(href, className, ...content) {
+  const a = document.createElement('a');
+  a.href = href;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.className = className;
+  a.append(...content);
+  return a;
+}
+
+function embedPart(className, text) {
+  const div = document.createElement('div');
+  div.className = className;
+  if (text) div.textContent = text;
+  return div;
+}
+
+// A name for saving one of a preview's pictures: the one it has on its site.
+function embedFileName(src) {
+  try {
+    const original = new URL(new URL(src, location.href).searchParams.get('u'));
+    const last = decodeURIComponent(original.pathname.split('/').pop() || '');
+    return /\.[a-z0-9]{2,5}$/i.test(last) ? last : `${last || 'picture'}.jpg`;
+  } catch {
+    return 'picture.jpg';
+  }
+}
+
+function embedCard(e) {
+  if (e.bare) return embedMedia(e); // (a link straight to a picture or video: just that)
+  const card = document.createElement('div');
+  card.className = 'embed';
+  if (e.color) card.style.setProperty('--embed-color', e.color);
+  const body = embedPart('embed-body');
+  card.append(body);
+  if (e.site && e.site !== 'X') body.append(embedPart('embed-site', e.site));
+  if (e.author) body.append(embedAuthor(e.author));
+  if (e.title) body.append(embedLink(e.url, 'embed-title', e.title));
+  if (e.replyTo) body.append(embedPart('embed-reply', `Replying to ${e.replyTo}`));
+  if (e.text) {
+    const text = embedPart(`embed-text${e.site === 'X' ? '' : ' clamp'}`);
+    appendLinked(text, e.text);
+    body.append(text);
+  }
+  if (e.media && e.media.length) body.append(embedMedia(e));
+  if (e.quote) body.append(embedQuote(e.quote));
+  if (e.at || e.stats) body.append(embedFoot(e));
+  if (e.thumb) {
+    const img = document.createElement('img');
+    img.className = 'embed-thumb';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.src = SERVER + e.thumb.src;
+    img.addEventListener('click', () => openLightbox({ id: '', name: embedFileName(e.thumb.full) }, SERVER + e.thumb.full));
+    card.append(img);
+  }
+  return card;
+}
+
+// Who posted it: their picture, name and @handle (a link to them, except inside a quoted post,
+// which is a link itself).
+function embedAuthor(a) {
+  const parts = [];
+  if (a.icon) {
+    const img = document.createElement('img');
+    img.className = 'embed-icon';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.src = SERVER + a.icon;
+    parts.push(img);
+  }
+  parts.push(embedPart('embed-name', a.name));
+  if (a.handle) parts.push(embedPart('embed-handle', a.handle));
+  if (!a.url) {
+    const row = embedPart('embed-author');
+    row.append(...parts);
+    return row;
+  }
+  return embedLink(a.url, 'embed-author', ...parts);
+}
+
+function playButton(label) {
+  const play = document.createElement('button');
+  play.type = 'button';
+  play.className = 'file-play';
+  play.setAttribute('aria-label', label);
+  play.innerHTML = '<span><svg class="icon"><use href="#i-play"/></svg></span>';
+  return play;
+}
+
+// Its pictures (up to four, in a grid), video or GIF. One that might be sensitive (as the post
+// says) stays blurred until it's tapped.
+function embedMedia(e) {
+  const list = e.media.slice(0, 4);
+  const box = embedPart(`embed-media n${list.length}${e.bare ? ' bare' : ''}`);
+  for (const m of list) box.append(embedItem(m, e));
+  if (e.sensitive) {
+    box.classList.add('sensitive');
+    const show = document.createElement('button');
+    show.type = 'button';
+    show.className = 'embed-reveal';
+    show.textContent = 'Might be sensitive. Show';
+    show.addEventListener('click', () => box.classList.remove('sensitive'));
+    box.append(show);
+  }
+  return box;
+}
+
+function embedItem(m, e) {
+  const item = embedPart(`embed-item ${m.kind}`);
+  if (m.w && m.h) item.style.setProperty('--ratio', `${m.w} / ${m.h}`);
+  // Its shape isn't known until it's here (a link straight to a picture): then it takes it,
+  // staying at the bottom of the conversation if that's where you were.
+  const fit = (w, h) => {
+    if ((m.w && m.h) || !w || !h) return;
+    const log = item.closest('.chat-log');
+    const stick = log && nearBottom(log);
+    item.style.setProperty('--ratio', `${w} / ${h}`);
+    item.style.setProperty('--w', `${w}px`); // (a small picture isn't blown up)
+    if (stick) scrollChat(log);
+  };
+  if (m.kind === 'image') {
+    const img = document.createElement('img');
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.addEventListener('load', () => fit(img.naturalWidth, img.naturalHeight), { once: true });
+    img.src = SERVER + m.src;
+    item.append(img);
+    if (m.play) {
+      // (A YouTube or TikTok video: it plays there.)
+      const play = playButton(`Watch on ${e.site}`);
+      play.addEventListener('click', () => openUrl(e.url));
+      item.append(play);
+    } else {
+      item.classList.add('zoomable');
+      img.addEventListener('click', () => openLightbox({ id: '', name: embedFileName(m.full || m.src) }, SERVER + (m.full || m.src)));
+    }
+    return item;
+  }
+  const video = document.createElement('video');
+  video.playsInline = true;
+  video.preload = m.poster ? 'none' : 'metadata';
+  if (m.poster) video.poster = SERVER + m.poster;
+  video.addEventListener('loadedmetadata', () => fit(video.videoWidth, video.videoHeight), { once: true });
+  video.src = SERVER + m.src;
+  item.append(video);
+  if (m.kind === 'gif') {
+    // (Plays by itself, silently, while it's on screen, like the chat's GIFs.)
+    video.muted = true;
+    video.loop = true;
+    video.addEventListener('click', () => (video.paused ? video.play().catch(() => {}) : video.pause()));
+    gifWatcher.observe(video);
+    item.append(embedPart('embed-gif-tag', 'GIF'));
+    return item;
+  }
+  const play = playButton('Play');
+  play.addEventListener('click', () => {
+    item.classList.add('started');
+    video.controls = true;
+    if (S.devices.speaker && video.setSinkId) video.setSinkId(S.devices.speaker).catch(() => {});
+    video.play().catch(() => {});
+  });
+  item.append(play);
+  if (m.ms) item.append(embedPart('file-length', fmtClock(m.ms)));
+  return item;
+}
+
+// A post it quotes, in a box (which opens that post).
+function embedQuote(q) {
+  const box = embedLink(q.url, 'embed-quote');
+  box.append(embedAuthor({ ...q.author, url: null }));
+  if (q.text) box.append(embedPart('embed-text clamp', q.text));
+  return box;
+}
+
+// "X · Jul 25, 2026" (which opens the post), then its replies, reposts and likes.
+function embedFoot(e) {
+  const foot = embedPart('embed-foot');
+  const at = e.at ? new Date(e.at) : null;
+  const when = at && !Number.isNaN(at.getTime()) ? at.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  foot.append(embedLink(e.url, 'embed-when', [e.site, when].filter(Boolean).join(' · ')));
+  const stats = [['replies', 'i-chat', 'replies'], ['reposts', 'i-repost', 'reposts'], ['likes', 'i-heart', 'likes']];
+  for (const [key, icon, words] of stats) {
+    const n = e.stats && e.stats[key];
+    if (!Number.isFinite(n)) continue;
+    const stat = embedPart('embed-stat');
+    stat.title = `${n.toLocaleString()} ${words}`;
+    stat.innerHTML = `<svg class="icon"><use href="#${icon}"/></svg>`;
+    stat.append(compactCount.format(n));
+    foot.append(stat);
+  }
+  return foot;
+}
 
 // ---------------- Removing things you sent ----------------
 //
@@ -2664,6 +2959,7 @@ function showEdited(li, text, editedAt, mentions = null) {
   tag.textContent = '(edited)';
   tag.title = `Edited ${new Date(editedAt).toLocaleString()}`;
   body.append(tag);
+  showEmbeds(li, text);
 }
 
 // A text message's words, without the "(edited)" note.
@@ -3111,6 +3407,7 @@ function renderMessage(m) {
     body._everyone = Boolean(m.everyone);
     appendLinked(body, m.text, inChannel ? S.spaces.get(inChannel.spaceId) : null, body._everyone);
     li.append(messageHead(who, m.at), body);
+    showEmbeds(li, m.text);
   } else if (m.kind === 'file') {
     li = savedFileItem(m, who);
   } else if (m.kind === 'removed') {
@@ -4599,11 +4896,7 @@ function mediaFrame(card, media, kind, f, url) {
   if (kind === 'image') {
     media.addEventListener('load', () => fit(media.naturalWidth, media.naturalHeight));
   } else {
-    const play = document.createElement('button');
-    play.type = 'button';
-    play.className = 'file-play';
-    play.setAttribute('aria-label', `Play ${f.name}`);
-    play.innerHTML = '<span><svg class="icon"><use href="#i-play"/></svg></span>';
+    const play = playButton(`Play ${f.name}`);
     play.addEventListener('click', () => {
       box.classList.add('started');
       media.controls = true;
@@ -4851,6 +5144,7 @@ async function fillDeviceLists() {
   renderVolumeCap();
   el.soundsInput.checked = S.sounds;
   el.clicksInput.checked = S.clickSounds;
+  el.embedsInput.checked = S.embeds;
   el.callSoundsInput.checked = S.callSounds;
   el.duckField.hidden = !ANDROID;
   el.duckInput.checked = store.get('duck', 'on') !== 'off';
@@ -9594,6 +9888,11 @@ async function init() {
     S.callSounds = el.callSoundsInput.checked;
     store.set('callSounds', S.callSounds ? 'on' : 'off');
     playCallSound(true); // so you hear what you turned on
+  });
+  el.embedsInput.addEventListener('change', () => {
+    S.embeds = el.embedsInput.checked;
+    store.set('embeds', S.embeds ? 'on' : 'off');
+    for (const body of document.querySelectorAll('.chat-log li > .msg-text')) showEmbeds(body.parentElement, body._text);
   });
   el.clicksInput.addEventListener('change', () => {
     S.clickSounds = el.clicksInput.checked;
