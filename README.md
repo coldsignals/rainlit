@@ -126,6 +126,12 @@ from your own (**Your homepage**, then **Edit**).
   when someone signs it), and a music player for a song of yours (MP3, M4A,
   OGG, FLAC or WAV, up to 10 MB), as a tunebox, a cassette or just a button.
   It only plays when a visitor presses play.
+- **Shelves and buttons:** a shelf shows off favourite games, music or shows
+  by their covers, with name tags and links: add pictures, or paste a link
+  (a Steam page, an album, a film's page) and its cover and name are found
+  for you. 88x31 buttons, the little badges old sites linked each other with,
+  are made right on the page: a few words, a pixel sticker, a style, and a
+  link (a link to someone's homepage opens it right in Rainlit).
 - **The page:** a pattern, a color or your own picture behind it, weather
   over it (rain, snow, sparkles, floating hearts), and a name for it.
 - **Who can see it:** your friends, people in your spaces too (like your

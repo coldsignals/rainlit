@@ -333,6 +333,85 @@ a.hp-piece:focus-visible { outline: 3px solid #f5b94a; outline-offset: 3px; }
 .hp-music-plain .hp-song { font: 700 38cqh/1.2 "Times New Roman", Times, serif; }
 .hp-music-plain .hp-play { width: 70cqh; height: 70cqh; }
 
+/* ----- Shelves ----- */
+/* Covers stand on the plank (its top is at 72% of the piece's height), their tags hang under it. */
+.hp-shelf, .hp-button { container-type: size; }
+.hp-shelf-row {
+  position: absolute; left: 3cqw; right: 3cqw; top: 3cqh; bottom: 0;
+  display: flex; align-items: flex-start; justify-content: center; gap: 3cqw;
+}
+.hp-shelf-item { display: flex; flex-direction: column; align-items: center; min-width: 0; color: inherit; text-decoration: none; }
+.hp-cover { display: flex; align-items: flex-end; justify-content: center; height: 69cqh; }
+.hp-cover img {
+  width: auto; height: auto; max-height: 100%; max-width: 24cqw;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 8px 14px -8px rgba(0, 0, 0, 0.7);
+  border-radius: 2px;
+}
+a.hp-shelf-item:hover .hp-cover img { transform: translateY(-3px); transition: transform 0.15s; }
+.hp-tag {
+  width: 0; min-width: 100%; box-sizing: border-box;
+  margin-top: 10cqh; padding: 1.5cqh 1.5cqw;
+  background: #fff4d2; color: #3b2f25;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  font: 400 max(9px, 8cqh)/1.1 "Pixelify Sans", sans-serif; text-align: center;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.hp-tag:empty, .hp-no-tags .hp-tag { visibility: hidden; }
+.hp-shelf-hint { align-self: center; margin-top: 20cqh; padding: 2cqh 4cqw; background: rgba(255, 255, 255, 0.85); color: #3b2f25; border-radius: 999px; font: 600 max(11px, 9cqh)/1.2 "Bricolage Grotesque", sans-serif; }
+.hp-plank { position: absolute; left: 0; right: 0; top: 72cqh; height: 7cqh; }
+.hp-shelf-wood .hp-plank {
+  background: linear-gradient(#d39a5e, #a86a3d 40%, #7d4b27);
+  border-radius: 2px;
+  box-shadow: 0 8px 12px -6px rgba(0, 0, 0, 0.6);
+}
+.hp-shelf-wood .hp-plank::before, .hp-shelf-wood .hp-plank::after {
+  content: ''; position: absolute; top: 100%; width: 3cqw; height: 9cqh;
+  background: linear-gradient(90deg, #7d4b27, #5e3620);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+.hp-shelf-wood .hp-plank::before { left: 8%; transform: scaleX(-1); }
+.hp-shelf-wood .hp-plank::after { right: 8%; }
+.hp-shelf-glass .hp-plank {
+  background: linear-gradient(rgba(255, 255, 255, 0.75), rgba(200, 230, 255, 0.35));
+  border: 1px solid rgba(255, 255, 255, 0.8); border-radius: 3px;
+  box-shadow: 0 10px 14px -8px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+}
+.hp-shelf-pixel .hp-plank {
+  background: linear-gradient(#e2f1ff 0 22%, #9cc2e2 22% 78%, #6f94b8 78%);
+  box-shadow: 0 4px 0 rgba(20, 30, 60, 0.35);
+}
+.hp-shelf-pixel .hp-cover img { image-rendering: auto; border-radius: 0; }
+.hp-shelf-white .hp-plank { background: #fbfbfb; border-radius: 2px; box-shadow: 0 1px 0 #ddd, 0 10px 14px -8px rgba(0, 0, 0, 0.35); }
+
+/* ----- 88x31 buttons ----- */
+.hp-button .hp-in {
+  align-items: center; justify-content: center; gap: 4cqw;
+  padding: 0 5cqw;
+  background: var(--b1); color: var(--b2);
+  overflow: hidden;
+}
+.hp-button .hp-in img { flex: none; height: 64cqh; width: auto; image-rendering: pixelated; }
+.hp-button-words {
+  min-width: 0;
+  font-size: 34cqh; line-height: 1; text-align: center; white-space: pre; letter-spacing: 0.02em;
+  text-shadow: 0.06em 0.06em 0 rgba(0, 0, 0, 0.45);
+}
+.hp-button-words.two { font-size: 27cqh; line-height: 1.05; }
+.hp-button-bevel .hp-in { border: 2px solid; border-color: rgba(255, 255, 255, 0.75) rgba(0, 0, 0, 0.6) rgba(0, 0, 0, 0.6) rgba(255, 255, 255, 0.75); }
+.hp-button-shiny .hp-in {
+  background: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.12) 49%, transparent 50%), var(--b1);
+  border: 1px solid rgba(0, 0, 0, 0.45); border-radius: 3px;
+}
+.hp-button-stripes .hp-in {
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0 4px, transparent 4px 8px), var(--b1);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+.hp-button-dark .hp-in { background: #0b0b10; color: var(--b1); border: 1px solid var(--b1); }
+.hp-button-dark .hp-button-words { text-shadow: 0 0 0.3em var(--b1); }
+a.hp-button:hover .hp-in { filter: brightness(1.12); }
+
 /* ================= Weather over a page ================= */
 /* (It stays where it is while the page scrolls underneath.) */
 
@@ -562,6 +641,15 @@ a.hp-piece:focus-visible { outline: 3px solid #f5b94a; outline-offset: 3px; }
 .hp-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 4px 18px; }
 .hp-note-small { font-size: 12.5px; color: #8a7457; }
 .hp-upload-btn { position: relative; overflow: hidden; }
+.hp-icon-chip { padding: 4px 6px; }
+.hp-icon-chip img { display: block; width: 20px; height: 20px; object-fit: contain; image-rendering: pixelated; }
+.hp-shelf-line { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e0d2b6; }
+.hp-shelf-line img { width: 48px; height: 48px; object-fit: contain; background: #fff; border-radius: 4px; }
+.hp-shelf-fields { display: grid; gap: 4px; }
+.hp-shelf-fields input { padding: 6px 9px !important; font-size: 14px !important; }
+.hp-shelf-tools { display: flex; gap: 4px; }
+.hp-tool:disabled { opacity: 0.4; cursor: default; }
+.hp-row > input[type="url"] { flex: 1; min-width: 180px; padding: 8px 11px; background: #fff; color: #2b2233; border: 1px solid #d8c7a6; border-radius: 9px; font-size: 15px; }
 .hp-upload-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
 /* ================= On its own (rainlit.app/@name) ================= */

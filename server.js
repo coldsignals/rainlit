@@ -654,6 +654,25 @@ api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit:
   }
 });
 
+// A cover for a shelf, from a link (whatever picture the link shows when it's shared).
+api.post('/homepages/me/cover', needUser, async (req, res) => {
+  const link = embeds.linkOf((req.body || {}).url);
+  if (!link) return fail(res, 400, "That isn't a link.");
+  if (!embeds.enabled) return fail(res, 400, "This server doesn't look links up. Add a picture instead.");
+  const embed = await embeds.embedFor(link);
+  const pic = embed && ((embed.media || []).find((m) => m.kind === 'image') || embed.thumb);
+  const original = pic && new URL(pic.src, 'http://x').searchParams.get('u');
+  if (!original) return fail(res, 404, "Couldn't find a picture for that link. Add one instead.");
+  try {
+    const file = homepages.addFile(req.user.id, await homepages.download(original));
+    if (file.kind !== 'image') return fail(res, 404, "Couldn't find a picture for that link. Add one instead.");
+    res.json({ file: { ...file, url: `/homepage-files/${file.id}` }, title: homepages.coverTitle(embed.title, embed.site, link), href: link, usage: homepages.usage(req.user.id) });
+  } catch (err) {
+    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    fail(res, 502, "Couldn't get that link's picture. Add one instead.");
+  }
+});
+
 // The guestbook on someone's page: anyone who can see the page can read it, and sign it if they're
 // signed in. What they wrote, they can delete; the page's owner can delete anything in it.
 function guestbookPage(req, res) {

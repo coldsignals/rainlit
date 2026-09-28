@@ -36,6 +36,8 @@
   const COUNTERS = { odometer: 'Odometer', led: 'LED', plain: 'Plain' };
   const GUESTBOOKS = { paper: 'Paper', retro: '1999', dark: 'Dark' };
   const MUSICS = { tunebox: 'Tunebox', cassette: 'Cassette', plain: 'Plain' };
+  const SHELVES = { wood: 'Wood', glass: 'Glass', pixel: 'Pixel', white: 'White' };
+  const BUTTONS = { bevel: 'Classic', shiny: 'Shiny', stripes: 'Stripes', dark: 'Dark' };
   const PATTERNS = { dots: 'Polka dots', stripes: 'Stripes', checks: 'Checks', gingham: 'Gingham', grid: 'Grid', hearts: 'Hearts', stars: 'Stars', flowers: 'Flowers', zigzag: 'Zigzag', clouds: 'Clouds' };
   const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts' };
 
@@ -604,6 +606,72 @@
     });
   }
 
+  // A shelf: covers standing on it (each as tall as the shelf lets it be, in its own shape), with
+  // their names on tags underneath.
+  function shelfPiece(node, p, ctx) {
+    node.classList.add(`hp-shelf-${SHELVES[p.style] ? p.style : 'wood'}`);
+    node.classList.toggle('hp-no-tags', p.labels === false);
+    const row = document.createElement('div');
+    row.className = 'hp-shelf-row';
+    for (const it of p.items || []) {
+      const item = document.createElement(it.href && !ctx.edit ? 'a' : 'span');
+      item.className = 'hp-shelf-item';
+      if (item.tagName === 'A') {
+        item.href = it.href;
+        item.target = '_blank';
+        item.rel = 'noopener noreferrer nofollow ugc';
+      }
+      const cover = document.createElement('span');
+      cover.className = 'hp-cover';
+      const img = document.createElement('img');
+      img.src = ctx.fileUrl(it.file);
+      img.alt = it.title || '';
+      img.draggable = false;
+      img.loading = 'lazy';
+      cover.append(img);
+      const tag = document.createElement('span');
+      tag.className = 'hp-tag';
+      tag.textContent = it.title || '';
+      if (it.title) item.title = it.title;
+      item.append(cover, tag);
+      row.append(item);
+    }
+    if (!(p.items || []).length && ctx.edit) {
+      const hint = document.createElement('span');
+      hint.className = 'hp-shelf-hint';
+      hint.textContent = 'Pick the shelf to put things on it';
+      row.append(hint);
+    }
+    const plank = document.createElement('span');
+    plank.className = 'hp-plank';
+    node.append(inside(row, plank));
+  }
+
+  // An 88x31 button, the little badges old sites linked to each other with.
+  function buttonPiece(node, p) {
+    node.classList.add(`hp-button-${BUTTONS[p.style] ? p.style : 'bevel'}`);
+    node.style.setProperty('--b1', hex(p.c1, '#000080'));
+    node.style.setProperty('--b2', hex(p.c2, '#ffffff'));
+    const kids = [];
+    if (p.icon && PIXEL[p.icon]) {
+      const img = document.createElement('img');
+      img.className = 'hp-pixel';
+      img.src = pixelSrc(p.icon);
+      img.alt = '';
+      img.draggable = false;
+      kids.push(img);
+    }
+    const text = String(p.text || '');
+    if (text.trim()) {
+      const words = document.createElement('span');
+      words.className = `hp-button-words${text.includes('\n') ? ' two' : ''}`;
+      words.style.fontFamily = (FONTS[p.font] || FONTS.tiny).css;
+      words.textContent = text;
+      kids.push(words);
+    }
+    node.append(inside(...kids));
+  }
+
   // Everything playing on the page stops (it's closing, or being drawn again).
   function hush(page) {
     for (const a of page.querySelectorAll('audio')) a.pause();
@@ -611,7 +679,7 @@
 
   const DRAW = {
     text: textPiece, image: imagePiece, sticker: stickerPiece, tape: tapePiece, paper: paperPiece, me: mePiece,
-    counter: counterPiece, guestbook: guestbookPiece, music: musicPiece,
+    counter: counterPiece, guestbook: guestbookPiece, music: musicPiece, shelf: shelfPiece, button: buttonPiece,
   };
 
   // One piece, placed and turned. (In the editor, links don't go anywhere.)
@@ -688,7 +756,7 @@
 
   window.Homepage = {
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PIXEL, PIXEL_NAMES,
-    COUNTERS, GUESTBOOKS, MUSICS,
+    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS,
     pixelSrc, pixelRatio, backgroundStyle, pieceEl, starter, mount, setSky, light, hush,
     // (someone signed a guestbook that's showing: read it again)
     reloadGuestbooks: (page, ctx) => { for (const n of page.querySelectorAll('.hp-guestbook')) loadGuestbook(n, ctx); },

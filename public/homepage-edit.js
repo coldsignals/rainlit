@@ -141,12 +141,15 @@
 
   function onPageClick(e) {
     if (state.editing) return;
-    // Links open in a browser (in the apps, the system's).
-    const a = e.target.closest('a.hp-piece');
-    if (a && a.href) {
-      e.preventDefault();
-      app.openUrl(a.href);
-    }
+    // Links open in a browser (in the apps, the system's), except to another homepage here: that
+    // opens right here.
+    const a = e.target.closest('a.hp-piece, a.hp-shelf-item');
+    if (!a || !a.href) return;
+    e.preventDefault();
+    const u = new URL(a.href);
+    const page = u.origin === location.origin && /^\/@([a-z0-9_.]{2,32})$/i.exec(u.pathname);
+    if (page) open(`@${page[1]}`);
+    else app.openUrl(a.href);
   }
 
   async function copyLink() {
@@ -616,6 +619,51 @@
     }
   }
 
+  // Covers for a shelf (by its id: it may have changed by the time they're uploaded): pictures,
+  // or found from a link (a game's store page, an album...).
+  async function addCovers(id, files) {
+    for (const file of files) {
+      const shelf = piece(id);
+      if (!shelf) return;
+      if (shelf.items.length >= 8) return note('A shelf holds 8. Add another shelf for more.');
+      if (!/^image\/(png|jpeg|gif|webp)$/.test(file.type)) {
+        note(`${file.name}: pictures can be PNG, JPG, GIF or WebP.`);
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        note(`${file.name} is too big: pictures can be up to 5 MB.`);
+        continue;
+      }
+      setSaved('Uploading…');
+      try {
+        const { file: f, usage } = await app.api('POST', '/homepages/me/files', file);
+        state.data.usage = usage;
+        const now = piece(id);
+        if (now) change(() => now.items.push({ file: f.id, title: file.name.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_-]+/g, ' ').trim().slice(0, 60), href: '' }));
+      } catch (err) {
+        note(err.message);
+        setSaved(state.dirty ? 'Saving…' : 'Saved');
+      }
+    }
+  }
+
+  async function addCoverFrom(id, url) {
+    const shelf = piece(id);
+    if (!shelf || !url.trim()) return;
+    if (shelf.items.length >= 8) return note('A shelf holds 8. Add another shelf for more.');
+    setSaved('Looking it up…');
+    try {
+      const found = await app.api('POST', '/homepages/me/cover', { url: /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}` });
+      state.data.usage = found.usage;
+      const now = piece(id);
+      if (now) change(() => now.items.push({ file: found.file.id, title: (found.title || '').slice(0, 60), href: found.href }));
+      else setSaved(state.dirty ? 'Saving…' : 'Saved');
+    } catch (err) {
+      note(err.message);
+      setSaved(state.dirty ? 'Saving…' : 'Saved');
+    }
+  }
+
   function songButton(label, piece = null) {
     const input = el('input', { type: 'file', accept: 'audio/*,.mp3,.m4a,.ogg,.oga,.opus,.flac,.wav' });
     input.addEventListener('change', () => {
@@ -752,8 +800,16 @@
           class: 'hp-item wide', type: 'button', text: 'Guestbook',
           onclick: () => add({ t: 'guestbook', style: 'paper', title: 'sign my guestbook!', color: '#fffdf6', font: 'hand', w: 300, h: 380 }),
         }),
-        songButton('Music player (pick a song)…')),
-      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play.' }),
+        songButton('Music player (pick a song)…'),
+        el('button', {
+          class: 'hp-item wide', type: 'button', text: 'Shelf',
+          onclick: () => add({ t: 'shelf', style: 'wood', items: [], labels: true, w: 520, h: 210 }),
+        }),
+        el('button', {
+          class: 'hp-item wide', type: 'button', text: '88x31 button',
+          onclick: () => add({ t: 'button', text: 'my page', icon: 'flame', style: 'bevel', c1: '#1b2a8f', c2: '#ffffff', font: 'tiny', href: '', w: 132, h: 46.5 }),
+        })),
+      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers; an 88x31 button can link to a friend\'s page.' }),
     ];
   }
 
@@ -837,7 +893,7 @@
   // The picked piece's settings.
   function pickedPanel(p) {
     const set = (fields) => change(() => Object.assign(p, fields));
-    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter', guestbook: 'Guestbook', music: 'Music player' };
+    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter', guestbook: 'Guestbook', music: 'Music player', shelf: 'Shelf', button: '88x31 button' };
     const words = (label, key, max, placeholder) => {
       const input = el('input', { type: 'text', maxlength: String(max), value: p[key] || '', placeholder });
       input.addEventListener('change', () => set({ [key]: input.value.trim() }));
@@ -949,6 +1005,66 @@
         field('Kind', chips(H.MUSICS, p.style, (style) => set({ style }))),
         field('Color', colors(p.color, (color) => set({ color }))),
         el('div', { class: 'hp-grid' }, songButton('A different song…', p)));
+    } else if (p.t === 'shelf') {
+      const lines = p.items.map((it, i) => {
+        const title = el('input', { type: 'text', maxlength: '60', value: it.title || '', placeholder: 'its name' });
+        title.addEventListener('change', () => change(() => { p.items[i].title = title.value.trim(); }));
+        const href = el('input', { type: 'url', inputmode: 'url', value: it.href || '', placeholder: 'a link (optional)' });
+        href.addEventListener('change', () => {
+          const v = href.value.trim();
+          change(() => { p.items[i].href = v ? (/^https?:\/\//i.test(v) ? v : `https://${v}`) : ''; });
+        });
+        const move = (d) => change(() => {
+          const [x] = p.items.splice(i, 1);
+          p.items.splice(clamp(i + d, 0, p.items.length), 0, x);
+        });
+        return el('div', { class: 'hp-shelf-line' },
+          el('img', { src: `/homepage-files/${it.file}`, alt: '' }),
+          el('div', { class: 'hp-shelf-fields' }, title, href),
+          el('div', { class: 'hp-shelf-tools' },
+            el('button', { class: 'hp-tool', type: 'button', text: '←', title: 'Move it left', disabled: i === 0, onclick: () => move(-1) }),
+            el('button', { class: 'hp-tool', type: 'button', text: '→', title: 'Move it right', disabled: i === p.items.length - 1, onclick: () => move(1) }),
+            el('button', { class: 'hp-tool danger', type: 'button', text: '×', title: 'Take it off the shelf', onclick: () => change(() => p.items.splice(i, 1)) })));
+      });
+      const files = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/gif,image/webp', multiple: true });
+      files.addEventListener('change', () => {
+        const picked = [...files.files];
+        files.value = '';
+        addCovers(p.id, picked);
+      });
+      const from = el('input', { type: 'url', inputmode: 'url', placeholder: 'a link to a game, an album, a film…' });
+      const find = el('button', { class: 'hp-tool', type: 'button', text: 'Add it', onclick: () => addCoverFrom(p.id, from.value) });
+      from.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addCoverFrom(p.id, from.value);
+        }
+      });
+      out.push(field(`On the shelf (${p.items.length} of 8)`, ...lines),
+        el('div', { class: 'hp-grid', style: { marginBottom: '10px' } }, el('label', { class: 'hp-item wide hp-upload-btn' }, el('span', { text: 'Add covers…' }), files)),
+        field('Or find one from a link (its cover and name)', el('div', { class: 'hp-row' }, from, find)),
+        field('Kind', chips(H.SHELVES, p.style, (style) => set({ style }))),
+        el('div', { class: 'hp-row' }, el('button', {
+          class: 'hp-chip', type: 'button', 'aria-pressed': String(p.labels !== false), text: 'Name tags',
+          onclick: () => set({ labels: p.labels === false }),
+        })));
+    } else if (p.t === 'button') {
+      const text = el('textarea', { maxlength: '40', rows: '2' });
+      text.value = p.text || '';
+      text.addEventListener('change', () => set({ text: text.value.split('\n').slice(0, 2).join('\n') }));
+      const icons = el('div', { class: 'hp-chips' },
+        el('button', { class: 'hp-chip', type: 'button', 'aria-pressed': String(!p.icon), text: 'None', onclick: () => set({ icon: '' }) }),
+        ...Object.keys(H.PIXEL).map((name) => el('button', {
+          class: 'hp-chip hp-icon-chip', type: 'button', title: H.PIXEL_NAMES[name] || name, 'aria-pressed': String(p.icon === name), onclick: () => set({ icon: name }),
+        }, el('img', { src: H.pixelSrc(name), alt: H.PIXEL_NAMES[name] || name }))));
+      out.push(field('Its words (two lines at most)', text),
+        field('Kind', chips(H.BUTTONS, p.style, (style) => set({ style }))),
+        el('div', { class: 'hp-two' },
+          field(p.style === 'dark' ? 'Glow color' : 'Color', colors(p.c1, (c1) => set({ c1 }))),
+          field('Words color', colors(p.c2, (c2) => set({ c2 })))),
+        field('A sticker on it', icons),
+        field('Font', fonts('font')),
+        linkField());
     }
     return out;
   }
