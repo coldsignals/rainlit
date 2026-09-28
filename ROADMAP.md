@@ -11,7 +11,7 @@ themselves.
   community that wants its own rules, its own data or just its own place can run its own
   Rainlit ([SELF-HOSTING.md](SELF-HOSTING.md)), and later bring its space along.
 - **A place that feels like yours, not a Discord copy.** Everyone gets a homepage of their
-  own, decorated however they like, like the personal pages of the old web (Stage 5).
+  own, decorated however they like, like the personal pages of the old web (Stage 6).
 - **Why not Matrix:** it's self-hostable, but it's not pleasant to use and its calls
   struggle. Rainlit's calls have been hardened the hard way (reconnecting, relays, phones
   pausing apps, switching devices), and that's the part to keep getting right.
@@ -83,12 +83,26 @@ first; opening sign-ups is the very last step.
       an account everywhere on the server)
 - [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
       10 MB)
+- [ ] Deleting your account yourself, in the app or on the website (both app stores require
+      it): your messages, files and everything else of yours go with it
 - [ ] Terms of service and a privacy policy in plain language (what Rainlit keeps, why,
       and for how long), and a minimum age
 - [ ] Last: a setting that opens sign-ups, turned on for rainlit.app (servers people run
       themselves stay invite-only unless they turn it on)
 
-## Stage 5: Homepages
+## Stage 5: Real apps
+
+- Calls handled by the phone itself, not the page inside the app: Android's own call system,
+  so a call has its own volume (not the music's), echo cancelling that hears everything the
+  call plays (the volume boost too, up to 300% per person plus an overall boost, like
+  Discord's), proper switching between earpiece, speaker, wired and Bluetooth, and calls that
+  keep going however long the phone's been locked. Chat stays the page it is, so it still
+  updates the moment there's a new version.
+- The Android app on Google Play.
+- An iPhone app on the App Store, with calls through Apple's own call system (the only way
+  iPhones let a call carry on in the background).
+
+## Stage 6: Homepages
 
 More than a Discord copy: everyone gets a page of their own, like the personal homepages
 of the old web (GeoCities, Angelfire), Strawpage, or a Spawn den, instead of a small
@@ -106,7 +120,7 @@ profile card. The card stays, as the quick look, with a way into the homepage.
 - Later: a room to decorate as another look, collecting and trading stickers, webrings
   between friends' pages, and homepages for spaces.
 
-## Stage 6: One account everywhere, and bots
+## Stage 7: One account everywhere, and bots
 
 - Your rainlit.app account signs you in on every Rainlit server, so joining a community
   that runs its own is one click on an invite link.
@@ -115,9 +129,8 @@ profile card. The card stays, as the quick look, with a way into the homepage.
 - The apps keep a list of your servers, like Discord's sidebar.
 - A bot API: bot accounts, events, slash commands. Close enough to Discord's that
   existing bots are easy to bring over, and adding bots to a space is always free.
-- Rainlit in the app stores: the Android app on Google Play, and an iPhone app.
 
-## Stage 7: Keeping it going, fairly
+## Stage 8: Keeping it going, fairly
 
 - Only once Rainlit has a solid foundation and people using it: a supporter tier, never
   more than $5 a month and with the price shown up front, that pays for the free tier: cosmetics
