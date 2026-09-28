@@ -752,6 +752,14 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .primary-btn.ghost-btn { background: var(--dusk-hi); color: var(--text); }
 
 .avatar-row { display: flex; align-items: center; gap: 16px; }
+/* Your homepage, in Your profile. */
+.profile-homepage {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: var(--deep); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.profile-homepage-words { flex: 1; min-width: 0; display: grid; }
+.profile-homepage-words small { color: var(--mist); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .avatar-actions { display: grid; gap: 6px; }
 .avatar-buttons { display: flex; align-items: center; gap: 6px; }
 .pw-details summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--mist); }

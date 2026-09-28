@@ -85,7 +85,7 @@ for (const id of [
   'me-btn', 'me-face', 'me-name', 'me-status', 'admin-btn', 'app-settings-btn',
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
   'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'dm-waiting', 'dm-waiting-text', 'dm-waiting-join', 'members-toggle', 'member-panel',
-  'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-remove', 'menu-block',
+  'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-homepage', 'menu-remove', 'menu-block',
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'emoji-btn', 'space-emoji', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
   'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
@@ -93,7 +93,7 @@ for (const id of [
   'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
-  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
+  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
@@ -9042,6 +9042,7 @@ function openProfile() {
   el.profileStatus.value = S.me.statusText;
   el.profilePresence.value = S.me.presence;
   el.profileAccount.textContent = `@${S.me.username} · ${S.me.email}`;
+  el.profileHomepageLink.textContent = `${location.host}/@${S.me.username}`;
   renderEmailRow();
   renderProfileBadges();
   renderBlockedList();
@@ -9976,6 +9977,11 @@ async function init() {
   el.menuMessage.addEventListener('click', menuAction(openDm));
   el.menuCall.addEventListener('click', menuAction((id) => (S.inCall && S.callWith === id ? openDm(id) : startCall(id))));
   el.menuProfile.addEventListener('click', menuAction(openMiniProfile));
+  el.menuHomepage.addEventListener('click', menuAction((id) => Homepage.open(id)));
+  el.profileHomepageBtn.addEventListener('click', () => {
+    el.profile.close();
+    Homepage.open(S.me.id);
+  });
   el.menuBlock.addEventListener('click', menuAction((id) => {
     const f = S.friends.get(id);
     if (f && confirm(`Block ${f.displayName}? You won't be friends any more, they can't message you or ask to be friends, and their messages in spaces fold away.`)) setBlocked(id, true, f.displayName);
