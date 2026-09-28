@@ -83,7 +83,7 @@ first; opening sign-ups is the very last step.
       an account everywhere on the server)
 - [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
       10 MB)
-- [ ] Deleting your account yourself, in the app or on the website (both app stores require
+- [x] Deleting your account yourself, in the app or on the website (both app stores require
       it): your messages, files and everything else of yours go with it
 - [ ] Terms of service and a privacy policy in plain language (what Rainlit keeps, why,
       and for how long), and a minimum age
