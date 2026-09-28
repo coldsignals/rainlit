@@ -89,7 +89,7 @@ for (const id of [
   'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
   'groups', 'group-list', 'groups-empty', 'new-group-btn', 'group-pick', 'group-pick-form', 'group-pick-title', 'group-pick-name-field', 'group-pick-name', 'group-pick-hint', 'group-pick-list', 'group-pick-error', 'group-pick-go',
   'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
-  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
+  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
@@ -2654,9 +2654,11 @@ function onDmReactions({ dm: dmId, id, reactions }) {
 // to put in the message box (li null). Your spaces' own emoji come first.
 let emojiTarget = null;
 let emojiCaret = null;
-async function openEmojiPicker(li) {
+let emojiPick = null; // (someone else wants the emoji: a sticker for a homepage)
+async function openEmojiPicker(li, onPick = null) {
   closeMessageMenu();
   emojiTarget = li;
+  emojiPick = onPick;
   emojiCaret = li ? null : [el.chatInput.selectionStart, el.chatInput.selectionEnd];
   if (!el.emojiDialog.firstElementChild) {
     try {
@@ -2672,6 +2674,11 @@ async function openEmojiPicker(li) {
       const custom = !d.unicode && d.emoji && d.emoji.url && myEmoji().find((x) => `${SERVER}/emoji/${x.id}` === d.emoji.url);
       const picked = d.unicode || (custom && emojiToken(custom));
       el.emojiDialog.close();
+      if (emojiPick) {
+        const fn = emojiPick;
+        emojiPick = null;
+        return fn(d.unicode ? { unicode: d.unicode } : custom ? { custom } : null);
+      }
       if (!picked) return;
       if (emojiTarget) return toggleReaction(emojiTarget, picked);
       // Into the message box, where the cursor was.
@@ -4398,9 +4405,13 @@ async function leaveThisServer() {
 // The Android back button: close whatever's open, one thing at a time. Returns false when
 // there's nothing left to close, and the app tucks itself away (a call keeps going).
 window.rainlitBack = () => {
-  const dialog = document.querySelector('dialog[open]');
+  const dialog = document.querySelector('dialog[open]:not(#homepage)');
   if (dialog) {
     dialog.close();
+    return true;
+  }
+  if (Homepage.isOpen()) {
+    if (!Homepage.back()) Homepage.close();
     return true;
   }
   if (stageFull()) {
@@ -5725,6 +5736,17 @@ async function signedIn(user) {
   syncAndroidPush();
   followJoinLink();
   followDeleteLink();
+  followHomepageLink();
+}
+
+// rainlit.app/?homepage=@name opens that homepage, and ?homepage=edit yours to change (the
+// "Edit" button on your page at rainlit.app/@you).
+function followHomepageLink() {
+  const which = new URLSearchParams(location.search).get('homepage');
+  if (!which) return;
+  history.replaceState(null, '', '/');
+  if (which === 'edit') Homepage.open(S.me.id, { edit: true });
+  else if (/^@[a-z0-9_.]{2,32}$/i.test(which)) Homepage.open(which);
 }
 
 // ---------------- Push, for when the Android app is closed ----------------
@@ -6762,13 +6784,15 @@ const REPORT_REASONS = {
 
 let reportTarget = null;
 
-// { messageId } or { userId }, with who it's about and (for a person) the space it's from.
+// { messageId } or { userId }, with who it's about and (for a person) the space it's from, or
+// { userId, homepage: true } for their homepage.
 function openReportDialog(target) {
   reportTarget = target;
   const c = target.messageId && S.channels.get(target.channelId);
-  const space = S.spaces.get(c ? c.spaceId : target.spaceId);
-  el.reportTitle.textContent = target.messageId ? `Report ${target.name}'s message` : `Report ${target.name}`;
-  el.reportText.textContent = `${space ? `${space.name}'s moderators and ` : ''}${space ? 'this' : 'This'} server's admin will see your report${target.messageId ? ', with a copy of the message' : ''}. ${target.name} won't be told who sent it.`;
+  const space = !target.homepage && S.spaces.get(c ? c.spaceId : target.spaceId);
+  el.reportTitle.textContent = target.messageId ? `Report ${target.name}'s message` : target.homepage ? `Report ${target.name}'s homepage` : `Report ${target.name}`;
+  const copy = target.messageId ? ', with a copy of the message' : target.homepage ? ', with a copy of what the page says' : '';
+  el.reportText.textContent = `${space ? `${space.name}'s moderators and ` : ''}${space ? 'this' : 'This'} server's admin will see your report${copy}. ${target.name} won't be told who sent it.`;
   for (const r of el.reportForm.querySelectorAll('input[name="report-reason"]')) r.checked = false;
   el.reportDanger.hidden = true;
   el.reportNote.value = '';
@@ -6792,7 +6816,7 @@ async function onReportSend(e) {
   el.reportSend.disabled = true;
   try {
     await api('POST', '/reports', {
-      ...(t.messageId ? { messageId: t.messageId } : { userId: t.userId, spaceId: t.spaceId || null }),
+      ...(t.messageId ? { messageId: t.messageId } : { userId: t.userId, spaceId: t.spaceId || null, homepage: Boolean(t.homepage) }),
       reason: reason.value, note: el.reportNote.value.trim(), block: !el.reportBlockField.hidden && el.reportBlock.checked,
     });
     el.reportDialog.close();
@@ -6843,6 +6867,19 @@ function reportItem(r, { spaceId = null, onResolve }) {
     li.append(note);
   }
   const s = r.snapshot || {};
+  if (s.kind === 'homepage') {
+    const quote = document.createElement('blockquote');
+    quote.className = 'report-quote';
+    quote.textContent = s.text || '(no words on it)';
+    const where = document.createElement('small');
+    where.textContent = `on their homepage${s.pictures ? `, with ${s.pictures} picture${s.pictures === 1 ? '' : 's'}` : ''}`;
+    const look = document.createElement('button');
+    look.type = 'button';
+    look.className = 'text-btn';
+    look.textContent = 'See the page';
+    look.addEventListener('click', () => Homepage.open(r.target.id));
+    li.append(quote, where, look);
+  }
   if (r.messageId) {
     const quote = document.createElement('blockquote');
     quote.className = 'report-quote';
@@ -8899,6 +8936,8 @@ function renderMiniProfile() {
   el.mpMessage.hidden = el.mpCall.hidden = el.mpRemove.hidden = !f;
   el.mpAdd.hidden = self || Boolean(f) || blocked;
   el.mpEdit.hidden = !self;
+  el.mpHomepage.textContent = self ? 'Your homepage' : 'Homepage';
+  el.mpHomepage.hidden = blocked;
   if (f) {
     const here = S.inCall && S.callWith === f.id;
     el.mpCall.textContent = here ? 'Back to the call' : 'Call';
@@ -9830,6 +9869,19 @@ async function init() {
   el.mpEdit.addEventListener('click', () => {
     el.miniProfile.close();
     openProfile();
+  });
+  el.mpHomepage.addEventListener('click', () => {
+    el.miniProfile.close();
+    Homepage.open(miniProfileId);
+  });
+
+  // ----- Homepages (homepage-edit.js) -----
+  Homepage.connect({
+    api, openUrl,
+    report: (target) => openReportDialog(target),
+    pickEmoji: (fn) => openEmojiPicker(null, fn),
+    spaceEmoji: myEmoji,
+    me: () => S.me,
   });
 
   // ----- A friend's menu -----

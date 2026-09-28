@@ -15,6 +15,8 @@
   <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/fonts/fonts.css" />
   <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/fonts/homepage/fonts.css" />
+  <link rel="stylesheet" href="/homepage.css" />
   <script src="/boot.js"></script>
 </head>
 <body>
@@ -576,6 +578,7 @@
           <button id="mp-call" class="primary-btn ghost-btn" type="button">Call</button>
           <button id="mp-add" class="primary-btn" type="button" hidden>Add friend</button>
           <button id="mp-edit" class="primary-btn ghost-btn" type="button" hidden>Edit profile</button>
+          <button id="mp-homepage" class="primary-btn ghost-btn" type="button">Homepage</button>
         </span>
         <button id="mp-remove" class="text-btn danger" type="button">Remove friend</button>
       </div>
@@ -1030,6 +1033,40 @@
 
   <div id="remote-audio" hidden></div>
 
+  <!-- ============ Homepages (homepage.js, homepage-edit.js) ============ -->
+  <dialog id="homepage" class="hp-dialog" aria-labelledby="hp-name">
+    <header class="hp-bar">
+      <button id="hp-close" class="icon-btn ghost" type="button" aria-label="Close" title="Close"><svg class="icon"><use href="#i-back"/></svg></button>
+      <div class="hp-who">
+        <strong id="hp-name">Homepage</strong>
+        <span id="hp-sub"></span>
+      </div>
+      <div id="hp-view-actions" class="hp-actions" hidden>
+        <button id="hp-copy" class="small-btn" type="button">Copy link</button>
+        <button id="hp-report" class="small-btn" type="button">Report</button>
+        <button id="hp-edit" class="primary-btn small" type="button">Edit</button>
+      </div>
+      <div id="hp-edit-actions" class="hp-actions" hidden>
+        <span id="hp-saved" class="hp-saved hp-hide-narrow" aria-live="polite"></span>
+        <button id="hp-undo" class="small-btn" type="button" title="Undo (Ctrl+Z)">Undo</button>
+        <button id="hp-redo" class="small-btn hp-hide-narrow" type="button" title="Redo (Ctrl+Y)">Redo</button>
+        <button id="hp-done" class="primary-btn small" type="button">Done</button>
+      </div>
+    </header>
+    <div class="hp-frame">
+      <div id="hp-page" class="hp-page"></div>
+      <div id="hp-sky" class="hp-sky hp-sky-none"></div>
+      <p id="hp-message" class="hp-message" hidden></p>
+      <p id="hp-toast" class="hp-toast" role="status" hidden></p>
+    </div>
+    <section id="hp-dock" class="hp-dock" aria-label="Add to your homepage" hidden>
+      <nav id="hp-tabs" class="hp-tabs" role="tablist"></nav>
+      <div id="hp-tray" class="hp-tray"></div>
+    </section>
+  </dialog>
+
+  <script src="/homepage.js"></script>
+  <script src="/homepage-edit.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

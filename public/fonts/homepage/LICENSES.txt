@@ -1,0 +1,19 @@
+Fonts for homepages, from Google Fonts, served from Rainlit itself.
+
+SIL Open Font License 1.1 (the license's text is in ../OFL.txt):
+  Caveat              by Impallari Type
+  Comic Neue          by Craig Rozynski
+  Creepster           by Sideshow
+  Monoton             by Vernon Adams
+  Pacifico            by Vernon Adams, Jacques Le Bailly, Botjo Nikoltchev and Ani Petrova
+  Pixelify Sans       by Stefie Justprince
+  Rubik Bubbles       by NaN, from Rubik by Hubert and Fischer
+  Silkscreen          by Jason Kottke
+  UnifrakturMaguntia  by j. 'mach' wust
+  VT323               by Peter Hull
+
+Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0):
+  Permanent Marker    by Font Diner
+  Special Elite       by Astigmatic
+
+Each font file carries its own copyright notice. Only the Latin letters of each are included.

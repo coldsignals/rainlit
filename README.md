@@ -106,6 +106,30 @@ and released is in [desktop/README.md](desktop/README.md).
   profile** and **Remove friend**. Clicking their name at the top of your
   conversation shows their profile too.
 
+## Homepages
+
+Everyone has a homepage: a whole page of their own, like the personal pages of
+the old web (GeoCities, Angelfire) or a Strawpage, where the profile card is the
+quick look. Open anyone's from their profile card (**Homepage**), and yours
+from your own (**Your homepage**, then **Edit**).
+
+- **Put anything anywhere:** words in 14 fonts (pixel, handwriting, gothic,
+  neon, Comic...), with boxes (a sticky note, a label, a speech bubble, a
+  caution sign) and effects (glow, rainbow, blinking, scrolling, wavy);
+  pictures and GIFs with frames (a photo with a caption, a stamp, a heart, a
+  window from 1998); pixel stickers, any emoji and your spaces' emoji; tape
+  and paper. Drag to move; the handles resize and turn (or press **R**).
+  **To front** and **To back** stack them, and **Undo** takes anything back.
+- **The page:** a pattern, a color or your own picture behind it, weather
+  over it (rain, snow, sparkles, floating hearts), and a name for it.
+- **Who can see it:** your friends, people in your spaces too (like your
+  profile card; that's where it starts), or anyone with its link,
+  `rainlit.app/@yourname`, even without an account, to put in a bio anywhere.
+- Everyone starts with an "under construction" page until they make theirs.
+- It's built from pieces, not code: pages can't run anything, and their
+  pictures come from Rainlit itself. A page can be reported like a message.
+  Pictures can be up to 5 MB each, and 40 MB in all.
+
 ## Conversations
 
 Click a friend to open your conversation with them, like a Discord DM. The ✕

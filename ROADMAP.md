@@ -110,15 +110,17 @@ More than a Discord copy: everyone gets a page of their own, like the personal h
 of the old web (GeoCities, Angelfire), Strawpage, or a Spawn den, instead of a small
 profile card. The card stays, as the quick look, with a way into the homepage.
 
-- A scrapbook page: a background (patterns, wallpapers, your own picture), and anything
-  placed anywhere on it: pictures and GIFs, stickers, text in fun fonts, tape, stamps,
-  88x31 buttons. Drag, resize, turn and layer them.
-- Old-web touches: a music player (your song, when a visitor presses play), a guestbook
-  friends sign (and an "ask me anything" box that can be anonymous), a visitor counter.
-- Shelves to show off favourite games, music and shows, with their covers.
-- Who can see it: friends, people in your spaces, or anyone with its link
-  (rainlit.app/@name), to put in a bio anywhere.
-- Built from pieces, not code, so a page can't run scripts, and pages can be reported.
+- [x] A scrapbook page: a background (patterns, colors, your own picture) with weather over
+      it, and anything placed anywhere on it: pictures and GIFs (in frames: photos, stamps,
+      old windows), pixel stickers and emoji, text in fun fonts, tape and paper. Drag, resize,
+      turn and layer them
+- [ ] 88x31 buttons, to make and to link to friends' pages
+- [ ] Old-web touches: a music player (your song, when a visitor presses play), a guestbook
+      friends sign (and an "ask me anything" box that can be anonymous), a visitor counter
+- [ ] Shelves to show off favourite games, music and shows, with their covers
+- [x] Who can see it: friends, people in your spaces, or anyone with its link
+      (rainlit.app/@name), to put in a bio anywhere
+- [x] Built from pieces, not code, so a page can't run scripts, and pages can be reported
 - Later: a room to decorate as another look, collecting and trading stickers, webrings
   between friends' pages, and homepages for spaces.
 

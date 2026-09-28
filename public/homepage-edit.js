@@ -1,0 +1,924 @@
+'use strict';
+
+// Homepages in the app: looking at someone's (full screen), and making your own. Editing, a
+// drawer at the bottom holds things to add (text, stickers, pictures, tape and paper) and the
+// page's settings; on the page, a piece is dragged to move it, and its handles resize and turn
+// it. Everything saves as you go. Drawing a page is homepage.js; keeping it, lib/homepages.js.
+
+(() => {
+  const H = window.Homepage;
+  const $ = (id) => document.getElementById(id);
+  // What the app lends this (Homepage.connect, in public/app.js): api(), openUrl(), report(),
+  // pickEmoji(), spaceEmoji() and me().
+  let app = null;
+
+  const state = {
+    data: null, // what the server sent: { owner, doc, views, mine, visibility, usage, limitMb }
+    doc: null, // the page as it is here (editing changes it)
+    mounted: null, // { canvas, ctx, fit }
+    editing: false,
+    picked: null, // the id of the piece being changed
+    tab: 'write',
+    undo: [],
+    redo: [],
+    saveTimer: null,
+    saving: false,
+    dirty: false,
+    again: false,
+    typing: false, // (the text box's changes make one step of Undo)
+  };
+
+  const PALETTE = ['#ffffff', '#fff59d', '#ffd23f', '#ff9f43', '#ef4d5e', '#ff8cc6', '#ffd0e6', '#c9b3ff', '#a57bff', '#8ae4ff', '#4c8dff', '#9be3c1', '#6ad07a', '#a86a3d', '#7a7590', '#2b2233', '#000000'];
+  const TAPE_COLORS = ['#f4a9c8', '#8fd3ff', '#9be3c1', '#ffe28a', '#c9b3ff', '#ff9f8a'];
+  const WRITE = [
+    { label: 'Title', p: { font: 'script', size: 48, color: '#ffffff', c3: '#ff7eb6', fx: 'glow', text: 'my corner of the web', w: 460, align: 'center' } },
+    { label: 'Note', p: { font: 'hand', size: 28, color: '#3a2e2a', c2: '#fff59d', box: 'note', text: 'a little note', w: 220, align: 'center' } },
+    { label: 'Label', p: { font: 'typewriter', size: 20, color: '#ffffff', c2: '#2b2233', box: 'label', text: 'LABEL', w: 200 } },
+    { label: 'Speech bubble', p: { font: 'comic', size: 22, color: '#2b2233', c2: '#ffffff', box: 'bubble', text: 'hi!!', w: 200 } },
+    { label: 'Caution', p: { font: 'tiny', size: 20, bold: true, color: '#1a1a1a', c2: '#ffd23f', box: 'hazard', text: 'UNDER CONSTRUCTION', w: 330, align: 'center' } },
+    { label: 'Old web', p: { font: 'times', size: 30, color: '#0000ee', text: 'Welcome to my Home Page!', w: 420, align: 'center' } },
+    { label: 'Rainbow', p: { font: 'bubble', size: 44, fx: 'rainbow', text: 'rainbow!!', w: 320, align: 'center' } },
+    { label: 'Wavy', p: { font: 'bubble', size: 36, color: '#8ae4ff', fx: 'wave', text: 'wheee', w: 260, align: 'center' } },
+    { label: 'Scrolling', p: { font: 'pixel', size: 26, color: '#ffe14d', fx: 'marquee', text: '*** thanks for stopping by ***', w: 420 } },
+    { label: 'Terminal', p: { font: 'terminal', size: 24, color: '#39ff6a', c2: '#0b0f0b', box: 'box', text: 'C:\\> hello world_', w: 300 } },
+    { label: 'Neon', p: { font: 'neon', size: 40, color: '#ffd0e6', fx: 'glow', c3: '#ff3fa4', text: 'OPEN', w: 240, align: 'center' } },
+    { label: 'Spooky', p: { font: 'spooky', size: 44, color: '#8dff6a', fx: 'shadow', c3: '#2a1f33', text: 'boo!', w: 200, align: 'center' } },
+    { label: 'Gothic', p: { font: 'gothic', size: 40, color: '#ffffff', fx: 'outline', c3: '#000000', text: 'Darkness', w: 280, align: 'center' } },
+    { label: 'Marker', p: { font: 'marker', size: 32, color: '#2b2233', c2: '#ffe28a', box: 'highlight', text: 'important!!', w: 280 } },
+  ];
+
+  const clone = (x) => JSON.parse(JSON.stringify(x));
+  const newId = () => Math.random().toString(36).slice(2, 10);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const round = (v) => Math.round(v * 10) / 10;
+  const piece = (id) => (state.doc && state.doc.pieces.find((p) => p.id === id)) || null;
+  const nodeOf = (id) => state.mounted && state.mounted.canvas.querySelector(`.hp-piece[data-id="${CSS.escape(id)}"]`);
+  const scale = () => Number(getComputedStyle($('hp-page')).getPropertyValue('--hp-scale')) || 1;
+  const snapshot = () => JSON.stringify(state.doc);
+
+  function el(tag, props = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else if (k === 'style') Object.assign(n.style, v);
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) n.setAttribute(k, v === true ? '' : v);
+    }
+    n.append(...kids.filter(Boolean));
+    return n;
+  }
+
+  // A message over the page for a few seconds (the app's own sits under this full-screen view).
+  let noteTimer = null;
+  function note(text, ms = 3500) {
+    const n = $('hp-toast');
+    n.textContent = text;
+    n.hidden = false;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => { n.hidden = true; }, ms);
+  }
+
+  // ---------- Opening one ----------
+
+  async function open(who, { edit = false } = {}) {
+    const dialog = $('homepage');
+    Object.assign(state, { data: null, doc: null, editing: false, picked: null, undo: [], redo: [], dirty: false });
+    dialog.classList.remove('hp-editing');
+    $('hp-dock').hidden = true;
+    $('hp-message').hidden = true;
+    $('hp-page').replaceChildren();
+    $('hp-page').removeAttribute('style');
+    H.setSky($('hp-sky'), 'none');
+    $('hp-name').textContent = 'Homepage';
+    $('hp-sub').textContent = '';
+    $('hp-view-actions').hidden = true;
+    $('hp-edit-actions').hidden = true;
+    if (!dialog.open) dialog.showModal();
+    let data;
+    try {
+      data = await app.api('GET', `/homepages/${encodeURIComponent(who)}`);
+    } catch (err) {
+      $('hp-message').textContent = err.message;
+      $('hp-message').hidden = false;
+      return;
+    }
+    state.data = data;
+    state.doc = clone(data.doc || H.starter());
+    draw();
+    renderBar();
+    if (edit && data.mine) startEditing();
+  }
+
+  function close() {
+    const dialog = $('homepage');
+    if (dialog.open) dialog.close();
+  }
+
+  // The page, drawn again (keeping where it's scrolled to).
+  function draw() {
+    const page = $('hp-page');
+    const top = page.scrollTop;
+    state.mounted = H.mount(page, { owner: state.data.owner, doc: state.doc }, { edit: state.editing });
+    H.setSky($('hp-sky'), state.doc.bg.sky);
+    page.scrollTop = top;
+    if (state.editing) drawPicked();
+  }
+
+  function renderBar() {
+    const { owner, mine } = state.data;
+    $('hp-name').textContent = state.doc.title || `${owner.displayName}'s homepage`;
+    const visits = mine ? ` · ${state.data.views} ${state.data.views === 1 ? 'visit' : 'visits'}` : '';
+    $('hp-sub').textContent = `${location.host}/@${owner.username}${visits}`;
+    $('hp-view-actions').hidden = state.editing;
+    $('hp-edit-actions').hidden = !state.editing;
+    $('hp-edit').hidden = !mine;
+    $('hp-report').hidden = mine;
+  }
+
+  // ---------- Looking ----------
+
+  function onPageClick(e) {
+    if (state.editing) return;
+    // Links open in a browser (in the apps, the system's).
+    const a = e.target.closest('a.hp-piece');
+    if (a && a.href) {
+      e.preventDefault();
+      app.openUrl(a.href);
+    }
+  }
+
+  async function copyLink() {
+    const { owner } = state.data;
+    const url = `${location.origin}/@${owner.username}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      return note(url, 8000);
+    }
+    const who = state.data.mine
+      ? { everyone: 'Anyone can open it.', friends: 'Your friends can open it.', spaces: 'Your friends and people in your spaces can open it.' }[state.data.visibility]
+      : '';
+    note(`Link copied. ${who || ''}`.trim());
+  }
+
+  function report() {
+    const { owner } = state.data;
+    app.report({ userId: owner.id, name: owner.displayName, homepage: true });
+  }
+
+  // ---------- Editing ----------
+
+  function startEditing() {
+    state.editing = true;
+    state.picked = null;
+    $('homepage').classList.add('hp-editing');
+    $('hp-dock').hidden = false;
+    renderBar();
+    draw();
+    renderTray();
+    updateUndo();
+    setSaved(state.data.doc ? 'Saved' : 'Not saved yet');
+  }
+
+  async function stopEditing() {
+    await flush();
+    state.editing = false;
+    state.picked = null;
+    $('homepage').classList.remove('hp-editing');
+    $('hp-dock').hidden = true;
+    renderBar();
+    draw();
+  }
+
+  function setSaved(text, problem = false) {
+    $('hp-saved').textContent = text;
+    $('hp-saved').classList.toggle('problem', problem);
+  }
+
+  // A change to the page: one step of Undo, then drawn again and saved.
+  function change(fn) {
+    const before = snapshot();
+    fn(state.doc);
+    commit(before);
+  }
+
+  function commit(before) {
+    if (before === snapshot()) return;
+    state.undo.push(before);
+    if (state.undo.length > 100) state.undo.shift();
+    state.redo = [];
+    growPage();
+    draw();
+    renderTray();
+    updateUndo();
+    scheduleSave();
+  }
+
+  // The page gets longer to fit whatever's near its bottom.
+  function growPage() {
+    let bottom = 0;
+    for (const p of state.doc.pieces) bottom = Math.max(bottom, p.y + (p.h || 0));
+    if (bottom + 160 > state.doc.height) state.doc.height = clamp(Math.ceil((bottom + 240) / 100) * 100, 600, 6000);
+  }
+
+  function undo() {
+    if (!state.undo.length) return;
+    state.redo.push(snapshot());
+    state.doc = JSON.parse(state.undo.pop());
+    afterHistory();
+  }
+
+  function redo() {
+    if (!state.redo.length) return;
+    state.undo.push(snapshot());
+    state.doc = JSON.parse(state.redo.pop());
+    afterHistory();
+  }
+
+  function afterHistory() {
+    if (state.picked && !piece(state.picked)) state.picked = null;
+    draw();
+    renderTray();
+    updateUndo();
+    scheduleSave();
+  }
+
+  function updateUndo() {
+    $('hp-undo').disabled = !state.undo.length;
+    $('hp-redo').disabled = !state.redo.length;
+  }
+
+  // Saving: a moment after the last change, the whole page.
+  function scheduleSave() {
+    state.dirty = true;
+    setSaved('Saving…');
+    clearTimeout(state.saveTimer);
+    state.saveTimer = setTimeout(save, 900);
+  }
+
+  async function save() {
+    clearTimeout(state.saveTimer);
+    if (state.saving) {
+      state.again = true;
+      return;
+    }
+    state.saving = true;
+    state.dirty = false;
+    try {
+      const data = await app.api('PUT', '/homepages/me', { doc: state.doc });
+      Object.assign(state.data, { doc: data.doc, usage: data.usage, visibility: data.visibility });
+      if (!state.dirty) setSaved('Saved');
+    } catch (err) {
+      state.dirty = true;
+      setSaved(err.status === 413 ? 'Too big to save' : "Couldn't save. Trying again…", true);
+      state.saveTimer = setTimeout(save, 5000);
+    } finally {
+      state.saving = false;
+      if (state.again) {
+        state.again = false;
+        save();
+      }
+    }
+  }
+
+  async function flush() {
+    clearTimeout(state.saveTimer);
+    if (state.dirty && !state.saving) await save();
+    for (let i = 0; state.saving && i < 50; i++) await new Promise((r) => setTimeout(r, 100));
+  }
+
+  // ---------- Picking and moving pieces ----------
+
+  function pick(id) {
+    state.picked = id;
+    state.typing = false;
+    drawPicked();
+    renderTray();
+  }
+
+  // The box around the picked piece, with its handles.
+  function drawPicked() {
+    const canvas = state.mounted && state.mounted.canvas;
+    if (!canvas) return;
+    for (const n of canvas.querySelectorAll('.hp-select')) n.remove();
+    for (const n of canvas.querySelectorAll('.hp-picked')) n.classList.remove('hp-picked');
+    const p = piece(state.picked);
+    const node = p && nodeOf(p.id);
+    if (!node) return;
+    node.classList.add('hp-picked');
+    const h = heightOf(p, node);
+    const box = el('div', { class: 'hp-select', style: { left: `${p.x}px`, top: `${p.y}px`, width: `${p.w}px`, height: `${h}px`, transform: `rotate(${p.r || 0}deg)` } },
+      el('span', { class: 'hp-handle hp-h-turn', 'data-kind': 'turn', title: 'Turn (or press R)' }),
+      el('span', { class: 'hp-handle hp-h-scale', 'data-kind': 'scale', title: 'Resize' }),
+      p.t === 'text' ? el('span', { class: 'hp-handle hp-h-width', 'data-kind': 'width', title: 'Width' }) : null);
+    canvas.append(box);
+  }
+
+  // Text is as tall as its words; everything else, as it's set.
+  function heightOf(p, node = nodeOf(p.id)) {
+    return p.t === 'text' && node ? node.offsetHeight : p.h;
+  }
+
+  // Redraws one piece in place (while it's being dragged or typed into).
+  function redrawPiece(p) {
+    const old = nodeOf(p.id);
+    if (!old) return;
+    const fresh = H.pieceEl(p, state.mounted.ctx);
+    fresh.classList.add('hp-picked');
+    old.replaceWith(fresh);
+    const box = state.mounted.canvas.querySelector('.hp-select');
+    if (box) {
+      const h = heightOf(p, fresh);
+      Object.assign(box.style, { left: `${p.x}px`, top: `${p.y}px`, width: `${p.w}px`, height: `${h}px`, transform: `rotate(${p.r || 0}deg)` });
+    }
+  }
+
+  function onPointerDown(e) {
+    if (!state.editing || e.button > 0) return;
+    const handle = e.target.closest('.hp-handle');
+    if (handle && state.picked) return gesture(e, handle.dataset.kind);
+    const node = e.target.closest('.hp-piece');
+    if (node) {
+      const already = state.picked === node.dataset.id;
+      if (!already) pick(node.dataset.id);
+      // On a touch screen, the first touch picks it (so a page covered in pieces still scrolls);
+      // then it can be dragged.
+      if (already || e.pointerType !== 'touch') gesture(e, 'move');
+      return;
+    }
+    if (e.target.closest('.hp-stage') || e.target === $('hp-page')) {
+      if (state.picked) pick(null);
+    }
+  }
+
+  function gesture(e, kind) {
+    const p = piece(state.picked);
+    if (!p) return;
+    e.preventDefault();
+    const page = $('hp-page');
+    const canvas = state.mounted.canvas;
+    const s = scale();
+    const at = (ev) => {
+      const r = canvas.getBoundingClientRect();
+      return { x: (ev.clientX - r.left) / s, y: (ev.clientY - r.top) / s };
+    };
+    const start = at(e);
+    const h0 = heightOf(p);
+    const g = { x: p.x, y: p.y, w: p.w, h: h0, r: p.r || 0, size: p.size, cx: p.x + p.w / 2, cy: p.y + h0 / 2 };
+    const local = (pt) => {
+      const a = (-g.r * Math.PI) / 180;
+      const dx = pt.x - g.cx;
+      const dy = pt.y - g.cy;
+      return { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) };
+    };
+    const l0 = local(start);
+    const before = snapshot();
+    let moved = false;
+    page.setPointerCapture(e.pointerId);
+
+    const move = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      const pt = at(ev);
+      if (!moved && Math.hypot(pt.x - start.x, pt.y - start.y) * s < 3) return;
+      moved = true;
+      if (kind === 'move') {
+        p.x = round(clamp(g.x + pt.x - start.x, -p.w + 24, H.WIDTH - 24));
+        p.y = round(clamp(g.y + pt.y - start.y, -h0 + 24, 5980));
+      } else if (kind === 'turn') {
+        const a0 = Math.atan2(start.y - g.cy, start.x - g.cx);
+        const a1 = Math.atan2(pt.y - g.cy, pt.x - g.cx);
+        let r = g.r + ((a1 - a0) * 180) / Math.PI;
+        r = ((((r + 180) % 360) + 360) % 360) - 180;
+        if (!ev.shiftKey) for (const snap of [-180, -90, -45, 0, 45, 90, 180]) if (Math.abs(r - snap) < 4) r = snap;
+        p.r = round(r);
+      } else if (kind === 'width') {
+        const l = local(pt);
+        p.w = round(clamp((g.w * Math.abs(l.x)) / Math.max(1, Math.abs(l0.x)), 40, 1600));
+        p.x = round(g.cx - p.w / 2);
+      } else if (p.t === 'tape' || p.t === 'paper') {
+        // (these stretch any way)
+        const l = local(pt);
+        p.w = round(clamp((g.w * Math.abs(l.x)) / Math.max(1, Math.abs(l0.x)), 16, 1600));
+        p.h = round(clamp((g.h * Math.abs(l.y)) / Math.max(1, Math.abs(l0.y)), 10, 2400));
+        p.x = round(g.cx - p.w / 2);
+        p.y = round(g.cy - p.h / 2);
+      } else {
+        // (everything else keeps its shape)
+        const d0 = Math.hypot(start.x - g.cx, start.y - g.cy) || 1;
+        const f = clamp(Math.hypot(pt.x - g.cx, pt.y - g.cy) / d0, 16 / Math.min(g.w, g.h), 1600 / Math.max(g.w, g.h));
+        p.w = round(g.w * f);
+        p.h = round(g.h * f);
+        if (p.t === 'text') p.size = round(clamp(g.size * f, 8, 240));
+        p.x = round(g.cx - p.w / 2);
+        p.y = round(g.cy - p.h / 2);
+      }
+      redrawPiece(p);
+    };
+    const end = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
+      page.removeEventListener('pointermove', move);
+      page.removeEventListener('pointerup', end);
+      page.removeEventListener('pointercancel', end);
+      if (page.hasPointerCapture(e.pointerId)) page.releasePointerCapture(e.pointerId);
+      if (!moved) return;
+      if (p.t === 'text') p.h = round(heightOf(p));
+      commit(before);
+    };
+    page.addEventListener('pointermove', move);
+    page.addEventListener('pointerup', end);
+    page.addEventListener('pointercancel', end);
+  }
+
+  function onDoubleClick(e) {
+    if (!state.editing) return;
+    const node = e.target.closest('.hp-piece');
+    const p = node && piece(node.dataset.id);
+    if (p && p.t === 'text') {
+      pick(p.id);
+      const box = $('hp-tray').querySelector('textarea');
+      if (box) {
+        box.focus();
+        box.select();
+      }
+    }
+  }
+
+  function onKey(e) {
+    if (!state.editing || !$('homepage').open) return;
+    if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+    if (document.querySelector('dialog[open]:not(#homepage)')) return;
+    const mod = e.ctrlKey || e.metaKey;
+    const k = e.key.toLowerCase();
+    if (mod && k === 'z') {
+      e.preventDefault();
+      return e.shiftKey ? redo() : undo();
+    }
+    if (mod && k === 'y') {
+      e.preventDefault();
+      return redo();
+    }
+    const p = piece(state.picked);
+    if (!p) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      return remove();
+    }
+    if (mod && k === 'd') {
+      e.preventDefault();
+      return duplicate();
+    }
+    if (!mod && k === 'r') {
+      e.preventDefault();
+      return change(() => { p.r = round(((((p.r || 0) + (e.shiftKey ? -15 : 15) + 180) % 360) + 360) % 360 - 180); });
+    }
+    const step = e.shiftKey ? 10 : 1;
+    const arrows = { arrowleft: [-step, 0], arrowright: [step, 0], arrowup: [0, -step], arrowdown: [0, step] };
+    if (arrows[k]) {
+      e.preventDefault();
+      change(() => {
+        p.x = round(p.x + arrows[k][0]);
+        p.y = round(p.y + arrows[k][1]);
+      });
+    }
+  }
+
+  // The Escape key (and Android's back button): let go of the piece, then stop editing, then close.
+  function back() {
+    const dialog = $('homepage');
+    if (!dialog.open) return false;
+    if (state.editing && state.picked) {
+      pick(null);
+      return true;
+    }
+    if (state.editing) {
+      stopEditing();
+      return true;
+    }
+    return false;
+  }
+
+  // ---------- Adding and changing pieces ----------
+
+  // Where to put something new: the middle of what's showing of the page.
+  function spot(w, h) {
+    const page = $('hp-page');
+    const s = scale();
+    const y = (page.scrollTop + page.clientHeight / 2) / s;
+    const jitter = () => Math.round((Math.random() - 0.5) * 60);
+    return { x: round(clamp(H.WIDTH / 2 - w / 2 + jitter(), 0, H.WIDTH - w)), y: round(Math.max(20, y - h / 2 + jitter())) };
+  }
+
+  function add(fields) {
+    const p = { id: newId(), r: round((Math.random() - 0.5) * 8), ...fields };
+    Object.assign(p, spot(p.w, p.h));
+    change((doc) => doc.pieces.push(p));
+    pick(p.id);
+    return p;
+  }
+
+  function addText(preset) {
+    const p = add({
+      t: 'text', text: 'your words', font: 'rainlit', size: 28, color: '#2b2233', c2: '#fff59d', c3: '#ff7eb6',
+      fx: 'none', box: 'none', align: 'left', bold: false, italic: false, href: '', w: 300, h: 60, ...clone(preset),
+    });
+    const box = $('hp-tray').querySelector('textarea');
+    if (box && p) {
+      box.focus();
+      box.select();
+    }
+  }
+
+  function addSticker(fields) {
+    add({ t: 'sticker', outline: true, href: '', ...fields });
+  }
+
+  function addPixel(name) {
+    const rows = H.PIXEL[name];
+    const unit = 5;
+    addSticker({ set: 'pixel', name, w: rows[0].length * unit, h: rows.length * unit });
+  }
+
+  function remove() {
+    const id = state.picked;
+    if (!id) return;
+    state.picked = null;
+    change((doc) => { doc.pieces = doc.pieces.filter((p) => p.id !== id); });
+  }
+
+  function duplicate() {
+    const p = piece(state.picked);
+    if (!p) return;
+    const copy = { ...clone(p), id: newId(), x: round(p.x + 24), y: round(p.y + 24) };
+    change((doc) => doc.pieces.push(copy));
+    pick(copy.id);
+  }
+
+  function restack(dir) {
+    const id = state.picked;
+    change((doc) => {
+      const i = doc.pieces.findIndex((p) => p.id === id);
+      if (i < 0) return;
+      const [p] = doc.pieces.splice(i, 1);
+      doc.pieces.splice(dir > 0 ? doc.pieces.length : 0, 0, p);
+    });
+  }
+
+  // Pictures: uploaded, then onto the page at a sensible size (or behind it).
+  async function upload(files, { background = false } = {}) {
+    for (const file of files) {
+      if (!/^image\/(png|jpeg|gif|webp)$/.test(file.type)) {
+        note(`${file.name}: pictures can be PNG, JPG, GIF or WebP.`);
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        note(`${file.name} is too big: pictures can be up to 5 MB.`);
+        continue;
+      }
+      setSaved('Uploading…');
+      try {
+        const { file: f, usage } = await app.api('POST', '/homepages/me/files', file);
+        state.data.usage = usage;
+        if (background) {
+          change((doc) => { doc.bg = { ...doc.bg, kind: 'image', file: f.id, fit: doc.bg.fit || 'cover' }; });
+          continue;
+        }
+        const { w, h } = await sizeOf(f.url);
+        const k = Math.min(1, 320 / Math.max(w, h));
+        add({ t: 'image', file: f.id, frame: 'none', caption: '', href: '', w: round(Math.max(24, w * k)), h: round(Math.max(24, h * k)) });
+      } catch (err) {
+        note(err.message);
+        setSaved(state.dirty ? 'Saving…' : 'Saved');
+      }
+    }
+  }
+
+  function sizeOf(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth || 300, h: img.naturalHeight || 300 });
+      img.onerror = () => resolve({ w: 300, h: 300 });
+      img.src = url;
+    });
+  }
+
+  // ---------- The drawer ----------
+
+  const TABS = [['write', 'Write'], ['stickers', 'Stickers'], ['pictures', 'Pictures'], ['tape', 'Tape & paper'], ['page', 'Page']];
+
+  function renderTabs() {
+    const tabs = $('hp-tabs');
+    tabs.replaceChildren(...TABS.map(([key, label]) => el('button', {
+      class: 'hp-tab', type: 'button', role: 'tab', 'aria-selected': String(!state.picked && state.tab === key), text: label,
+      onclick: () => {
+        state.tab = key;
+        if (state.picked) pick(null);
+        else renderTray();
+      },
+    })));
+  }
+
+  function renderTray() {
+    if (!state.editing) return;
+    renderTabs();
+    const tray = $('hp-tray');
+    const top = tray.scrollTop;
+    const p = piece(state.picked);
+    tray.replaceChildren(...(p ? pickedPanel(p) : { write: writeTab, stickers: stickersTab, pictures: picturesTab, tape: tapeTab, page: pageTab }[state.tab]()));
+    if (p) tray.scrollTop = top;
+  }
+
+  const h3 = (text) => el('h3', { text });
+
+  function writeTab() {
+    const items = WRITE.map(({ label, p }) => {
+      const f = H.FONTS[p.font] || H.FONTS.rainlit;
+      const sample = el('span', { text: label, style: { fontFamily: f.css, fontSize: `${Math.min(22, 17 * (f.scale || 1))}px` } });
+      return el('button', { class: 'hp-item wide hp-write-item', type: 'button', title: `Add ${label.toLowerCase()} text`, onclick: () => addText(p) }, sample);
+    });
+    const me = el('button', {
+      class: 'hp-item wide', type: 'button', text: 'Your profile card',
+      onclick: () => add({ t: 'me', style: 'card', color: '#fffaf0', font: 'rainlit', w: 240, h: 270 }),
+    });
+    return [h3('Add words'), el('div', { class: 'hp-grid' }, ...items), h3('About you'), el('div', { class: 'hp-grid' }, me)];
+  }
+
+  function stickersTab() {
+    const pixels = Object.keys(H.PIXEL).map((name) => el('button', { class: 'hp-item', type: 'button', title: H.PIXEL_NAMES[name] || name, onclick: () => addPixel(name) },
+      el('img', { src: H.pixelSrc(name), alt: H.PIXEL_NAMES[name] || name })));
+    const out = [h3('Pixel stickers'), el('div', { class: 'hp-grid' }, ...pixels), h3('Any emoji'),
+      el('div', { class: 'hp-grid' }, el('button', {
+        class: 'hp-item wide', type: 'button', text: 'Pick an emoji…',
+        onclick: () => app.pickEmoji((picked) => {
+          if (picked && picked.unicode) addSticker({ set: 'emoji', emoji: picked.unicode, w: 88, h: 88 });
+          else if (picked && picked.custom) addSticker({ set: 'custom', emoji: picked.custom.id, name: picked.custom.name, w: 88, h: 88 });
+        }),
+      }))];
+    const mine = app.spaceEmoji();
+    if (mine.length) {
+      out.push(h3("Your spaces' emoji"), el('div', { class: 'hp-grid' }, ...mine.map((e) => el('button', {
+        class: 'hp-item custom', type: 'button', title: `:${e.name}:`,
+        onclick: () => addSticker({ set: 'custom', emoji: e.id, name: e.name, w: 88, h: 88 }),
+      }, el('img', { src: `/emoji/${e.id}`, alt: `:${e.name}:` })))));
+    }
+    return out;
+  }
+
+  function usageText() {
+    const mb = (state.data.usage || 0) / (1024 * 1024);
+    return `${mb < 0.1 && mb > 0 ? '0.1' : mb.toFixed(1)} MB of ${state.data.limitMb || 40} MB used.`;
+  }
+
+  function uploadButton(label, opts = {}) {
+    const input = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/gif,image/webp', multiple: !opts.background });
+    input.addEventListener('change', () => {
+      const files = [...input.files];
+      input.value = '';
+      upload(files, opts);
+    });
+    return el('label', { class: 'hp-item wide hp-upload-btn' }, el('span', { text: label }), input);
+  }
+
+  function picturesTab() {
+    return [
+      h3('Pictures and GIFs'),
+      el('div', { class: 'hp-grid' }, uploadButton('Add pictures…')),
+      el('p', { class: 'hp-note-small', text: `PNG, JPG, GIF or WebP, up to 5 MB each. ${usageText()} Pick one on the page to give it a frame, a caption or a link.` }),
+    ];
+  }
+
+  function tapeTab() {
+    const tapes = [];
+    for (const style of Object.keys(H.TAPES)) {
+      for (const color of TAPE_COLORS.slice(0, style === 'plain' ? 6 : 3)) {
+        const sample = { id: 'x', t: 'tape', x: 0, y: 0, w: 64, h: 30, r: 0, style, color };
+        const node = H.pieceEl(sample, { edit: true, owner: {}, fileUrl: () => '' });
+        Object.assign(node.style, { position: 'static', transform: 'none' });
+        tapes.push(el('button', { class: 'hp-item hp-swatch', type: 'button', title: `${H.TAPES[style]} tape`, onclick: () => add({ t: 'tape', style, color, w: 150, h: 34 }) }, node));
+      }
+    }
+    const papers = Object.entries(H.PAPERS).map(([style, label]) => {
+      const color = { sticky: '#fff59d', kraft: '#c9a27a' }[style] || '#fffdf6';
+      const sample = { id: 'x', t: 'paper', x: 0, y: 0, w: 60, h: 48, r: 0, style, color };
+      const node = H.pieceEl(sample, { edit: true, owner: {}, fileUrl: () => '' });
+      Object.assign(node.style, { position: 'static', transform: 'none', boxShadow: 'none' });
+      return el('button', { class: 'hp-item hp-paper-item', type: 'button', title: label, onclick: () => add({ t: 'paper', style, color, w: style === 'sticky' ? 220 : 300, h: style === 'sticky' ? 220 : 360 }) }, node);
+    });
+    return [h3('Tape'), el('div', { class: 'hp-grid' }, ...tapes), h3('Paper (put words on it)'), el('div', { class: 'hp-grid' }, ...papers)];
+  }
+
+  function chips(options, current, onPick, style) {
+    return el('div', { class: 'hp-chips' }, ...Object.entries(options).map(([key, label]) => el('button', {
+      class: 'hp-chip', type: 'button', 'aria-pressed': String(current === key), text: label,
+      style: style ? style(key) : undefined,
+      onclick: () => onPick(key),
+    })));
+  }
+
+  function colors(current, onPick) {
+    const picker = el('input', { type: 'color', value: /^#[0-9a-f]{6}$/i.test(current || '') ? current : '#ffffff', 'aria-label': 'Any color' });
+    picker.addEventListener('change', () => onPick(picker.value));
+    return el('div', { class: 'hp-colors' },
+      ...PALETTE.map((c) => el('button', {
+        class: 'hp-color', type: 'button', title: c, 'aria-pressed': String((current || '').toLowerCase() === c), style: { background: c }, onclick: () => onPick(c),
+      })),
+      el('label', { class: 'hp-color-pick', title: 'Any color' }, picker));
+  }
+
+  const field = (label, ...kids) => el('div', { class: 'hp-field' }, el('span', { text: label }), ...kids);
+
+  function pageTab() {
+    const doc = state.doc;
+    const bg = doc.bg;
+    const setBg = (fields) => change((d) => { d.bg = { ...d.bg, ...fields }; });
+    // (A picture's there to go back to once one's been used.)
+    const kinds = bg.file ? { pattern: 'Pattern', color: 'Color', image: 'Picture' } : { pattern: 'Pattern', color: 'Color' };
+    const out = [h3('Background'), chips(kinds, bg.kind, (kind) => setBg({ kind }))];
+    if (bg.kind === 'pattern') {
+      out.push(el('div', { class: 'hp-grid', style: { marginTop: '10px' } }, ...Object.entries(H.PATTERNS).map(([key, label]) => {
+        const swatch = el('span', { style: { display: 'block', width: '100%', height: '100%', borderRadius: '6px', ...H.backgroundStyle({ kind: 'pattern', pattern: key, c1: bg.c1, c2: bg.c2 }) } });
+        return el('button', { class: 'hp-item hp-swatch', type: 'button', title: label, 'aria-pressed': String(bg.pattern === key), style: { padding: '3px', outline: bg.pattern === key ? '2px solid #3b2f25' : '' }, onclick: () => setBg({ pattern: key }) }, swatch);
+      })));
+    }
+    if (bg.kind !== 'image') {
+      out.push(field(bg.kind === 'pattern' ? 'Background color' : 'Color', colors(bg.c1, (c) => setBg({ c1: c }))));
+      if (bg.kind === 'pattern') out.push(field('Pattern color', colors(bg.c2, (c) => setBg({ c2: c }))));
+    }
+    out.push(el('div', { class: 'hp-grid', style: { margin: '10px 0' } }, uploadButton(bg.file ? 'A different picture…' : 'Use a picture…', { background: true })));
+    if (bg.kind === 'image') out.push(field('Picture', chips({ cover: 'Fill the page', tile: 'Repeat it' }, bg.fit, (fit) => setBg({ fit }))));
+
+    out.push(h3('Weather'), chips(H.SKIES, bg.sky, (sky) => setBg({ sky })));
+
+    const length = el('input', { type: 'range', min: '600', max: '6000', step: '100', value: String(doc.height) });
+    length.addEventListener('change', () => change((d) => { d.height = Number(length.value); }));
+    const title = el('input', { type: 'text', maxlength: '60', value: doc.title || '', placeholder: `${state.data.owner.displayName}'s homepage` });
+    title.addEventListener('change', () => change((d) => { d.title = title.value.trim().slice(0, 60); }));
+    out.push(h3('The page'), el('div', { class: 'hp-two' }, field('Its name (on the tab, and at the top)', title), field('Length', length)));
+
+    const vis = state.data.visibility;
+    out.push(h3('Who can see it'), chips({ friends: 'Friends', spaces: 'Friends and people in your spaces', everyone: 'Anyone with the link' }, vis, async (v) => {
+      try {
+        const data = await app.api('PUT', '/homepages/me', { visibility: v });
+        state.data.visibility = data.visibility;
+        renderTray();
+        note(v === 'everyone' ? `Anyone can open ${location.host}/@${state.data.owner.username} now, even without Rainlit.` : 'Saved.');
+      } catch (err) {
+        note(err.message);
+      }
+    }), el('p', { class: 'hp-note-small', style: { marginTop: '8px' }, text: `Its link: ${location.host}/@${state.data.owner.username}` }),
+    el('div', { class: 'hp-row' }, el('button', { class: 'hp-tool', type: 'button', text: 'Copy the link', onclick: copyLink })));
+
+    const reset = el('button', {
+      class: 'hp-tool danger', type: 'button', text: 'Start over',
+      onclick: () => {
+        if (!reset.dataset.sure) {
+          reset.dataset.sure = '1';
+          reset.textContent = 'Click again to clear the page';
+          return;
+        }
+        state.picked = null;
+        change((d) => { Object.assign(d, clone(H.starter())); });
+      },
+    });
+    out.push(h3('Start over'), el('p', { class: 'hp-note-small', text: 'Back to the "under construction" page everyone starts with. (Undo brings yours back.)' }), reset);
+    return out;
+  }
+
+  // The picked piece's settings.
+  function pickedPanel(p) {
+    const set = (fields) => change(() => Object.assign(p, fields));
+    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card' };
+    const head = el('div', { class: 'hp-picked-head' },
+      el('strong', { text: names[p.t] || 'Piece' }),
+      el('button', { class: 'hp-tool', type: 'button', text: 'To front', title: 'On top of everything', onclick: () => restack(1) }),
+      el('button', { class: 'hp-tool', type: 'button', text: 'To back', title: 'Behind everything', onclick: () => restack(-1) }),
+      el('button', { class: 'hp-tool', type: 'button', text: 'Copy', title: 'Another one (Ctrl+D)', onclick: duplicate }),
+      el('button', { class: 'hp-tool danger', type: 'button', text: 'Delete', title: 'Delete (Del)', onclick: remove }),
+      el('button', { class: 'hp-tool dark', type: 'button', text: 'Done', onclick: () => pick(null) }));
+    const out = [head];
+    const linkField = () => {
+      const input = el('input', { type: 'url', inputmode: 'url', placeholder: 'https://… (optional)', value: p.href || '' });
+      input.addEventListener('change', () => {
+        const v = input.value.trim();
+        if (v && !/^(https?:\/\/)?[^\s/]+\.[^\s]{2,}/i.test(v)) return note("That doesn't look like a link.");
+        set({ href: v ? (/^https?:\/\//i.test(v) ? v : `https://${v}`) : '' });
+      });
+      return field('Link (opens when someone clicks it)', input);
+    };
+
+    if (p.t === 'text') {
+      const box = el('textarea', { maxlength: '1000', rows: '3' });
+      box.value = p.text;
+      box.addEventListener('input', () => {
+        if (!state.typing) {
+          state.typing = true;
+          state.undo.push(snapshot());
+          state.redo = [];
+          updateUndo();
+        }
+        p.text = box.value || ' ';
+        redrawPiece(p);
+        scheduleSave();
+      });
+      box.addEventListener('blur', () => {
+        state.typing = false;
+        if (!box.value.trim()) remove();
+      });
+      // (Sliding it is one step of Undo.)
+      const size = el('input', { type: 'range', min: '10', max: '160', step: '1', value: String(Math.round(p.size)) });
+      let sizeBefore = null;
+      size.addEventListener('input', () => {
+        if (!sizeBefore) sizeBefore = snapshot();
+        p.size = Number(size.value);
+        redrawPiece(p);
+      });
+      size.addEventListener('change', () => {
+        const before = sizeBefore || snapshot();
+        sizeBefore = null;
+        p.size = Number(size.value);
+        commit(before);
+      });
+      out.push(field('Words', box),
+        field('Font', chips(Object.fromEntries(Object.entries(H.FONTS).map(([k, f]) => [k, f.label])), p.font, (font) => set({ font }),
+          (k) => ({ fontFamily: H.FONTS[k].css, fontSize: `${Math.min(18, 15 * (H.FONTS[k].scale || 1))}px` }))),
+        el('div', { class: 'hp-two' },
+          field('Size', size),
+          field('Line up', chips({ left: 'Left', center: 'Middle', right: 'Right' }, p.align, (align) => set({ align })))),
+        el('div', { class: 'hp-row' },
+          el('button', { class: 'hp-chip', type: 'button', 'aria-pressed': String(Boolean(p.bold)), text: 'Bold', style: { fontWeight: 700 }, onclick: () => set({ bold: !p.bold }) }),
+          el('button', { class: 'hp-chip', type: 'button', 'aria-pressed': String(Boolean(p.italic)), text: 'Italic', style: { fontStyle: 'italic' }, onclick: () => set({ italic: !p.italic }) })),
+        field('Color', colors(p.color, (color) => set({ color }))),
+        field('Box', chips(H.BOXES, p.box, (b) => set({ box: b }))));
+      if (p.box !== 'none') out.push(field(p.box === 'highlight' ? 'Highlighter color' : 'Box color', colors(p.c2, (c2) => set({ c2 }))));
+      out.push(field('Effect', chips(H.EFFECTS, p.fx, (fx) => set({ fx }))));
+      if (['shadow', 'outline', 'glow'].includes(p.fx)) out.push(field(`${H.EFFECTS[p.fx]} color`, colors(p.c3, (c3) => set({ c3 }))));
+      out.push(linkField());
+    } else if (p.t === 'image') {
+      out.push(field('Frame', chips(H.FRAMES, p.frame, (frame) => set({ frame }))));
+      if (p.frame === 'photo' || p.frame === 'window') {
+        const cap = el('input', { type: 'text', maxlength: '60', value: p.caption || '', placeholder: p.frame === 'window' ? 'untitled.gif' : 'a caption' });
+        cap.addEventListener('change', () => set({ caption: cap.value.trim() }));
+        out.push(field(p.frame === 'window' ? "The window's name" : 'Caption', cap));
+      }
+      out.push(linkField());
+    } else if (p.t === 'sticker') {
+      out.push(el('div', { class: 'hp-row' }, el('button', {
+        class: 'hp-chip', type: 'button', 'aria-pressed': String(p.outline !== false), text: 'White edge',
+        onclick: () => set({ outline: p.outline === false }),
+      })), linkField());
+    } else if (p.t === 'tape') {
+      out.push(field('Kind', chips(H.TAPES, p.style, (style) => set({ style }))), field('Color', colors(p.color, (color) => set({ color }))));
+    } else if (p.t === 'paper') {
+      out.push(field('Kind', chips(H.PAPERS, p.style, (style) => set({ style }))), field('Color', colors(p.color, (color) => set({ color }))));
+    } else if (p.t === 'me') {
+      out.push(el('p', { class: 'hp-note-small', text: 'Your picture, name and status, as they are on your profile.' }),
+        field('Kind', chips(H.ME_STYLES, p.style, (style) => set({ style }))),
+        field(p.style === 'card' ? 'Card color' : 'Name color', colors(p.color, (color) => set({ color }))),
+        field('Font', chips(Object.fromEntries(Object.entries(H.FONTS).map(([k, f]) => [k, f.label])), p.font, (font) => set({ font }),
+          (k) => ({ fontFamily: H.FONTS[k].css }))));
+    }
+    return out;
+  }
+
+  // ---------- Setting up ----------
+
+  function connect(lent) {
+    app = lent;
+    const page = $('hp-page');
+    page.addEventListener('pointerdown', onPointerDown);
+    page.addEventListener('dblclick', onDoubleClick);
+    page.addEventListener('click', onPageClick);
+    document.addEventListener('keydown', onKey);
+    $('hp-edit').addEventListener('click', startEditing);
+    $('hp-done').addEventListener('click', stopEditing);
+    $('hp-undo').addEventListener('click', undo);
+    $('hp-redo').addEventListener('click', redo);
+    $('hp-copy').addEventListener('click', copyLink);
+    $('hp-report').addEventListener('click', report);
+    $('hp-close').addEventListener('click', async () => {
+      if (state.editing) await flush();
+      close();
+    });
+    const dialog = $('homepage');
+    // Escape: one thing at a time (see back()).
+    dialog.addEventListener('cancel', (e) => {
+      if (back()) e.preventDefault();
+    });
+    dialog.addEventListener('close', () => {
+      if (state.dirty) save();
+      state.editing = false;
+      dialog.classList.remove('hp-editing');
+    });
+    let fitTimer = null;
+    new ResizeObserver(() => {
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(() => {
+        if (!state.mounted || !dialog.open) return;
+        state.mounted.fit();
+        if (state.editing) drawPicked();
+      }, 60);
+    }).observe(page);
+  }
+
+  Object.assign(H, { connect, open, close, back, isOpen: () => $('homepage').open });
+})();

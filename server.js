@@ -24,6 +24,7 @@ const traces = require('./lib/traces');
 const discord = require('./lib/discord');
 const accounts = require('./lib/accounts');
 const emojis = require('./lib/emoji');
+const homepages = require('./lib/homepages');
 const { imageKind } = require('./lib/images');
 const embeds = require('./lib/embeds');
 const { getIceServers } = require('./lib/ice');
@@ -108,7 +109,7 @@ app.get('/android', (_req, res) => res.redirect(302, `${ANDROID_RELEASES}/Rainli
 // after an update and reload into the new one (see onHello in public/app.js).
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const BUILD = crypto.createHash('sha256')
-  .update(['index.html', 'app.js', 'style.css', 'boot.js', 'sw.js'].map((f) => fs.readFileSync(path.join(PUBLIC_DIR, f))).join('\n'))
+  .update(['index.html', 'app.js', 'style.css', 'boot.js', 'sw.js', 'homepage.js', 'homepage-edit.js', 'homepage.css'].map((f) => fs.readFileSync(path.join(PUBLIC_DIR, f))).join('\n'))
   .digest('hex').slice(0, 12);
 const attr = (s) => s.replace(/[&"<>]/g, (c) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[c]);
 const INDEX_HTML = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')
@@ -141,6 +142,42 @@ app.get('/emoji/:id', (req, res) => {
   });
 });
 
+// Homepages (lib/homepages.js): rainlit.app/@name, for anyone the page's owner lets see it (the
+// page itself fetches it from /api/homepages/@name), and the pictures on them.
+const HOMEPAGE_HTML = fs.readFileSync(path.join(PUBLIC_DIR, 'homepage.html'), 'utf8');
+app.get('/@:username', (req, res) => {
+  const owner = people.userByUsername(req.params.username);
+  // What a link to it shows elsewhere (like in a Discord message), if its owner has made it public.
+  const open = owner && homepages.get(owner.id).visibility === 'everyone';
+  const title = open ? `${owner.display_name}'s homepage` : 'A homepage on Rainlit';
+  const about = open && owner.status_text ? owner.status_text : 'Rainlit: calls, chat and homepages for you and your friends.';
+  res.set('Cache-Control', 'no-cache');
+  res.type('html').send(HOMEPAGE_HTML.replaceAll('{{title}}', attr(title)).replaceAll('{{about}}', attr(about)));
+});
+
+function sendHomepageFile(res, root, file) {
+  res.set({ 'Cache-Control': 'private, max-age=31536000, immutable', 'Content-Security-Policy': "default-src 'none'; sandbox" });
+  res.sendFile(file, { root }, (err) => {
+    if (err && !res.headersSent) res.sendStatus(404);
+  });
+}
+const homepageViewer = (req) => auth.userForToken(auth.tokenFrom(req));
+
+app.get('/homepage-files/:id', (req, res) => {
+  const f = /^[a-f0-9]{24}$/.test(req.params.id) && homepages.fileById(req.params.id);
+  const owner = f && people.userById(f.user_id);
+  if (!owner || !homepages.canView(homepageViewer(req), owner, homepages.get(owner.id).visibility)) return res.sendStatus(404);
+  sendHomepageFile(res, homepages.FILES_DIR, f.file);
+});
+
+// The owner's picture, on their homepage (for visitors who aren't signed in, too, if it's public).
+app.get('/homepage-avatar/:userId/:file', (req, res) => {
+  const owner = people.userById(req.params.userId);
+  if (!owner || !owner.avatar || owner.avatar !== req.params.file) return res.sendStatus(404);
+  if (!homepages.canView(homepageViewer(req), owner, homepages.get(owner.id).visibility)) return res.sendStatus(404);
+  sendHomepageFile(res, AVATAR_DIR, owner.avatar);
+});
+
 app.get('/downloads', (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.sendFile('downloads.html', { root: path.join(__dirname, 'public') });
@@ -149,7 +186,9 @@ app.get('/downloads', (_req, res) => {
 // ---------- API ----------
 
 const api = express.Router();
-api.use(express.json({ limit: '32kb' }));
+const smallJson = express.json({ limit: '32kb' });
+const pageJson = express.json({ limit: '400kb' }); // (a whole homepage, saved at once)
+api.use((req, res, next) => (req.path === '/homepages/me' ? pageJson : smallJson)(req, res, next));
 api.use((req, res, next) => {
   // Anything that changes something has to come from this site's own pages.
   if (!['GET', 'HEAD'].includes(req.method) && !auth.sameOrigin(req)) return fail(res, 403, 'Refused.');
@@ -504,10 +543,17 @@ api.post('/reports', needUser, (req, res) => {
     });
   } else {
     const target = people.userById(String(b.userId || ''));
-    const visible = target && (people.friendship(req.user.id, target.id) || spaces.shareSpace(req.user.id, target.id));
+    // (Their homepage: anyone who can see it can report it, with a copy of what it says.)
+    const page = target && b.homepage ? homepages.get(target.id) : null;
+    const visible = target && (page ? homepages.canView(req.user, target, page.visibility)
+      : people.friendship(req.user.id, target.id) || spaces.shareSpace(req.user.id, target.id));
     if (!visible) return fail(res, 404, 'Not found.');
     if (target.id === req.user.id) return fail(res, 400, "That's you!");
     r.targetId = target.id;
+    if (page) {
+      const pictures = page.doc ? page.doc.pieces.filter((p) => p.t === 'image').length + (page.doc.bg.file ? 1 : 0) : 0;
+      r.snapshot = { kind: 'homepage', text: homepages.textOf(page.doc), pictures };
+    }
     // From a space's members list: that space's moderators see it too.
     if (b.spaceId && spaces.isMember(b.spaceId, req.user.id) && spaces.isMember(b.spaceId, target.id)) r.spaceId = String(b.spaceId);
   }
@@ -568,6 +614,43 @@ api.get('/users/:id', needUser, (req, res) => {
   if (!u || (!f && u.id !== req.user.id && !spaces.shareSpace(req.user.id, u.id))) return fail(res, 404, 'Not found.');
   const presence = f && f.status === 'accepted' ? realtime.presenceOf(u.id) : null;
   res.json({ user: { ...people.publicUser(u), presence } });
+});
+
+// ----- Homepages -----
+// (lib/homepages.js) Someone's page, by id or @username. A public one can be seen without signing in.
+
+api.get('/homepages/:who', (req, res) => {
+  const owner = homepages.ownerFor(req.params.who);
+  if (!owner) return fail(res, 404, 'No one has that username.');
+  const page = homepages.get(owner.id);
+  if (!homepages.canView(req.user, owner, page.visibility)) {
+    const blocked = req.user && (safety.hasBlocked(owner.id, req.user.id) || safety.hasBlocked(req.user.id, owner.id));
+    const error = blocked ? "You can't see this homepage."
+      : !req.user ? "This homepage isn't public. If you're friends with them on Rainlit, sign in to see it."
+      : page.visibility === 'friends' ? 'This homepage is just for their friends.'
+      : 'This homepage is just for their friends and people in their spaces.';
+    return res.status(403).json({ error, locked: true });
+  }
+  if (!req.user || req.user.id !== owner.id) homepages.countView(owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip));
+  res.json(homepages.forViewer(owner, page, req.user));
+});
+
+// Your page (the whole thing, each time it changes), and who can see it.
+api.put('/homepages/me', needUser, (req, res) => {
+  const b = req.body || {};
+  const page = homepages.save(req.user.id, b.doc, b.visibility);
+  res.json(homepages.forViewer(req.user, page, req.user));
+});
+
+// A picture for your page. It stays as long as it's on the page.
+api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit: homepages.IMAGE_MAX + 1024 }), (req, res) => {
+  try {
+    const file = homepages.addFile(req.user.id, Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0));
+    res.json({ file: { ...file, url: `/homepage-files/${file.id}` }, usage: homepages.usage(req.user.id) });
+  } catch (err) {
+    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    throw err;
+  }
 });
 
 // ----- Conversations -----
@@ -1630,7 +1713,8 @@ app.use(
 
 app.use((err, req, res, _next) => {
   if (err.type === 'entity.too.large' || err.status === 413) {
-    return fail(res, 413, req.path.includes('avatar') ? 'Profile pictures can be up to 8 MB.' : "That's too big.");
+    return fail(res, 413, req.path.includes('avatar') ? 'Profile pictures can be up to 8 MB.'
+      : req.path.includes('homepages') ? 'Pictures can be up to 5 MB.' : "That's too big.");
   }
   if (err.status && err.status < 500) return fail(res, err.status, "That request didn't make sense.");
   console.error(err);

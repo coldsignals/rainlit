@@ -20,7 +20,7 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   // Live data, people's pictures and the files in conversations always come straight from the
   // server (and files aren't kept here: a phone would fill up with every photo and video).
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/avatars/') || url.pathname.startsWith('/files/') || url.pathname === '/ws') return;
+  if (/^\/(api|avatars|files|homepage-files|homepage-avatar)\//.test(url.pathname) || url.pathname === '/ws') return;
   e.respondWith(networkFirst(e.request));
 });
 
