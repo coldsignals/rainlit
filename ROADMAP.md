@@ -10,6 +10,8 @@ themselves.
 - **Running your own is the way out, not the way in.** Rainlit is free software. A
   community that wants its own rules, its own data or just its own place can run its own
   Rainlit ([SELF-HOSTING.md](SELF-HOSTING.md)), and later bring its space along.
+- **A place that feels like yours, not a Discord copy.** Everyone gets a homepage of their
+  own, decorated however they like, like the personal pages of the old web (Stage 5).
 - **Why not Matrix:** it's self-hostable, but it's not pleasant to use and its calls
   struggle. Rainlit's calls have been hardened the hard way (reconnecting, relays, phones
   pausing apps, switching devices), and that's the part to keep getting right.
@@ -69,11 +71,14 @@ first; opening sign-ups is the very last step.
 - [x] Link previews, like Discord's: X posts (with their pictures, and videos that play
       in the chat), YouTube and TikTok videos, and other pages' titles and pictures.
       The server fetches them, so the sites don't see who's looking
+- [ ] Custom emoji: each space uploads its own, and its members use them anywhere they chat
 - [ ] A "Switching from Discord" page: what works the same, what's different, and how to
       move a community over
 - [ ] Email: password-reset emails (the admin can't make reset links by hand for
       everyone), and checking that email addresses are real
 - [ ] Protection against spam accounts: limits on sign-ups, and no throwaway addresses
+- [ ] A cap on new sign-ups, with a waitlist, so a sudden wave from Discord (like the one
+      that knocked Fluxer and Stoat over in February 2026) can't sink the server
 - [ ] Reports that reach whoever runs the server, and tools to act on them (suspending
       an account everywhere on the server)
 - [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
@@ -83,7 +88,25 @@ first; opening sign-ups is the very last step.
 - [ ] Last: a setting that opens sign-ups, turned on for rainlit.app (servers people run
       themselves stay invite-only unless they turn it on)
 
-## Stage 5: One account everywhere, and bots
+## Stage 5: Homepages
+
+More than a Discord copy: everyone gets a page of their own, like the personal homepages
+of the old web (GeoCities, Angelfire), Strawpage, or a Spawn den, instead of a small
+profile card. The card stays, as the quick look, with a way into the homepage.
+
+- A scrapbook page: a background (patterns, wallpapers, your own picture), and anything
+  placed anywhere on it: pictures and GIFs, stickers, text in fun fonts, tape, stamps,
+  88x31 buttons. Drag, resize, turn and layer them.
+- Old-web touches: a music player (your song, when a visitor presses play), a guestbook
+  friends sign (and an "ask me anything" box that can be anonymous), a visitor counter.
+- Shelves to show off favourite games, music and shows, with their covers.
+- Who can see it: friends, people in your spaces, or anyone with its link
+  (rainlit.app/@name), to put in a bio anywhere.
+- Built from pieces, not code, so a page can't run scripts, and pages can be reported.
+- Later: a room to decorate as another look, collecting and trading stickers, webrings
+  between friends' pages, and homepages for spaces.
+
+## Stage 6: One account everywhere, and bots
 
 - Your rainlit.app account signs you in on every Rainlit server, so joining a community
   that runs its own is one click on an invite link.
@@ -92,8 +115,9 @@ first; opening sign-ups is the very last step.
 - The apps keep a list of your servers, like Discord's sidebar.
 - A bot API: bot accounts, events, slash commands. Close enough to Discord's that
   existing bots are easy to bring over, and adding bots to a space is always free.
+- Rainlit in the app stores: the Android app on Google Play, and an iPhone app.
 
-## Stage 6: Keeping it going, fairly
+## Stage 7: Keeping it going, fairly
 
 - Only once Rainlit has a solid foundation and people using it: a supporter tier, never
   more than $5 a month and with the price shown up front, that pays for the free tier: cosmetics
