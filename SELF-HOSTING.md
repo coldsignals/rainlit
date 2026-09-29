@@ -206,6 +206,25 @@ for 3,000 emails a month):
    `Rainlit <noreply@example.com>`. Set `MAIL_REPLY_TO` to where replies should go (an
    address you read). Set `PUBLIC_URL` too, so links in emails go to your Rainlit's address.
 
+## 13. Keep files in Cloudflare R2 (optional)
+
+Everything people send, their profile and homepage pictures and songs, and spaces' custom emoji
+are kept on your server's disk to start with, and sent from there each time someone opens one.
+On a host that charges for what it sends (Render counts every gigabyte past the first few), that
+adds up. Cloudflare R2 stores files for about $0.015 a GB a month, and sending from it is free.
+
+1. In Cloudflare's dashboard, open **R2** and create a bucket (any name; location Automatic).
+2. In R2, open **Manage API tokens** and create one with **Object Read & Write**, for just that
+   bucket.
+3. Add `R2_ACCOUNT_ID` (your Cloudflare account's ID, shown on the R2 page), `R2_ACCESS_KEY_ID`
+   and `R2_SECRET_ACCESS_KEY` (from the token) and `R2_BUCKET` (its name) to your settings, and
+   restart.
+
+New files go to R2 as soon as they're written. Files from before move over in the background,
+starting half a minute after Rainlit starts (the admin panel's Storage says how many are left).
+Rainlit still checks who may see each one, then sends their browser on to a link to it in R2
+that works for about a day.
+
 ## All the settings
 
 | Setting | What it does |
@@ -219,6 +238,7 @@ for 3,000 emails a month):
 | `KLIPY_API_KEY` | GIFs (step 6). |
 | `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO` | Email: password resets and confirming addresses (step 12). |
 | `CF_REALTIME_APP_ID`, `CF_REALTIME_APP_SECRET` | Voice channels and group calls through Cloudflare (step 11). |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Keep files in Cloudflare R2 instead of on the server's disk (step 13). |
 | `SCREEN_SHARE_KBPS`, `CAMERA_KBPS` | With Cloudflare: the most a shared screen (1500) and a camera (800) may send, in kbps. |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels and group calls through LiveKit (step 11). |
 | `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |

@@ -3075,6 +3075,9 @@ const absolute = (url) => new URL(url, location.href).href;
 // Saves to the device: Downloads in the Android app, a "save as" in the desktop app, the
 // browser's downloads otherwise (another site's file, like a GIF, opens in a tab to save).
 async function saveUrl(url, name, type) {
+  // (One of Rainlit's files: asked for as a download. It may come from R2, which a page's
+  // "download" link can't reach, so the server says so instead.)
+  if (/^(\/|https?:)/.test(url) && /\/files\//.test(url) && !/[?&]download=/.test(url)) url = `${url}${url.includes('?') ? '&' : '?'}download=1`;
   try {
     if (ANDROID) {
       if (url.startsWith('blob:')) {
@@ -10643,7 +10646,9 @@ async function renderStorage(state) {
   if (document.activeElement !== el.storageFile) el.storageFile.value = String(state.fileMb);
   if (document.activeElement !== el.storagePerson) el.storagePerson.value = String(Math.round((state.personMb / 1024) * 100) / 100);
   const d = state.disk;
+  const r2 = state.r2 && state.r2.enabled ? state.r2 : null;
   el.storageState.textContent = `Everyone's files take up ${fmtBytes(state.files)}.`
+    + (r2 ? ` They're kept in Cloudflare R2 (${r2.inR2} files, ${fmtBytes(r2.bytes)})${r2.left ? `, with ${r2.left} still moving there` : ''}.` : '')
     + (d ? ` The disk has ${fmtBytes(d.free)} free, of ${fmtBytes(d.total)}.` : '')
     + (d && d.full ? " It's nearly full, so uploads are paused: make it bigger (on Render: your service, then Disks; it takes seconds)." : '');
   el.storageState.classList.toggle('storage-warn', Boolean(d && d.free < d.total * 0.2));

@@ -149,9 +149,11 @@
       <li><strong>Render</strong> runs the computers Rainlit's server is on.</li>
       <li><strong>Resend</strong> sends Rainlit's emails (password resets, confirming your address, and
         waitlist invites), so it sees your email address and those emails.</li>
-      <li><strong>Cloudflare</strong> relays calls that can't go straight between devices, and carries voice
-        channels and group calls (encrypted, as above). It sees your IP address, as any server your
-        device connects to does.</li>
+      <li><strong>Cloudflare</strong> relays calls that can't go straight between devices, carries voice
+        channels and group calls (encrypted, as above), and stores files: what people send, profile and
+        homepage pictures, songs and custom emoji. Rainlit checks who may see each one first, then your
+        device fetches it from Cloudflare. It sees your IP address, as any server your device connects
+        to does.</li>
       <li><strong>KLIPY</strong> runs GIF search. Your searches go straight from your device to KLIPY, and the
         GIFs load from there.</li>
       <li><strong>Your phone's notification app</strong> (like ntfy), if you use one, delivers notifications.

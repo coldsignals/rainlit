@@ -26,6 +26,7 @@ const accounts = require('./lib/accounts');
 const emojis = require('./lib/emoji');
 const homepages = require('./lib/homepages');
 const announcements = require('./lib/announcements');
+const blobs = require('./lib/blobs');
 const images = require('./lib/images');
 const { imageKind } = images;
 const embeds = require('./lib/embeds');
@@ -95,8 +96,8 @@ const CSP = [
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'", // (Rainlit's typeface is served from here: public/fonts)
-  "img-src 'self' blob: data: https://*.klipy.com",
-  "media-src 'self' blob: https://*.klipy.com",
+  `img-src 'self' blob: data: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`, // (R2: files, if they're kept there)
+  `media-src 'self' blob: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`,
   `connect-src 'self' https://api.klipy.com${LIVEKIT_SRC}`,
   "frame-ancestors 'none'",
   "base-uri 'none'",
@@ -146,10 +147,8 @@ for (const [page, setting] of [['privacy', 'PRIVACY_URL'], ['terms', 'TERMS_URL'
 app.get('/emoji/:id', (req, res) => {
   const e = /^[a-f0-9]{8,32}$/.test(req.params.id) && emojis.byId(req.params.id);
   if (!e) return res.sendStatus(404);
-  res.set({ 'Cache-Control': 'public, max-age=31536000, immutable', 'Content-Security-Policy': "default-src 'none'; sandbox" });
-  res.sendFile(e.file, { root: emojis.EMOJI_DIR }, (err) => {
-    if (err && !res.headersSent) res.sendStatus(404);
-  });
+  const type = { png: 'image/png', gif: 'image/gif', webp: 'image/webp', jpg: 'image/jpeg' }[e.file.split('.').pop()];
+  blobs.send(res, 'emoji', e.file, { type, cache: 'public, max-age=31536000, immutable', headers: { 'Content-Security-Policy': "default-src 'none'; sandbox" } });
 });
 
 // Homepages (lib/homepages.js): rainlit.app/@name, for anyone the page's owner lets see it (the
@@ -165,11 +164,8 @@ app.get('/@:username', (req, res) => {
   res.type('html').send(HOMEPAGE_HTML.replaceAll('{{title}}', attr(title)).replaceAll('{{about}}', attr(about)));
 });
 
-function sendHomepageFile(res, root, file) {
-  res.set({ 'Cache-Control': 'private, max-age=31536000, immutable', 'Content-Security-Policy': "default-src 'none'; sandbox" });
-  res.sendFile(file, { root }, (err) => {
-    if (err && !res.headersSent) res.sendStatus(404);
-  });
+function sendHomepageFile(res, kind, file) {
+  blobs.send(res, kind, file, { headers: { 'Content-Security-Policy': "default-src 'none'; sandbox" } });
 }
 const homepageViewer = (req) => auth.userForToken(auth.tokenFrom(req));
 
@@ -177,7 +173,7 @@ app.get('/homepage-files/:id', (req, res) => {
   const f = /^[a-f0-9]{24}$/.test(req.params.id) && homepages.fileById(req.params.id);
   const owner = f && people.userById(f.user_id);
   if (!owner || !homepages.canView(homepageViewer(req), owner, homepages.get(owner.id).visibility)) return res.sendStatus(404);
-  sendHomepageFile(res, homepages.FILES_DIR, f.file);
+  sendHomepageFile(res, 'homepages', f.file);
 });
 
 // The owner's picture, on their homepage (for visitors who aren't signed in, too, if it's public).
@@ -185,7 +181,7 @@ app.get('/homepage-avatar/:userId/:file', (req, res) => {
   const owner = people.userById(req.params.userId);
   if (!owner || !owner.avatar || owner.avatar !== req.params.file) return res.sendStatus(404);
   if (!homepages.canView(homepageViewer(req), owner, homepages.get(owner.id).visibility)) return res.sendStatus(404);
-  sendHomepageFile(res, AVATAR_DIR, owner.avatar);
+  sendHomepageFile(res, 'avatars', owner.avatar);
 });
 
 app.get('/downloads', (_req, res) => {
@@ -636,8 +632,9 @@ api.delete('/me', needUser, async (req, res) => {
 });
 
 function removeAvatarFile(name) {
-  if (name) fs.rm(path.join(AVATAR_DIR, name), { force: true }, () => {});
+  if (name) blobs.remove('avatars', name);
 }
+const AVATAR_TYPES = { png: 'image/png', jpg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' };
 
 api.put('/me/avatar', needUser, express.raw({ type: () => true, limit: AVATAR_MAX }), async (req, res) => {
   const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
@@ -652,6 +649,7 @@ api.put('/me/avatar', needUser, express.raw({ type: () => true, limit: AVATAR_MA
   const name = `${req.user.id}-${crypto.randomBytes(4).toString('hex')}.${pic.ext}`;
   fs.writeFileSync(path.join(AVATAR_DIR, name), pic.buf);
   db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(name, req.user.id);
+  blobs.offload('avatars', name, AVATAR_TYPES[pic.ext]); // (to R2, if it's set up)
   removeAvatarFile(req.user.avatar);
   res.json({ user: people.selfUser(profileChanged(req.user.id)) });
 });
@@ -668,13 +666,16 @@ setTimeout(async () => {
   if (settings.get('avatarsTidied')) return;
   for (const u of db.prepare('SELECT id, avatar FROM users WHERE avatar IS NOT NULL').all()) {
     try {
-      const buf = await fs.promises.readFile(path.join(AVATAR_DIR, u.avatar));
+      const src = await blobs.localCopy('avatars', u.avatar);
+      if (!src) continue;
+      const buf = await fs.promises.readFile(src);
       const kind = imageKind(buf);
       const pic = kind ? await images.avatar(buf, kind) : { buf };
       if (pic.buf === buf) continue;
       const name = `${u.id}-${crypto.randomBytes(4).toString('hex')}.${pic.ext}`;
       await fs.promises.writeFile(path.join(AVATAR_DIR, name), pic.buf);
       const moved = db.prepare('UPDATE users SET avatar = ? WHERE id = ? AND avatar = ?').run(name, u.id, u.avatar).changes;
+      if (moved) blobs.offload('avatars', name, AVATAR_TYPES[pic.ext]);
       removeAvatarFile(moved ? u.avatar : name);
       if (moved) profileChanged(u.id);
     } catch {}
@@ -1339,7 +1340,8 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
     tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
     if (req.channel) pushChannelMessage(req, null);
     const row = dms.getRow(id);
-    if (row) dms.previewOf(row); // (its smaller copy, ready for the chat)
+    // (Its smaller copy, ready for the chat; then it goes to R2, if that's set up.)
+    Promise.resolve(row && dms.previewOf(row)).finally(() => blobs.offload('files', id));
     res.json({ message, storage: storage.of(req.user) });
   });
 });
@@ -1350,10 +1352,12 @@ setTimeout(async () => {
   if (settings.get('filesScrubbed')) return;
   const sent = db.prepare('SELECT id, file_path, file_name, file_type, file_size FROM messages WHERE file_path IS NOT NULL').all();
   for (const r of sent) {
+    if (!fs.existsSync(path.join(dms.FILES_DIR, r.file_path))) continue; // (in R2: it went there after this)
     const size = await scrub.scrubFile(path.join(dms.FILES_DIR, r.file_path), { type: r.file_type, name: r.file_name });
     if (size != null && size !== r.file_size) db.prepare('UPDATE messages SET file_size = ? WHERE id = ? AND file_path = ?').run(size, r.id, r.file_path);
   }
   for (const f of db.prepare('SELECT id, file, bytes FROM homepage_files').all()) {
+    if (!fs.existsSync(path.join(homepages.FILES_DIR, f.file))) continue;
     const size = await scrub.scrubFile(path.join(homepages.FILES_DIR, f.file));
     if (size != null && size !== f.bytes) db.prepare('UPDATE homepage_files SET bytes = ? WHERE id = ?').run(size, f.id);
   }
@@ -2167,11 +2171,11 @@ api.get('/admin/users', needAdmin, (_req, res) => {
 
 // Room for files (lib/storage.js): the biggest file, how much each person's can add up to, and
 // the disk. And one person's own amount (more, or less, than everyone's; null goes back).
-api.get('/admin/storage', needAdmin, (_req, res) => res.json(storage.overview()));
+api.get('/admin/storage', needAdmin, (_req, res) => res.json({ ...storage.overview(), r2: blobs.status() }));
 api.put('/admin/storage', needAdmin, (req, res) => {
   const b = req.body || {};
   storage.configure({ fileMb: b.fileMb, personMb: b.personMb });
-  res.json(storage.overview());
+  res.json({ ...storage.overview(), r2: blobs.status() });
 });
 api.put('/admin/users/:id/storage', needAdmin, (req, res) => {
   const u = people.userById(req.params.id);
@@ -2285,14 +2289,10 @@ api.use((_req, res) => fail(res, 404, 'Not found.'));
 app.use('/api', api);
 
 // Profile pictures, for signed-in people only.
-app.get('/avatars/:file', (req, res, next) => {
+app.get('/avatars/:file', (req, res) => {
   if (!auth.userForToken(auth.tokenFrom(req))) return res.sendStatus(401);
   if (!/^[a-f0-9]{24}-[a-f0-9]{8}\.(png|jpg|gif|webp)$/.test(req.params.file)) return res.sendStatus(404);
-  // Relative to the folder, so a dot in a parent folder's name (".PROJECT ...") doesn't make it refuse.
-  const opts = { root: AVATAR_DIR, headers: { 'Cache-Control': 'private, max-age=31536000, immutable' } };
-  res.sendFile(req.params.file, opts, (err) => {
-    if (err) next();
-  });
+  blobs.send(res, 'avatars', req.params.file, { type: AVATAR_TYPES[req.params.file.split('.').pop()] });
 });
 
 // Files sent in a conversation, for the two people in it. Pictures, videos and audio
@@ -2314,16 +2314,13 @@ app.get('/files/:id/:name', async (req, res) => {
   const showable = dms.SHOWABLE_TYPES.test(r.file_type);
   // The chat's smaller copy of a photo (opening it shows the original), if it has one.
   const small = req.query.preview && !req.query.link ? await dms.previewOf(r) : null;
-  res.set({
-    'Content-Type': small ? 'image/webp' : showable ? r.file_type : 'application/octet-stream',
-    'Content-Disposition': `${showable ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(r.file_name)}`,
-    'Content-Security-Policy': "default-src 'none'; sandbox",
-    'Cache-Control': 'private, max-age=31536000, immutable',
-  });
-  // (Relative to its folder, so a dot in a parent folder's name doesn't make it refuse.)
-  const [file, root] = small ? [path.basename(small), path.dirname(small)] : [r.file_path, dms.FILES_DIR];
-  res.sendFile(file, { root }, (err) => {
-    if (err && !res.headersSent) res.sendStatus(404);
+  // (?download: saving it, rather than showing it.)
+  const shown = showable && !req.query.download;
+  // From here, or on to R2 (lib/blobs.js).
+  blobs.send(res, small ? 'previews' : 'files', small || r.file_path, {
+    type: small ? 'image/webp' : showable ? r.file_type : 'application/octet-stream',
+    disposition: `${shown ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(r.file_name)}`,
+    headers: { 'Content-Security-Policy': "default-src 'none'; sandbox" },
   });
 });
 
