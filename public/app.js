@@ -91,7 +91,7 @@ for (const id of [
   'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
   'groups', 'group-list', 'groups-empty', 'new-group-btn', 'group-pick', 'group-pick-form', 'group-pick-title', 'group-pick-name-field', 'group-pick-name', 'group-pick-hint', 'group-pick-list', 'group-pick-error', 'group-pick-go',
   'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
-  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
+  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
@@ -8967,7 +8967,7 @@ function renderMiniProfile() {
   el.mpMessage.hidden = el.mpCall.hidden = el.mpRemove.hidden = !f;
   el.mpAdd.hidden = self || Boolean(f) || blocked;
   el.mpEdit.hidden = !self;
-  el.mpHomepage.textContent = self ? 'Your homepage' : 'Homepage';
+  el.mpHomepageText.textContent = self ? 'Your homepage' : `${p.displayName}'s homepage`;
   el.mpHomepage.hidden = blocked;
   if (f) {
     const here = S.inCall && S.callWith === f.id;
@@ -9921,6 +9921,8 @@ function teardown({ sendLeave, keepActive = false }) {
 async function init() {
   window.rainlitRunning = true; // (for boot.js: this started, so a wait for the server is just that)
   document.body.classList.toggle('compact-chat', S.compactChat);
+  // (Homepages' buttons wear the pixel sparkle from their sticker set: see homepage.js.)
+  for (const img of document.querySelectorAll('.homepage-btn-icon')) img.src = Homepage.pixelSrc('sparkle');
   // ----- Signing in -----
   el.signinTab.addEventListener('click', () => showAuth('signin'));
   el.signupTab.addEventListener('click', () => showAuth('signup'));

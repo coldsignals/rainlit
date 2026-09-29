@@ -515,7 +515,7 @@
     <button id="menu-message" type="button" role="menuitem">Message</button>
     <button id="menu-call" type="button" role="menuitem">Call</button>
     <button id="menu-profile" type="button" role="menuitem">View profile</button>
-    <button id="menu-homepage" type="button" role="menuitem">Homepage</button>
+    <button id="menu-homepage" class="menu-homepage" type="button" role="menuitem"><img class="homepage-btn-icon" alt="" /><span>Homepage</span></button>
     <hr />
     <button id="menu-remove" class="danger" type="button" role="menuitem">Remove friend</button>
     <button id="menu-block" class="danger" type="button" role="menuitem">Block</button>
@@ -591,10 +591,10 @@
           <button id="mp-call" class="primary-btn ghost-btn" type="button">Call</button>
           <button id="mp-add" class="primary-btn" type="button" hidden>Add friend</button>
           <button id="mp-edit" class="primary-btn ghost-btn" type="button" hidden>Edit profile</button>
-          <button id="mp-homepage" class="primary-btn ghost-btn" type="button">Homepage</button>
         </span>
         <button id="mp-remove" class="text-btn danger" type="button">Remove friend</button>
       </div>
+      <button id="mp-homepage" class="primary-btn homepage-btn" type="button"><img class="homepage-btn-icon" alt="" /><span id="mp-homepage-text">Homepage</span></button>
       <p id="mp-blocked" class="mp-blocked" hidden>You've blocked them. They can't message you or ask to be friends, and their messages in spaces fold away.</p>
       <div id="mp-safety" class="mp-safety">
         <button id="mp-report" class="text-btn" type="button">Report</button>
@@ -626,7 +626,7 @@
           <strong>Your homepage</strong>
           <small id="profile-homepage-link"></small>
         </div>
-        <button id="profile-homepage-btn" class="primary-btn small" type="button">Open</button>
+        <button id="profile-homepage-btn" class="primary-btn small homepage-btn" type="button"><img class="homepage-btn-icon" alt="" /><span>Open</span></button>
       </div>
       <label class="field">
         <span>Display name</span>
