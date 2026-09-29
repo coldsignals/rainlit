@@ -238,7 +238,8 @@ at the top closes it (on a phone, the back arrow).
 - **Phones asleep don't end calls either.** A phone that's been locked a while
   freezes the app's page to save battery, even mid-call. The call itself
   carries on without it, so as long as your voices still get through, nobody
-  is taken out of the call (all night, if you both fall asleep in it).
+  is taken out of the call (all night, if you both fall asleep in it), even
+  when the server's updated in the middle of it.
 - **The call ends** when the last person still in it presses Leave, or when
   nobody has been connected for 30 minutes. You get a summary with the total
   length and a log of joins, drops and reconnects, and the home screen keeps a

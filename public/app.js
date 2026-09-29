@@ -1029,16 +1029,10 @@ function handleServerMessage(msg) {
         }
         if (!S.peer.away) resendDeletes(); // anything you removed while you were offline
       } else if (S.peer && serverForgot) {
-        // Give their app time to reconnect to the restarted server before deciding they've gone.
+        // Give their app time to reconnect to the restarted server before deciding they've gone:
+        // for as long as the call still works between you (see holdForPeer).
         S.peerMissing = true;
-        clearTimeout(S.holdTimer);
-        S.holdTimer = setTimeout(() => {
-          if (!S.inCall || !S.peer || !S.peerMissing) return;
-          S.lastPeerName = S.peer.name;
-          stopTransfers(S.peer.name);
-          peerGone();
-          playCallSound(false);
-        }, 30_000);
+        holdForPeer();
       } else if (S.peer) {
         S.lastPeerName = S.peer.name;
         stopTransfers(S.peer.name);
@@ -1855,6 +1849,43 @@ function renderTick() {
 // it, even mid-call), but their side of the call still reaches you. Now and then, tell the
 // server so: it holds their place in the call, rather than taking them out after half an hour
 // (and ending a call that's going fine).
+// After a server restart, our friend's app isn't back yet. That can take a long time: their phone
+// may have frozen Rainlit's page, which can't reconnect until the phone's woken, maybe hours later
+// in a call left on overnight. Meanwhile the call itself carries on straight between us, so it
+// isn't over while their sound (or anything else of theirs) still arrives: checked every 10
+// seconds, and only 30 seconds after that stops (or the connection's gone) have they gone.
+function holdForPeer() {
+  clearTimeout(S.holdTimer);
+  const conn = S.conn;
+  let heardAt = Date.now();
+  let lastBytes = null;
+  const check = async () => {
+    if (!S.inCall || !S.peer || !S.peerMissing) return;
+    let bytes = null;
+    if (conn && S.conn === conn && conn.pc.connectionState === 'connected') {
+      try {
+        bytes = 0;
+        (await conn.pc.getStats()).forEach((st) => { if (st.type === 'transport') bytes += st.bytesReceived || 0; });
+      } catch {
+        bytes = null;
+      }
+    }
+    if (!S.inCall || !S.peer || !S.peerMissing) return;
+    if (bytes !== null && (lastBytes === null || bytes > lastBytes)) heardAt = Date.now();
+    if (bytes !== null) lastBytes = bytes;
+    if (Date.now() - heardAt > 30_000) {
+      trace('peer-given-up', { quietS: Math.round((Date.now() - heardAt) / 1000) });
+      S.lastPeerName = S.peer.name;
+      stopTransfers(S.peer.name);
+      peerGone();
+      playCallSound(false);
+      return;
+    }
+    S.holdTimer = setTimeout(check, 10_000);
+  };
+  S.holdTimer = setTimeout(check, 10_000);
+}
+
 async function vouchForPeer() {
   const conn = S.conn;
   if (!S.peer || !S.peer.away || !conn || conn.pc.connectionState !== 'connected') return;
