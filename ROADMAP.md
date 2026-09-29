@@ -78,9 +78,12 @@ first; opening sign-ups is the very last step.
       move a community over
 - [x] Email: password-reset emails (the admin can't make reset links by hand for
       everyone), and confirming that email addresses are real (through Resend)
-- [ ] Protection against spam accounts: limits on sign-ups, and no throwaway addresses
-- [ ] A cap on new sign-ups, with a waitlist, so a sudden wave from Discord (like the one
-      that knocked Fluxer and Stoat over in February 2026) can't sink the server
+- [x] Protection against spam accounts: a bot check (a puzzle the browser solves, no
+      CAPTCHA company), no throwaway addresses, a few sign-ups a day from any one place, and
+      new accounts confirm their email before adding friends or joining spaces
+- [x] A cap on new sign-ups, with a waitlist that gets invites by email as room opens up,
+      so a sudden wave from Discord (like the one that knocked Fluxer and Stoat over in
+      February 2026) can't sink the server
 - [x] Reports that reach whoever runs the server, and tools to act on them (suspending
       an account everywhere on the server, taking a homepage down)
 - [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
@@ -89,8 +92,9 @@ first; opening sign-ups is the very last step.
       it): your messages, files and everything else of yours go with it
 - [x] Terms of service and a privacy policy in plain language (what Rainlit keeps, why,
       and for how long), and a minimum age
-- [ ] Last: a setting that opens sign-ups, turned on for rainlit.app (servers people run
-      themselves stay invite-only unless they turn it on)
+- [x] A setting that opens sign-ups, in the admin panel (servers people run themselves
+      stay invite-only unless they turn it on)
+- [ ] Last: turning it on for rainlit.app
 
 ## Stage 5: Real apps
 

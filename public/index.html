@@ -96,6 +96,17 @@
         <small id="forgot-hint" class="hint">Forgot your password? Ask whoever runs this Rainlit for a reset link.</small>
       </form>
 
+      <form id="waitlist-form" class="join-form" novalidate hidden>
+        <p class="rejoin-note">Rainlit's full for today. Leave your email, and we'll send you an invite as soon as there's room.</p>
+        <label class="field">
+          <span>Email</span>
+          <input id="waitlist-email" type="email" autocomplete="email" required />
+        </label>
+        <button id="waitlist-send" class="primary-btn" type="submit">Join the waitlist</button>
+        <p id="waitlist-sent" class="rejoin-note" role="status" hidden></p>
+        <button id="waitlist-back" class="text-btn" type="button">Back</button>
+      </form>
+
       <form id="forgot-form" class="join-form" novalidate hidden>
         <p class="rejoin-note">Forgot your password? Type your username or email, and we'll email you a link to choose a new one.</p>
         <label class="field">
@@ -108,6 +119,10 @@
       </form>
 
       <form id="signup-form" class="join-form" novalidate hidden>
+        <div id="signup-full" class="signup-full" hidden>
+          <p class="rejoin-note">Rainlit's full for today, but an invite code still works. No code? Join the waitlist, and we'll email you one as soon as there's room.</p>
+          <button id="signup-waitlist" class="text-btn" type="button">Join the waitlist</button>
+        </div>
         <p id="setup-note" class="rejoin-note" hidden>You're the first one here, so this will be the admin account. The setup code is in the server's logs (on Render: your service, then Logs; with Docker: <code>docker compose logs rainlit</code>).</p>
         <label class="field">
           <span id="code-label">Invite code</span>
@@ -887,6 +902,21 @@
         <p class="hint">Everything reported on this server. Reports from a space also go to its moderators.</p>
         <ol id="report-list" class="report-list"></ol>
       </section>
+      <section class="admin-section">
+        <div class="admin-head">
+          <h3>Sign-ups</h3>
+        </div>
+        <label class="toggle">
+          <input id="signups-open" type="checkbox" />
+          <span>Anyone can sign up, without an invite <small class="toggle-note">(with a bot check, no throwaway email addresses, and a daily limit; they confirm their email before adding friends or joining spaces)</small></span>
+        </label>
+        <div id="signups-more" class="signups-more">
+          <label class="field-row"><span>New accounts a day, at most</span><input id="signups-cap" type="number" min="0" max="100000" step="1" /></label>
+          <p id="signups-state" class="hint"></p>
+          <button id="waitlist-release" class="small-btn" type="button">Invite the next 10 on the waitlist</button>
+        </div>
+      </section>
+
       <section class="admin-section">
         <div class="admin-head">
           <h3>Invite codes</h3>

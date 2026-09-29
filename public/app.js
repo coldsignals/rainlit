@@ -79,6 +79,7 @@ for (const id of [
   'auth', 'signin-tab', 'signup-tab', 'signin-form', 'signin-login', 'signin-password',
   'signup-form', 'setup-note', 'code-label', 'signup-code', 'signup-email', 'signup-username', 'signup-name', 'signup-password',
   'reset-form', 'reset-password', 'auth-error',
+  'signup-full', 'signup-waitlist', 'waitlist-form', 'waitlist-email', 'waitlist-send', 'waitlist-sent', 'waitlist-back', 'signups-open', 'signups-more', 'signups-cap', 'signups-state', 'waitlist-release',
   'forgot-btn', 'forgot-hint', 'forgot-form', 'forgot-login', 'forgot-send', 'forgot-sent', 'forgot-back',
   'email-row', 'email-state', 'email-confirm-btn', 'email-next', 'email-password', 'email-btn',
   'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty', 'notes-row',
@@ -274,7 +275,7 @@ async function api(method, path, body, { timeout = 0 } = {}) {
   }
   let data = {};
   try { data = await res.json(); } catch {}
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong. Try again.'), { status: res.status });
+  if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong. Try again.'), { status: res.status, data });
   return data;
 }
 
@@ -5750,17 +5751,20 @@ function showAuth(mode) {
   el.signupForm.hidden = mode !== 'signup';
   el.resetForm.hidden = mode !== 'reset';
   el.forgotForm.hidden = mode !== 'forgot';
+  el.waitlistForm.hidden = mode !== 'waitlist';
+  el.signupFull.hidden = !(S.signupsFull && mode === 'signup');
+  if (S.openSignups && (mode === 'signup' || mode === 'waitlist') && !proofPending) startProof();
   // (A server that sends email can send a reset link; otherwise its admin makes one.)
   el.forgotBtn.hidden = !S.mailEnabled;
   el.forgotHint.hidden = S.mailEnabled;
-  el.signinTab.parentElement.hidden = mode === 'reset' || mode === 'forgot' || S.setupNeeded;
+  el.signinTab.parentElement.hidden = mode === 'reset' || mode === 'forgot' || mode === 'waitlist' || S.setupNeeded;
   el.signinTab.setAttribute('aria-selected', String(mode === 'signin'));
   el.signupTab.setAttribute('aria-selected', String(mode === 'signup'));
   // The very first account is made with the setup code from the server's logs, not an invite.
   el.setupNote.hidden = !S.setupNeeded;
-  el.codeLabel.textContent = S.setupNeeded ? 'Setup code' : 'Invite code';
+  el.codeLabel.textContent = S.setupNeeded ? 'Setup code' : S.openSignups ? 'Invite code (if you have one)' : 'Invite code';
   showAuthError('');
-  const first = { signin: el.signinLogin, signup: el.signupCode, reset: el.resetPassword, forgot: el.forgotLogin }[mode];
+  const first = { signin: el.signinLogin, signup: S.openSignups ? el.signupEmail : el.signupCode, reset: el.resetPassword, forgot: el.forgotLogin, waitlist: el.waitlistEmail }[mode];
   if (first && matchMedia('(pointer: fine)').matches) first.focus();
 }
 
@@ -5773,9 +5777,75 @@ async function submitAuth(form, request) {
     const { user } = await request();
     await signedIn(user);
   } catch (err) {
+    if (err.data && err.data.waitlist) {
+      S.signupsFull = true;
+      toWaitlist();
+    }
     showAuthError(err.message);
   } finally {
     btn.disabled = false;
+  }
+}
+
+function toWaitlist() {
+  el.waitlistEmail.value = el.signupEmail.value.trim();
+  el.waitlistSent.hidden = true;
+  showAuth('waitlist');
+}
+
+// ----- The bot check (lib/signups.js) -----
+// A puzzle from the server, solved in the background while the form's being filled in (a second
+// or two of trying numbers), and sent with it. Each is good for one try, within 15 minutes.
+
+let proofPending = null;
+let proofAt = 0;
+function startProof() {
+  proofAt = Date.now();
+  proofPending = (async () => {
+    const c = await api('GET', '/signup-challenge');
+    const want = new Uint8Array(c.hash.match(/../g).map((h) => parseInt(h, 16)));
+    const enc = new TextEncoder();
+    for (let n = 0; n <= c.max; n++) {
+      const got = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(c.salt + n)));
+      if (got.every((v, i) => v === want[i])) return { salt: c.salt, hash: c.hash, sig: c.sig, number: n };
+    }
+    throw new Error('no answer');
+  })();
+  proofPending.catch(() => {});
+}
+
+// `btn` says what's happening if the puzzle isn't solved yet (a slow phone, or a quick typist).
+async function takeProof(btn) {
+  if (!proofPending || Date.now() - proofAt > 14 * 60_000) startProof();
+  const p = proofPending;
+  proofPending = null;
+  const label = btn.textContent;
+  const slow = setTimeout(() => (btn.textContent = "Checking you're not a bot..."), 300);
+  try {
+    return await p;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(slow);
+    btn.textContent = label;
+    if (S.openSignups) startProof(); // (ready for another try)
+  }
+}
+
+async function onWaitlist(e) {
+  e.preventDefault();
+  const email = el.waitlistEmail.value.trim();
+  if (!email) return showAuthError('Type your email address.');
+  showAuthError('');
+  el.waitlistSend.disabled = true;
+  try {
+    await api('POST', '/waitlist', { email, proof: await takeProof(el.waitlistSend) });
+    el.waitlistSent.textContent = "You're on the list! We'll email you an invite as soon as there's room (check your spam folder too).";
+    el.waitlistSent.hidden = false;
+  } catch (err) {
+    showAuthError(err.message);
+  } finally {
+    el.waitlistSend.disabled = false;
   }
 }
 
@@ -9516,6 +9586,7 @@ async function renderAdmin() {
     return toast(err.message);
   }
   renderTraceList(pairs);
+  renderSignups();
   if (!reports.length) {
     const li = document.createElement('li');
     li.className = 'muted';
@@ -9623,6 +9694,28 @@ function sureButton(text, sure, action) {
     }
   });
   return b;
+}
+
+// Admin: open sign-ups or not, the daily limit, and the waitlist.
+async function renderSignups(state) {
+  try {
+    state = state || (await api('GET', '/admin/signups'));
+  } catch {
+    return;
+  }
+  el.signupsOpen.checked = state.open;
+  el.signupsMore.hidden = !state.open;
+  if (document.activeElement !== el.signupsCap) el.signupsCap.value = String(state.cap);
+  el.signupsState.textContent = `Room for ${state.room} more today. ${state.waiting} on the waitlist.${state.mail ? '' : " (This Rainlit can't send emails, so the waitlist can't be invited.)"}`;
+  el.waitlistRelease.disabled = !state.mail || !state.waiting;
+}
+
+async function saveSignups(fields) {
+  try {
+    renderSignups(await api('PUT', '/admin/signups', fields));
+  } catch (err) {
+    toast(err.message);
+  }
 }
 
 // Suspending asks why (optional; they're told) and to be sure, in the row itself.
@@ -10191,11 +10284,16 @@ async function init() {
     e.preventDefault();
     submitAuth(el.signinForm, () => api('POST', '/login', { login: el.signinLogin.value, password: el.signinPassword.value }));
   });
+  el.waitlistForm.addEventListener('submit', onWaitlist);
+  el.waitlistBack.addEventListener('click', () => showAuth('signup'));
+  el.signupWaitlist.addEventListener('click', toWaitlist);
   el.signupForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    submitAuth(el.signupForm, () => api('POST', '/signup', {
-      code: el.signupCode.value, email: el.signupEmail.value, username: el.signupUsername.value,
+    const code = el.signupCode.value.trim();
+    submitAuth(el.signupForm, async () => api('POST', '/signup', {
+      code, email: el.signupEmail.value, username: el.signupUsername.value,
       displayName: el.signupName.value, password: el.signupPassword.value,
+      proof: S.openSignups && !code ? await takeProof(el.signupForm.querySelector('button[type="submit"]')) : undefined,
     })).then(() => {
       if (S.me && S.mailEnabled) toast(`Welcome! We sent ${S.me.email} a link to confirm it's yours.`, 7000);
     });
@@ -10210,6 +10308,17 @@ async function init() {
   el.meBtn.addEventListener('click', openProfile);
   el.adminBtn.addEventListener('click', openAdmin);
   el.inviteBtn.addEventListener('click', onMakeInvite);
+  el.signupsOpen.addEventListener('change', () => saveSignups({ open: el.signupsOpen.checked }));
+  el.signupsCap.addEventListener('change', () => saveSignups({ cap: Number(el.signupsCap.value) }));
+  el.waitlistRelease.addEventListener('click', async () => {
+    try {
+      const r = await api('POST', '/admin/waitlist/release', { count: 10 });
+      toast(r.invited ? `Invited ${r.invited} from the waitlist.` : 'Nobody to invite right now.');
+      renderSignups(r);
+    } catch (err) {
+      toast(err.message);
+    }
+  });
   el.mpMessage.addEventListener('click', () => {
     el.miniProfile.close();
     openDm(miniProfileId);
@@ -10912,7 +11021,15 @@ async function init() {
     const config = await api('GET', '/config');
     S.setupNeeded = Boolean(config.setupNeeded);
     S.mailEnabled = Boolean(config.mail);
+    S.openSignups = Boolean(config.openSignups);
+    S.signupsFull = Boolean(config.full);
   } catch {}
+  const invite = new URLSearchParams(location.search).get('invite');
+  if (invite) {
+    history.replaceState(null, '', '/');
+    el.signupCode.value = invite;
+    return showAuth('signup');
+  }
   showAuth(S.setupNeeded ? 'signup' : 'signin');
 }
 

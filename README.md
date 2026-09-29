@@ -42,8 +42,8 @@ updating.
 
 ## 3. Invite your friends
 
-Rainlit is invite-only, so strangers who find your address can't make an
-account.
+Rainlit is invite-only to start with, so strangers who find your address can't
+make an account.
 
 1. Press the key button next to your name.
 2. Press **Make an invite**. A message with your app's address and the code is
@@ -51,6 +51,9 @@ account.
 3. They sign up with it, then add you (or you add them) by username.
 
 Each code works once. Unused codes can be deleted.
+
+**Open sign-ups:** the same panel can let anyone sign up without an invite, with a
+bot check, a daily limit and a waitlist (see [SELF-HOSTING.md](SELF-HOSTING.md#4-invite-people)).
 
 **Forgot password:** in the same panel, press **Reset link** next to their
 account and send them the link. It works once, for 24 hours, and signs them

@@ -28,6 +28,7 @@ const homepages = require('./lib/homepages');
 const { imageKind } = require('./lib/images');
 const embeds = require('./lib/embeds');
 const mail = require('./lib/mail');
+const signups = require('./lib/signups');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -63,6 +64,7 @@ const signupTries = auth.limiter(20, 3600_000);
 const loginTries = auth.limiter(8, 15 * 60_000); // per person being signed in to
 const ipTries = auth.limiter(40, 15 * 60_000); // per visitor, across everyone
 const forgotTries = auth.limiter(5, 3600_000); // "Forgot your password?", per visitor
+const openSignupTries = auth.limiter(3, 86_400_000); // accounts made without an invite, per visitor a day
 
 // ---------- HTTP ----------
 
@@ -220,8 +222,62 @@ function signIn(req, res, userId) {
 }
 
 api.get('/config', (_req, res) => {
-  res.json({ setupNeeded: Boolean(setupCode), mail: mail.enabled });
+  const open = !setupCode && signups.isOpen();
+  res.json({ setupNeeded: Boolean(setupCode), mail: mail.enabled, openSignups: open, full: open && signups.roomToday() === 0 });
 });
+
+// ----- Open sign-ups (lib/signups.js) -----
+
+// The bot check's puzzle, for the sign-up (and waitlist) form to solve while it's being filled in.
+api.get('/signup-challenge', (_req, res) => res.json(signups.challenge()));
+
+// Full for today: leave an email, and get an invite when there's room.
+api.post('/waitlist', (req, res) => {
+  const b = req.body || {};
+  if (!signups.isOpen()) return fail(res, 400, 'Sign-ups here need an invite code.');
+  if (!signups.checkProof(b.proof)) return fail(res, 400, 'That took too long. Try again.');
+  const email = String(b.email || '').trim().toLowerCase();
+  if (!people.EMAIL_RE.test(email) || email.length > 254) return fail(res, 400, "That email address doesn't look right.");
+  if (signups.throwaway(email)) return fail(res, 400, 'Please use your real email address, not a throwaway one.');
+  if (people.userByLogin(email)) return fail(res, 409, 'An account already uses that email. Sign in instead.');
+  signups.join(email);
+  res.json({ ok: true, waiting: signups.waiting() });
+});
+
+// Every hour: invite as many from the waitlist as there's room for today.
+function releaseWaitlist(count) {
+  if (!mail.enabled) return 0;
+  return signups.release(count, (email, code) => {
+    const base = String(process.env.PUBLIC_URL || '').trim().replace(/\/+$/, '') || process.env.RENDER_EXTERNAL_URL || '';
+    mail.sendLater(mail.waitlistEmail(email, code, `${base}/?invite=${encodeURIComponent(code)}`), 'a waitlist invite');
+  });
+}
+setInterval(() => {
+  signups.tidy();
+  if (signups.isOpen()) releaseWaitlist(signups.roomToday());
+}, 3600_000).unref();
+
+// The admin's side: open sign-ups or not, the daily cap, and the waitlist.
+const signupState = () => ({ open: signups.isOpen(), cap: signups.dailyCap(), room: signups.roomToday(), waiting: signups.waiting(), mail: mail.enabled });
+api.get('/admin/signups', needAdmin, (_req, res) => res.json(signupState()));
+api.put('/admin/signups', needAdmin, (req, res) => {
+  const b = req.body || {};
+  signups.configure({ open: typeof b.open === 'boolean' ? b.open : undefined, cap: b.cap });
+  res.json(signupState());
+});
+api.post('/admin/waitlist/release', needAdmin, (req, res) => {
+  if (!mail.enabled) return fail(res, 400, "This Rainlit can't send emails, so it can't invite the waitlist.");
+  const invited = releaseWaitlist(Math.max(0, Math.min(500, Number((req.body || {}).count) || 0)));
+  res.json({ invited, ...signupState() });
+});
+
+// An account made without an invite confirms its email before it can reach out to anyone.
+function needConfirmed(req, res, next) {
+  if (req.user.open_signup && !req.user.email_confirmed_at) {
+    return fail(res, 403, 'Confirm your email first: open the link we sent you (or send another from Your profile).');
+  }
+  next();
+}
 
 // ----- Email (lib/mail.js) -----
 
@@ -262,10 +318,18 @@ api.post('/signup', async (req, res) => {
   const displayName = people.oneLine(b.displayName || username, people.NAME_MAX);
   const firstAccount = Boolean(setupCode);
 
-  if (!code || (firstAccount && code !== setupCode)) {
+  // Without an invite (open sign-ups): the bot check, and room today, and not too many from here.
+  const open = !code && !firstAccount && signups.isOpen();
+  if (!open && (!code || (firstAccount && code !== setupCode))) {
     signupTries.fail(req.ip);
-    return fail(res, 400, firstAccount ? "That setup code isn't right. It's in the server's logs." : "That invite code isn't right.");
+    return fail(res, 400, firstAccount ? "That setup code isn't right. It's in the server's logs." : !code ? 'Sign-ups here need an invite code.' : "That invite code isn't right.");
   }
+  if (open) {
+    if (!signups.checkProof(b.proof)) return fail(res, 400, 'That took too long. Try again.');
+    if (openSignupTries.blocked(req.ip)) return fail(res, 429, "You've made a few accounts today. Try again tomorrow.");
+    if (signups.roomToday() === 0) return res.status(409).json({ error: "Rainlit's full for today. Join the waitlist, and we'll email you an invite as soon as there's room.", waitlist: true });
+  }
+  if (!firstAccount && signups.throwaway(email)) return fail(res, 400, 'Please use your real email address, not a throwaway one.');
   if (!people.USERNAME_RE.test(username)) return fail(res, 400, 'Usernames are 2 to 32 characters: letters, numbers, dots and underscores.');
   if (['everyone', 'here'].includes(username)) return fail(res, 409, 'That username is taken.'); // (they mean something in a message)
   if (!people.EMAIL_RE.test(email) || email.length > 254) return fail(res, 400, "That email address doesn't look right.");
@@ -280,11 +344,11 @@ api.post('/signup', async (req, res) => {
   try {
     transaction(() => {
       db.prepare(`
-        INSERT INTO users (id, username, email, password_hash, display_name, is_admin, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(id, username, email, hash, displayName, firstAccount ? 1 : 0, now);
+        INSERT INTO users (id, username, email, password_hash, display_name, is_admin, created_at, open_signup)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, username, email, hash, displayName, firstAccount ? 1 : 0, now, open ? 1 : 0);
       badges.welcome(id, now);
-      if (!firstAccount) {
+      if (!firstAccount && !open) {
         const used = db.prepare('UPDATE invites SET used_by = ?, used_at = ? WHERE code = ? AND used_by IS NULL')
           .run(id, Date.now(), code);
         if (!used.changes) throw Object.assign(new Error('bad invite'), { badInvite: true });
@@ -302,8 +366,9 @@ api.post('/signup', async (req, res) => {
     setupCode = null;
     console.log(`[accounts] Admin account created: @${username}`);
   } else {
-    console.log(`[accounts] New account: @${username}`);
+    console.log(`[accounts] New account: @${username}${open ? ' (open sign-up)' : ''}`);
   }
+  if (open) openSignupTries.fail(req.ip);
   sendConfirm(req, people.userById(id));
   signIn(req, res, id);
 });
@@ -557,7 +622,7 @@ api.get('/friends', needUser, (req, res) => {
   res.json(out);
 });
 
-api.post('/friends', needUser, (req, res) => {
+api.post('/friends', needUser, needConfirmed, (req, res) => {
   const target = people.userByUsername(String((req.body || {}).username || '').trim());
   if (!target) return fail(res, 404, 'No one has that username. Check the spelling?');
   if (target.id === req.user.id) return fail(res, 400, "That's you!");
@@ -1514,7 +1579,7 @@ api.get('/space-invites/:code', needUser, (req, res) => {
   });
 });
 
-api.post('/space-invites/:code', needUser, (req, res) => {
+api.post('/space-invites/:code', needUser, needConfirmed, (req, res) => {
   const invite = spaces.inviteByCode(req.params.code);
   const space = invite && spaces.getSpace(invite.space_id);
   if (!space) return fail(res, 404, "That invite link doesn't work any more.");

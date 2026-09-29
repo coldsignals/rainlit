@@ -2,7 +2,8 @@
 
 Anyone can run their own Rainlit: your own private place for calls, chat and files, for
 your friends or your community. Your server keeps its own accounts and conversations, and
-you're its admin. It's invite-only, so only people you invite can get in.
+you're its admin. It's invite-only to start with, so only people you invite can get in
+(you can open it up: step 4).
 
 The Windows and Android apps work with any Rainlit server (step 8), and in a browser
 people just open your server's address.
@@ -70,6 +71,15 @@ Press the key button next to your name, then **Make an invite**. A message with 
 Rainlit's address and a one-time code is copied, ready to paste to a friend. They sign up
 with it, then add each other (or you) by username. If someone forgets their password, the
 same panel makes them a reset link.
+
+**Or let anyone sign up.** Under **Sign-ups** in the same panel, you can let people make an
+account without an invite. To keep bots and floods out: there's a bot check (a small puzzle
+each person's browser solves while they fill in the form, so no CAPTCHA company is involved),
+throwaway email addresses aren't allowed, one place can only make a few accounts a day, and
+new accounts confirm their email before they can add friends or join spaces. You choose how
+many new accounts a day, at most (50 to start with). Past that, people can join a waitlist,
+and every hour, as room opens up, the next ones on it get an invite by email (so the
+waitlist needs email: step 12). Invite codes always work, whatever the limit.
 
 ## 5. Make calls work on every network (recommended)
 

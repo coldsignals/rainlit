@@ -493,6 +493,12 @@ button { cursor: pointer; }
 .small-btn:hover { border-color: var(--mist); }
 .small-btn.danger { color: #ffb4ae; }
 /* Admin: suspending someone (why, and to be sure), and who's suspended. */
+.signup-full { display: grid; gap: 4px; justify-items: start; }
+.signup-full .text-btn { color: var(--lamp); padding: 2px 0; }
+.signups-more { display: grid; gap: 8px; margin-top: 10px; padding-left: 28px; }
+.signups-more .field-row span { flex: 1; font-size: 14px; font-weight: 600; }
+.signups-more .field-row input { flex: none; width: 110px; padding: 7px 10px; background: var(--deep); color: var(--text); border: 1px solid var(--line); border-radius: 8px; }
+.signups-more .small-btn { justify-self: start; }
 .suspend-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 0 10px 46px; }
 .suspend-ask input { flex: 1; min-width: 160px; padding: 7px 10px; background: var(--deep); color: var(--text); border: 1px solid var(--line); border-radius: 8px; }
 li.suspended > .grow { color: #ffb4ae; }
