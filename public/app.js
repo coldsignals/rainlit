@@ -101,7 +101,7 @@ for (const id of [
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-away', 'peer-away-time', 'offline-banner',
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
-  'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
+  'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
   'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
@@ -2395,6 +2395,73 @@ function appendEmoji(node, text) {
   node.append(text.slice(last));
 }
 
+// ----- Custom emoji in the message box -----
+// The box holds :name: (short, and what you'd type), with the emoji's picture drawn over it (a
+// layer over the box, see renderChatMirror); sending, :name: becomes the emoji's code,
+// <:name:id>. Picked from the picker (or in a message being edited), it's that one; typed, the
+// first of your spaces' emoji with that name. A name that's no emoji of yours stays as it is.
+
+const composeEmoji = new Map(); // name -> the emoji picked (or edited) in the box
+const emojiByName = (name) => composeEmoji.get(name) || myEmoji().find((x) => x.name === name) || null;
+// (A code already written out is left alone, not read as :name: inside it.)
+const BOX_EMOJI_RE = /<a?:[A-Za-z0-9_]{2,32}:[a-f0-9]{8,32}>|:([A-Za-z0-9_]{2,32}):/g;
+
+function toBoxText(text) {
+  return String(text || '').replace(EMOJI_TOKEN_RE, (_m, a, name, id) => {
+    composeEmoji.set(name, { name, id, animated: a === 'a' });
+    return `:${name}:`;
+  });
+}
+
+function fromBoxText(text) {
+  return String(text || '').replace(BOX_EMOJI_RE, (m, name) => {
+    const e = name && emojiByName(name);
+    return e ? emojiToken(e) : m;
+  });
+}
+
+// The layer over the message box: the same text, laid out the same, invisible, except each
+// emoji's :name:, covered by its picture (on the box's own color). Only there while the box
+// has one.
+function renderChatMirror() {
+  const box = el.chatInput;
+  const mirror = el.chatMirror;
+  if (!mirror) return;
+  const text = box.value;
+  const parts = [];
+  let last = 0;
+  if (text.includes(':')) {
+    for (const m of text.matchAll(BOX_EMOJI_RE)) {
+      const e = m[1] && emojiByName(m[1]);
+      if (!e) continue;
+      parts.push(text.slice(last, m.index), { code: m[0], id: e.id });
+      last = m.index + m[0].length;
+    }
+  }
+  mirror.hidden = !parts.length || box.disabled;
+  if (mirror.hidden) return;
+  parts.push(`${text.slice(last)}\n`); // (a last empty line still has its height, as in the box)
+  const cs = getComputedStyle(box);
+  const bar = box.offsetWidth - box.clientWidth - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth);
+  Object.assign(mirror.style, {
+    left: `${box.offsetLeft}px`, top: `${box.offsetTop}px`, width: `${box.offsetWidth}px`, height: `${box.offsetHeight}px`,
+    fontFamily: cs.fontFamily, fontSize: cs.fontSize, fontWeight: cs.fontWeight, fontStyle: cs.fontStyle,
+    lineHeight: cs.lineHeight, letterSpacing: cs.letterSpacing, wordSpacing: cs.wordSpacing, tabSize: cs.tabSize,
+    paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, paddingLeft: cs.paddingLeft,
+    paddingRight: `${parseFloat(cs.paddingRight) + Math.max(0, bar)}px`,
+    borderWidth: cs.borderWidth, borderRadius: cs.borderRadius,
+  });
+  mirror.replaceChildren(...parts.map((p) => {
+    if (typeof p === 'string') return p;
+    const span = document.createElement('span');
+    span.className = 'chat-mirror-emoji';
+    span.textContent = p.code;
+    span.style.backgroundImage = `url("${SERVER}/emoji/${p.id}")`;
+    return span;
+  }));
+  mirror.scrollTop = box.scrollTop;
+}
+
 // A message that's only emoji (up to 27, like Discord) shows them big.
 const JUMBO_RE = /^(?:\s|<a?:[A-Za-z0-9_]{2,32}:[a-f0-9]{8,32}>|\p{Extended_Pictographic}|\p{Emoji_Component}|\u200d|\ufe0f)+$/u;
 function isJumbo(text) {
@@ -2746,12 +2813,14 @@ async function openEmojiPicker(li, onPick = null) {
       }
       if (!picked) return;
       if (emojiTarget) return toggleReaction(emojiTarget, picked);
-      // Into the message box, where the cursor was.
+      // Into the message box, where the cursor was (a custom one as :name:, shown as itself).
+      if (custom) composeEmoji.set(custom.name, custom);
+      const put = custom ? `:${custom.name}:` : picked;
       const [a, b] = emojiCaret || [el.chatInput.value.length, el.chatInput.value.length];
       const v = el.chatInput.value;
-      setChatText(v.slice(0, a) + picked + v.slice(b));
+      setChatText(v.slice(0, a) + put + v.slice(b));
       el.chatInput.focus();
-      el.chatInput.setSelectionRange(a + picked.length, a + picked.length);
+      el.chatInput.setSelectionRange(a + put.length, a + put.length);
     });
     el.emojiDialog.append(picker);
     closeOnBackdrop(el.emojiDialog);
@@ -3244,7 +3313,7 @@ function startEdit(li) {
   stopReply();
   S.editing = { id: li.dataset.id, friendId: S.openDm, draft: el.chatInput.value };
   el.editBar.hidden = false;
-  setChatText(messageText(li));
+  setChatText(toBoxText(messageText(li)));
   el.chatInput.focus();
   el.chatInput.setSelectionRange(el.chatInput.value.length, el.chatInput.value.length);
 }
@@ -3258,7 +3327,7 @@ function stopEdit() {
 
 async function saveEdit() {
   const editing = S.editing;
-  const text = el.chatInput.value.trim();
+  const text = fromBoxText(el.chatInput.value.trim());
   if (!text) return toast('A message needs something in it. To remove it, use Delete instead.');
   const li = dmFor(editing.friendId).log.querySelector(`li[data-id="${CSS.escape(editing.id)}"]`);
   if (li && messageText(li) === text) return stopEdit(); // nothing changed
@@ -3451,6 +3520,7 @@ function fitChatInput() {
 function setChatText(text) {
   el.chatInput.value = text;
   fitChatInput();
+  renderChatMirror();
 }
 
 function nearBottom(log) {
@@ -6622,7 +6692,7 @@ function onMentionInput() {
     const found = myEmoji().filter((e) => e.name.toLowerCase().includes(q))
       .sort((a, b) => Number(!a.name.toLowerCase().startsWith(q)) - Number(!b.name.toLowerCase().startsWith(q)) || a.name.localeCompare(b.name));
     if (found.length) {
-      mentionPick = { open: true, items: found.slice(0, 8).map((e) => ({ emoji: e, insert: emojiToken(e) })), index: 0, start: caretAt - q.length - 1 };
+      mentionPick = { open: true, items: found.slice(0, 8).map((e) => ({ emoji: e, insert: `:${e.name}:` })), index: 0, start: caretAt - q.length - 1 };
       return renderMentionPick();
     }
   }
@@ -6680,6 +6750,7 @@ function renderMentionPick() {
 function pickMention(item) {
   const v = el.chatInput.value;
   const caret = el.chatInput.selectionStart;
+  if (item.emoji) composeEmoji.set(item.emoji.name, item.emoji);
   const text = item.emoji ? `${item.insert} ` : `@${item.insert} `;
   setChatText(v.slice(0, mentionPick.start) + text + v.slice(caret));
   const pos = mentionPick.start + text.length;
@@ -10976,6 +11047,9 @@ async function init() {
   el.chatInput.addEventListener('keydown', onMentionKey);
   el.chatInput.addEventListener('blur', () => setTimeout(closeMentionPick, 150));
   el.chatInput.addEventListener('input', fitChatInput);
+  el.chatInput.addEventListener('input', renderChatMirror);
+  el.chatInput.addEventListener('scroll', () => { el.chatMirror.scrollTop = el.chatInput.scrollTop; });
+  if (window.ResizeObserver) new ResizeObserver(() => renderChatMirror()).observe(el.chatInput);
   el.chatInput.addEventListener('keydown', (e) => {
     // (Ctrl+Enter sends everywhere, for a phone with a keyboard. Not while an accent or a
     // character is still being put together.)
@@ -11225,7 +11299,7 @@ async function init() {
     if (!S.openDm) return;
     if (S.editing) return saveEdit();
     const dm = dmFor(S.openDm);
-    const text = el.chatInput.value.trim();
+    const text = fromBoxText(el.chatInput.value.trim());
     if (!text && !dm.pending.length) return;
     if (dm.pending.length && !canSendFiles(dm)) {
       toast(`Saving is off here, so files can only go straight to ${friendName(dm.friendId)} during a call.`, 6000);

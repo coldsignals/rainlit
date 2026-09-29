@@ -1360,6 +1360,16 @@ body:not(.compact-chat) .chat-log li.mentioned[data-author] { padding-left: 64px
   overflow-y: auto;
 }
 .chat-form textarea:disabled { opacity: 0.55; }
+/* Custom emoji in the message box: a layer over it, with the same text laid out the same but
+   invisible, except each emoji's :name:, covered by its picture on the box's own color. */
+.chat-form { position: relative; }
+.chat-mirror {
+  position: absolute; z-index: 1; box-sizing: border-box;
+  border-style: solid; border-color: transparent;
+  overflow: hidden; pointer-events: none;
+  color: transparent; white-space: pre-wrap; overflow-wrap: break-word;
+}
+.chat-mirror-emoji { background: var(--deep) center / contain no-repeat; border-radius: 4px; }
 .send-btn { background: var(--lamp); color: var(--lamp-ink); border: 0; }
 .send-btn .icon { width: 18px; height: 18px; }
 

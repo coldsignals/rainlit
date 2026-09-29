@@ -491,6 +491,8 @@
             <!-- (With the file button, away from Send, so it isn't hit by mistake.) -->
             <button id="gif-btn" class="gif-btn" type="button" aria-label="Send a GIF" title="Send a GIF" aria-expanded="false" hidden>GIF</button>
             <textarea id="chat-input" rows="1" autocomplete="off" maxlength="4000" placeholder="Message" aria-label="Message"></textarea>
+            <!-- (Over the box: custom emoji's pictures where their :name: is. See renderChatMirror.) -->
+            <div id="chat-mirror" class="chat-mirror" aria-hidden="true" hidden></div>
             <button id="emoji-btn" class="icon-btn ghost emoji-btn" type="button" aria-label="Emoji" title="Emoji">
               <svg class="icon"><use href="#i-smile"/></svg>
             </button>
