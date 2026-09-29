@@ -85,8 +85,8 @@
       <li><strong>Calls aren't recorded.</strong> A call between two people goes straight between your devices
         when it can, or else through Cloudflare's relay. It's encrypted either way, so the relay can't
         listen.</li>
-      <li><strong>Voice channels and group calls</strong> go through LiveKit, encrypted with keys only the
-        people in the call (and Rainlit's server, which hands them out) have, so LiveKit can't listen.</li>
+      <li><strong>Voice channels and group calls</strong> go through Cloudflare, encrypted with keys only the
+        people in the call (and Rainlit's server, which hands them out) have, so Cloudflare can't listen.</li>
       <li>The conversation shows when a call started and how long it lasted.</li>
       <li><strong>The call debug log</strong> is off unless you turn it on. Then it notes what happens to your
         calls' connections (like the kind of network and device, and when a connection drops), never
@@ -143,8 +143,9 @@
       <li><strong>Render</strong> runs the computers Rainlit's server is on.</li>
       <li><strong>Resend</strong> sends Rainlit's emails (password resets, confirming your address, and
         waitlist invites), so it sees your email address and those emails.</li>
-      <li><strong>Cloudflare</strong> relays calls that can't go straight between devices.</li>
-      <li><strong>LiveKit</strong> carries voice channels and group calls (encrypted, as above).</li>
+      <li><strong>Cloudflare</strong> relays calls that can't go straight between devices, and carries voice
+        channels and group calls (encrypted, as above). It sees your IP address, as any server your
+        device connects to does.</li>
       <li><strong>KLIPY</strong> runs GIF search. Your searches go straight from your device to KLIPY, and the
         GIFs load from there.</li>
       <li><strong>Your phone's notification app</strong> (like ntfy), if you use one, delivers notifications.

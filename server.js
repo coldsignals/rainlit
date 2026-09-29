@@ -1387,6 +1387,10 @@ function recheckVoice(spaceId) {
       } else if (voiceSpeak.get(uid) !== access.speak) {
         voiceSpeak.set(uid, access.speak);
         voice.setSpeak(c.id, uid, access.speak);
+        if (voice.backend === 'cloudflare') {
+          realtime.sendToUser(uid, { type: 'voice-speak', channel: c.id, speak: access.speak });
+          realtime.tellVoice(c.id);
+        }
       }
     }
   }
@@ -1493,7 +1497,7 @@ api.post('/spaces/:spaceId/channels', needUser, needMember, needPerm('manageChan
   const name = spaces.channelName((req.body || {}).name);
   if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
   const kind = (req.body || {}).kind === 'voice' ? 'voice' : 'text';
-  if (kind === 'voice' && !voice.enabled) return fail(res, 400, "Voice channels aren't set up on this server yet (they need LiveKit; see SELF-HOSTING.md).");
+  if (kind === 'voice' && !voice.enabled) return fail(res, 400, "Voice channels aren't set up on this server yet (they need Cloudflare Realtime or LiveKit: see SELF-HOSTING.md).");
   const id = spaces.createChannel(req.space.id, name, kind);
   if (!id) return fail(res, 400, `A space can have up to ${spaces.MAX_CHANNELS} channels.`);
   spaces.log(req.space.id, req.user.id, 'channel-create', id, { name, kind });
@@ -1544,20 +1548,83 @@ api.delete('/channels/:channelId', needUser, needChannel, (req, res) => {
 });
 
 // ----- Voice channels -----
-// A pass into a voice channel's room on the LiveKit server (lib/voice.js), what you may do
-// there, and the channel's key for its end-to-end encryption.
-api.post('/channels/:channelId/voice', needUser, needChannel, (req, res) => {
+// A pass into a voice channel (lib/voice.js): what you may do there, the channel's key for its
+// end-to-end encryption, and how to connect: a LiveKit room, or Cloudflare (where your app
+// starts a session, then sends and gets sound and video through the routes below).
+api.post('/channels/:channelId/voice', needUser, needChannel, async (req, res) => {
   if (req.channel.kind !== 'voice') return fail(res, 400, "That's not a voice channel.");
   if (!voice.enabled) return fail(res, 503, "Voice channels aren't set up on this server yet.");
   if (!req.access.connect) return fail(res, 403, "You can't join this voice channel.");
   voiceSpeak.set(req.user.id, req.access.speak);
+  const key = spaces.voiceKey(req.channel.id);
+  if (voice.backend === 'cloudflare') {
+    const { list } = await getIceServers();
+    return res.json({ backend: 'cloudflare', key, speak: req.access.speak, iceServers: list, limits: VOICE_LIMITS });
+  }
   res.json({
+    backend: 'livekit',
     url: voice.url,
     token: voice.joinToken({ room: req.channel.id, user: req.user, speak: req.access.speak }),
-    key: spaces.voiceKey(req.channel.id),
+    key,
     speak: req.access.speak,
   });
 });
+
+// How much a camera and a shared screen may send, in kbps (Cloudflare charges for what it sends
+// on; these keep a screen share to about 0.7 GB an hour for each person watching). A screen
+// share is sharp (1080p, 15 frames a second, for text) or smooth (720p, 30), from Settings.
+const VOICE_LIMITS = {
+  camKbps: Number(process.env.CAMERA_KBPS) || 800,
+  screenKbps: Number(process.env.SCREEN_SHARE_KBPS) || 1500,
+};
+
+// Cloudflare: your app's session, and sending and getting sound and video (lib/voice-cf.js).
+// Each goes through here so the server says who may send what, and who gets whose.
+const cfRoute = (fn) => async (req, res) => {
+  if (voice.backend !== 'cloudflare') return fail(res, 404, "This server's voice doesn't work that way.");
+  if (req.channel.kind !== 'voice' || !req.access.connect) return fail(res, 403, "You can't join this voice channel.");
+  try {
+    res.json(await fn(req, req.body || {}));
+  } catch (err) {
+    if (err instanceof voice.cf.VoiceError) return fail(res, err.status, err.message);
+    throw err;
+  }
+};
+api.post('/channels/:channelId/voice/session', needUser, needChannel, cfRoute(async (req, b) => {
+  const { pubSession, subSession, replaced } = await voice.cf.start(req.user.id, req.channel.id, b.tab, req.access.speak);
+  // (Joined from another tab or device: that one's told it's out.)
+  if (replaced) realtime.sendToUser(req.user.id, { type: 'voice-ended', channel: replaced.channelId, reason: 'elsewhere', tab: replaced.tab });
+  return { session: pubSession, sub: subSession };
+}));
+api.post('/channels/:channelId/voice/publish', needUser, needChannel, cfRoute(async (req, b) => {
+  if (!req.access.speak) throw new voice.cf.VoiceError("You can't talk in this channel.", 403);
+  const out = await voice.cf.publish(req.user.id, req.channel.id, b.sdp, b.tracks);
+  realtime.tellVoice(req.channel.id);
+  return out;
+}));
+api.post('/channels/:channelId/voice/ready', needUser, needChannel, cfRoute(async (req, b) => {
+  if (voice.cf.ready(req.user.id, req.channel.id, b.tracks)) realtime.tellVoice(req.channel.id);
+  return { ok: true };
+}));
+api.post('/channels/:channelId/voice/unpublish', needUser, needChannel, cfRoute(async (req, b) => {
+  const out = await voice.cf.unpublish(req.user.id, req.channel.id, b.sdp, b.kinds);
+  realtime.tellVoice(req.channel.id);
+  return out;
+}));
+api.post('/channels/:channelId/voice/pull', needUser, needChannel, cfRoute((req, b) => voice.cf.pull(req.user.id, req.channel.id, b.tracks)));
+api.post('/channels/:channelId/voice/resub', needUser, needChannel, cfRoute((req) => voice.cf.resub(req.user.id, req.channel.id)));
+api.post('/channels/:channelId/voice/repub', needUser, needChannel, cfRoute(async (req) => {
+  const out = await voice.cf.repub(req.user.id, req.channel.id);
+  realtime.tellVoice(req.channel.id);
+  return out;
+}));
+api.post('/channels/:channelId/voice/answer', needUser, needChannel, cfRoute(async (req, b) => {
+  await voice.cf.answer(req.user.id, req.channel.id, b.sdp);
+  return { ok: true };
+}));
+api.post('/channels/:channelId/voice/unpull', needUser, needChannel, cfRoute((req, b) => voice.cf.unpull(req.user.id, req.channel.id, b.mids)));
+// (What someone's sending got lost at Cloudflare's end: their app sends it again.)
+voice.cf.whenLost((userId, channelId) => realtime.sendToUser(userId, { type: 'voice-resend', channel: channelId }));
 
 // How much you want to hear from a space: every message, only mentions of you, or nothing.
 api.put('/spaces/:spaceId/notify', needUser, needMember, (req, res) => {

@@ -577,9 +577,8 @@ function syncDesktopPtt() {
 // isn't muted, so nobody sees you as muted.)
 function applyVoicePtt() {
   const v = S.voice;
-  const LK = window.LivekitClient;
-  const mic = v && v.room && LK && v.room.localParticipant.getTrackPublication(LK.Track.Source.Microphone);
-  if (mic && mic.track) mic.track.mediaStreamTrack.enabled = !S.ptt || S.pttHeld;
+  const mic = v && v.room && VK && v.room.localParticipant.getTrackPublication(VK.Track.Source.Microphone);
+  if (mic && mic.track) mic.track.mediaStreamTrack.enabled = !v.muted && (!S.ptt || S.pttHeld);
 }
 
 async function renderPttHint() {
@@ -976,11 +975,19 @@ function handleServerMessage(msg) {
     case 'voice-alone':
       return onVoiceAlone(msg);
     case 'voice-ended':
+      if (msg.tab && msg.tab !== TAB_ID) return; // (about another of your tabs)
       if (S.voice && S.voice.channelId === msg.channel) {
         if (msg.reason === 'alone') toast(`You'd been alone in ${voiceLabel(msg.channel)} for ${msg.minutes} minutes, so you left it.`, 9000);
+        else if (msg.reason === 'elsewhere') toast('You joined the voice channel from another device.');
         else toast("You can't be in that voice channel any more.");
         leaveVoice({ quiet: true });
       }
+      return;
+    case 'voice-speak':
+      if (S.voice && S.voice.channelId === msg.channel && S.voice.room && S.voice.room.setCanPublish) S.voice.room.setCanPublish(Boolean(msg.speak));
+      return;
+    case 'voice-resend': // (what you're sending got lost at Cloudflare's end)
+      if (S.voice && S.voice.channelId === msg.channel && S.voice.room && S.voice.room.resend) S.voice.room.resend();
       return;
     case 'dm-edited':
       return onDmEdited(msg);
@@ -2971,7 +2978,8 @@ function onHello(msg) {
   trace('hello', { build: String(msg.build || '').slice(0, 12) });
   setWaiting(msg.waiting);
   if (S.voice && S.voice.state === 'connected') {
-    wsSend({ type: 'voice-join', channel: S.voice.channelId, muted: S.voice.muted || !S.voice.speak, deafened: S.voice.deafened, again: true, since: S.voice.joinedAt });
+    if (S.voice.room && S.voice.room.serverBack) S.voice.room.serverBack(); // (Cloudflare)
+    wsSend(voiceJoinMsg(S.voice, { again: true, since: S.voice.joinedAt }));
   }
   if (!msg.build || !MY_BUILD || msg.build === MY_BUILD) return;
   let tried = '';
@@ -3464,6 +3472,7 @@ async function openDm(friendId) {
   S.openDm = friendId;
   el.home.hidden = true;
   el.voiceView.hidden = true;
+  syncWantVideo();
   el.dm.hidden = false;
   el.app.classList.add('in-dm');
   if (el.chatLog !== dm.log) {
@@ -7955,6 +7964,37 @@ function startNewChannel(kind = 'text') {
 // server in the middle can't listen in. LiveKit's library only loads when you first join one.
 
 let livekitLoading = null;
+let cfVoiceLoading = null;
+// The voice library in use: LiveKit's (window.LivekitClient), or Rainlit's own, for Cloudflare
+// (voice-cf.js, which has the same shape). Set when you join a voice channel.
+let VK = null;
+// This page, among your other tabs and devices (joining voice from one takes the others out).
+const TAB_ID = randomId();
+
+function loadCfVoice() {
+  if (window.RainlitCfVoice) return Promise.resolve(window.RainlitCfVoice);
+  cfVoiceLoading ||= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/voice-cf.js';
+    s.onload = () => resolve(window.RainlitCfVoice);
+    s.onerror = () => {
+      cfVoiceLoading = null;
+      reject(new Error("Voice couldn't load. Check your connection and try again."));
+    };
+    document.head.append(s);
+  });
+  return cfVoiceLoading;
+}
+
+// What the server's told when you're in a voice channel. (With Cloudflare: your session there,
+// and what you're sending, so that after the server restarts it can check and carry on.)
+function voiceJoinMsg(v, more = {}) {
+  const r = v.room;
+  return {
+    type: 'voice-join', channel: v.channelId, muted: v.muted || !v.speak, deafened: v.deafened, tab: TAB_ID,
+    ...(r && r.session ? { session: r.session, sub: r.subSession, pub: { ...r.names } } : {}), ...more,
+  };
+}
 function loadLivekit() {
   if (window.LivekitClient) return Promise.resolve(window.LivekitClient);
   livekitLoading ||= new Promise((resolve, reject) => {
@@ -8006,6 +8046,7 @@ function hideVoiceAlone() {
 
 function onVoiceState({ channel, members }) {
   if (S.voice && S.voice.channelId === channel && members.length > 1) hideVoiceAlone();
+  if (S.voice && S.voice.channelId === channel && S.voice.room && S.voice.room.sync) S.voice.room.sync(members); // (Cloudflare)
   S.voiceStates.set(channel, members);
   const c = S.channels.get(channel);
   if (c && S.view === c.spaceId) renderSide();
@@ -8036,24 +8077,33 @@ async function joinVoice(channelId) {
   showVoiceView();
   renderVoice();
   try {
-    const LK = await loadLivekit();
-    if (!LK.isE2EESupported()) throw new Error("This browser can't join encrypted voice channels. Try the Rainlit app, or Chrome, Edge or a recent Firefox.");
     const pass = await api('POST', `/channels/${channelId}/voice`, {});
     if (S.voice !== v) return;
-    const keys = new LK.ExternalE2EEKeyProvider();
-    const room = new LK.Room({
-      adaptiveStream: true,
-      dynacast: true,
+    const cloudflare = pass.backend === 'cloudflare';
+    VK = cloudflare ? await loadCfVoice() : await loadLivekit();
+    if (!VK.isE2EESupported()) throw new Error("This browser can't join encrypted voice channels. Try the Rainlit app, or Chrome, Edge or a recent Firefox.");
+    if (S.voice !== v) return;
+    const audio = {
       audioCaptureDefaults: { ...S.micFx, ...(S.devices.mic ? { deviceId: S.devices.mic } : {}) },
       ...(S.devices.speaker ? { audioOutput: { deviceId: S.devices.speaker } } : {}),
-      e2ee: { keyProvider: keys, worker: new Worker('/vendor/livekit/livekit-client.e2ee.worker.js') },
-    });
-    v.room = room;
-    v.speak = pass.speak;
-    wireVoiceRoom(room, v);
-    await keys.setKey(pass.key);
-    await room.setE2EEEnabled(true);
-    await room.connect(pass.url, pass.token);
+    };
+    let room;
+    if (cloudflare) {
+      room = new VK.Room(audio);
+      v.room = room;
+      v.speak = pass.speak;
+      wireVoiceRoom(room, v);
+      await room.connect({ channelId, pass, api, me: S.clientId, tab: TAB_ID });
+    } else {
+      const keys = new VK.ExternalE2EEKeyProvider();
+      room = new VK.Room({ adaptiveStream: true, dynacast: true, ...audio, e2ee: { keyProvider: keys, worker: new Worker('/vendor/livekit/livekit-client.e2ee.worker.js') } });
+      v.room = room;
+      v.speak = pass.speak;
+      wireVoiceRoom(room, v);
+      await keys.setKey(pass.key);
+      await room.setE2EEEnabled(true);
+      await room.connect(pass.url, pass.token);
+    }
     if (S.voice !== v) return room.disconnect();
     v.state = 'connected';
     v.joinedAt = Date.now(); // (if the server restarts, the call carries on from here)
@@ -8067,7 +8117,11 @@ async function joinVoice(channelId) {
       }
     }
     room.startAudio().catch(() => {});
-    wsSend({ type: 'voice-join', channel: channelId, muted: v.muted || !v.speak, deafened: v.deafened });
+    wsSend(voiceJoinMsg(v));
+    if (room.sync) {
+      room.setWantVideo(!el.voiceView.hidden);
+      room.sync(S.voiceStates.get(channelId) || []);
+    }
     v.meterTimer = setInterval(() => tickVoice(v), 50);
     syncDesktopPtt();
     playCallSound(true);
@@ -8092,7 +8146,7 @@ async function leaveVoice({ quiet = false } = {}) {
   try {
     if (v.room) await v.room.disconnect();
   } catch {}
-  wsSend({ type: 'voice-leave' });
+  wsSend({ type: 'voice-leave', ...(v.room && v.room.session ? { session: v.room.session } : {}) });
   el.voiceAudio.replaceChildren();
   el.voiceGrid.replaceChildren(); // (or coming back finds the old tiles, you among them, still there)
   if (ANDROID) ANDROID.callEnded().catch(() => {});
@@ -8104,7 +8158,7 @@ async function leaveVoice({ quiet = false } = {}) {
 }
 
 function wireVoiceRoom(room, v) {
-  const LK = window.LivekitClient;
+  const LK = VK;
   const E = LK.RoomEvent;
   const again = () => { if (S.voice === v) renderVoice(); };
   room.on(E.TrackSubscribed, (track, pub, participant) => {
@@ -8138,7 +8192,7 @@ function wireVoiceRoom(room, v) {
   room.on(E.Reconnecting, () => { v.state = 'reconnecting'; again(); });
   room.on(E.Reconnected, () => {
     v.state = 'connected';
-    wsSend({ type: 'voice-join', channel: v.channelId, muted: v.muted || !v.speak, deafened: v.deafened });
+    wsSend(voiceJoinMsg(v));
     again();
   });
   room.on(E.Disconnected, (reason) => {
@@ -8153,8 +8207,11 @@ function wireVoiceRoom(room, v) {
   room.on(E.AudioPlaybackStatusChanged, again);
   room.on(E.ParticipantPermissionsChanged, (_before, participant) => {
     if (participant !== room.localParticipant) return;
+    const could = v.speak;
     v.speak = Boolean(participant.permissions && participant.permissions.canPublish);
     if (!v.speak) toast("You can listen, but can't talk here right now.");
+    // (Allowed to talk again: your mic's back, unless you'd muted it.)
+    else if (!could && !v.muted) room.localParticipant.setMicrophoneEnabled(true).then(applyVoicePtt).catch(() => {});
     again();
   });
 }
@@ -8188,8 +8245,7 @@ function tickVoice(v) {
   if (S.voice !== v || !v.room) return;
   if (v.meterCtx && v.meterCtx.state === 'suspended') v.meterCtx.resume().catch(() => {});
   // Your mic: a new one after a device change, none while muted.
-  const LK = window.LivekitClient;
-  const mine = v.room.localParticipant.getTrackPublication(LK.Track.Source.Microphone);
+  const mine = v.room.localParticipant.getTrackPublication(VK.Track.Source.Microphone);
   const myTrack = mine && mine.track && !mine.isMuted ? mine.track.mediaStreamTrack : null;
   const metered = v.meters.get(S.clientId);
   if (myTrack && (!metered || metered.track !== myTrack)) meterVoice(v, S.clientId, myTrack);
@@ -8355,7 +8411,7 @@ async function onVoiceControl(act) {
       playControlSound(me.isCameraEnabled ? 'camera-on' : 'camera-off');
       if (me.isCameraEnabled) countCameras();
     } else if (act === 'flip') {
-      const pub = me.getTrackPublication(window.LivekitClient.Track.Source.Camera);
+      const pub = me.getTrackPublication(VK.Track.Source.Camera);
       if (!pub || !pub.track) return;
       const to = S.facing === 'environment' ? 'user' : 'environment';
       await pub.track.restartTrack({ facingMode: to });
@@ -8428,10 +8484,18 @@ function renderVoice() {
       }
     }
     el.voiceHear.hidden = !(v.room && !v.room.canPlaybackAudio);
+    syncWantVideo();
   }
   const space = S.view !== 'home' && S.spaces.get(S.view);
   if (space) renderSide();
   if (!el.voiceView.hidden) renderVoiceView();
+}
+
+// (Cloudflare) Others' video comes only while it's being looked at: the voice view, or popped
+// out, or kept on top. Cloudflare charges for what it sends.
+function syncWantVideo() {
+  const v = S.voice;
+  if (v && v.room && v.room.setWantVideo) v.room.setWantVideo(!el.voiceView.hidden || popouts.size > 0 || Boolean(document.pictureInPictureElement));
 }
 
 function showVoiceView() {
@@ -8452,6 +8516,7 @@ function showVoiceView() {
   el.app.classList.add('in-dm');
   renderSpaces();
   renderVoiceView();
+  syncWantVideo();
 }
 
 function hideVoiceView() {
@@ -8463,6 +8528,7 @@ function hideVoiceView() {
     el.home.hidden = false;
     el.app.classList.remove('in-dm');
   }
+  syncWantVideo();
 }
 
 // The room: a tile for each person (their camera, or their picture), and one for each screen
@@ -8480,7 +8546,7 @@ function renderVoiceView() {
   const wanted = new Map();
   for (const p of people) {
     wanted.set(`${p.identity}:cam`, { p, source: 'camera' });
-    const screen = p.getTrackPublication(window.LivekitClient.Track.Source.ScreenShare);
+    const screen = p.getTrackPublication(VK.Track.Source.ScreenShare);
     if (screen && screen.track && !screen.isMuted) wanted.set(`${p.identity}:screen`, { p, source: 'screen' });
   }
   for (const [key, tile] of v.tiles) {
@@ -8500,7 +8566,7 @@ function renderVoiceView() {
       v.tiles.set(key, tile);
     }
     const person = profileOf(p.identity) || { id: p.identity, displayName: p.name || 'Someone', username: '' };
-    const pub = p.getTrackPublication(source === 'screen' ? window.LivekitClient.Track.Source.ScreenShare : window.LivekitClient.Track.Source.Camera);
+    const pub = p.getTrackPublication(source === 'screen' ? VK.Track.Source.ScreenShare : VK.Track.Source.Camera);
     const track = pub && !pub.isMuted ? pub.track : null;
     let video = tile.querySelector('video');
     if (track) {
@@ -8530,7 +8596,7 @@ function renderVoiceView() {
       label.className = 'voice-tile-name';
       tile.append(label);
     }
-    const mic = p.getTrackPublication(window.LivekitClient.Track.Source.Microphone);
+    const mic = p.getTrackPublication(VK.Track.Source.Microphone);
     const muted = !mic || mic.isMuted;
     label.replaceChildren(`${source === 'screen' ? `${person.displayName}'s screen` : person.id === S.clientId ? `${person.displayName} (you)` : person.displayName}`);
     tile.dataset.key = key;

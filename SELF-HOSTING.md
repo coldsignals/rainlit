@@ -152,12 +152,19 @@ in the `backups` folder inside the data folder. The newest three copies are kept
 ## 11. Turn on voice channels and group calls (optional)
 
 Voice channels (drop-in rooms in a space, for any number of people, with video and screen
-sharing) and group calls (a group of friends calling together) go through
-[LiveKit](https://livekit.io): a media server in the middle that everyone in a call
-connects to. Without it, everything else works: spaces just don't offer voice channels, and
-groups have their chat but no call button. (Calls between two friends don't need it.)
+sharing) and group calls (a group of friends calling together) go through a media server in
+the middle that everyone in a call connects to: Cloudflare's, or LiveKit. Without one,
+everything else works: spaces just don't offer voice channels, and groups have their chat but
+no call button. (Calls between two friends don't need it.)
 
-- **LiveKit Cloud** (easiest; it has a free tier): make an account at
+- **Cloudflare Realtime** (the easiest, and what rainlit.app uses): nothing to run, and it's
+  charged only for what it sends out, with the first 1,000 GB a month free (shared with the
+  TURN relay from step 5). In the Cloudflare dashboard, go to **Realtime**, then **Serverless
+  SFU**, and create an app. Add its App ID and App Secret as `CF_REALTIME_APP_ID` and
+  `CF_REALTIME_APP_SECRET`. Rainlit decides who sends and gets what; screen shares are capped
+  (`SCREEN_SHARE_KBPS`, 1,500 to start with, about 0.7 GB an hour for each person watching),
+  and video is only sent to people looking at it. (With both this and LiveKit set, it's this.)
+- **LiveKit Cloud** (it has a free tier, of minutes): make an account at
   https://cloud.livekit.io and create a project. In the project's settings, make an API
   key. You'll have three things: the project's URL (it starts with `wss://`), the API key,
   and its secret. Add them as `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET`: on
@@ -180,9 +187,9 @@ groups have their chat but no call button. (Calls between two friends don't need
   (https://docs.livekit.io/home/self-hosting/deployment/). It needs its own network ports,
   so it runs on a server of your own, not on Render. Point the same three settings at it.
 
-Keep the secret private. The sound and video in voice channels and group calls are
-end-to-end encrypted with a key only your Rainlit hands out, so LiveKit (or whoever runs
-it) can't listen in.
+Keep the secrets private. The sound and video in voice channels and group calls are
+end-to-end encrypted with a key only your Rainlit hands out, so Cloudflare, LiveKit, or
+whoever runs it, can't listen in.
 
 ## 12. Send email (optional)
 
@@ -211,7 +218,9 @@ for 3,000 emails a month):
 | `TURN_URLS`, `TURN_USERNAME`, `TURN_CREDENTIAL` | Another call relay instead. |
 | `KLIPY_API_KEY` | GIFs (step 6). |
 | `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO` | Email: password resets and confirming addresses (step 12). |
-| `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels and group calls (step 11). |
+| `CF_REALTIME_APP_ID`, `CF_REALTIME_APP_SECRET` | Voice channels and group calls through Cloudflare (step 11). |
+| `SCREEN_SHARE_KBPS`, `CAMERA_KBPS` | With Cloudflare: the most a shared screen (1500) and a camera (800) may send, in kbps. |
+| `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels and group calls through LiveKit (step 11). |
 | `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |
 | `COMPOSE_PROFILES` | Docker only: `voice` runs LiveKit alongside Rainlit (step 11). |
 | `MAX_FILE_MB` | The biggest file people can send, in MB, to start with (25). After that, it's changed in the admin panel (Storage). |
@@ -219,7 +228,7 @@ for 3,000 emails a month):
 | `NOTES_MAX` | How many notes each person's Notes holds (100). Their files count toward their room for files. |
 | `PRIVACY_URL`, `TERMS_URL` | Links to your own privacy policy and terms. Without them, /privacy and /terms show rainlit.app's, which say they're for rainlit.app. |
 | `LINK_PREVIEWS` | `off` turns off link previews (an X post, a video, or a page's title and picture under links in messages). They're on to start with: your server fetches the links people send, and passes their pictures along. |
-| `VOICE_ALONE_MINUTES` | How long someone can be alone in a voice channel before they're asked if they're still there (15). If they don't say so within two minutes, they're taken out, so nobody uses up LiveKit Cloud's minutes by leaving a channel open overnight. `0` turns it off (with your own LiveKit server, minutes cost nothing). |
+| `VOICE_ALONE_MINUTES` | How long someone can be alone in a voice channel before they're asked if they're still there (15). If they don't say so within two minutes, they're taken out, so a channel isn't left open overnight by accident (on LiveKit Cloud, that uses up its free minutes). `0` turns it off. |
 | `RECONNECT_MINUTES` | How long someone who dropped out of a call can take to come back (30). Someone whose phone froze the app mid-call, while the call's sound still gets through, isn't counted as dropped. |
 | `SOURCE_URL` | Only if you've changed Rainlit's code: where your version's code is. Rainlit's license (the AGPL) asks that the people using a changed version can get it; Settings links there. |
 
