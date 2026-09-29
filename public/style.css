@@ -1501,6 +1501,7 @@ a.embed-author:hover .embed-name { text-decoration: underline; }
 }
 .msg-tools button:hover, .msg-tools button:focus-visible, .msg-tools .open { background: var(--line); color: var(--text); }
 .msg-react { font-size: 17px; line-height: 1; }
+.msg-react .emoji-img { width: 20px; height: 20px; vertical-align: middle; }
 .msg-more .icon, .msg-react-more .icon { width: 17px; height: 17px; }
 .chat-log li.menu-open { background: rgba(255, 255, 255, 0.03); border-radius: 8px; }
 /* Phones: long-press a message instead (and don't start selecting text). */

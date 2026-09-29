@@ -2617,11 +2617,18 @@ function quickReactButton(li, emoji) {
   const b = document.createElement('button');
   b.type = 'button';
   b.className = 'msg-react';
-  b.textContent = emoji;
-  b.title = `React with ${emoji}`;
-  b.setAttribute('aria-label', `React with ${emoji}`);
-  b.addEventListener('click', () => toggleReaction(li, b.textContent));
+  showQuickReact(b, emoji);
+  b.addEventListener('click', () => toggleReaction(li, b.dataset.emoji));
   return b;
+}
+
+// What a quick reaction's button shows: the emoji (a space's own as its picture, not its code).
+function showQuickReact(b, emoji) {
+  b.dataset.emoji = emoji;
+  b.replaceChildren();
+  appendEmoji(b, emoji);
+  b.title = `React with ${plainEmoji(emoji)}`;
+  b.setAttribute('aria-label', b.title);
 }
 
 // ----- Reactions -----
@@ -2638,10 +2645,7 @@ function setQuickReactions(list) {
   // Update the hover toolbars already on screen.
   for (const tools of document.querySelectorAll('.msg-tools')) {
     tools.querySelectorAll('.msg-react').forEach((b, i) => {
-      if (!S.quickReactions[i]) return;
-      b.textContent = S.quickReactions[i];
-      b.title = `React with ${S.quickReactions[i]}`;
-      b.setAttribute('aria-label', b.title);
+      if (S.quickReactions[i]) showQuickReact(b, S.quickReactions[i]);
     });
   }
 }
