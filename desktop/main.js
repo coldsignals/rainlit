@@ -244,8 +244,19 @@ app.on('web-contents-created', (_e, contents) => {
   });
   contents.setWindowOpenHandler(({ url }) => {
     // A file from a chat opens in its own window, still signed in; anything else in your browser.
+    // (With the app's own bridge, as the main window has: a popped-out video's window can then
+    // stay on top of other windows.)
     if (fromApp(url)) {
-      return { action: 'allow', overrideBrowserWindowOptions: { icon: ICON, backgroundColor: '#151b28', autoHideMenuBar: true } };
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          icon: ICON, backgroundColor: '#151b28', autoHideMenuBar: true,
+          webPreferences: {
+            preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, backgroundThrottling: false,
+            additionalArguments: [`--rainlit-desktop=${app.getVersion()}`],
+          },
+        },
+      };
     }
     openOutside(url);
     return { action: 'deny' };
@@ -391,6 +402,16 @@ async function capturerCan() {
 }
 
 const whole = (n, fallback, max) => Math.min(max, Math.max(2, Math.round(Number(n) || fallback)));
+
+// A popped-out video's window, kept on top of other windows (above a game, say), or not. Only
+// a window the page opened: never the app's own.
+ipcMain.handle('desktop:on-top', (e, on) => {
+  if (!fromPage(e)) return false;
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (!w || w === win || w.isDestroyed()) return false;
+  w.setAlwaysOnTop(Boolean(on), 'floating');
+  return w.isAlwaysOnTop();
+});
 
 ipcMain.handle('desktop:share-pick', async (e, opts = {}) => {
   if (!fromPage(e)) return null;

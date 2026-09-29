@@ -8535,8 +8535,10 @@ function tickVoice(v) {
 // ----- Popping a video out, and keeping one on top -----
 // A camera or a screen being shared (in a call, a group call or a voice channel) can open in a
 // window of its own, to put on another screen or make big, and be kept on top of other
-// windows: the browser's Picture-in-Picture, a small window that floats above everything. (The
-// Android app's page can't open windows or float one, so it doesn't offer them.)
+// windows: the browser's Picture-in-Picture, a small window that floats above everything. In
+// the desktop app, a popped-out window can stay on top itself instead, as big as you like and
+// with its buttons. (The Android app's page can't open windows or float one, so it doesn't
+// offer them.)
 
 const canPopOut = () => !ANDROID && !isPhone();
 const canPin = () => !ANDROID && Boolean(document.pictureInPictureEnabled);
@@ -8561,8 +8563,20 @@ function popOut(key, title, tracks) {
     const video = doc.getElementById('pop-video');
     const ended = doc.getElementById('pop-ended');
     const pin = doc.getElementById('pop-pin');
-    pin.hidden = !canPin();
-    pin.addEventListener('click', () => pinVideo(video));
+    const app = win.rainlitDesktop && win.rainlitDesktop.setOnTop ? win.rainlitDesktop : null;
+    if (app) {
+      // (The desktop app: this window itself stays on top.)
+      let onTop = false;
+      pin.hidden = false;
+      pin.addEventListener('click', async () => {
+        onTop = await app.setOnTop(!onTop).catch(() => onTop);
+        pin.textContent = onTop ? 'Stop keeping on top' : 'Keep on top';
+        pin.setAttribute('aria-pressed', String(onTop));
+      });
+    } else {
+      pin.hidden = !canPin();
+      pin.addEventListener('click', () => pinVideo(video));
+    }
     const full = () => (doc.fullscreenElement ? doc.exitFullscreen() : doc.documentElement.requestFullscreen()).catch(() => {});
     doc.getElementById('pop-full').addEventListener('click', full);
     video.addEventListener('dblclick', full);

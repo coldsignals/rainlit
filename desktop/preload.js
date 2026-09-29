@@ -39,6 +39,9 @@ contextBridge.exposeInMainWorld('rainlitDesktop', {
   pickShare: (opts = {}) => ipcRenderer.invoke('desktop:share-pick', {
     audio: Boolean(opts.audio), maxWidth: Number(opts.maxWidth) || 0, maxHeight: Number(opts.maxHeight) || 0, fps: Number(opts.fps) || 0,
   }),
+  // A popped-out video's window (not the app's own): kept on top of other windows, or not.
+  // Resolves whether it is.
+  setOnTop: (on) => ipcRenderer.invoke('desktop:on-top', Boolean(on)),
   // Save a file or GIF (asks where), or open a web address in your browser.
   download: (url) => ipcRenderer.send('desktop:download', String(url || '')),
   openExternal: (url) => ipcRenderer.send('desktop:open', String(url || '')),
