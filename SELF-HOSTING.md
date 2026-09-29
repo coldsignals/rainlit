@@ -219,6 +219,7 @@ for 3,000 emails a month):
 | `NOTES_MAX` | How many notes each person's Notes holds (100). Their files count toward their room for files. |
 | `PRIVACY_URL`, `TERMS_URL` | Links to your own privacy policy and terms. Without them, /privacy and /terms show rainlit.app's, which say they're for rainlit.app. |
 | `LINK_PREVIEWS` | `off` turns off link previews (an X post, a video, or a page's title and picture under links in messages). They're on to start with: your server fetches the links people send, and passes their pictures along. |
+| `VOICE_ALONE_MINUTES` | How long someone can be alone in a voice channel before they're asked if they're still there (15). If they don't say so within two minutes, they're taken out, so nobody uses up LiveKit Cloud's minutes by leaving a channel open overnight. `0` turns it off (with your own LiveKit server, minutes cost nothing). |
 | `RECONNECT_MINUTES` | How long someone who dropped out of a call can take to come back (30). Someone whose phone froze the app mid-call, while the call's sound still gets through, isn't counted as dropped. |
 | `SOURCE_URL` | Only if you've changed Rainlit's code: where your version's code is. Rainlit's license (the AGPL) asks that the people using a changed version can get it; Settings links there. |
 

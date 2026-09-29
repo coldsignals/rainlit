@@ -103,7 +103,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -973,9 +973,12 @@ function handleServerMessage(msg) {
       return onGroupRing(msg);
     case 'group-ring-stop':
       return stopGroupRinging(msg.channel);
+    case 'voice-alone':
+      return onVoiceAlone(msg);
     case 'voice-ended':
       if (S.voice && S.voice.channelId === msg.channel) {
-        toast("You can't be in that voice channel any more.");
+        if (msg.reason === 'alone') toast(`You'd been alone in ${voiceLabel(msg.channel)} for ${msg.minutes} minutes, so you left it.`, 9000);
+        else toast("You can't be in that voice channel any more.");
         leaveVoice({ quiet: true });
       }
       return;
@@ -7970,7 +7973,39 @@ function loadLivekit() {
 // Who's in each voice channel (from the server): channel id -> [{ id, muted, deafened, video, screen }].
 S.voiceStates = new Map();
 
+// ----- Alone in a voice channel (lib/realtime.js) -----
+// After a while alone, the server asks if you're still there. "I'm here" keeps you in; otherwise
+// you're taken out when the count runs down (someone joining you ends it too).
+
+let aloneTimer = null;
+
+function voiceLabel(channelId) {
+  const c = S.channels.get(channelId);
+  const space = c && S.spaces.get(c.spaceId);
+  return space && isGroupSpace(space) ? 'the call' : c ? `#${c.name}` : 'the voice channel';
+}
+
+function onVoiceAlone(msg) {
+  if (!S.voice || S.voice.channelId !== msg.channel) return;
+  const tick = () => {
+    const left = msg.leaveAt - serverNow();
+    el.voiceAloneText.textContent = `You've been alone in ${voiceLabel(msg.channel)} for ${msg.minutes} minutes. Still there? `
+      + (left > 0 ? `Leaving in ${fmtClock(left)}.` : 'Leaving now.');
+  };
+  clearInterval(aloneTimer);
+  aloneTimer = setInterval(tick, 1000);
+  tick();
+  el.voiceAlone.hidden = false;
+  playCallSound(true);
+}
+
+function hideVoiceAlone() {
+  clearInterval(aloneTimer);
+  el.voiceAlone.hidden = true;
+}
+
 function onVoiceState({ channel, members }) {
+  if (S.voice && S.voice.channelId === channel && members.length > 1) hideVoiceAlone();
   S.voiceStates.set(channel, members);
   const c = S.channels.get(channel);
   if (c && S.view === c.spaceId) renderSide();
@@ -8049,6 +8084,7 @@ async function leaveVoice({ quiet = false } = {}) {
   const v = S.voice;
   if (!v) return;
   S.voice = null;
+  hideVoiceAlone();
   clearInterval(v.meterTimer);
   for (const m of v.meters.values()) m.disconnect();
   if (v.meterCtx) v.meterCtx.close().catch(() => {});
@@ -10524,6 +10560,10 @@ async function init() {
   el.adminBtn.addEventListener('click', openAdmin);
   el.inviteBtn.addEventListener('click', onMakeInvite);
   el.signupsOpen.addEventListener('change', () => saveSignups({ open: el.signupsOpen.checked }));
+  el.voiceStay.addEventListener('click', () => {
+    wsSend({ type: 'voice-stay' });
+    hideVoiceAlone();
+  });
   el.storageFile.addEventListener('change', () => saveStorage({ fileMb: Number(el.storageFile.value) }));
   el.storagePerson.addEventListener('change', () => saveStorage({ personMb: Math.round(Number(el.storagePerson.value) * 1024) }));
   el.filesDetails.addEventListener('toggle', () => {

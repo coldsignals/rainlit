@@ -1772,6 +1772,22 @@ button.person.open { background: var(--dusk-hi); }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
 .menu .danger { color: #ffb4ae; }
 
+/* "Still here?", after a while alone in a voice channel (lib/realtime.js). */
+.voice-alone {
+  position: fixed;
+  left: 50%; top: calc(14px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex; align-items: center; gap: 14px;
+  width: max-content; max-width: min(520px, calc(100vw / var(--zoom) - 32px));
+  padding: 10px 10px 10px 16px;
+  background: var(--dusk-hi);
+  border: 1px solid var(--lamp);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  font-size: 14px; font-weight: 600; line-height: 1.35;
+}
+.voice-alone .primary-btn { flex: none; }
 .toast {
   position: fixed;
   left: 50%; bottom: calc(110px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));

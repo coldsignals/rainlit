@@ -8,7 +8,9 @@ of their own. Spaces are communities with text and voice channels that anyone ca
 invite people to (or bring over from Discord, with a server template link). Calls between two friends (video and screen sharing too) go directly
 between your devices; the server only helps them find each other. Group calls and voice
 channels go through a LiveKit server, end-to-end encrypted (see
-[SELF-HOSTING.md](SELF-HOSTING.md)).
+[SELF-HOSTING.md](SELF-HOSTING.md)). Someone left alone in a voice channel for 15 minutes is
+asked if they're still there, and taken out if they don't answer, so a channel left open
+overnight doesn't run up LiveKit's minutes.
 
 **Run your own:** anyone can host a Rainlit for their friends or community, on Render in
 a few clicks or on any machine with Docker. See [SELF-HOSTING.md](SELF-HOSTING.md). Where
