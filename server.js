@@ -322,8 +322,13 @@ api.post('/login', async (req, res) => {
     return fail(res, 401, "That username or password isn't right.");
   }
   loginTries.clear(key);
+  if (user.suspended_at) return fail(res, 403, suspendedText(user));
   signIn(req, res, user.id);
 });
+
+function suspendedText(user) {
+  return `This account has been suspended by whoever runs this Rainlit.${user.suspended_reason ? ` The reason given: ${user.suspended_reason}` : ''}`;
+}
 
 api.post('/logout', (req, res) => {
   auth.endSession(auth.tokenFrom(req));
@@ -360,6 +365,8 @@ api.post('/reset', async (req, res) => {
   }
   const pwProblem = checkNewPassword(b.password);
   if (pwProblem) return fail(res, 400, pwProblem);
+  const who = people.userById(row.user_id);
+  if (who && who.suspended_at) return fail(res, 403, suspendedText(who));
   const hash = await auth.hashPassword(b.password);
   transaction(() => {
     db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, row.user_id);
@@ -1751,8 +1758,43 @@ api.delete('/admin/invites/:code', needAdmin, (req, res) => {
 
 api.get('/admin/users', needAdmin, (_req, res) => {
   const users = db.prepare('SELECT * FROM users ORDER BY created_at').all()
-    .map((u) => ({ ...people.publicUser(u), email: u.email, isAdmin: Boolean(u.is_admin), createdAt: u.created_at }));
+    .map((u) => ({
+      ...people.publicUser(u), email: u.email, isAdmin: Boolean(u.is_admin), createdAt: u.created_at,
+      suspended: Boolean(u.suspended_at), suspendedReason: u.suspended_reason || '',
+    }));
   res.json({ users });
+});
+
+// Suspending an account: signed out everywhere at once, out of any call, and it can't sign in
+// again (or make a new account with its email) until the admin lets it back. Its homepage is
+// hidden meanwhile. What it sent stays, for its spaces' moderators to deal with.
+api.post('/admin/users/:id/suspend', needAdmin, (req, res) => {
+  const u = people.userById(req.params.id);
+  if (!u) return fail(res, 404, 'Not found.');
+  if (u.id === req.user.id) return fail(res, 400, "That's you!");
+  if (u.is_admin) return fail(res, 400, "An admin can't be suspended.");
+  db.prepare('UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ?')
+    .run(Date.now(), people.oneLine((req.body || {}).reason || '', 200), u.id);
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id);
+  realtime.forgetUser(u.id, 'suspended');
+  console.log(`[accounts] Suspended: @${u.username}`);
+  res.json({ ok: true });
+});
+
+api.post('/admin/users/:id/unsuspend', needAdmin, (req, res) => {
+  const u = people.userById(req.params.id);
+  if (!u) return fail(res, 404, 'Not found.');
+  db.prepare("UPDATE users SET suspended_at = NULL, suspended_reason = '' WHERE id = ?").run(u.id);
+  console.log(`[accounts] No longer suspended: @${u.username}`);
+  res.json({ ok: true });
+});
+
+// Taking someone's homepage down (from a report): back to the starter page, pictures deleted.
+api.post('/admin/homepages/:userId/clear', needAdmin, (req, res) => {
+  const u = people.userById(req.params.userId);
+  if (!u) return fail(res, 404, 'Not found.');
+  homepages.clear(u.id);
+  res.json({ ok: true });
 });
 
 // Makes a one-time link the admin can send to someone who forgot their password.

@@ -81,8 +81,8 @@ first; opening sign-ups is the very last step.
 - [ ] Protection against spam accounts: limits on sign-ups, and no throwaway addresses
 - [ ] A cap on new sign-ups, with a waitlist, so a sudden wave from Discord (like the one
       that knocked Fluxer and Stoat over in February 2026) can't sink the server
-- [ ] Reports that reach whoever runs the server, and tools to act on them (suspending
-      an account everywhere on the server)
+- [x] Reports that reach whoever runs the server, and tools to act on them (suspending
+      an account everywhere on the server, taking a homepage down)
 - [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
       10 MB)
 - [x] Deleting your account yourself, in the app or on the website (both app stores require

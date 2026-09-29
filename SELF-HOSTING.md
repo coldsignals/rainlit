@@ -212,7 +212,9 @@ for 3,000 emails a month):
 
 ## Being in charge
 
-Your Rainlit, your rules: you decide who gets an invite, and you can remove accounts from
-the admin panel. People's conversations and files are on your server, not end-to-end
+Your Rainlit, your rules: you decide who gets an invite. In the admin panel (the key, at the
+bottom left), reports reach you, and you can suspend an account (it's signed out everywhere
+at once and can't sign back in, or sign up again with its email, until you let it back) or
+take someone's homepage down, from the list of accounts or right from a report. People's conversations and files are on your server, not end-to-end
 encrypted, so run it for people who trust you, keep your server's keys and passwords to
 yourself, and keep it updated.

@@ -492,6 +492,10 @@ button { cursor: pointer; }
 }
 .small-btn:hover { border-color: var(--mist); }
 .small-btn.danger { color: #ffb4ae; }
+/* Admin: suspending someone (why, and to be sure), and who's suspended. */
+.suspend-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 0 10px 46px; }
+.suspend-ask input { flex: 1; min-width: 160px; padding: 7px 10px; background: var(--deep); color: var(--text); border: 1px solid var(--line); border-radius: 8px; }
+li.suspended > .grow { color: #ffb4ae; }
 .small-btn.danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 .primary-btn.danger-btn { background: var(--danger); color: #fff; }
 .delete-what { margin: 0; color: var(--mist); font-size: 14px; line-height: 1.45; }

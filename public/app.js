@@ -952,7 +952,9 @@ function handleServerMessage(msg) {
     case 'no-answer':
       return callNotAnswered(msg.id, msg.type);
     case 'signed-out':
-      return signedOut(msg.why === 'deleted' ? 'This account was deleted.' : 'You were signed out because your password was changed.');
+      return signedOut(msg.why === 'deleted' ? 'This account was deleted.'
+        : msg.why === 'suspended' ? 'This account has been suspended by whoever runs this Rainlit.'
+        : 'You were signed out because your password was changed.');
     case 'dm-message':
       setNotesUsage(msg.notes); // (one of your notes)
       return onDmMessage(msg.message);
@@ -6978,6 +6980,19 @@ function reportItem(r, { spaceId = null, onResolve }) {
     });
     acts.append(rm);
   }
+  // (The server's admin can act on the person, or their homepage, right from here.)
+  if (!spaceId && S.me && S.me.isAdmin && r.target && r.target.id !== S.clientId) {
+    if (s.kind === 'homepage') {
+      acts.append(sureButton('Take the homepage down', 'Click again: back to "under construction"', async (b) => {
+        await api('POST', `/admin/homepages/${r.target.id}/clear`, {});
+        b.textContent = 'Taken down';
+      }));
+    }
+    acts.append(sureButton(`Suspend ${r.target.displayName}`, `Click again to suspend ${r.target.displayName}`, async (b) => {
+      await api('POST', `/admin/users/${r.target.id}/suspend`, { reason: REPORT_REASONS[r.reason] || '' });
+      b.textContent = 'Suspended';
+    }));
+  }
   const done = document.createElement('button');
   done.type = 'button';
   done.className = 'small-btn';
@@ -9566,8 +9581,81 @@ async function renderAdmin() {
       }
     });
     li.append(makeFace(u, null), who, reset);
+    if (u.suspended) {
+      li.classList.add('suspended');
+      who.textContent += ` · suspended${u.suspendedReason ? ` (${u.suspendedReason})` : ''}`;
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'text-btn';
+      back.textContent = 'Let back';
+      back.addEventListener('click', () => adminSuspend(u, false));
+      li.append(back);
+    } else if (!u.isAdmin && u.id !== S.clientId) {
+      const off = document.createElement('button');
+      off.type = 'button';
+      off.className = 'text-btn danger';
+      off.textContent = 'Suspend';
+      off.addEventListener('click', () => askSuspend(li, u));
+      li.append(off);
+    }
     return li;
   }));
+}
+
+// A button for something that can't simply be undone: the first click asks, the second does it.
+function sureButton(text, sure, action) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'small-btn danger';
+  b.textContent = text;
+  b.addEventListener('click', async () => {
+    if (!b.dataset.sure) {
+      b.dataset.sure = '1';
+      b.textContent = sure;
+      return;
+    }
+    b.disabled = true;
+    try {
+      await action(b);
+    } catch (err) {
+      toast(err.message);
+      b.disabled = false;
+    }
+  });
+  return b;
+}
+
+// Suspending asks why (optional; they're told) and to be sure, in the row itself.
+function askSuspend(li, u) {
+  if (li.nextElementSibling && li.nextElementSibling.classList.contains('suspend-ask')) return;
+  const box = document.createElement('div');
+  box.className = 'suspend-ask';
+  const why = document.createElement('input');
+  why.maxLength = 200;
+  why.placeholder = 'Why (optional, they see it)';
+  const yes = document.createElement('button');
+  yes.type = 'button';
+  yes.className = 'small-btn danger';
+  yes.textContent = `Suspend @${u.username}`;
+  yes.addEventListener('click', () => adminSuspend(u, true, why.value.trim()));
+  const no = document.createElement('button');
+  no.type = 'button';
+  no.className = 'text-btn';
+  no.textContent = 'Cancel';
+  no.addEventListener('click', () => box.remove());
+  box.append(why, yes, no);
+  li.after(box);
+  why.focus();
+}
+
+async function adminSuspend(u, on, reason = '') {
+  try {
+    await api('POST', `/admin/users/${u.id}/${on ? 'suspend' : 'unsuspend'}`, on ? { reason } : {});
+    toast(on ? `@${u.username} is suspended: signed out everywhere, and can't sign back in.` : `@${u.username} can sign in again.`, 6000);
+  } catch (err) {
+    toast(err.message);
+  }
+  renderAdmin();
 }
 
 function copyInvite(code) {
