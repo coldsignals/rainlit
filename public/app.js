@@ -11775,10 +11775,13 @@ async function init() {
     S.mailEnabled = Boolean(config.mail);
     setSpots(config);
   } catch {}
-  const invite = new URLSearchParams(location.search).get('invite');
-  if (invite) {
+  // (?invite=<code>: an invite, filled in. ?signup: straight to making an account, from the
+  // "Switching from Discord" page.)
+  const query = new URLSearchParams(location.search);
+  const invite = query.get('invite');
+  if (invite || query.has('signup')) {
     history.replaceState(null, '', '/');
-    el.signupCode.value = invite;
+    if (invite) el.signupCode.value = invite;
     return showAuth('signup');
   }
   showAuth(S.setupNeeded ? 'signup' : 'signin');

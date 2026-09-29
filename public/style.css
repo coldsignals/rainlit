@@ -141,6 +141,8 @@ button { cursor: pointer; }
 .server-switch { margin: 14px 0 0; font-size: 14px; }
 .server-dialog .form-error.checking { color: var(--mist); }
 .get-apps a { color: var(--lamp); font-weight: 600; }
+.get-apps:not([hidden]) + .from-discord { margin-top: 10px; }
+.from-discord a { color: var(--mist); font-weight: 500; }
 
 .tagline { margin: 14px 0 36px; color: var(--mist); font-size: 17px; max-width: 32ch; }
 

@@ -192,6 +192,12 @@ app.get('/downloads', (_req, res) => {
   res.sendFile('downloads.html', { root: path.join(__dirname, 'public') });
 });
 
+// "Switching from Discord": what's the same, what's different, and bringing a community over.
+app.get('/switching', (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile('switching.html', { root: path.join(__dirname, 'public') });
+});
+
 // ---------- API ----------
 
 const api = express.Router();

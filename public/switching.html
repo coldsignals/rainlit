@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#151b28" />
+  <meta name="darkreader-lock" />
+  <meta name="description" content="Rainlit works a lot like Discord. What's the same, what's different, and how to bring your community over." />
+  <meta property="og:title" content="Switching from Discord to Rainlit" />
+  <meta property="og:description" content="What's the same, what's different, and how to bring your community over." />
+  <meta property="og:site_name" content="Rainlit" />
+  <title>Switching from Discord · Rainlit</title>
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/icons/favicon.ico" sizes="32x32" />
+  <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="stylesheet" href="/legal.css" />
+  <style>
+    .steps { counter-reset: step; list-style: none; padding-left: 0; }
+    .steps > li { counter-increment: step; position: relative; padding-left: 40px; margin: 14px 0; }
+    .steps > li::before {
+      content: counter(step);
+      position: absolute; left: 0; top: 0;
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: var(--lamp); color: #22190a; font-weight: 800; font-size: 14px;
+    }
+    .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; margin: 12px 0; }
+    .card { padding: 12px 16px; background: var(--dusk); border: 1px solid var(--line); border-radius: 12px; }
+    .card h3 { margin: 4px 0 6px; }
+    .card ul { padding-left: 20px; }
+    .status { margin: 18px 0 8px; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(245, 185, 74, 0.45); background: rgba(245, 185, 74, 0.08); }
+    .status[hidden] { display: none; }
+    .go { display: inline-block; margin-top: 6px; padding: 9px 16px; border-radius: 999px; background: var(--lamp); color: #22190a; font-weight: 700; text-decoration: none; }
+    .kbd { padding: 1px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--deep); font-size: 14px; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="brand" href="/" aria-label="Rainlit"><img src="/icons/mark.svg" alt="" width="36" height="36" /><span><span class="wm-rain">rain</span><span class="wm-lit">lit</span></span></a>
+    <h1>Switching from Discord</h1>
+    <p class="lede">Rainlit works a lot like Discord: friends and DMs, group chats, and spaces (Rainlit's
+      servers) with text and voice channels. Here's what's the same, what's different, what isn't here
+      yet, and how to bring your community over.</p>
+    <!-- (Filled in by switching.js: whether you can make an account right now.) -->
+    <p id="signup-status" class="status" hidden></p>
+
+    <h2>What works the same</h2>
+    <ul>
+      <li><strong>Friends and DMs,</strong> by username, and <strong>group chats</strong> of up to 10 friends
+        with a call of their own.</li>
+      <li><strong>Spaces, like servers:</strong> text and voice channels, roles and permissions, private and
+        read-only channels, and invite links.</li>
+      <li><strong>Messages:</strong> replies, reactions, @mentions (and @everyone), editing and deleting, GIFs,
+        files, and link previews (X posts, YouTube, TikTok and more).</li>
+      <li><strong>Custom emoji:</strong> each space adds its own, and its members use them anywhere they
+        chat.</li>
+      <li><strong>Voice channels</strong> with screen sharing (and its sound), cameras, push to talk, noise
+        suppression and echo cancelling.</li>
+      <li><strong>Moderation:</strong> timeouts, kicks and bans, clearing someone's messages, reports that reach
+        whoever runs the server, and a log of what the space's moderators have done.</li>
+      <li><strong>Apps:</strong> the website, a Windows app, and an Android app.</li>
+    </ul>
+
+    <h2>What's different</h2>
+    <div class="pair">
+      <div class="card">
+        <h3>Calls and voice</h3>
+        <ul>
+          <li>Calls between two friends go <strong>straight between your devices</strong> when they can, with screen
+            sharing at up to 1080p and 60 frames a second, free. (On Discord, that takes Nitro.)</li>
+          <li><strong>Voice channels are end-to-end encrypted:</strong> the service that passes the sound
+            and video along can't listen.</li>
+          <li>A call keeps going while Rainlit's being updated, and while your phone's asleep.</li>
+          <li>The Windows app shares a game's window smoothly, with just that game's sound, and its push to
+            talk works while you're in the game.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Your stuff</h3>
+        <ul>
+          <li><strong>No ads, no trackers,</strong> and what you share is never sold or used to train AI.</li>
+          <li>Hidden details, like where a photo was taken, are taken out of the photos, videos and songs
+            you upload.</li>
+          <li><strong>Files up to 25 MB,</strong> free (Discord's free limit is 10 MB), and profile pictures
+            that aren't squashed.</li>
+          <li>A conversation can have <strong>saving off:</strong> its messages aren't kept, and only reach
+            your friend while they have Rainlit open.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>More of you</h3>
+        <ul>
+          <li><strong>A homepage of your own,</strong> like the old web: a page to decorate with pictures,
+            stickers, music, a guestbook, an "ask me anything" box, 88x31 buttons and shelves of your
+            favourites, instead of a small profile card.</li>
+          <li><strong>Notes:</strong> a conversation with yourself, on all your devices (Discord doesn't let
+            you message yourself).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Yours to run</h3>
+        <ul>
+          <li>Rainlit is <strong>free software.</strong> Anyone can run their own Rainlit server for their
+            community, as one small program, and invite people to it. See
+            <a href="https://github.com/coldsignals/rainlit">its code</a>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>What isn't here yet</h2>
+    <p>Rainlit is young, and some of Discord's features haven't been made yet:</p>
+    <ul>
+      <li>Searching messages, pinned messages, threads and forum channels</li>
+      <li>Polls, events, stickers in chat, and a soundboard</li>
+      <li>Text formatting (bold, code blocks, spoilers), slow mode, and channel categories</li>
+      <li>Bots, and a way to find public servers</li>
+      <li>An iPhone app. On an iPhone, use the website: it can go on your home screen, like an app.</li>
+    </ul>
+
+    <h2>Bringing your community over</h2>
+    <ol class="steps">
+      <li><strong>Make a template in Discord.</strong> In your server's settings, open <span class="kbd">Server Template</span>,
+        make one (or sync it, if you already have one), and copy its link. It looks like
+        <span class="kbd">discord.new/…</span>. (You need to be allowed to manage the server.)</li>
+      <li><strong>Bring it over.</strong> In Rainlit, press <span class="kbd">+</span> on the left (Create or join a space),
+        and paste the link under <span class="kbd">Bring one over from Discord</span>. Rainlit shows you what it'll make,
+        then makes it.</li>
+      <li><strong>Check what came along.</strong> Text and voice channels (announcement, forum and media channels become
+        text channels, and stage channels voice channels), roles with their colours and permissions, and which
+        channels are private or read-only. Messages, members, categories, emoji and bots don't come along:
+        Discord's templates don't include them.</li>
+      <li><strong>Add your emoji again,</strong> in <span class="kbd">Space settings</span>&nbsp;›&nbsp;<span class="kbd">Emoji</span>.</li>
+      <li><strong>Invite everyone.</strong> Open your space's menu (its name, at the top), choose
+        <span class="kbd">Invite people</span>, and post the link in your Discord server.</li>
+    </ol>
+    <p>You don't have to leave all at once: plenty of people keep both for a while.</p>
+
+    <h2>Questions</h2>
+    <h3>Is it free?</h3>
+    <p>Yes. rainlit.app is run by one person, and paid for by them for now, so it has limits that keep
+      it affordable: 25 MB a file, and 1.5 GB for everything each person's sent. (A Rainlit server
+      someone else runs sets its own.)</p>
+    <h3>Can I use it on my phone?</h3>
+    <p>Yes: there's an Android app, and on an iPhone, the website. See the <a href="/downloads">downloads</a>.</p>
+    <h3>Is my stuff private?</h3>
+    <p>The <a href="/privacy">privacy policy</a> says what Rainlit keeps, why, and for how long, in plain
+      words.</p>
+    <h3>Do my friends need to be on Rainlit too?</h3>
+    <p>Yes, to talk with you there: Rainlit and Discord don't connect to each other.</p>
+
+    <p class="also"><a href="/">Open Rainlit</a> · <a href="/downloads">Downloads</a> ·
+      <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
+  </main>
+  <script src="/switching.js"></script>
+</body>
+</html>

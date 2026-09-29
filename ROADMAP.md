@@ -74,7 +74,7 @@ first; opening sign-ups is the very last step.
 - [x] Notes: a conversation with yourself (Discord doesn't let you message yourself), for
       notes and files to have on all your devices, up to 100 of them
 - [x] Custom emoji: each space uploads its own, and its members use them anywhere they chat
-- [ ] A "Switching from Discord" page: what works the same, what's different, and how to
+- [x] A "Switching from Discord" page: what works the same, what's different, and how to
       move a community over
 - [x] Email: password-reset emails (the admin can't make reset links by hand for
       everyone), and confirming that email addresses are real (through Resend)
