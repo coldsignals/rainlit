@@ -103,7 +103,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -212,6 +212,8 @@ const S = {
   quickReactions: ['👍', '❤️', '😄'], // your three most-used (from the server), shown first
   streamVolume: Number(store.get('streamVolume', '100')) / 100, // your friend's screen share's sound
   streamMuted: store.get('streamMuted', 'no') === 'yes',
+  voiceVideoOnly: store.get('voiceVideoOnly', 'off') === 'on', // voice channels: only tiles with video
+  voiceStreamSound: (() => { try { return JSON.parse(store.get('voiceStreamSound', '{}')) || {}; } catch { return {}; } })(), // voice channels: each person's screen's sound
   showStats: store.get('streamStats', 'off') === 'on',
   sounds: store.get('sounds', 'on') !== 'off',
   clickSounds: store.get('clickSounds', 'on') !== 'off',
@@ -8232,8 +8234,9 @@ function wireVoiceRoom(room, v) {
       const a = track.attach();
       a.dataset.who = participant.identity;
       a.dataset.sid = track.sid;
-      a.muted = v.deafened;
+      a.dataset.source = pub.source || '';
       el.voiceAudio.append(a);
+      applyVoiceAudio();
       if (pub.source !== LK.Track.Source.ScreenShareAudio) meterVoice(v, participant.identity, track.mediaStreamTrack);
     }
     again();
@@ -8469,7 +8472,7 @@ async function onVoiceControl(act) {
         v.muted = false;
         await me.setMicrophoneEnabled(true);
       }
-      for (const a of el.voiceAudio.children) a.muted = v.deafened;
+      applyVoiceAudio();
     } else if (act === 'camera') {
       if (!v.speak) return toast("You can't share video in this channel.");
       // (On a phone, the camera it used last: front or back.)
@@ -8598,7 +8601,9 @@ function hideVoiceView() {
 }
 
 // The room: a tile for each person (their camera, or their picture), and one for each screen
-// being shared. The one talking lights up.
+// being shared. The one talking lights up. A tile clicked is made big (focused), with the rest in
+// a strip below it; "Video only" leaves out people showing nothing. A screen with sound has its
+// own volume and mute, remembered for that person.
 function renderVoiceView() {
   const v = S.voice;
   if (!v || el.voiceView.hidden) return;
@@ -8609,6 +8614,7 @@ function renderVoiceView() {
   el.voiceSub.textContent = v.state === 'connected'
     ? `${space && !isGroupSpace(space) ? `${space.name} · ` : ''}${people.length} here · end-to-end encrypted`
     : v.state === 'reconnecting' ? 'Reconnecting…' : 'Joining…';
+  const states = new Map((S.voiceStates.get(v.channelId) || []).map((m) => [m.id, m]));
   const wanted = new Map();
   for (const p of people) {
     wanted.set(`${p.identity}:cam`, { p, source: 'camera' });
@@ -8621,14 +8627,14 @@ function renderVoiceView() {
       v.tiles.delete(key);
     }
   }
-  const current = new Set(v.tiles.values());
-  for (const tile of [...el.voiceGrid.children]) if (!current.has(tile)) tile.remove(); // (from an earlier time here)
+  const shown = [];
   for (const [key, { p, source }] of wanted) {
     let tile = v.tiles.get(key);
     if (!tile) {
       tile = document.createElement('div');
       tile.className = `voice-tile${source === 'screen' ? ' screen' : ''}`;
       tile.dataset.who = p.identity;
+      tile.tabIndex = 0;
       v.tiles.set(key, tile);
     }
     const person = profileOf(p.identity) || { id: p.identity, displayName: p.name || 'Someone', username: '' };
@@ -8667,24 +8673,134 @@ function renderVoiceView() {
     label.replaceChildren(`${source === 'screen' ? `${person.displayName}'s screen` : person.id === S.clientId ? `${person.displayName} (you)` : person.displayName}`);
     tile.dataset.key = key;
     let tools = tile.querySelector('.tile-tools');
-    if (track && (canPopOut() || canPin())) {
+    if (track && (canPopOut() || canPin() || canFullscreen())) {
       if (!tools) {
         tools = document.createElement('span');
         tools.className = 'tile-tools';
-        tools.innerHTML = '<button type="button" class="tile-pop" title="Pop out into its own window" aria-label="Pop out into its own window"><svg class="icon"><use href="#i-popout"/></svg></button>'
+        tools.innerHTML = '<button type="button" class="tile-full" title="Full screen" aria-label="Full screen"><svg class="icon"><use href="#i-expand"/></svg></button>'
+          + '<button type="button" class="tile-pop" title="Pop out into its own window" aria-label="Pop out into its own window"><svg class="icon"><use href="#i-popout"/></svg></button>'
           + '<button type="button" class="tile-pin" title="Keep on top of other windows" aria-label="Keep on top of other windows"><svg class="icon"><use href="#i-pin"/></svg></button>';
         tile.append(tools);
       }
+      tools.querySelector('.tile-full').hidden = !canFullscreen();
       tools.querySelector('.tile-pop').hidden = !canPopOut();
       tools.querySelector('.tile-pin').hidden = !canPin();
     } else if (tools) {
       tools.remove();
     }
+    renderTileSound(tile, p, source);
     if (source !== 'screen' && muted) label.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Muted"><use href="#i-mic-off"/></svg>');
-    el.voiceGrid.append(tile);
+    // (Their camera counts from when they say it's on, before its video arrives.)
+    const showing = source === 'screen' || Boolean(track) || Boolean(states.get(p.identity) && states.get(p.identity).video);
+    if (!S.voiceVideoOnly || showing) shown.push(key);
   }
-  el.voiceGrid.dataset.count = String(Math.min(v.tiles.size, 9));
+  if (v.focus && !shown.includes(v.focus)) v.focus = null;
+  // In place: nothing already where it should be is moved (a slider being dragged in one would
+  // let go), and anything left over (from an earlier time here, or left out) comes off.
+  const place = (parent, nodes) => {
+    nodes.forEach((node, i) => { if (parent.children[i] !== node) parent.insertBefore(node, parent.children[i] || null); });
+    for (const extra of [...parent.children].slice(nodes.length)) extra.remove();
+  };
+  const tiles = shown.map((key) => v.tiles.get(key));
+  if (v.focus) {
+    if (!v.strip) {
+      v.strip = document.createElement('div');
+      v.strip.className = 'voice-strip';
+    }
+    const rest = tiles.filter((t) => t.dataset.key !== v.focus);
+    place(v.strip, rest);
+    place(el.voiceGrid, [v.tiles.get(v.focus), ...(rest.length ? [v.strip] : [])]);
+  } else {
+    if (!v.empty) {
+      v.empty = document.createElement('p');
+      v.empty.className = 'voice-empty';
+      v.empty.innerHTML = 'Nobody’s showing video right now. <button type="button" class="text-btn" data-show-all>Show everyone</button>';
+    }
+    place(el.voiceGrid, [...tiles, ...(S.voiceVideoOnly && !tiles.length ? [v.empty] : [])]);
+  }
+  el.voiceGrid.classList.toggle('focused', Boolean(v.focus));
+  for (const t of v.tiles.values()) t.classList.toggle('focus', t.dataset.key === v.focus);
+  el.voiceGrid.dataset.count = String(Math.min(tiles.length, 9));
+  el.voiceVideoOnly.classList.toggle('on', S.voiceVideoOnly);
+  el.voiceVideoOnly.setAttribute('aria-pressed', String(S.voiceVideoOnly));
   renderVoiceSpeaking();
+}
+
+// ----- A tile made big, full screen, and a stream's sound -----
+
+function focusTile(key) {
+  const v = S.voice;
+  if (!v) return;
+  v.focus = v.focus === key ? null : key;
+  renderVoiceView();
+}
+
+const canFullscreen = () => Boolean(document.fullscreenEnabled) && !ANDROID;
+
+function toggleTileFullscreen(tile) {
+  if (document.fullscreenElement === tile) document.exitFullscreen().catch(() => {});
+  else tile.requestFullscreen().catch(() => {});
+}
+
+function setVoiceVideoOnly(on) {
+  S.voiceVideoOnly = on;
+  store.set('voiceVideoOnly', on ? 'on' : 'off');
+  renderVoiceView();
+}
+
+// Each person's screen's sound, in voice channels: { v: volume 0 to 1, m: muted }.
+function streamSound(id) {
+  const s = S.voiceStreamSound[id] || {};
+  return { v: typeof s.v === 'number' ? Math.min(1, Math.max(0, s.v)) : 1, m: Boolean(s.m) };
+}
+
+function setStreamSound(id, change) {
+  S.voiceStreamSound[id] = { ...streamSound(id), ...change };
+  store.set('voiceStreamSound', JSON.stringify(S.voiceStreamSound));
+  applyVoiceAudio();
+  const v = S.voice;
+  if (v) for (const t of v.tiles.values()) if (t.dataset.who === id) renderTileSound(t);
+}
+
+// The sound playing in a voice channel: deafened, nothing; a screen's, at its own volume.
+function applyVoiceAudio() {
+  const v = S.voice;
+  for (const a of el.voiceAudio.children) {
+    const s = VK && a.dataset.source === VK.Track.Source.ScreenShareAudio ? streamSound(a.dataset.who) : null;
+    a.volume = s ? s.v : 1;
+    a.muted = Boolean(v && v.deafened) || Boolean(s && s.m);
+  }
+}
+
+// A screen tile's sound control: there while that screen has sound (not your own).
+function renderTileSound(tile, p, source) {
+  const v = S.voice;
+  if (!v || !v.room) return;
+  p = p || (tile.dataset.who === S.clientId ? v.room.localParticipant : v.room.remoteParticipants.get(tile.dataset.who));
+  source = source || (tile.classList.contains('screen') ? 'screen' : 'camera');
+  const sound = p && p !== v.room.localParticipant && source === 'screen' && p.getTrackPublication(VK.Track.Source.ScreenShareAudio);
+  let box = tile.querySelector('.tile-audio');
+  if (!sound || !sound.track) {
+    if (box) box.remove();
+    return;
+  }
+  if (!box) {
+    box = document.createElement('div');
+    box.className = 'tile-audio';
+    box.innerHTML = '<button type="button" class="tile-audio-mute"><svg class="icon"><use href="#i-speaker"/></svg></button>'
+      + '<input type="range" min="0" max="100" step="5" aria-label="Stream volume" title="Stream volume" /><output></output>';
+    tile.append(box);
+  }
+  const s = streamSound(p.identity);
+  const pct = Math.round(s.v * 100);
+  const range = box.querySelector('input');
+  if (document.activeElement !== range) range.value = String(pct);
+  box.querySelector('output').textContent = s.m ? 'Muted' : `${pct}%`;
+  box.classList.toggle('muted', s.m);
+  const mute = box.querySelector('.tile-audio-mute');
+  mute.querySelector('use').setAttribute('href', s.m ? '#i-speaker-off' : '#i-speaker');
+  mute.title = s.m ? 'Unmute the stream' : 'Mute the stream';
+  mute.setAttribute('aria-label', mute.title);
 }
 
 function renderVoiceSpeaking() {
@@ -11052,10 +11168,18 @@ async function init() {
   // (The window, or the conversation, changing size: the call fits again.)
   if (window.ResizeObserver) new ResizeObserver(() => fitCall()).observe(el.dm);
   el.voiceGrid.addEventListener('click', (e) => {
-    const b = e.target.closest('.tile-pop, .tile-pin');
-    const key = b && b.closest('.voice-tile') && b.closest('.voice-tile').dataset.key;
+    if (e.target.closest('[data-show-all]')) return setVoiceVideoOnly(false);
+    const tile = e.target.closest('.voice-tile');
+    const key = tile && tile.dataset.key;
     if (!key) return;
+    const b = e.target.closest('.tile-pop, .tile-pin, .tile-full, .tile-audio-mute');
+    if (!b) {
+      if (!e.target.closest('.tile-audio') && document.fullscreenElement !== tile) focusTile(key);
+      return;
+    }
     e.stopPropagation();
+    if (b.classList.contains('tile-audio-mute')) return setStreamSound(tile.dataset.who, { m: !streamSound(tile.dataset.who).m });
+    if (b.classList.contains('tile-full')) return toggleTileFullscreen(tile);
     if (b.classList.contains('tile-pin')) {
       const v = tileVideo(key);
       if (v) pinVideo(v);
@@ -11066,6 +11190,24 @@ async function init() {
       return v && v.srcObject ? v.srcObject.getVideoTracks() : [];
     });
   });
+  // A stream's volume (moving it turns its sound back on, as in a call).
+  el.voiceGrid.addEventListener('input', (e) => {
+    const range = e.target.closest('.tile-audio input');
+    const tile = range && range.closest('.voice-tile');
+    if (tile) setStreamSound(tile.dataset.who, { v: Number(range.value) / 100, m: false });
+  });
+  // A tile, from the keyboard: Enter makes it big (or back). Esc puts a big one back.
+  el.voiceGrid.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('voice-tile')) {
+      e.preventDefault();
+      focusTile(e.target.dataset.key);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !S.voice || !S.voice.focus || el.voiceView.hidden || document.fullscreenElement || document.querySelector('dialog[open]')) return;
+    focusTile(S.voice.focus);
+  });
+  el.voiceVideoOnly.addEventListener('click', () => setVoiceVideoOnly(!S.voiceVideoOnly));
   // Rainlit's window closing (or reloading) closes what it popped out.
   window.addEventListener('pagehide', () => {
     for (const p of popouts.values()) {
