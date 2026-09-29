@@ -225,6 +225,30 @@ starting half a minute after Rainlit starts (the admin panel's Storage says how 
 Rainlit still checks who may see each one, then sends their browser on to a link to it in R2
 that works for about a day.
 
+## 14. Let people support your Rainlit (optional)
+
+rainlit.app has a supporter plan: $5 a month or $50 a year, and tips, with bigger files, more room,
+sharper screen sharing in voice channels, homepage extras and a badge that grows (the prices and
+perks are in `lib/supporters.js`). Payments go through Stripe's Managed Payments, which sells it
+for you and handles sales tax and VAT, receipts, refunds and chargebacks. Without these settings
+there's no plan, and everyone gets the limits you set.
+
+1. Make a Stripe account (for your business, if you have one), and in its settings turn on
+   **Managed Payments** (accepting its terms). Try everything in its test mode first.
+2. In **Settings**, **Billing**, **Customer portal**, save the settings once (letting people
+   cancel and switch between monthly and yearly), so Rainlit's **Manage** button works.
+3. In **Developers**, **Webhooks**, add an endpoint: `https://your-rainlit/stripe/webhook`, for
+   the events `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+   `customer.subscription.created`, `customer.subscription.updated` and
+   `customer.subscription.deleted`.
+4. Add `STRIPE_SECRET_KEY` (from **Developers**, **API keys**) and `STRIPE_WEBHOOK_SECRET` (the
+   endpoint's signing secret) to your settings, and restart.
+
+The products and prices are made in Stripe the first time someone chooses a plan. The support
+page is at `/support`; the admin panel's **Supporters** shows how many there are and what they
+cover, takes what running your Rainlit costs a month (for the page's bar), and next to each
+account, gifts some months of supporting.
+
 ## All the settings
 
 | Setting | What it does |
@@ -239,6 +263,8 @@ that works for about a day.
 | `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO` | Email: password resets and confirming addresses (step 12). |
 | `CF_REALTIME_APP_ID`, `CF_REALTIME_APP_SECRET` | Voice channels and group calls through Cloudflare (step 11). |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | Keep files in Cloudflare R2 instead of on the server's disk (step 13). |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Let people support your Rainlit (step 14). |
+| `VOICE_MONTHLY_GB`, `SHARP_PERSON_GB`, `SHARP_SCREEN_KBPS` | Supporters' sharper screen sharing in voice channels: it pauses for everyone once Cloudflare's sent about this much for voice in a month (800 GB, of its 1,000 free), and for a supporter past this much of their own sharper streams (100 GB); the most a sharper stream may send, in kbps (4000). |
 | `SCREEN_SHARE_KBPS`, `CAMERA_KBPS` | With Cloudflare: the most a shared screen (1500) and a camera (800) may send, in kbps. |
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels and group calls through LiveKit (step 11). |
 | `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |
@@ -246,7 +272,7 @@ that works for about a day.
 | `MAX_FILE_MB` | The biggest file people can send, in MB, to start with (25). After that, it's changed in the admin panel (Storage). |
 | `STORAGE_MB` | How much each person's files can add up to, in MB, to start with (1536, which is 1.5 GB). After that, it's changed in the admin panel. |
 | `NEW_ACCOUNT_DAYS`, `NEW_ACCOUNT_DAILY_MB` | How long an account counts as new (7 days), and how much it can send in files a day meanwhile, in MB (250). A flagged account has the same pace until the admin says it's fine. |
-| `NOTES_MAX` | How many notes each person's Notes holds (100). Their files count toward their room for files. |
+| `NOTES_MAX` | How many notes each person's Notes holds (100; supporters, 1,000). Their files count toward their room for files. |
 | `PRIVACY_URL`, `TERMS_URL` | Links to your own privacy policy and terms. Without them, /privacy and /terms show rainlit.app's, which say they're for rainlit.app. |
 | `LINK_PREVIEWS` | `off` turns off link previews (an X post, a video, or a page's title and picture under links in messages). They're on to start with: your server fetches the links people send, and passes their pictures along. |
 | `VOICE_ALONE_MINUTES` | How long someone can be alone in a voice channel before they're asked if they're still there (15). If they don't say so within two minutes, they're taken out, so a channel isn't left open overnight by accident (on LiveKit Cloud, that uses up its free minutes). `0` turns it off. |

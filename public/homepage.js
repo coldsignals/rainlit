@@ -27,9 +27,9 @@
     spooky: { label: 'Spooky', css: 'Creepster, sans-serif', scale: 1.1 },
     marker: { label: 'Marker', css: '"Permanent Marker", sans-serif' },
   };
-  const EFFECTS = { none: 'Plain', shadow: 'Shadow', outline: 'Outline', glow: 'Glow', rainbow: 'Rainbow', blink: 'Blink', marquee: 'Scrolling', wave: 'Wavy' };
+  const EFFECTS = { none: 'Plain', shadow: 'Shadow', outline: 'Outline', glow: 'Glow', rainbow: 'Rainbow', blink: 'Blink', marquee: 'Scrolling', wave: 'Wavy', shimmer: 'Shimmer', lamplight: 'Lamplight' };
   const BOXES = { none: 'None', note: 'Sticky note', label: 'Label', box: 'Box', highlight: 'Highlighter', hazard: 'Caution', bubble: 'Speech bubble' };
-  const FRAMES = { none: 'None', photo: 'Photo', rounded: 'Rounded', circle: 'Circle', heart: 'Heart', stamp: 'Stamp', window: 'Window', sticker: 'Sticker' };
+  const FRAMES = { none: 'None', photo: 'Photo', rounded: 'Rounded', circle: 'Circle', heart: 'Heart', stamp: 'Stamp', window: 'Window', sticker: 'Sticker', gilded: 'Gilded', neon: 'Neon' };
   const TAPES = { plain: 'Plain', stripes: 'Stripes', dots: 'Dots', checks: 'Checks' };
   const PAPERS = { lined: 'Lined', grid: 'Grid', dotted: 'Dotted', plain: 'Plain', sticky: 'Sticky note', kraft: 'Kraft', torn: 'Torn' };
   const ME_STYLES = { card: 'Card', sticker: 'Sticker', plain: 'Plain' };
@@ -40,7 +40,9 @@
   const SHELVES = { wood: 'Wood', glass: 'Glass', pixel: 'Pixel', white: 'White' };
   const BUTTONS = { bevel: 'Classic', shiny: 'Shiny', stripes: 'Stripes', dark: 'Dark' };
   const PATTERNS = { dots: 'Polka dots', stripes: 'Stripes', checks: 'Checks', gingham: 'Gingham', grid: 'Grid', hearts: 'Hearts', stars: 'Stars', flowers: 'Flowers', zigzag: 'Zigzag', clouds: 'Clouds' };
-  const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts' };
+  const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms' };
+  // Supporters' extras (lib/homepages.js): anyone can see them on a page, supporters can use them.
+  const PERKS = { fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms'] };
 
   // ---------- Pixel stickers ----------
   // Drawn a letter per pixel (these colors), with their outline. (Made with a little script:
@@ -219,6 +221,7 @@
       fontWeight: p.bold ? '700' : '400', fontStyle: p.italic ? 'italic' : 'normal',
     });
     inner.style.setProperty('--c2', hex(p.c2, '#fff59d'));
+    inner.style.setProperty('--c3', c3);
     inner.style.setProperty('--ink', color);
     const ink = document.createElement('span');
     ink.className = 'hp-ink';
@@ -1133,7 +1136,7 @@
   }
 
   window.Homepage = {
-    WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PIXEL, PIXEL_NAMES,
+    WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
     COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS,
     pixelSrc, pixelRatio, backgroundStyle, pieceEl, starter, mount, setSky, light, hush,
     // (someone signed a guestbook, or asked or answered a question, that's showing: read it again)

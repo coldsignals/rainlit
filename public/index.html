@@ -698,6 +698,14 @@
         <span>Badges</span>
         <div id="profile-badges" class="badge-tray"></div>
       </div>
+      <div id="support-card" class="support-card" hidden>
+        <img id="support-badge" class="support-badge" alt="" width="40" height="40" />
+        <div class="support-words">
+          <strong id="support-title">Support Rainlit</strong>
+          <small id="support-note"></small>
+        </div>
+        <button id="support-btn" class="primary-btn small" type="button">See the plan</button>
+      </div>
       <p id="profile-account" class="conn-info"></p>
       <p id="email-row" class="email-row" hidden>
         <span id="email-state" class="email-state"></span>
@@ -1018,6 +1026,19 @@
         <small class="hint">Everything someone's sent counts (their notes too) until they delete it: it's not per month. Next to someone's account below, you can give them more room, or less.</small>
       </section>
 
+      <section id="support-admin" class="admin-section">
+        <div class="admin-head">
+          <h3>Supporters</h3>
+          <a class="text-btn" href="/support" target="_blank" rel="noopener">The support page</a>
+        </div>
+        <p id="support-state" class="hint"></p>
+        <div class="limits-fields">
+          <label class="field-row"><span>What running Rainlit costs a month, in dollars</span><input id="support-costs" type="number" min="0" max="1000000" step="1" /></label>
+        </div>
+        <small class="hint">The support page shows it, with how much supporters cover after fees, so everyone can see how it's doing
+          (0 hides that). Next to someone's account below, you can gift them some months of supporting.</small>
+      </section>
+
       <section class="admin-section">
         <div class="admin-head">
           <h3>Invite codes</h3>
@@ -1180,7 +1201,7 @@
       <p id="push-note" class="conn-info" hidden></p>
       <p id="conn-info" class="conn-info"></p>
       <p class="conn-info">Rainlit is free software (GNU AGPL). <a id="source-link" href="https://github.com/coldsignals/rainlit" target="_blank" rel="noopener">Source code</a></p>
-      <p class="conn-info"><a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms of service</a> · <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="legal-link" href="/switching" target="_blank" rel="noopener">Switching from Discord</a></p>
+      <p class="conn-info"><a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms of service</a> · <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="legal-link" href="/switching" target="_blank" rel="noopener">Switching from Discord</a><span></span><a id="support-link" href="/support" hidden>Support Rainlit</a></p>
     </form>
   </dialog>
 

@@ -555,6 +555,9 @@ button { cursor: pointer; }
 .room-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0 10px 46px; font-size: 14px; }
 .admin-list .user-words { flex: 1; min-width: 0; display: grid; justify-items: start; }
 .user-words .user-room { padding: 0; font-size: 12.5px; color: var(--mist); }
+.admin-list .user-words > .grow { max-width: 100%; }
+.user-words .user-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+.user-words .user-support { color: var(--lamp); font-size: 12.5px; }
 .user-words .user-room:hover { color: var(--text); }
 /* While sign-ups are open: how many spots are left today, live. */
 .signup-spots { display: inline-flex; align-items: center; gap: 9px; margin: -20px 0 30px; padding: 7px 15px 7px 12px; border-radius: 999px; background: var(--dusk); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
@@ -809,6 +812,10 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .user-badge { position: relative; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; background: none; border: 0; border-radius: 8px; }
 .user-badge:hover, .user-badge.show { background: var(--dusk-hi); }
 .user-badge img { display: block; width: 22px; height: 22px; }
+.user-badge.dim img { filter: grayscale(0.85) brightness(0.8); opacity: 0.75; }
+.user-badge.lit img { animation: badge-glow 4s ease-in-out infinite; }
+@keyframes badge-glow { 50% { filter: drop-shadow(0 0 3px rgba(245, 185, 74, 0.7)); } }
+@media (prefers-reduced-motion: reduce) { .user-badge.lit img { animation: none; } }
 .badge-tip {
   position: absolute; top: calc(100% + 6px); left: 0; z-index: 5;
   display: none; width: max-content; max-width: 220px; padding: 8px 10px;
@@ -864,6 +871,19 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   border: 1px solid transparent; border-radius: var(--radius);
 }
 .profile-homepage-words { flex: 1; min-width: 0; display: grid; }
+/* Supporting Rainlit: your badge, how you support, and the way to the support page. */
+.support-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(var(--deep), var(--deep)) padding-box, linear-gradient(115deg, #5aa9ff, #f5b94a) border-box;
+  border: 1px solid transparent; border-radius: var(--radius);
+}
+.support-card[hidden] { display: none; }
+.support-badge { flex: none; width: 40px; height: 40px; }
+.support-card.dim .support-badge { filter: grayscale(0.85) brightness(0.8); opacity: 0.75; }
+.support-words { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.support-words small { color: var(--mist); font-size: 13px; line-height: 1.35; }
+.support-card .primary-btn { flex: none; }
 .profile-homepage-words small { color: var(--mist); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .avatar-actions { display: grid; gap: 6px; }
 .avatar-buttons { display: flex; align-items: center; gap: 6px; }

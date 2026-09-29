@@ -34,6 +34,12 @@ abuse.whenFlagged((userId, kind, detail) => {
   console.log(`[flags] @${u ? u.username : userId}: ${detail}`);
   for (const r of db.prepare('SELECT id FROM users WHERE is_admin = 1').all()) realtime.sendToUser(r.id, { type: 'flag-new' });
 });
+const supporters = require('./lib/supporters');
+// (Someone started or stopped supporting Rainlit: their devices hear, for their badge and limits.)
+supporters.whenChanged((userId) => {
+  const u = people.userById(userId);
+  if (u) realtime.sendToUser(userId, { type: 'me', user: people.selfUser(u) });
+});
 const images = require('./lib/images');
 const { imageKind } = images;
 const embeds = require('./lib/embeds');
@@ -50,9 +56,11 @@ const AVATAR_MAX = 8 * 1024 * 1024;
 const RESET_LINK_HOURS = 24; // (a link the admin makes)
 const RESET_EMAIL_MINUTES = 60; // (one sent by email)
 const CONFIRM_DAYS = 3;
-// Your notes (a conversation with yourself) hold this many. (Their files count toward the room
-// your files have, in lib/storage.js, like everything else you send.)
+// Your notes (a conversation with yourself) hold this many (more for supporters). (Their files
+// count toward the room your files have, in lib/storage.js, like everything else you send.)
 const NOTES_MAX = Number(process.env.NOTES_MAX) || 100;
+const notesMaxFor = (user) => (supporters.active(user) ? Math.max(NOTES_MAX, supporters.PERKS.notes) : NOTES_MAX);
+const notesFull = (user) => `Your notes are full (${notesMaxFor(user)} of ${notesMaxFor(user)}). Delete some to make room.`;
 const MESSAGE_MAX = 4000;
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 // GIFs come from KLIPY (https://klipy.com). Browsers search it and load its GIFs directly,
@@ -201,6 +209,33 @@ app.get('/downloads', (_req, res) => {
 app.get('/switching', (_req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.sendFile('switching.html', { root: path.join(__dirname, 'public') });
+});
+
+// Supporting Rainlit (lib/supporters.js): the plan, and choosing it (public/support.js).
+app.get('/support', (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile('support.html', { root: path.join(__dirname, 'public') });
+});
+
+// Stripe telling Rainlit how people support it: a checkout finished, a subscription renewed,
+// changed or ended. Checked by its signature, so nobody else can say so. (Anything but a yes,
+// and Stripe tries again later.)
+app.post('/stripe/webhook', express.raw({ type: () => true, limit: '1mb' }), async (req, res) => {
+  if (!supporters.enabled) return res.sendStatus(404);
+  if (!Buffer.isBuffer(req.body) || !supporters.verify(req.body, req.get('stripe-signature'))) return res.sendStatus(400);
+  let event;
+  try {
+    event = JSON.parse(req.body.toString('utf8'));
+  } catch {
+    return res.sendStatus(400);
+  }
+  try {
+    await supporters.onEvent(event);
+    res.json({ received: true });
+  } catch (err) {
+    console.error(`[support] Couldn't handle Stripe's ${event.type}: ${err.message}`);
+    res.sendStatus(500);
+  }
 });
 
 // ---------- API ----------
@@ -603,7 +638,6 @@ api.get('/me/deletion', needUser, (req, res) => {
   res.json(accounts.preview(req.user.id));
 });
 
-// For good. Your password first, so a device someone else picked up can't do it.
 // Saying you're 18 or older, to open the channels spaces have marked 18+ (asked once, the first
 // time you open one). Your other devices hear, and their channel lists open up too.
 api.post('/me/adult', needUser, (req, res) => {
@@ -613,6 +647,7 @@ api.post('/me/adult', needUser, (req, res) => {
   res.json({ user });
 });
 
+// For good. Your password first, so a device someone else picked up can't do it.
 api.delete('/me', needUser, async (req, res) => {
   if (ipTries.blocked(req.ip)) return fail(res, 429, 'Too many tries. Wait 15 minutes and try again.');
   if (!(await auth.checkPassword(String((req.body || {}).password || ''), req.user.password_hash))) {
@@ -623,6 +658,10 @@ api.delete('/me', needUser, async (req, res) => {
     return fail(res, 400, "You're the only admin of this Rainlit server, so your account can't be deleted: nobody would be left to look after it.");
   }
   const userId = req.user.id;
+  // (Supporting Rainlit stops with it: nobody would be left to support as.)
+  if (!(await supporters.forget(req.user))) {
+    return fail(res, 502, "Your support for Rainlit couldn't be stopped just now, so your account wasn't deleted (you'd keep paying). Try again in a few minutes.");
+  }
   realtime.forgetUser(userId); // (out of any call, and signed out everywhere)
   const done = accounts.deleteAccount(userId);
   if (done) {
@@ -735,11 +774,52 @@ api.delete('/me/files/:id', needUser, (req, res) => {
   res.json({ ok: true, storage: storage.of(people.userById(req.user.id)) });
 });
 
+// ----- Supporting Rainlit (lib/supporters.js) -----
+// For the support page (public/support.js): as whoever's signed in there, or whoever an app's
+// link (/support?k=...) is for, since the apps open it in a browser that may not be signed in.
+
+const supportUser = (req) => {
+  const u = req.user || supporters.userForLink(String((req.body && req.body.k) || req.query.k || ''));
+  return u && !u.suspended_at ? people.userById(u.id) : null;
+};
+const siteOrigin = (req) => `${req.protocol}://${req.get('host')}`;
+const supportRoute = (fn) => async (req, res) => {
+  const u = supportUser(req);
+  if (!u) return fail(res, 401, 'Please sign in.');
+  try {
+    res.json(await fn(u, req.body || {}, req));
+  } catch (err) {
+    if (err instanceof supporters.SupportError) return fail(res, err.status, err.message);
+    throw err;
+  }
+};
+
+// The plan, this month's costs, and how you support. (Back from paying, `thanks` is the
+// checkout: it's checked with Stripe at once.)
+api.get('/support', async (req, res) => {
+  let u = supportUser(req);
+  if (u && req.query.thanks) {
+    await supporters.confirm(u, String(req.query.thanks)).catch(() => {});
+    u = people.userById(u.id);
+  }
+  res.json({
+    ...supporters.plan(),
+    free: { fileMb: storage.fileMb(), roomMb: storage.personMb(), homepageMb: homepages.FILES_MB, homepagePieces: homepages.PIECES_MAX, notes: NOTES_MAX },
+    me: u ? { username: u.username, displayName: u.display_name, ...supporters.statusOf(u) } : null,
+  });
+});
+api.post('/support/checkout', supportRoute(async (u, b, req) => ({ url: await supporters.checkout(u, String(b.plan || ''), siteOrigin(req)) })));
+api.post('/support/tip', supportRoute(async (u, b, req) => ({ url: await supporters.tip(u, b.cents, siteOrigin(req)) })));
+api.post('/support/manage', supportRoute(async (u, _b, req) => ({ url: await supporters.manageUrl(u, siteOrigin(req)) })));
+// A link to the support page, for an app to open in a browser (for half an hour).
+api.post('/support/link', needUser, (req, res) => res.json({ url: `/support?k=${supporters.linkFor(req.user.id)}` }));
+
 // ----- Friends -----
 
 api.get('/friends', needUser, (req, res) => {
   const out = {
-    friends: [], incoming: [], outgoing: [], maxFileMb: storage.fileMb(), storage: storage.of(req.user), klipyKey: KLIPY_KEY, quickReactions: dms.quickReactions(req.user.id),
+    friends: [], incoming: [], outgoing: [], maxFileMb: storage.fileMbFor(req.user), storage: storage.of(req.user), klipyKey: KLIPY_KEY, quickReactions: dms.quickReactions(req.user.id),
+    support: supporters.enabled,
     blocked: safety.blockedBy(req.user.id).map((id) => people.userById(id)).filter(Boolean).map(people.publicUser),
     voice: voice.enabled,
     mail: mail.enabled,
@@ -1201,7 +1281,7 @@ function readFloor(req) {
 api.get(conv('/messages'), needUser, needConv, (req, res) => {
   if (req.query.after) return res.json({ messages: dms.since(req.dm.id, Number(req.query.after) || 0) });
   const page = dms.history(req.dm.id, Number(req.query.before) || 0);
-  const notes = req.notes ? { ...dms.notesUsage(req.dm.id), max: NOTES_MAX } : undefined;
+  const notes = req.notes ? { ...dms.notesUsage(req.dm.id), max: notesMaxFor(req.user) } : undefined;
   res.json({ ...page, save: Boolean(req.dm.save), readAt: readFloor(req), notes });
 });
 
@@ -1222,7 +1302,7 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     return res.json({ message: dms.withReplies([again])[0] });
   }
   if (req.access && !req.access.send) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send messages in this channel.");
-  if (req.notes && dms.notesUsage(req.dm.id).count >= NOTES_MAX) return fail(res, 409, NOTES_FULL);
+  if (req.notes && dms.notesUsage(req.dm.id).count >= notesMaxFor(req.user)) return fail(res, 409, notesFull(req.user));
   let fields;
   // Answering an earlier message in this conversation (anything else is just ignored).
   const replyTo = dms.replyTarget(req.dm.id, b.replyTo);
@@ -1300,12 +1380,10 @@ function cleanGif(g) {
 
 // A file, sent as the raw request body with its name and type in headers. It's
 // written to disk as it arrives, so big files never have to fit in memory.
-const NOTES_FULL = `Your notes are full (${NOTES_MAX} of ${NOTES_MAX}). Delete some to make room.`;
-
 api.post(conv('/files'), needUser, needConv, (req, res) => {
-  const maxBytes = storage.fileMb() * storage.MB;
-  const tooBig = `Files can be up to ${storage.fileMb()} MB.`;
-  if (req.notes && dms.notesUsage(req.dm.id).count >= NOTES_MAX) return fail(res, 409, NOTES_FULL);
+  const maxBytes = storage.fileMbFor(req.user) * storage.MB;
+  const tooBig = `Files can be up to ${storage.fileMbFor(req.user)} MB.`;
+  if (req.notes && dms.notesUsage(req.dm.id).count >= notesMaxFor(req.user)) return fail(res, 409, notesFull(req.user));
   if (req.access && !req.access.files) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send files in this channel.");
   if (!req.dm.save) return fail(res, 409, 'Saving is off in this conversation, so files can only be sent during a call.');
   const id = String(req.get('x-message-id') || '');
@@ -1738,7 +1816,9 @@ api.post('/channels/:channelId/voice', needUser, needChannel, async (req, res) =
   const key = spaces.voiceKey(req.channel.id);
   if (voice.backend === 'cloudflare') {
     const { list } = await getIceServers();
-    return res.json({ backend: 'cloudflare', key, speak: req.access.speak, iceServers: list, limits: VOICE_LIMITS });
+    const limits = voiceLimitsFor(req.user);
+    voice.cf.setLimits(req.user.id, limits);
+    return res.json({ backend: 'cloudflare', key, speak: req.access.speak, iceServers: list, limits });
   }
   res.json({
     backend: 'livekit',
@@ -1756,6 +1836,24 @@ const VOICE_LIMITS = {
   camKbps: Number(process.env.CAMERA_KBPS) || 800,
   screenKbps: Number(process.env.SCREEN_SHARE_KBPS) || 1500,
 };
+// Supporters' screen shares are sharper (1080p, at 30 or 60 frames a second, up to 4 Mbps: 1.8
+// GB an hour for each person watching), while that fits (lib/supporters.js).
+const SHARP_SCREEN_KBPS = Number(process.env.SHARP_SCREEN_KBPS) || 4000;
+function voiceLimitsFor(user) {
+  if (!supporters.sharpStreams(user, voice.cf.egress())) return { ...VOICE_LIMITS };
+  return { ...VOICE_LIMITS, screenKbps: Math.max(VOICE_LIMITS.screenKbps, SHARP_SCREEN_KBPS), sharp: true };
+}
+// ...and stop being sharper, mid-call, once they don't fit any more (checked each minute, as
+// what Cloudflare sends is counted: lib/voice-cf.js).
+voice.cf.whenCounted((egress) => {
+  for (const id of voice.cf.sharpSenders()) {
+    const u = people.userById(id);
+    if (u && supporters.sharpStreams(u, egress)) continue;
+    const limits = { ...VOICE_LIMITS };
+    voice.cf.setLimits(id, limits);
+    realtime.sendToUser(id, { type: 'voice-limits', limits });
+  }
+});
 
 // Cloudflare: your app's session, and sending and getting sound and video (lib/voice-cf.js).
 // Each goes through here so the server says who may send what, and who gets whose.
@@ -2184,9 +2282,10 @@ api.get('/admin/users', needAdmin, (_req, res) => {
     .map((u) => ({
       ...people.publicUser(u), email: u.email, isAdmin: Boolean(u.is_admin), createdAt: u.created_at,
       suspended: Boolean(u.suspended_at), suspendedReason: u.suspended_reason || '',
-      storage: { used: usedBy.get(u.id) || 0, limit: (u.storage_mb ?? storage.personMb()) * storage.MB, custom: u.storage_mb != null },
+      storage: { used: usedBy.get(u.id) || 0, limit: storage.limitOf(u), custom: u.storage_mb != null },
+      supporter: u.supporter_first ? supporters.statusOf(u) : null,
     }));
-  res.json({ users });
+  res.json({ users, support: supporters.enabled });
 });
 
 // Room for files (lib/storage.js): the biggest file, how much each person's can add up to, and
@@ -2204,6 +2303,38 @@ api.put('/admin/storage', needAdmin, (req, res) => {
   storage.configure({ fileMb: b.fileMb, personMb: b.personMb });
   res.json({ ...storage.overview(), r2: blobs.status(), usage: abuse.usage() });
 });
+// Supporting Rainlit (lib/supporters.js): what running it costs a month (for the support page's
+// bar), how much supporters cover, and how much Cloudflare's sent for voice this month. And
+// gifting someone some months of it (or ending a gift).
+function supportOverview() {
+  const e = voice.cf.egress();
+  return {
+    enabled: supporters.enabled, ...supporters.month(),
+    voice: voice.backend === 'cloudflare' ? { month: e.month, total: e.total, sharp: Object.values(e.sharp).reduce((a, b) => a + b, 0), budgetGb: supporters.VOICE_MONTHLY_GB } : null,
+  };
+}
+api.get('/admin/supporters', needAdmin, (_req, res) => res.json(supportOverview()));
+api.put('/admin/supporters', needAdmin, (req, res) => {
+  try {
+    supporters.setCosts((req.body || {}).costs);
+  } catch (err) {
+    return fail(res, 400, err.message);
+  }
+  res.json(supportOverview());
+});
+api.post('/admin/users/:id/supporter', needAdmin, (req, res) => {
+  try {
+    supporters.gift(req.params.id, (req.body || {}).months);
+  } catch (err) {
+    return fail(res, err.status || 400, err.message);
+  }
+  res.json({ ok: true });
+});
+api.delete('/admin/users/:id/supporter', needAdmin, (req, res) => {
+  if (!supporters.endGift(req.params.id)) return fail(res, 404, "They don't have a gift of supporting to end.");
+  res.json({ ok: true });
+});
+
 api.put('/admin/users/:id/storage', needAdmin, (req, res) => {
   const u = people.userById(req.params.id);
   if (!u) return fail(res, 404, "That account isn't there any more.");

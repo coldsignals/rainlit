@@ -166,6 +166,10 @@ from your own (**Your homepage**, then **Edit**).
   link (a link to someone's homepage opens it right in Rainlit).
 - **The page:** a pattern, a color or your own picture behind it, weather
   over it (rain, snow, sparkles, floating hearts), and a name for it.
+- **Supporters' extras:** people supporting Rainlit also get fireflies, an
+  aurora, a thunderstorm and cherry blossoms for weather, Shimmer and
+  Lamplight words, and Gilded and Neon frames, and room for 200 MB and 500
+  pieces. If they stop, what's on their page stays.
 - **Who can see it:** your friends, people in your spaces too (like your
   profile card; that's where it starts), or anyone with its link,
   `rainlit.app/@yourname`, even without an account, to put in a bio anywhere.
@@ -173,6 +177,21 @@ from your own (**Your homepage**, then **Edit**).
 - It's built from pieces, not code: pages can't run anything, and their
   pictures come from Rainlit itself. A page can be reported like a message.
   Pictures can be up to 5 MB each, songs 10 MB, and 40 MB in all.
+
+## Supporting Rainlit
+
+rainlit.app is free, and paid for by one person. Supporters keep it that way,
+for $5 a month or $50 a year (and tips), at `rainlit.app/support` (Your
+profile, **Supporting Rainlit**). They get more of what costs money: files up
+to 100 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
+channels (1080p at up to 60 fps, while it fits in what Cloudflare sends for
+free), no slower start for a new account, homepage extras, and a badge, a
+raindrop that gathers light the longer they support (Drizzle, then Shower,
+Downpour, Storm, Monsoon and Lamplight). If they stop, it dims, and keeps its
+level. Stripe takes the payments (as the seller, through Link), so Rainlit
+never sees a card. Everything else stays free. The Google Play app doesn't
+offer it (Play doesn't allow buying things outside it): support on the website
+instead.
 
 ## Conversations
 
@@ -351,6 +370,10 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
   connection for files sent during a call. Microphone echo cancellation and
   noise suppression come from the browser.
 - `public/sw.js` and `public/manifest.webmanifest` make it installable on phones.
+- `lib/supporters.js` is rainlit.app's supporter plan: Stripe's checkouts and
+  webhook, the badge's levels, and the perks, which `lib/storage.js`,
+  `lib/homepages.js`, `lib/abuse.js` and the voice limits in `server.js` ask
+  it about.
 - `desktop/` is the Windows app (Electron). It opens the website in its own
   window and adds the things a browser can't do; the page uses them through
   `window.rainlitDesktop` when it's there.

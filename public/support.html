@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#151b28" />
+  <meta name="darkreader-lock" />
+  <meta name="description" content="Rainlit is free, and paid for by one person. Supporters keep it that way, and get more of what costs money." />
+  <meta property="og:title" content="Support Rainlit" />
+  <meta property="og:description" content="Keep Rainlit free for everyone: $5 a month or $50 a year, with bigger files, more room, sharper streams and a badge that grows." />
+  <meta property="og:site_name" content="Rainlit" />
+  <title>Support Rainlit</title>
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/icons/favicon.ico" sizes="32x32" />
+  <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="stylesheet" href="/legal.css" />
+  <style>
+    .panel { margin: 18px 0 8px; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(245, 185, 74, 0.45); background: rgba(245, 185, 74, 0.08); }
+    .panel[hidden], [hidden] { display: none !important; }
+    .panel p { margin: 4px 0; }
+    .me-row { display: flex; align-items: center; gap: 12px; }
+    .me-row img { flex: none; width: 48px; height: 48px; }
+    .me-row img.dim { filter: grayscale(0.85) brightness(0.8); opacity: 0.75; }
+    .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; margin: 12px 0 4px; }
+    .plan {
+      display: grid; gap: 2px; padding: 12px 14px; text-align: left;
+      background: var(--dusk); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
+      font: inherit; cursor: pointer;
+    }
+    .plan:hover, .plan:focus-visible { border-color: var(--lamp); }
+    .plan strong { font-size: 20px; }
+    .plan span { color: var(--mist); font-size: 14px; }
+    .plan.best { border-color: rgba(245, 185, 74, 0.6); }
+    .go {
+      display: inline-block; margin-top: 8px; padding: 9px 16px; border: 0; border-radius: 999px;
+      background: var(--lamp); color: #22190a; font: 700 16px/1.2 inherit; text-decoration: none; cursor: pointer;
+    }
+    .go.quiet { background: var(--dusk); color: var(--text); border: 1px solid var(--line); }
+    .go:disabled { opacity: 0.6; cursor: default; }
+    .tip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; color: var(--mist); font-size: 15px; }
+    .tip input {
+      width: 90px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--deep); color: var(--text); font: inherit;
+    }
+    .tip .go { margin-top: 0; }
+    .error { color: #ff9b9b; }
+    .bar { height: 12px; margin: 10px 0 6px; overflow: hidden; background: var(--deep); border: 1px solid var(--line); border-radius: 999px; }
+    .bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5aa9ff, var(--lamp)); border-radius: inherit; transition: width 0.8s ease; }
+    table { width: 100%; margin: 12px 0; border-collapse: collapse; font-size: 15px; }
+    th, td { padding: 9px 8px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+    th { color: var(--mist); font-weight: 600; font-size: 14px; }
+    td:first-child { font-weight: 600; }
+    td.more { color: var(--lamp); }
+    .levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; margin: 14px 0; padding: 0; list-style: none; }
+    .levels li { display: grid; justify-items: center; gap: 2px; margin: 0; padding: 10px 6px; text-align: center; background: var(--dusk); border: 1px solid var(--line); border-radius: 12px; }
+    .levels img { width: 48px; height: 48px; }
+    .levels strong { font-size: 15px; }
+    .levels small { color: var(--mist); font-size: 13px; }
+    .small { color: var(--mist); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="brand" href="/" aria-label="Rainlit"><img src="/icons/mark.svg" alt="" width="36" height="36" /><span><span class="wm-rain">rain</span><span class="wm-lit">lit</span></span></a>
+    <h1>Support Rainlit</h1>
+    <p class="lede">Rainlit is free, and paid for by one person. Supporters keep it free for everyone, and
+      pay for what costs the most: files, and the video voice channels send. It's <strong>$5 a month</strong>,
+      or <strong>$50 a year</strong> (two months free), and never more.</p>
+
+    <!-- (Filled in by support.js: thanks, how you support, and the ways to.) -->
+    <div id="thanks" class="panel" hidden></div>
+    <div id="me" class="panel" hidden></div>
+
+    <div id="month" hidden>
+      <h2>This month</h2>
+      <div class="bar" aria-hidden="true"><span id="month-bar"></span></div>
+      <p id="month-text"></p>
+    </div>
+
+    <h2>What supporters get</h2>
+    <table>
+      <thead><tr><th></th><th>Everyone</th><th>Supporters</th></tr></thead>
+      <tbody id="perks">
+        <tr><td>Biggest file</td><td data-free="fileMb">25 MB</td><td class="more" data-perk="fileMb">100 MB</td></tr>
+        <tr><td>Room for your files</td><td data-free="roomMb">1.5 GB</td><td class="more" data-perk="roomMb">50 GB</td></tr>
+        <tr><td>Homepage pictures and songs</td><td data-free="homepage">40 MB, 250 pieces</td><td class="more" data-perk="homepage">200 MB, 500 pieces</td></tr>
+        <tr><td>Notes</td><td data-free="notes">100</td><td class="more" data-perk="notes">1,000</td></tr>
+        <tr><td>Screen sharing in voice channels</td><td>1080p at 15 fps, or 720p at 30</td><td class="more">1080p at 30 fps, or 60*</td></tr>
+        <tr><td>A new account's first week</td><td>Up to 250 MB of files a day</td><td class="more">No daily limit</td></tr>
+        <tr><td>Homepage extras</td><td>Everything there today</td><td class="more">Fireflies, aurora, thunderstorm and cherry blossom weather; Shimmer and Lamplight text; Gilded and Neon frames</td></tr>
+        <tr><td>A badge</td><td>–</td><td class="more">One that grows the longer you support (below)</td></tr>
+        <tr><td>Calls between two friends</td><td>1080p at 60 fps, free</td><td>The same</td></tr>
+      </tbody>
+    </table>
+    <p class="small">* Voice channels' video goes through Cloudflare, which charges for what it sends past
+      its first 1,000 GB a month. Sharper streams are on while they fit in that, and in what your support
+      pays for (about 100 GB of people watching your screen a month). Past either, your streams go back to
+      everyone's quality until the month's over.</p>
+
+    <h2>The badge that grows</h2>
+    <p>A raindrop that gathers light the longer you support Rainlit: the "lit" in Rainlit. It's on your
+      profile, next to your other badges. If you stop, it keeps the level it reached (dimmed), and picks up
+      where it left off if you come back.</p>
+    <ul class="levels">
+      <li><img src="/badges/supporter-drizzle.svg" alt="" /><strong>Drizzle</strong><small>from the start</small></li>
+      <li><img src="/badges/supporter-shower.svg" alt="" /><strong>Shower</strong><small>3 months</small></li>
+      <li><img src="/badges/supporter-downpour.svg" alt="" /><strong>Downpour</strong><small>6 months</small></li>
+      <li><img src="/badges/supporter-storm.svg" alt="" /><strong>Storm</strong><small>1 year</small></li>
+      <li><img src="/badges/supporter-monsoon.svg" alt="" /><strong>Monsoon</strong><small>2 years</small></li>
+      <li><img src="/badges/supporter-lamplight.svg" alt="" /><strong>Lamplight</strong><small>3 years</small></li>
+    </ul>
+
+    <h2>What stays free, always</h2>
+    <ul>
+      <li>Messages, spaces, groups, calls and voice channels.</li>
+      <li>Blocking, reporting and moderation tools.</li>
+      <li>Encryption, privacy, and deleting your account.</li>
+      <li>Homepages as they are, and everything else that's free today: the free tier never shrinks to make a perk.</li>
+      <li>Running your own Rainlit server, with any limits you like.</li>
+    </ul>
+
+    <h2>Questions</h2>
+    <h3>Who takes the payment?</h3>
+    <p>Stripe, which sells it for Rainlit (your statement says LINK.COM and Rainlit). It handles the sales
+      tax, receipts and refunds, and keeps your card details: Rainlit never sees them. The price includes any
+      tax, and you can pay in your own currency.</p>
+    <h3>Can I stop?</h3>
+    <p>Any time: here (Manage), or at <a href="https://app.link.com" target="_blank" rel="noopener">link.com</a>.
+      Your perks last until the end of what you've paid for. Deleting your Rainlit account stops it too.</p>
+    <h3>What happens to my files if I stop?</h3>
+    <p>Nothing's deleted. If they add up to more than everyone's room, you can't send new ones until you've
+      made room, and your homepage keeps its extras.</p>
+    <h3>Where does the money go?</h3>
+    <p>Running rainlit.app: its server, where files are kept, what voice channels send, and email. The bar
+      above shows how much of this month is covered.</p>
+    <h3>What about Rainlit servers other people run?</h3>
+    <p>They don't have this plan: each sets its own limits for everyone on it.</p>
+
+    <p class="also"><a href="/">Open Rainlit</a> · <a href="/switching">Switching from Discord</a> ·
+      <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></p>
+  </main>
+  <script src="/support.js"></script>
+</body>
+</html>

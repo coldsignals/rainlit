@@ -9,11 +9,12 @@
   const H = window.Homepage;
   const $ = (id) => document.getElementById(id);
   // What the app lends this (Homepage.connect, in public/app.js): api(), openUrl(), report(),
-  // pickEmoji(), spaceEmoji() and me().
+  // pickEmoji(), spaceEmoji(), me() and offersSupport() (whether this app can mention supporting
+  // Rainlit: the Play Store's can't).
   let app = null;
 
   const state = {
-    data: null, // what the server sent: { owner, doc, views, mine, visibility, usage, limitMb }
+    data: null, // what the server sent: { owner, doc, views, mine, visibility, usage, limitMb, piecesMax, supporter }
     doc: null, // the page as it is here (editing changes it)
     mounted: null, // { canvas, ctx, fit }
     editing: false,
@@ -815,12 +816,24 @@
     ];
   }
 
-  function chips(options, current, onPick, style) {
-    return el('div', { class: 'hp-chips' }, ...Object.entries(options).map(([key, label]) => el('button', {
-      class: 'hp-chip', type: 'button', 'aria-pressed': String(current === key), text: label,
-      style: style ? style(key) : undefined,
-      onclick: () => onPick(key),
-    })));
+  // Choices, as a row of chips. Supporters' extras (`extras`) have a little raindrop; for anyone
+  // else they're there to see but not to pick (unless one's on the page already), and in an app
+  // that can't mention supporting, they're left out.
+  function chips(options, current, onPick, style, extras = []) {
+    const supporter = Boolean(state.data && state.data.supporter);
+    const offered = !app || !app.offersSupport || app.offersSupport();
+    return el('div', { class: 'hp-chips' }, ...Object.entries(options).map(([key, label]) => {
+      const extra = extras.includes(key);
+      const locked = extra && !supporter && key !== current;
+      if (locked && !offered) return null;
+      return el('button', {
+        class: `hp-chip${extra ? ' hp-chip-extra' : ''}`, type: 'button', 'aria-pressed': String(current === key), text: label,
+        style: style ? style(key) : undefined,
+        title: extra ? (locked ? 'For people supporting Rainlit' : "A supporter's extra") : undefined,
+        disabled: locked,
+        onclick: () => onPick(key),
+      });
+    }).filter(Boolean));
   }
 
   function colors(current, onPick) {
@@ -855,7 +868,7 @@
     out.push(el('div', { class: 'hp-grid', style: { margin: '10px 0' } }, uploadButton(bg.file ? 'A different picture…' : 'Use a picture…', { background: true })));
     if (bg.kind === 'image') out.push(field('Picture', chips({ cover: 'Fill the page', tile: 'Repeat it' }, bg.fit, (fit) => setBg({ fit }))));
 
-    out.push(h3('Weather'), chips(H.SKIES, bg.sky, (sky) => setBg({ sky })));
+    out.push(h3('Weather'), chips(H.SKIES, bg.sky, (sky) => setBg({ sky }), null, H.PERKS.sky));
 
     const length = el('input', { type: 'range', min: '600', max: '6000', step: '100', value: String(doc.height) });
     length.addEventListener('change', () => change((d) => { d.height = Number(length.value); }));
@@ -964,11 +977,11 @@
         field('Color', colors(p.color, (color) => set({ color }))),
         field('Box', chips(H.BOXES, p.box, (b) => set({ box: b }))));
       if (p.box !== 'none') out.push(field(p.box === 'highlight' ? 'Highlighter color' : 'Box color', colors(p.c2, (c2) => set({ c2 }))));
-      out.push(field('Effect', chips(H.EFFECTS, p.fx, (fx) => set({ fx }))));
-      if (['shadow', 'outline', 'glow'].includes(p.fx)) out.push(field(`${H.EFFECTS[p.fx]} color`, colors(p.c3, (c3) => set({ c3 }))));
+      out.push(field('Effect', chips(H.EFFECTS, p.fx, (fx) => set({ fx }), null, H.PERKS.fx)));
+      if (['shadow', 'outline', 'glow', 'lamplight'].includes(p.fx)) out.push(field(`${H.EFFECTS[p.fx]} color`, colors(p.c3, (c3) => set({ c3 }))));
       out.push(linkField());
     } else if (p.t === 'image') {
-      out.push(field('Frame', chips(H.FRAMES, p.frame, (frame) => set({ frame }))));
+      out.push(field('Frame', chips(H.FRAMES, p.frame, (frame) => set({ frame }), null, H.PERKS.frame)));
       if (p.frame === 'photo' || p.frame === 'window') {
         const cap = el('input', { type: 'text', maxlength: '60', value: p.caption || '', placeholder: p.frame === 'window' ? 'untitled.gif' : 'a caption' });
         cap.addEventListener('change', () => set({ caption: cap.value.trim() }));

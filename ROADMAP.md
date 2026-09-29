@@ -148,12 +148,18 @@ profile card. The card stays, as the quick look, with a way into the homepage.
 
 ## Stage 8: Keeping it going, fairly
 
-- Only once Rainlit has a solid foundation and people using it: a supporter tier, never
-  more than $5 a month and with the price shown up front, that pays for the free tier: cosmetics
-  that show on every server (profile themes, badges, animated avatars, name colors, app
-  themes) and perks that cost real money to provide (bigger uploads, higher-quality
-  streams through the relay). Talking to your friends and running a community stay free,
-  and nothing that communities could do on their own servers is ever paywalled.
+- [x] A supporter plan on rainlit.app, $5 a month or $50 a year and tips, through Stripe's
+      Managed Payments (it's the seller, and handles tax): bigger files and more room, 1,000
+      notes, sharper screen sharing in voice channels while it fits in Cloudflare's free
+      allowance, no slower start, homepage extras, and a badge that grows (and keeps its
+      level). The support page has this month's costs, and how much supporters cover.
+- [ ] Space boosts: supporters give a space a boost, and boosts add up to levels (more emoji,
+      bigger files for everyone in it, sharper streams in its voice channels, its own invite
+      link).
+- [ ] More cosmetics now and then: profile banners and card colours, sticker packs, cursor
+      trails, based on what people ask for.
+- Talking to your friends and running a community stay free, and nothing that
+  communities could do on their own servers is ever paywalled.
 - Maybe "Rainlit Cloud": servers hosted for communities that outgrow what's free on
   rainlit.app and don't want to run their own, for a few dollars a month (members can
   chip in), with no lock-in: export your whole server and run it yourself any time.

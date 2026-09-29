@@ -82,6 +82,22 @@ a.hp-piece:focus-visible { outline: 3px solid #f5b94a; outline-offset: 3px; }
 @keyframes hp-marquee { to { transform: translateX(-100%); } }
 .hp-fx-wave .hp-ink span { display: inline-block; white-space: pre; animation: hp-wave 1.6s ease-in-out infinite; }
 @keyframes hp-wave { 50% { transform: translateY(-0.2em); } }
+/* Supporters' extras: a light that sweeps across the words now and then, and a warm glow that breathes. */
+.hp-fx-shimmer .hp-ink {
+  background: linear-gradient(100deg, var(--ink) 42%, #fffdf2 50%, var(--ink) 58%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: hp-shimmer 3.4s ease-in-out infinite;
+}
+@keyframes hp-shimmer { 0% { background-position: 100% 0; } 65%, 100% { background-position: 0 0; } }
+.hp-fx-lamplight .hp-ink {
+  text-shadow: 0 0 0.12em var(--c3), 0 0 0.45em var(--c3), 0 0 0.9em var(--c3);
+  animation: hp-lamplight 3.8s ease-in-out infinite;
+}
+@keyframes hp-lamplight {
+  0%, 100% { text-shadow: 0 0 0.1em var(--c3), 0 0 0.35em var(--c3), 0 0 0.7em var(--c3); }
+  50% { text-shadow: 0 0 0.16em var(--c3), 0 0 0.6em var(--c3), 0 0 1.3em var(--c3), 0 0 2.2em var(--c3); }
+}
 
 /* ----- Pictures ----- */
 .hp-image { container-type: size; }
@@ -97,6 +113,26 @@ a.hp-piece:focus-visible { outline: 3px solid #f5b94a; outline-offset: 3px; }
   position: absolute; left: 6cqw; right: 6cqw; bottom: 4cqh;
   font: 400 max(10px, 9cqh) / 1.1 Caveat, cursive; color: #3b3036;
   text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Supporters' extras: a gold frame, and a neon one that buzzes now and then. */
+.hp-frame-gilded {
+  padding: 10px;
+  background: linear-gradient(135deg, #fff1b8 0%, #d9a93e 22%, #fff6cf 45%, #b07a1c 68%, #f3d27a 100%);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1.5px #6e4b0e, inset 0 0 0 4px #f7df8e, inset 0 0 0 5.5px #8a5f14, 0 10px 20px -10px rgba(0, 0, 0, 0.65);
+}
+.hp-frame-gilded img { box-shadow: 0 0 0 1.5px #5c3f0b, 0 0 0 3px #f5d98a; }
+.hp-frame-neon {
+  padding: 5px;
+  border-radius: 14px;
+  background: #12081f;
+  box-shadow: 0 0 0 2px #ff6ad5, 0 0 12px 2px rgba(255, 106, 213, 0.9), 0 0 32px 6px rgba(255, 106, 213, 0.45), inset 0 0 12px rgba(255, 106, 213, 0.55);
+  animation: hp-neon 6s linear infinite;
+}
+.hp-frame-neon img { border-radius: 10px; }
+@keyframes hp-neon {
+  0%, 88%, 92%, 100% { box-shadow: 0 0 0 2px #ff6ad5, 0 0 12px 2px rgba(255, 106, 213, 0.9), 0 0 32px 6px rgba(255, 106, 213, 0.45), inset 0 0 12px rgba(255, 106, 213, 0.55); }
+  90% { box-shadow: 0 0 0 2px #a8508f, 0 0 4px 1px rgba(255, 106, 213, 0.4), 0 0 10px 2px rgba(255, 106, 213, 0.2), inset 0 0 4px rgba(255, 106, 213, 0.3); }
 }
 /* A postage stamp: perforated all round (holes cut into its edge by the second mask). */
 .hp-frame-stamp {
@@ -488,12 +524,68 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   animation: hp-rise 12s linear infinite;
 }
 .hp-sky-hearts::after { opacity: 0.6; background-position: 90px 60px; animation-duration: 17s; }
+/* Supporters' extras. Fireflies drift and glow; */
+.hp-sky-fireflies::before, .hp-sky-fireflies::after {
+  inset: -48px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='240'%3E%3Cdefs%3E%3CradialGradient id='f'%3E%3Cstop offset='0' stop-color='%23fbffc4'/%3E%3Cstop offset='.35' stop-color='%23e4ff6e' stop-opacity='.8'/%3E%3Cstop offset='1' stop-color='%23c8ff3c' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg fill='url(%23f)'%3E%3Ccircle cx='30' cy='40' r='7'/%3E%3Ccircle cx='150' cy='90' r='6'/%3E%3Ccircle cx='220' cy='30' r='5'/%3E%3Ccircle cx='90' cy='190' r='7'/%3E%3Ccircle cx='205' cy='200' r='5.5'/%3E%3C/g%3E%3C/svg%3E");
+  animation: hp-firefly 7s ease-in-out infinite;
+}
+.hp-sky-fireflies::after { background-position: 130px 110px; animation-duration: 9.5s; animation-delay: -3s; }
+@keyframes hp-firefly {
+  0%, 100% { transform: translate(0, 0); opacity: 0.35; }
+  25% { opacity: 1; }
+  50% { transform: translate(26px, -20px); opacity: 0.5; }
+  75% { opacity: 0.95; }
+}
+/* the northern lights ripple across the top; */
+.hp-sky-aurora::before, .hp-sky-aurora::after {
+  inset: -20% -15% 35%;
+  background:
+    radial-gradient(ellipse 45% 30% at 30% 60%, rgba(80, 255, 180, 0.42), transparent 70%),
+    radial-gradient(ellipse 40% 25% at 68% 45%, rgba(110, 140, 255, 0.36), transparent 70%),
+    radial-gradient(ellipse 50% 30% at 50% 72%, rgba(200, 90, 255, 0.24), transparent 72%);
+  filter: blur(18px);
+  animation: hp-aurora 14s ease-in-out infinite alternate;
+}
+.hp-sky-aurora::after {
+  background:
+    radial-gradient(ellipse 35% 22% at 60% 55%, rgba(90, 255, 200, 0.35), transparent 70%),
+    radial-gradient(ellipse 30% 25% at 22% 40%, rgba(170, 110, 255, 0.28), transparent 70%);
+  animation-duration: 19s; animation-direction: alternate-reverse;
+}
+@keyframes hp-aurora {
+  from { transform: translateX(-7%) skewX(-10deg) scaleY(0.95); opacity: 0.75; }
+  to { transform: translateX(7%) skewX(10deg) scaleY(1.15); opacity: 1; }
+}
+/* a thunderstorm: heavy rain under a darker sky, and lightning now and then (never more than
+   twice in a second, and not at all for anyone who asks for less motion); */
+.hp-sky-storm { background: rgba(8, 12, 28, 0.28); }
+.hp-sky-storm::before {
+  top: -200px; height: calc(100% + 200px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='200'%3E%3Cg stroke='%23b9c8e6' stroke-width='1.3' stroke-linecap='round' opacity='.6'%3E%3Cpath d='M20 10l-5 22M60 70l-5 22M110 20l-5 22M140 120l-5 22M35 130l-5 22M90 160l-5 22M80 95l-5 22M130 60l-5 22'/%3E%3C/g%3E%3C/svg%3E");
+  animation: hp-fall 0.5s linear infinite;
+}
+.hp-sky-storm::after { inset: 0; background: rgba(225, 235, 255, 0.9); opacity: 0; animation: hp-flash 9s linear infinite; }
+@keyframes hp-flash { 0%, 80%, 86%, 100% { opacity: 0; } 81% { opacity: 0.38; } 82% { opacity: 0.06; } 83.5% { opacity: 0.28; } }
+/* and cherry blossom petals drift down. */
+.hp-sky-blossoms::before, .hp-sky-blossoms::after {
+  top: -240px; left: -48px; right: -48px; height: calc(100% + 240px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cg opacity='.9'%3E%3Cpath fill='%23ffc4dc' d='M30 30c4-5 11-4 13 0-2 4-9 5-13 0z'/%3E%3Cpath fill='%23ffb0cf' d='M150 70c3-4 9-3 11 0-2 3-8 4-11 0z'/%3E%3Cpath fill='%23ffd6e6' d='M205 160c4-5 12-4 14 0-2 4-10 5-14 0z'/%3E%3Cpath fill='%23ff9fc4' d='M80 140c3-4 8-3 10 0-2 3-7 4-10 0z'/%3E%3Cpath fill='%23ffc4dc' d='M115 215c4-4 10-4 12 0-2 4-8 4-12 0z'/%3E%3C/g%3E%3C/svg%3E");
+  animation: hp-petals 11s linear infinite;
+}
+.hp-sky-blossoms::after { opacity: 0.7; background-position: 100px 120px; animation-duration: 16s; }
+@keyframes hp-petals {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(24px, 120px); }
+  100% { transform: translate(0, 240px); }
+}
 @keyframes hp-fall { from { transform: translateY(0); } to { transform: translateY(200px); } }
 @keyframes hp-rise { from { transform: translateY(0); } to { transform: translateY(-240px); } }
 @keyframes hp-twinkle { 50% { opacity: 0.25; } }
 
 @media (prefers-reduced-motion: reduce) {
   .hp-fx-rainbow .hp-ink, .hp-fx-blink .hp-ink, .hp-fx-marquee .hp-ink, .hp-fx-wave .hp-ink span,
+  .hp-fx-shimmer .hp-ink, .hp-fx-lamplight .hp-ink, .hp-frame-neon,
   .hp-sky::before, .hp-sky::after,
   .hp-playing .hp-bars i, .hp-playing .hp-reels i, .hp-playing .hp-song span { animation: none; }
   .hp-fx-marquee .hp-ink { padding-left: 0; }
@@ -664,6 +756,15 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 }
 .hp-chip:hover { border-color: #b99b6b; }
 .hp-chip[aria-pressed="true"] { background: #3b2f25; color: #fbf6ea; border-color: #3b2f25; }
+.hp-chip-extra::after {
+  content: ''; display: inline-block; width: 8px; height: 11px; margin-left: 6px; vertical-align: -1px;
+  background: #d9962a;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.hp-chip[aria-pressed="true"].hp-chip-extra::after { background: #f5c46a; }
+.hp-chip:disabled { opacity: 0.55; cursor: not-allowed; }
+.hp-chip:disabled:hover { border-color: #ddcdae; }
 .hp-colors { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .hp-color {
   width: 28px; height: 28px; padding: 0;

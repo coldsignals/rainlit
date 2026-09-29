@@ -98,6 +98,7 @@ for (const id of [
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
+  'support-card', 'support-badge', 'support-title', 'support-note', 'support-btn', 'support-link', 'support-admin', 'support-state', 'support-costs',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-resize', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
@@ -145,6 +146,7 @@ const S = {
   openDm: '', // the friend whose conversation is on screen
   uploads: new Map(), // message id -> a file being uploaded to a saved conversation
   maxFileMb: 25, // the biggest file a saved conversation takes (the server says)
+  support: false, // whether this Rainlit takes support (lib/supporters.js: rainlit.app does)
   storage: null, // { used, limit } in bytes: how much room your files take, and have (lib/storage.js)
   klipyKey: '', // for searching GIFs on KLIPY; no key means no GIF button
   setupNeeded: false, // no accounts yet: the first one is made with the setup code
@@ -1068,6 +1070,10 @@ function handleServerMessage(msg) {
     case 'guestbook-new':
       // (If your homepage is open, it shows it; otherwise a note.)
       if (!Homepage.onSigned(msg.from)) toast(`${msg.from} signed your guestbook.`);
+      return;
+    case 'voice-limits':
+      // (Sharper screen sharing stopped for this month: what you're sending follows at once.)
+      if (S.voice && S.voice.room && S.voice.room.setLimits) S.voice.room.setLimits(msg.limits);
       return;
     case 'flag-new':
       // (For the admin: an account that looks like it's filling up the free tier.)
@@ -4927,7 +4933,8 @@ async function checkAndroidApp() {
   }
   let latest = '';
   try { latest = (await api('GET', '/android-latest')).version || ''; } catch {}
-  S.androidApp = { mine, latest, outdated: Boolean(latest && (!mine || newerVersion(latest, mine))) };
+  S.androidApp = { mine, latest, outdated: Boolean(latest && (!mine || newerVersion(latest, mine))), play: false };
+  renderSupportLink();
   renderAppNote();
   if (S.androidApp.outdated && store.get('updateToldFor', '') !== latest) {
     store.set('updateToldFor', latest);
@@ -6496,6 +6503,13 @@ async function signedIn(user) {
   followJoinLink();
   followDeleteLink();
   followHomepageLink();
+  followSupportLink();
+}
+
+// rainlit.app/?next=support: signing in to support Rainlit (from the support page), and back.
+function followSupportLink() {
+  if (new URLSearchParams(location.search).get('next') !== 'support') return;
+  location.replace('/support');
 }
 
 // rainlit.app/?homepage=@name opens that homepage, and ?homepage=edit yours to change (the
@@ -6601,14 +6615,19 @@ const PRESENCE_LABEL = { online: 'Online', away: 'Away', offline: 'Offline' };
 
 function setMe(user) {
   const nowAdult = Boolean(S.me && !S.me.adult && user.adult);
+  const supportChanged = Boolean(S.me && S.me.supporter && user.supporter && S.me.supporter.active !== user.supporter.active);
   S.me = user;
   if (nowAdult) refreshSpaces(); // (said so on another device: 18+ channels open up here too)
+  if (supportChanged) refreshFriends(); // (a supporter's bigger files and room, or everyone's again)
   S.clientId = user.id;
   S.name = user.displayName;
   renderMe();
   for (const dm of S.dms.values()) refreshFaces(dm, user.id);
   if (el.miniProfile.open && miniProfileId === user.id) renderMiniProfile();
-  if (el.profile.open) renderProfileBadges();
+  if (el.profile.open) {
+    renderProfileBadges();
+    renderSupportCard();
+  }
 }
 
 // What your friends see you as.
@@ -9063,7 +9082,7 @@ async function onVoiceControl(act) {
       if (ANDROID) return toast("Screen sharing from Android isn't here yet.");
       const smooth = el.shareQuality.value !== 'sharp';
       await me.setScreenShareEnabled(!me.isScreenShareEnabled, {
-        audio: true, contentHint: smooth ? 'motion' : 'detail',
+        audio: true, contentHint: smooth ? 'motion' : 'detail', saver: el.shareQuality.value === 'saver',
         resolution: { width: 1920, height: 1080, frameRate: smooth ? 60 : 30 },
       });
       playShareSound(me.isScreenShareEnabled);
@@ -9433,6 +9452,8 @@ async function refreshFriends() {
     S.outgoing = data.outgoing;
     S.maxFileMb = data.maxFileMb || S.maxFileMb;
     if (data.storage) S.storage = data.storage;
+    S.support = Boolean(data.support);
+    renderSupportLink();
     S.klipyKey = data.klipyKey || '';
     if (Array.isArray(data.quickReactions) && data.quickReactions.length) setQuickReactions(data.quickReactions);
     renderComposer();
@@ -10030,14 +10051,37 @@ async function onMenuRemove() {
 // ---------------- Badges ----------------
 
 // The little marks on people's profiles, in the order they're shown. Their pictures are in
-// /badges. So far there's one: a glowing leaf for everyone who joined during the alpha.
+// /badges: a glowing leaf for everyone who joined during the alpha, and a raindrop that gathers
+// light the longer someone supports Rainlit (lib/supporters.js). If they stop, it dims, and
+// keeps its level.
 const BADGES = {
   alpha: { name: 'First Leaf', about: 'Here since the Rainlit alpha', when: 'Joined' },
+  supporter: { name: 'Supporter', about: 'Supports Rainlit', when: 'Since' },
 };
+const SUPPORT_LEVELS = { drizzle: 'Drizzle', shower: 'Shower', downpour: 'Downpour', storm: 'Storm', monsoon: 'Monsoon', lamplight: 'Lamplight' };
 
-function badgeImg(id, size = 22) {
+// "7 months", "1 year", "2 years and 3 months".
+function monthsText(months) {
+  const part = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  return y ? (m ? `${part(y, 'year')} and ${part(m, 'month')}` : part(y, 'year')) : part(Math.max(1, m), 'month');
+}
+
+// What a badge says, and its picture.
+function badgeInfo(b) {
+  if (b.id !== 'supporter') return { ...BADGES[b.id], src: `/badges/${b.id}.svg` };
+  const level = SUPPORT_LEVELS[b.level] ? b.level : 'drizzle';
+  return {
+    name: `${SUPPORT_LEVELS[level]} supporter`,
+    about: b.lit ? `Supporting Rainlit, for ${monthsText(b.months)} so far` : `Supported Rainlit for ${monthsText(b.months)}`,
+    when: b.lit ? 'Since' : 'First supported', src: `/badges/supporter-${level}.svg`, lit: Boolean(b.lit), dim: !b.lit,
+  };
+}
+
+function badgeImg(src, size = 22) {
   const img = document.createElement('img');
-  img.src = `/badges/${id}.svg`;
+  img.src = src;
   img.alt = '';
   img.width = img.height = size;
   img.draggable = false;
@@ -10049,10 +10093,10 @@ function renderBadges(box, badges) {
   const order = Object.keys(BADGES);
   const list = (badges || []).filter((b) => BADGES[b.id]).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   box.replaceChildren(...list.map((b) => {
-    const info = BADGES[b.id];
+    const info = badgeInfo(b);
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'user-badge';
+    btn.className = `user-badge${info.lit ? ' lit' : ''}${info.dim ? ' dim' : ''}`;
     btn.setAttribute('aria-label', `${info.name}: ${info.about}`);
     const tip = document.createElement('span');
     tip.className = 'badge-tip';
@@ -10067,7 +10111,7 @@ function renderBadges(box, badges) {
       when.textContent = `${info.when} ${new Date(b.at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
       tip.append(when);
     }
-    btn.append(badgeImg(b.id), tip);
+    btn.append(badgeImg(info.src), tip);
     btn.addEventListener('click', () => {
       const show = !btn.classList.contains('show');
       for (const other of box.querySelectorAll('.user-badge.show')) other.classList.remove('show');
@@ -10235,6 +10279,7 @@ function openProfile() {
   el.profileHomepageLink.textContent = `${location.host}/@${S.me.username}`;
   renderEmailRow();
   renderProfileBadges();
+  renderSupportCard();
   renderBlockedList();
   el.filesDetails.open = false;
   renderFilesSummary();
@@ -10418,6 +10463,57 @@ function renderProfileBadges() {
   el.profileBadges.parentElement.hidden = !renderBadges(el.profileBadges, S.me.badges);
 }
 
+// ----- Supporting Rainlit (lib/supporters.js) -----
+// Your profile says how you support it (and your badge's level), with a way to the support page,
+// which does the rest (public/support.js). Not in the app from the Google Play Store, which can't
+// offer anything bought outside it: there it only says how you support.
+
+const offersSupport = () => S.support && (!ANDROID || Boolean(S.androidApp && S.androidApp.play === false));
+const shortDate = (t) => new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+
+function renderSupportCard() {
+  const s = S.me && S.me.supporter;
+  const offered = offersSupport();
+  el.supportCard.hidden = !s || (!s.first && !offered);
+  if (el.supportCard.hidden) return;
+  const level = SUPPORT_LEVELS[s.level] || 'Drizzle';
+  el.supportBadge.src = `/badges/supporter-${s.level || 'drizzle'}.svg`;
+  el.supportCard.classList.toggle('lit', s.active);
+  el.supportCard.classList.toggle('dim', !s.active);
+  if (s.active) {
+    el.supportTitle.textContent = `Supporting Rainlit · ${level}`;
+    const when = s.plan === 'gift' ? `A gift, until ${shortDate(s.until)}.`
+      : s.cancels ? `It stops on ${shortDate(s.cancels)}.` : s.until ? `It renews on ${shortDate(s.until)}.` : '';
+    el.supportNote.textContent = `${monthsText(s.months)} so far. Thank you! ${when}`;
+  } else if (s.first) {
+    el.supportTitle.textContent = `Supported Rainlit · ${level}`;
+    el.supportNote.textContent = `For ${monthsText(s.months)}. Your badge keeps its level${offered ? ", and picks up where it left off if you come back" : ''}.`;
+  } else {
+    el.supportTitle.textContent = 'Support Rainlit';
+    el.supportNote.textContent = "It's free, and paid for by one person. Supporters keep it that way, and get bigger files, more room, sharper streams and a badge that grows.";
+  }
+  el.supportBtn.hidden = !offered;
+  el.supportBtn.textContent = s.active && s.plan !== 'gift' ? 'Manage' : s.first && !s.active ? 'Support again' : 'See the plan';
+}
+
+// Settings' link to the support page.
+function renderSupportLink() {
+  el.supportLink.hidden = !offersSupport();
+  el.supportLink.previousSibling.textContent = el.supportLink.hidden ? '' : ' · ';
+}
+
+// The support page, in a new tab (signed in, on the web), or from the apps, in your browser with
+// a link that says who you are for half an hour.
+async function openSupportPage() {
+  if (!ANDROID && !DESKTOP) return window.open('/support', '_blank', 'noopener');
+  try {
+    const { url } = await api('POST', '/support/link', {});
+    openUrl(url);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
 async function onProfileSave(e) {
   e.preventDefault();
   showProfileError('');
@@ -10583,6 +10679,7 @@ async function renderAdmin() {
   renderTraceList(pairs);
   renderSignups();
   renderStorage();
+  renderSupportAdmin();
   renderAnnouncements();
   renderFlags();
   if (!reports.length) {
@@ -10632,6 +10729,7 @@ async function renderAdmin() {
     const li = document.createElement('li');
     const who = document.createElement('span');
     who.className = 'grow';
+    const sup = u.supporter && u.supporter.active ? u.supporter : null;
     who.textContent = `${u.displayName} (@${u.username}) · ${u.email}${u.isAdmin ? ' · admin' : ''}`;
     const reset = document.createElement('button');
     reset.type = 'button';
@@ -10656,10 +10754,30 @@ async function renderAdmin() {
     room.textContent = `Files: ${fmtBytes(u.storage.used)} of ${fmtBytes(u.storage.limit)}${u.storage.custom ? ' (theirs)' : ''}`;
     room.title = 'Give them more room, or less';
     room.addEventListener('click', () => askRoom(li, u));
+    // (...and whether they support Rainlit.)
+    const line = document.createElement('span');
+    line.className = 'user-line';
+    line.append(room);
+    if (sup) {
+      const tag = document.createElement('small');
+      tag.className = 'user-support';
+      tag.textContent = `Supporting · ${SUPPORT_LEVELS[sup.level] || 'Drizzle'}${sup.plan === 'gift' ? ` (a gift, until ${shortDate(sup.until)})` : ''}`;
+      line.append(tag);
+    }
     const words = document.createElement('span');
     words.className = 'user-words';
-    words.append(who, room);
+    words.append(who, line);
     li.append(makeFace(u, null), words, reset);
+    // (Some months of supporting, as a thank-you; or ending one. Not for someone paying already.)
+    if (!sup || sup.plan === 'gift') {
+      const gift = document.createElement('button');
+      gift.type = 'button';
+      gift.className = 'text-btn';
+      gift.textContent = sup ? 'End gift' : 'Gift';
+      gift.title = sup ? 'End their gift of supporting Rainlit' : 'Give them some months of supporting Rainlit';
+      gift.addEventListener('click', () => (sup ? endGift(u) : askGift(li, u)));
+      li.append(gift);
+    }
     if (u.suspended) {
       li.classList.add('suspended');
       who.textContent += ` · suspended${u.suspendedReason ? ` (${u.suspendedReason})` : ''}`;
@@ -10727,6 +10845,74 @@ async function renderStorage(state) {
       + (state.usage.jump ? " That's far more than usual: see Flagged accounts, and who's been sending what." : '');
   }
   el.storageState.classList.toggle('storage-warn', Boolean((d && d.free < d.total * 0.2) || (state.usage && state.usage.jump)));
+}
+
+// Admin: supporting Rainlit. What it costs a month (for the support page's bar), how much
+// supporters cover, and what Cloudflare's sent for voice this month.
+async function renderSupportAdmin(state) {
+  try {
+    state = state || (await api('GET', '/admin/supporters'));
+  } catch {
+    return;
+  }
+  if (document.activeElement !== el.supportCosts) el.supportCosts.value = String(Math.round(state.costs / 100));
+  const money = (cents) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
+  const people = `${state.supporters} ${state.supporters === 1 ? 'person supports' : 'people support'} Rainlit`;
+  el.supportState.textContent = (state.enabled
+    ? `${people}${state.tips ? `, and ${state.tips} ${state.tips === 1 ? 'tip' : 'tips'} came in this month` : ''}: about ${money(state.covered)} a month after fees${state.costs ? `, of ${money(state.costs)}` : ''}.`
+    : "Payments aren't set up on this server (STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET: see SELF-HOSTING.md), so nobody can support it yet. You can still gift supporting, below.")
+    + (state.voice ? ` Voice this month: about ${fmtBytes(state.voice.total)} sent by Cloudflare (1,000 GB a month is free; sharper streams pause for everyone past ${state.voice.budgetGb} GB)${state.voice.sharp ? `, ${fmtBytes(state.voice.sharp)} of it supporters' sharper screen shares` : ''}.` : '');
+}
+
+async function saveSupportCosts() {
+  try {
+    renderSupportAdmin(await api('PUT', '/admin/supporters', { costs: Number(el.supportCosts.value) || 0 }));
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// Gifting someone some months of supporting (they count for their badge too), in the row itself.
+function askGift(li, u) {
+  if (li.nextElementSibling && li.nextElementSibling.classList.contains('room-ask')) return;
+  const box = document.createElement('div');
+  box.className = 'room-ask';
+  const months = document.createElement('select');
+  months.setAttribute('aria-label', 'How long');
+  for (const n of [1, 3, 6, 12]) months.append(new Option(monthsText(n), String(n)));
+  const label = document.createElement('span');
+  label.textContent = `of supporting, for @${u.username}`;
+  const yes = document.createElement('button');
+  yes.type = 'button';
+  yes.className = 'small-btn';
+  yes.textContent = 'Give';
+  yes.addEventListener('click', async () => {
+    try {
+      await api('POST', `/admin/users/${u.id}/supporter`, { months: Number(months.value) });
+      toast(`@${u.username} is supporting Rainlit, as a gift from you.`);
+      renderAdmin();
+    } catch (err) {
+      toast(err.message);
+    }
+  });
+  const no = document.createElement('button');
+  no.type = 'button';
+  no.className = 'text-btn';
+  no.textContent = 'Cancel';
+  no.addEventListener('click', () => box.remove());
+  box.append(months, label, yes, no);
+  li.after(box);
+  months.focus();
+}
+
+async function endGift(u) {
+  if (!confirm(`End @${u.username}'s gift of supporting Rainlit now? Their badge keeps its level.`)) return;
+  try {
+    await api('DELETE', `/admin/users/${u.id}/supporter`);
+    renderAdmin();
+  } catch (err) {
+    toast(err.message);
+  }
 }
 
 async function saveStorage(fields) {
@@ -11398,6 +11584,12 @@ async function init() {
   });
   el.storageFile.addEventListener('change', () => saveStorage({ fileMb: Number(el.storageFile.value) }));
   el.storagePerson.addEventListener('change', () => saveStorage({ personMb: Math.round(Number(el.storagePerson.value) * 1024) }));
+  el.supportCosts.addEventListener('change', saveSupportCosts);
+  el.supportBtn.addEventListener('click', openSupportPage);
+  el.supportLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    openSupportPage();
+  });
   el.filesDetails.addEventListener('toggle', () => {
     if (el.filesDetails.open) renderFilesList();
   });
@@ -11462,6 +11654,7 @@ async function init() {
     pickEmoji: (fn) => openEmojiPicker(null, fn),
     spaceEmoji: myEmoji,
     me: () => S.me,
+    offersSupport,
   });
 
   // ----- A friend's menu -----

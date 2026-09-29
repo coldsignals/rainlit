@@ -256,9 +256,26 @@
 
     // ---------- Sending ----------
 
+    // (Sharper, for people supporting Rainlit, while the server says so: twice the frames. Not
+    // with the data saver.)
     encodingFor(kind, smooth) {
       if (kind === 'cam') return { maxBitrate: (this.limits.camKbps || 800) * 1000, maxFramerate: 30 };
-      return { maxBitrate: (this.limits.screenKbps || 1500) * 1000, maxFramerate: smooth ? 30 : 15 };
+      const sharp = Boolean(this.limits.sharp) && !this.screenSaver;
+      return { maxBitrate: (this.limits.screenKbps || 1500) * 1000, maxFramerate: (smooth ? 30 : 15) * (sharp ? 2 : 1) };
+    }
+
+    // New limits from the server, mid-call (sharper streams stopping for the month, say): what's
+    // being sent now follows them.
+    async setLimits(limits) {
+      this.limits = limits || {};
+      for (const kind of ['cam', 'screen']) {
+        const tr = this.local.get(kind);
+        if (!tr || !tr.sender) continue;
+        const params = tr.sender.getParameters();
+        if (!params.encodings || !params.encodings.length) continue;
+        Object.assign(params.encodings[0], this.encodingFor(kind, kind === 'screen' && Boolean(this.screenSmooth)));
+        await tr.sender.setParameters(params).catch(() => {});
+      }
     }
 
     // Starts sending tracks ([{ kind, mst, smooth }]): one negotiation for them all. (With the
@@ -468,7 +485,8 @@
     }
 
     // A screen share: sharp (1080p, 15 a second, for text) or smooth (720p, 30), and never more
-    // than the server's limit, which keeps what Cloudflare sends on in check.
+    // than the server's limit, which keeps what Cloudflare sends on in check. Supporters' are
+    // sharper (1080p, at 30 or 60 a second), unless they chose the data saver.
     async setScreen(on, options = {}) {
       const lp = this.localParticipant;
       if (!on) {
@@ -479,8 +497,11 @@
       if (!lp.permissions.canPublish) throw cantTalk();
       const smooth = options.contentHint === 'motion';
       this.screenSmooth = smooth;
+      this.screenSaver = Boolean(options.saver);
+      const sharp = Boolean(this.limits.sharp) && !this.screenSaver;
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: smooth ? { width: { max: 1280 }, height: { max: 720 }, frameRate: { max: 30 } } : { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: 15 } },
+        video: sharp ? { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: smooth ? 60 : 30 } }
+          : smooth ? { width: { max: 1280 }, height: { max: 720 }, frameRate: { max: 30 } } : { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: 15 } },
         audio: Boolean(options.audio),
       });
       const video = stream.getVideoTracks()[0];
