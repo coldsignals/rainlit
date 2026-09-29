@@ -103,12 +103,17 @@ public class RainlitPlugin extends Plugin {
     };
 
     // Android lets an app's web page be frozen or stopped once it's off screen, and some phones
-    // do that even during a call, which breaks it. During a call, the page keeps full priority.
+    // do that even during a call, which breaks it. During a call, the page keeps full priority,
+    // and its engine keeps thinking it's on screen, so it doesn't freeze it (see RainlitWebView).
     private void keepPageAwake(boolean awake) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getBridge() == null) return;
+        if (getBridge() == null) return;
         getBridge().executeOnMainThread(() -> {
             android.webkit.WebView view = getBridge().getWebView();
-            if (view != null) view.setRendererPriorityPolicy(android.webkit.WebView.RENDERER_PRIORITY_IMPORTANT, !awake);
+            if (view == null) return;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                view.setRendererPriorityPolicy(android.webkit.WebView.RENDERER_PRIORITY_IMPORTANT, !awake);
+            }
+            if (view instanceof RainlitWebView) ((RainlitWebView) view).setStayAwake(awake);
         });
     }
 

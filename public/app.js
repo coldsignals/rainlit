@@ -1564,7 +1564,16 @@ function onConnectionState(conn) {
     renderPeer();
   } else if (state === 'new' || state === 'connecting') {
     setStatus(`Connecting to ${S.peer ? S.peer.name : 'friend'}`);
-  } else if ((state === 'disconnected' || state === 'failed') && S.peer && S.peer.away) {
+  } else if (state === 'disconnected' && S.peer && S.peer.away) {
+    // They're off the server, but their sound was still coming through (a phone that froze the
+    // page, say). Nothing can be asked of them now, but a blip can pass by itself: give it a
+    // while before giving up and waiting for them.
+    setStatus('Reconnecting');
+    dropSoundSoon();
+    conn.failTimer = setTimeout(() => {
+      if (S.conn === conn && conn.pc.connectionState !== 'connected') recover(conn);
+    }, 30_000);
+  } else if (state === 'failed' && S.peer && S.peer.away) {
     // We already know they dropped; show that instead of retrying.
     recover(conn);
   } else if (state === 'disconnected') {
@@ -11690,7 +11699,15 @@ async function init() {
       S.androidPaused = !(d && d.visible);
       trace(S.androidPaused ? 'app-hidden' : 'app-visible');
       sendBackground();
-      if (!S.androidPaused) syncAndroidPush();
+      // (During a call the page stays "on screen" as far as the browser's concerned, so it
+      // won't say so itself: see RainlitWebView.)
+      if (S.androidPaused) return setPttHeld(false);
+      syncAndroidPush();
+      // Back with a conversation open: you've seen what came in.
+      if (S.openDm) {
+        const dm = dmFor(S.openDm);
+        if (dm.unread || (dm.divider && !dm.divider.seen)) markDmSeen(dm);
+      }
     });
   }
   // Back to the window (the desktop app, or from another app): catch up on what came in.

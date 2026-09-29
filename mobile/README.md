@@ -10,7 +10,9 @@ On top of the website:
 
 - **Calls keep going** when you switch apps or turn the screen off. An ongoing
   "In a call with …" notification is what Android requires for that; tap it to get
-  back to the call.
+  back to the call. During a call the page also stays "on screen" as far as its engine
+  can tell (`RainlitWebView`), so the engine doesn't freeze it: a frozen page can't
+  mend the call's connection after a network hiccup, or restart its sound.
 - **Notifications** when someone calls or messages while you're not looking at
   Rainlit.
 - **Push, for when the app is fully closed**, through UnifiedPush: install a push
