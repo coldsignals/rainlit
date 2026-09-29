@@ -18,9 +18,10 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
-  // Live data, people's pictures and the files in conversations always come straight from the
-  // server (and files aren't kept here: a phone would fill up with every photo and video).
-  if (/^\/(api|avatars|files|homepage-files|homepage-avatar)\//.test(url.pathname) || url.pathname === '/ws') return;
+  // Live data, people's pictures, custom emoji and the files in conversations always come straight
+  // from the server (and files aren't kept here: a phone would fill up with every photo and video).
+  // (They may be sent on to Cloudflare R2, where only the page itself may follow: see lib/blobs.js.)
+  if (/^\/(api|avatars|files|homepage-files|homepage-avatar|emoji)\//.test(url.pathname) || url.pathname === '/ws') return;
   e.respondWith(networkFirst(e.request));
 });
 
