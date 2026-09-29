@@ -25,10 +25,14 @@ const discord = require('./lib/discord');
 const accounts = require('./lib/accounts');
 const emojis = require('./lib/emoji');
 const homepages = require('./lib/homepages');
-const { imageKind } = require('./lib/images');
+const images = require('./lib/images');
+const { imageKind } = images;
 const embeds = require('./lib/embeds');
 const mail = require('./lib/mail');
 const signups = require('./lib/signups');
+const storage = require('./lib/storage');
+const scrub = require('./lib/scrub');
+const settings = require('./lib/settings');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -37,10 +41,9 @@ const AVATAR_MAX = 8 * 1024 * 1024;
 const RESET_LINK_HOURS = 24; // (a link the admin makes)
 const RESET_EMAIL_MINUTES = 60; // (one sent by email)
 const CONFIRM_DAYS = 3;
-const FILE_MAX_MB = Number(process.env.MAX_FILE_MB) || 100;
-// Your notes (a conversation with yourself) hold this many, and their files this much.
+// Your notes (a conversation with yourself) hold this many. (Their files count toward the room
+// your files have, in lib/storage.js, like everything else you send.)
 const NOTES_MAX = Number(process.env.NOTES_MAX) || 100;
-const NOTES_MB = Number(process.env.NOTES_MB) || 500;
 const MESSAGE_MAX = 4000;
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 // GIFs come from KLIPY (https://klipy.com). Browsers search it and load its GIFs directly,
@@ -582,13 +585,18 @@ function removeAvatarFile(name) {
   if (name) fs.rm(path.join(AVATAR_DIR, name), { force: true }, () => {});
 }
 
-api.put('/me/avatar', needUser, express.raw({ type: () => true, limit: AVATAR_MAX }), (req, res) => {
+api.put('/me/avatar', needUser, express.raw({ type: () => true, limit: AVATAR_MAX }), async (req, res) => {
   const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
   const kind = imageKind(buf);
   if (!kind) return fail(res, 400, 'Profile pictures can be PNG, JPG, GIF or WebP.');
+  // A big one's made smaller (never more compressed), and a photo's hidden location comes out.
+  let pic = { buf, ext: kind };
+  try {
+    pic = await images.avatar(buf, kind);
+  } catch {}
   // A new name each time, so everyone's browser fetches the new picture instead of a saved copy.
-  const name = `${req.user.id}-${crypto.randomBytes(4).toString('hex')}.${kind}`;
-  fs.writeFileSync(path.join(AVATAR_DIR, name), buf);
+  const name = `${req.user.id}-${crypto.randomBytes(4).toString('hex')}.${pic.ext}`;
+  fs.writeFileSync(path.join(AVATAR_DIR, name), pic.buf);
   db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(name, req.user.id);
   removeAvatarFile(req.user.avatar);
   res.json({ user: people.selfUser(profileChanged(req.user.id)) });
@@ -600,11 +608,74 @@ api.delete('/me/avatar', needUser, (req, res) => {
   res.json({ user: people.selfUser(profileChanged(req.user.id)) });
 });
 
+// Profile pictures from before they were made smaller (and had their location taken out): once,
+// a minute after the first start with this.
+setTimeout(async () => {
+  if (settings.get('avatarsTidied')) return;
+  for (const u of db.prepare('SELECT id, avatar FROM users WHERE avatar IS NOT NULL').all()) {
+    try {
+      const buf = await fs.promises.readFile(path.join(AVATAR_DIR, u.avatar));
+      const kind = imageKind(buf);
+      const pic = kind ? await images.avatar(buf, kind) : { buf };
+      if (pic.buf === buf) continue;
+      const name = `${u.id}-${crypto.randomBytes(4).toString('hex')}.${pic.ext}`;
+      await fs.promises.writeFile(path.join(AVATAR_DIR, name), pic.buf);
+      const moved = db.prepare('UPDATE users SET avatar = ? WHERE id = ? AND avatar = ?').run(name, u.id, u.avatar).changes;
+      removeAvatarFile(moved ? u.avatar : name);
+      if (moved) profileChanged(u.id);
+    } catch {}
+  }
+  settings.set('avatarsTidied', '1');
+}, 60_000).unref();
+
+// ----- Your files: everything you've sent that's still kept, biggest first -----
+// So there's an easy way to make room (lib/storage.js), wherever you sent them, even in a
+// conversation or space you're no longer in.
+
+function whereSent(user, dmId) {
+  if (!dmId.includes(':')) {
+    const c = spaces.channel(dmId);
+    const s = c && spaces.getSpace(c.space_id);
+    return c ? `#${c.name}${s ? ` in ${s.name}` : ''}` : 'A space';
+  }
+  const other = dmId.split(':').find((id) => id !== user.id);
+  if (!other) return 'Your notes';
+  const u = people.userById(other);
+  return u ? `To ${u.display_name}` : 'To someone';
+}
+
+api.get('/me/files', needUser, (req, res) => {
+  const files = db.prepare(`
+    SELECT id, dm_id, file_name, file_size, file_type, created_at FROM messages
+    WHERE author_id = ? AND kind = 'file' AND file_path IS NOT NULL ORDER BY file_size DESC LIMIT 1000
+  `).all(req.user.id).map((r) => ({
+    id: r.id, name: r.file_name, size: r.file_size, type: r.file_type, at: r.created_at,
+    url: dms.fileUrl(r.id, r.file_name), where: whereSent(req.user, r.dm_id),
+  }));
+  res.json({ ...storage.of(req.user), files });
+});
+
+// Deleting one: like deleting it in its conversation (those who can see it are told).
+api.delete('/me/files/:id', needUser, (req, res) => {
+  const r = dms.getRow(req.params.id);
+  if (!r || r.kind !== 'file' || r.author_id !== req.user.id) return fail(res, 404, "That file isn't there any more.");
+  if (r.dm_id === `${req.user.id}:${req.user.id}`) {
+    dms.deleteMessage(r.id);
+    realtime.sendToUser(req.user.id, { type: 'dm-gone', dm: r.dm_id, ids: [r.id], notes: dms.notesUsage(r.dm_id) });
+  } else {
+    dms.removeMessage(r.id);
+    const channel = !r.dm_id.includes(':') && spaces.channel(r.dm_id);
+    const audience = channel ? spaces.channelAudience(channel) : r.dm_id.includes(':') ? r.dm_id.split(':') : [];
+    for (const id of audience) realtime.sendToUser(id, { type: 'dm-removed', dm: r.dm_id, id: r.id, by: req.user.id, name: req.user.display_name, was: 'file' });
+  }
+  res.json({ ok: true, storage: storage.of(people.userById(req.user.id)) });
+});
+
 // ----- Friends -----
 
 api.get('/friends', needUser, (req, res) => {
   const out = {
-    friends: [], incoming: [], outgoing: [], maxFileMb: FILE_MAX_MB, klipyKey: KLIPY_KEY, quickReactions: dms.quickReactions(req.user.id),
+    friends: [], incoming: [], outgoing: [], maxFileMb: storage.fileMb(), storage: storage.of(req.user), klipyKey: KLIPY_KEY, quickReactions: dms.quickReactions(req.user.id),
     blocked: safety.blockedBy(req.user.id).map((id) => people.userById(id)).filter(Boolean).map(people.publicUser),
     voice: voice.enabled,
     mail: mail.enabled,
@@ -815,9 +886,9 @@ api.put('/homepages/me', needUser, (req, res) => {
 });
 
 // A picture (or a song) for your page. It stays as long as it's on the page.
-api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit: homepages.AUDIO_MAX + 1024 }), (req, res) => {
+api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit: homepages.AUDIO_MAX + 1024 }), async (req, res) => {
   try {
-    const file = homepages.addFile(req.user.id, Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0));
+    const file = await homepages.addFile(req.user.id, Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0));
     res.json({ file: { ...file, url: `/homepage-files/${file.id}` }, usage: homepages.usage(req.user.id) });
   } catch (err) {
     if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
@@ -835,7 +906,7 @@ api.post('/homepages/me/cover', needUser, async (req, res) => {
   const original = pic && new URL(pic.src, 'http://x').searchParams.get('u');
   if (!original) return fail(res, 404, "Couldn't find a picture for that link. Add one instead.");
   try {
-    const file = homepages.addFile(req.user.id, await homepages.download(original));
+    const file = await homepages.addFile(req.user.id, await homepages.download(original));
     if (file.kind !== 'image') return fail(res, 404, "Couldn't find a picture for that link. Add one instead.");
     res.json({ file: { ...file, url: `/homepage-files/${file.id}` }, title: homepages.coverTitle(embed.title, embed.site, link), href: link, usage: homepages.usage(req.user.id) });
   } catch (err) {
@@ -957,7 +1028,7 @@ function readFloor(req) {
 api.get(conv('/messages'), needUser, needConv, (req, res) => {
   if (req.query.after) return res.json({ messages: dms.since(req.dm.id, Number(req.query.after) || 0) });
   const page = dms.history(req.dm.id, Number(req.query.before) || 0);
-  const notes = req.notes ? { ...dms.notesUsage(req.dm.id), max: NOTES_MAX, maxBytes: NOTES_MB * 1024 * 1024 } : undefined;
+  const notes = req.notes ? { ...dms.notesUsage(req.dm.id), max: NOTES_MAX } : undefined;
   res.json({ ...page, save: Boolean(req.dm.save), readAt: readFloor(req), notes });
 });
 
@@ -1059,19 +1130,23 @@ function cleanGif(g) {
 const NOTES_FULL = `Your notes are full (${NOTES_MAX} of ${NOTES_MAX}). Delete some to make room.`;
 
 api.post(conv('/files'), needUser, needConv, (req, res) => {
-  const tooBig = `Files can be up to ${FILE_MAX_MB} MB.`;
-  if (req.notes) {
-    const used = dms.notesUsage(req.dm.id);
-    if (used.count >= NOTES_MAX) return fail(res, 409, NOTES_FULL);
-    if (used.bytes + Number(req.get('content-length') || 0) > NOTES_MB * 1024 * 1024) {
-      return fail(res, 413, `Files in your notes can add up to ${NOTES_MB} MB, and this one won't fit. Delete some to make room.`);
-    }
-  }
+  const maxBytes = storage.fileMb() * storage.MB;
+  const tooBig = `Files can be up to ${storage.fileMb()} MB.`;
+  if (req.notes && dms.notesUsage(req.dm.id).count >= NOTES_MAX) return fail(res, 409, NOTES_FULL);
   if (req.access && !req.access.files) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send files in this channel.");
   if (!req.dm.save) return fail(res, 409, 'Saving is off in this conversation, so files can only be sent during a call.');
   const id = String(req.get('x-message-id') || '');
   if (!ID_RE.test(id) || dms.getRow(id)) return fail(res, 400, "That upload didn't make sense.");
-  if (Number(req.get('content-length') || 0) > FILE_MAX_MB * 1024 * 1024) return fail(res, 413, tooBig);
+  const declared = Number(req.get('content-length') || 0);
+  if (declared > maxBytes) return fail(res, 413, tooBig);
+  // Room: theirs (all their files together), and the disk's (never let fill up).
+  const room = storage.of(req.user);
+  const noRoom = `You've used ${storage.size(room.used)} of your ${storage.size(room.limit)} for files. Delete some you don't need any more to make room (Your profile, then Your files).`;
+  if (room.used + declared > room.limit) return fail(res, 413, noRoom);
+  if (!storage.diskHasRoom(declared)) {
+    console.warn('[storage] The disk is nearly full, so uploads are paused. Make it bigger (on Render: your service, then Disks).');
+    return fail(res, 507, "Rainlit's out of room for files right now, so uploads are paused for a bit. Try again later.");
+  }
   let name = '';
   try { name = decodeURIComponent(req.get('x-file-name') || ''); } catch {}
   name = people.oneLine(name.replace(/[\\/]/g, '_'), 200) || 'file';
@@ -1084,23 +1159,47 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
   const counter = new Transform({
     transform(chunk, _enc, done) {
       size += chunk.length;
-      done(size > FILE_MAX_MB * 1024 * 1024 ? Object.assign(new Error('too big'), { tooBig: true }) : null, chunk);
+      done(size > maxBytes ? Object.assign(new Error('too big'), { tooBig: true })
+        : room.used + size > room.limit ? Object.assign(new Error('no room'), { noRoom: true }) : null, chunk);
     },
   });
-  pipeline(req, counter, fs.createWriteStream(partial), (err) => {
+  pipeline(req, counter, fs.createWriteStream(partial), async (err) => {
     if (err) {
       fs.rm(partial, { force: true }, () => {});
-      if (!res.headersSent && !res.socket?.destroyed) fail(res, err.tooBig ? 413 : 500, err.tooBig ? tooBig : 'The upload failed. Try again.');
+      if (!res.headersSent && !res.socket?.destroyed) {
+        fail(res, err.tooBig || err.noRoom ? 413 : 500, err.tooBig ? tooBig : err.noRoom ? noRoom : 'The upload failed. Try again.');
+      }
       return;
     }
+    // Its hidden details come out (where and when a photo was taken, on what...: lib/scrub.js).
+    size = (await scrub.scrubFile(partial, { type: safeType, name })) ?? size;
     fs.renameSync(partial, final);
     const replyTo = dms.replyTarget(req.dm.id, req.get('x-reply-to'));
     const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, replyTo });
     tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
     if (req.channel) pushChannelMessage(req, null);
-    res.json({ message });
+    const row = dms.getRow(id);
+    if (row) dms.previewOf(row); // (its smaller copy, ready for the chat)
+    res.json({ message, storage: storage.of(req.user) });
   });
 });
+
+// Files sent (and homepage pictures and songs) from before hidden details were taken out of
+// them: once, in the background, two minutes after the first start with this.
+setTimeout(async () => {
+  if (settings.get('filesScrubbed')) return;
+  const sent = db.prepare('SELECT id, file_path, file_name, file_type, file_size FROM messages WHERE file_path IS NOT NULL').all();
+  for (const r of sent) {
+    const size = await scrub.scrubFile(path.join(dms.FILES_DIR, r.file_path), { type: r.file_type, name: r.file_name });
+    if (size != null && size !== r.file_size) db.prepare('UPDATE messages SET file_size = ? WHERE id = ? AND file_path = ?').run(size, r.id, r.file_path);
+  }
+  for (const f of db.prepare('SELECT id, file, bytes FROM homepage_files').all()) {
+    const size = await scrub.scrubFile(path.join(homepages.FILES_DIR, f.file));
+    if (size != null && size !== f.bytes) db.prepare('UPDATE homepage_files SET bytes = ? WHERE id = ?').run(size, f.id);
+  }
+  settings.set('filesScrubbed', '1');
+  console.log(`[files] Took hidden details out of files from before (${sent.length} checked).`);
+}, 120_000).unref();
 
 // Remove something you sent. It's replaced by "Alice removed a message" for both of you.
 // A short-lived link to one file, for opening it somewhere that isn't signed in (the
@@ -1131,6 +1230,7 @@ function fileLinkOk(id, link) {
 function fileFor(user, id) {
   const r = dms.getRow(id);
   if (!r || r.kind !== 'file') return null;
+  if (r.author_id === user.id) return r; // (your own, wherever you sent it: see Your files)
   if (!r.dm_id.includes(':')) {
     const channel = spaces.channel(r.dm_id);
     const member = channel && spaces.memberOf(channel.space_id, user.id);
@@ -1822,12 +1922,29 @@ api.delete('/admin/invites/:code', needAdmin, (req, res) => {
 });
 
 api.get('/admin/users', needAdmin, (_req, res) => {
+  const usedBy = storage.usedByEveryone();
   const users = db.prepare('SELECT * FROM users ORDER BY created_at').all()
     .map((u) => ({
       ...people.publicUser(u), email: u.email, isAdmin: Boolean(u.is_admin), createdAt: u.created_at,
       suspended: Boolean(u.suspended_at), suspendedReason: u.suspended_reason || '',
+      storage: { used: usedBy.get(u.id) || 0, limit: (u.storage_mb ?? storage.personMb()) * storage.MB, custom: u.storage_mb != null },
     }));
   res.json({ users });
+});
+
+// Room for files (lib/storage.js): the biggest file, how much each person's can add up to, and
+// the disk. And one person's own amount (more, or less, than everyone's; null goes back).
+api.get('/admin/storage', needAdmin, (_req, res) => res.json(storage.overview()));
+api.put('/admin/storage', needAdmin, (req, res) => {
+  const b = req.body || {};
+  storage.configure({ fileMb: b.fileMb, personMb: b.personMb });
+  res.json(storage.overview());
+});
+api.put('/admin/users/:id/storage', needAdmin, (req, res) => {
+  const u = people.userById(req.params.id);
+  if (!u) return fail(res, 404, "That account isn't there any more.");
+  storage.setPersonal(u.id, (req.body || {}).mb ?? null);
+  res.json({ storage: storage.of(people.userById(u.id)) });
 });
 
 // Suspending an account: signed out everywhere at once, out of any call, and it can't sign in
@@ -1948,7 +2065,7 @@ app.get('/avatars/:file', (req, res, next) => {
 // Files sent in a conversation, for the two people in it. Pictures, videos and audio
 // are shown in place; anything else only downloads. Either way the browser is told
 // never to run anything in them.
-app.get('/files/:id/:name', (req, res) => {
+app.get('/files/:id/:name', async (req, res) => {
   let r;
   if (req.query.link) {
     // A short-lived link (see /api/files/:id/link).
@@ -1962,13 +2079,17 @@ app.get('/files/:id/:name', (req, res) => {
     if (!r) return res.sendStatus(404);
   }
   const showable = dms.SHOWABLE_TYPES.test(r.file_type);
+  // The chat's smaller copy of a photo (opening it shows the original), if it has one.
+  const small = req.query.preview && !req.query.link ? await dms.previewOf(r) : null;
   res.set({
-    'Content-Type': showable ? r.file_type : 'application/octet-stream',
+    'Content-Type': small ? 'image/webp' : showable ? r.file_type : 'application/octet-stream',
     'Content-Disposition': `${showable ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(r.file_name)}`,
     'Content-Security-Policy': "default-src 'none'; sandbox",
     'Cache-Control': 'private, max-age=31536000, immutable',
   });
-  res.sendFile(r.file_path, { root: dms.FILES_DIR }, (err) => {
+  // (Relative to its folder, so a dot in a parent folder's name doesn't make it refuse.)
+  const [file, root] = small ? [path.basename(small), path.dirname(small)] : [r.file_path, dms.FILES_DIR];
+  res.sendFile(file, { root }, (err) => {
     if (err && !res.headersSent) res.sendStatus(404);
   });
 });

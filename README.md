@@ -102,8 +102,10 @@ and released is in [desktop/README.md](desktop/README.md).
   10 minutes without touching Rainlit (except during a call). You can also
   pick **Away** or **Appear offline** yourself.
 - **Your profile:** click your name at the bottom left. Change your picture
-  (PNG, JPG, WebP or GIF, up to 8 MB, and GIFs move), display name and a status
-  of up to 120 characters. Your password, your email and sign out are there too.
+  (PNG, JPG, WebP or GIF, up to 8 MB, and GIFs move; a big one's made 512 pixels
+  across, losslessly, so it's never blurred or blocky), display name and a status
+  of up to 120 characters. Your password, your email and sign out are there too,
+  and **Your files**: everything you've sent, biggest first, to make room.
 - **Your email:** new accounts get a link to confirm their email address (your
   profile says whether it's confirmed, and sends another). Forgot your password?
   **Forgot your password?** on the sign-in screen emails a link, good for an
@@ -178,9 +180,9 @@ at the top closes it (on a phone, the back arrow).
   and react with them. A message that's only emoji shows them big.
 - **Notes:** a conversation with yourself, at the top of Home, for notes, links
   and files you want on all your devices (send a file from your phone, open it
-  on your computer). Only you see it, and it's always kept. It holds 100 notes,
-  and up to 500 MB of files (`NOTES_MAX` and `NOTES_MB`; see
-  [SELF-HOSTING.md](SELF-HOSTING.md)).
+  on your computer). Only you see it, and it's always kept. It holds 100 notes
+  (`NOTES_MAX`; see [SELF-HOSTING.md](SELF-HOSTING.md)), and its files count
+  toward your room for files, like everything else you send.
 - **Link previews:** a link in a message shows what it is underneath, like
   Discord: an X post shows the post (who posted it, what they said, its
   pictures, and its video, which plays right there), a YouTube or TikTok link
@@ -189,9 +191,16 @@ at the top closes it (on a phone, the back arrow).
   who's looking. Wrap a link in `<` and `>` for no preview, or turn them all off
   in settings.
 - **Files:** press the paperclip, drag files onto the conversation, or paste a
-  screenshot into the message box. Pictures show in place (click one to see it
-  full size), and videos and audio play right there. Files are kept too, up to
-  100 MB each (change it with the `MAX_FILE_MB` setting; see [SELF-HOSTING.md](SELF-HOSTING.md)).
+  screenshot into the message box. Pictures show in place (a big photo as a
+  smaller copy, like Discord; click it for the original, full size), and videos
+  and audio play right there. Files are kept too: up to 25 MB each, and 1.5 GB
+  for everything each person's sent that's still there (the admin can change
+  both, and give someone more). It's not per month: deleting files makes room.
+- **Hidden details come out:** photos, videos and recordings often carry where
+  and when they were made, on what phone, and more. Rainlit takes that out of
+  everything uploaded (files, profile pictures, homepages), keeping only which way
+  up a photo goes and its colours. The picture or sound itself isn't touched,
+  and neither is the file's name.
 - **Edit, copy or delete a message:** hover over it and click **⋯** on the
   right, or right-click it (on a phone, press and hold it).
   - **Edit** (your own messages): the text goes back into the message box.

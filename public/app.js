@@ -95,6 +95,7 @@ for (const id of [
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
+  'files-details', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
@@ -140,7 +141,8 @@ const S = {
   dms: new Map(), // friend id -> your conversation with them (see dmFor)
   openDm: '', // the friend whose conversation is on screen
   uploads: new Map(), // message id -> a file being uploaded to a saved conversation
-  maxFileMb: 100, // the biggest file a saved conversation takes (the server says)
+  maxFileMb: 25, // the biggest file a saved conversation takes (the server says)
+  storage: null, // { used, limit } in bytes: how much room your files take, and have (lib/storage.js)
   klipyKey: '', // for searching GIFs on KLIPY; no key means no GIF button
   setupNeeded: false, // no accounts yet: the first one is made with the setup code
   resetToken: '', // from a password reset link
@@ -4798,6 +4800,10 @@ function addPending(list) {
       toast(`"${file.name}" is too big. Files can be up to ${S.maxFileMb} MB.`, 6000);
       continue;
     }
+    if (dm.save && !roomFor(file.size + dm.pending.reduce((n, p) => n + p.size, 0))) {
+      toast(noRoomText(), 9000);
+      continue;
+    }
     dm.pending.push({ id: randomId(), file, name: file.name || 'file', type: file.type, size: file.size, url: null });
   }
   renderTray();
@@ -4917,6 +4923,7 @@ function uploadFile(dm, file, replyTo = null) {
   if (file.size > S.maxFileMb * 1024 * 1024) {
     return toast(`"${file.name}" is too big. Files can be up to ${S.maxFileMb} MB.`, 6000);
   }
+  if (!roomFor(file.size)) return toast(noRoomText(), 9000);
   const t = { id: randomId(), dir: 'up', name: file.name || 'file', size: file.size, type: file.type, state: 'queued', sent: 0, replyTo };
   const li = fileCard(t, 'You', Date.now());
   li.dataset.author = S.clientId;
@@ -4970,6 +4977,7 @@ function startUpload(dm, t, file, xhr, done) {
     done();
     let data = {};
     try { data = JSON.parse(xhr.responseText); } catch {}
+    if (data.storage) noteStorage(data.storage);
     if (xhr.status === 200 && data.message) appendMessage(dm, data.message);
     else endTransfer(t, 'failed', data.error || 'Upload failed. Try again.');
   };
@@ -5187,7 +5195,7 @@ function addFileCard(t) {
 
 // A file kept in a saved conversation.
 function savedFileItem(m, who) {
-  const t = { id: m.id, name: m.file.name, size: m.file.size, type: m.file.type, dir: 'saved', state: 'done' };
+  const t = { id: m.id, name: m.file.name, size: m.file.size, type: m.file.type, preview: m.file.preview, dir: 'saved', state: 'done' };
   const li = fileCard(t, who, m.at);
   t.ui.save.href = m.file.url;
   showPreview(t.ui.card, t, m.file.url);
@@ -5195,7 +5203,8 @@ function savedFileItem(m, who) {
   return li;
 }
 
-// Pictures show in the chat (click for full size), videos and audio play right there.
+// Pictures show in the chat (click for full size), videos and audio play right there. A big
+// photo shows as its smaller copy (f.preview, made by the server), and opens as the original.
 function showPreview(card, f, url) {
   const kind = previewKind(f.type);
   if (!kind) return;
@@ -5221,12 +5230,19 @@ function showPreview(card, f, url) {
     const log = card.closest('.chat-log');
     if (log && log.scrollHeight - log.scrollTop - log.clientHeight - shown.clientHeight < 120) scrollChat(log);
   });
-  // Not something this browser can show after all: it can still be saved, from the card.
+  // Not something this browser can show after all: it can still be saved, from the card. (If
+  // it was the smaller copy that didn't come, the original's tried first.)
+  let small = kind === 'image' && f.preview;
   media.onerror = () => {
+    if (small) {
+      small = null;
+      media.src = url;
+      return;
+    }
     shown.remove();
     card.classList.remove('has-media');
   };
-  media.src = url;
+  media.src = small || url;
   card.prepend(shown);
 }
 
@@ -8523,6 +8539,7 @@ async function refreshFriends() {
     S.incoming = data.incoming;
     S.outgoing = data.outgoing;
     S.maxFileMb = data.maxFileMb || S.maxFileMb;
+    if (data.storage) S.storage = data.storage;
     S.klipyKey = data.klipyKey || '';
     if (Array.isArray(data.quickReactions) && data.quickReactions.length) setQuickReactions(data.quickReactions);
     renderComposer();
@@ -9325,6 +9342,8 @@ function openProfile() {
   renderEmailRow();
   renderProfileBadges();
   renderBlockedList();
+  el.filesDetails.open = false;
+  renderFilesSummary();
   renderFace(el.profileFace, S.me, null);
   el.avatarRemoveBtn.hidden = !S.me.avatar;
   el.pwCurrent.value = el.pwNext.value = '';
@@ -9334,6 +9353,88 @@ function openProfile() {
   updateStatusCount();
   showProfileError('');
   el.profile.showModal();
+}
+
+// ----- Room for your files (lib/storage.js) -----
+// Everything you've sent that's still kept counts (your notes too), until you delete it. It's
+// not per month. Past 90%, a heads-up; and Your profile lists your files biggest first, to make
+// room.
+
+function roomFor(bytes) {
+  return !S.storage || S.storage.used + bytes <= S.storage.limit;
+}
+
+function noRoomText() {
+  return `You've used ${fmtBytes(S.storage.used)} of your ${fmtBytes(S.storage.limit)} for files. Delete some you don't need any more to make room (Your profile, then Your files).`;
+}
+
+function noteStorage(s) {
+  const before = S.storage;
+  S.storage = s;
+  if (s.used >= s.limit * 0.9 && (!before || before.used < before.limit * 0.9)) {
+    toast(`Heads up: you've used ${fmtBytes(s.used)} of your ${fmtBytes(s.limit)} for files. Your profile, then Your files, is where to make room.`, 9000);
+  }
+  renderFilesSummary();
+}
+
+function renderFilesSummary() {
+  const s = S.storage;
+  if (!s) return;
+  el.filesUsed.textContent = `(${fmtBytes(s.used)} of ${fmtBytes(s.limit)})`;
+  el.filesBar.style.width = `${Math.min(100, (s.used / s.limit) * 100)}%`;
+  el.filesBar.parentElement.classList.toggle('nearly', s.used >= s.limit * 0.9);
+  el.filesNote.textContent = `Everything you've sent that's still here counts, in conversations, spaces and your notes, until you delete it. You have ${fmtBytes(Math.max(0, s.limit - s.used))} left.`;
+}
+
+async function renderFilesList() {
+  let data;
+  try {
+    data = await api('GET', '/me/files');
+  } catch (err) {
+    return toast(err.message);
+  }
+  S.storage = { used: data.used, limit: data.limit };
+  renderFilesSummary();
+  if (!data.files.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = "You haven't sent any files yet.";
+    return el.filesList.replaceChildren(li);
+  }
+  el.filesList.replaceChildren(...data.files.map((f) => {
+    const li = document.createElement('li');
+    const words = document.createElement('span');
+    words.className = 'grow file-row-words';
+    const name = document.createElement('span');
+    name.className = 'file-row-name';
+    name.textContent = f.name;
+    name.title = f.name;
+    const about = document.createElement('small');
+    about.className = 'muted';
+    about.textContent = `${fmtBytes(f.size)} · ${f.where} · ${fmtWhen(f.at)}`;
+    words.append(name, about);
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'text-btn';
+    open.textContent = 'Open';
+    open.addEventListener('click', async () => {
+      if (previewKind(f.type) === 'image') return openLightbox({ id: f.id, name: f.name }, f.url);
+      try {
+        const { url } = await api('POST', `/files/${f.id}/link`);
+        openUrl(url);
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    const del = sureButton('Delete', 'Sure? Delete it', async () => {
+      const r = await api('DELETE', `/me/files/${f.id}`);
+      li.remove();
+      if (r.storage) noteStorage(r.storage);
+      if (!el.filesList.children.length) renderFilesList();
+    });
+    li.append(words, open, del);
+    return li;
+  }));
 }
 
 // ----- Deleting your account (see lib/accounts.js) -----
@@ -9587,6 +9688,7 @@ async function renderAdmin() {
   }
   renderTraceList(pairs);
   renderSignups();
+  renderStorage();
   if (!reports.length) {
     const li = document.createElement('li');
     li.className = 'muted';
@@ -9651,7 +9753,17 @@ async function renderAdmin() {
         toast(err.message);
       }
     });
-    li.append(makeFace(u, null), who, reset);
+    // (Under their name: how much room their files take, and have. Click to change it.)
+    const room = document.createElement('button');
+    room.type = 'button';
+    room.className = 'text-btn user-room';
+    room.textContent = `Files: ${fmtBytes(u.storage.used)} of ${fmtBytes(u.storage.limit)}${u.storage.custom ? ' (theirs)' : ''}`;
+    room.title = 'Give them more room, or less';
+    room.addEventListener('click', () => askRoom(li, u));
+    const words = document.createElement('span');
+    words.className = 'user-words';
+    words.append(who, room);
+    li.append(makeFace(u, null), words, reset);
     if (u.suspended) {
       li.classList.add('suspended');
       who.textContent += ` · suspended${u.suspendedReason ? ` (${u.suspendedReason})` : ''}`;
@@ -9694,6 +9806,72 @@ function sureButton(text, sure, action) {
     }
   });
   return b;
+}
+
+// Admin: the biggest file, each person's room, and the disk.
+async function renderStorage(state) {
+  try {
+    state = state || (await api('GET', '/admin/storage'));
+  } catch {
+    return;
+  }
+  if (document.activeElement !== el.storageFile) el.storageFile.value = String(state.fileMb);
+  if (document.activeElement !== el.storagePerson) el.storagePerson.value = String(Math.round((state.personMb / 1024) * 100) / 100);
+  const d = state.disk;
+  el.storageState.textContent = `Everyone's files take up ${fmtBytes(state.files)}.`
+    + (d ? ` The disk has ${fmtBytes(d.free)} free, of ${fmtBytes(d.total)}.` : '')
+    + (d && d.full ? " It's nearly full, so uploads are paused: make it bigger (on Render: your service, then Disks; it takes seconds)." : '');
+  el.storageState.classList.toggle('storage-warn', Boolean(d && d.free < d.total * 0.2));
+}
+
+async function saveStorage(fields) {
+  try {
+    renderStorage(await api('PUT', '/admin/storage', fields));
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// Giving one person more room (or less), in the row itself.
+function askRoom(li, u) {
+  if (li.nextElementSibling && li.nextElementSibling.classList.contains('room-ask')) return;
+  const box = document.createElement('div');
+  box.className = 'room-ask';
+  const gb = document.createElement('input');
+  gb.type = 'number';
+  gb.min = '0.1';
+  gb.step = '0.1';
+  gb.value = String(Math.round((u.storage.limit / 1024 ** 3) * 100) / 100);
+  gb.setAttribute('aria-label', `Room for @${u.username}'s files, in GB`);
+  const label = document.createElement('span');
+  label.textContent = `GB for @${u.username}`;
+  const save = async (mb) => {
+    try {
+      await api('PUT', `/admin/users/${u.id}/storage`, { mb });
+      renderAdmin();
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+  const yes = document.createElement('button');
+  yes.type = 'button';
+  yes.className = 'small-btn';
+  yes.textContent = 'Save';
+  yes.addEventListener('click', () => save(Math.round(Number(gb.value) * 1024)));
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'text-btn';
+  reset.textContent = "Everyone's amount";
+  reset.hidden = !u.storage.custom;
+  reset.addEventListener('click', () => save(null));
+  const no = document.createElement('button');
+  no.type = 'button';
+  no.className = 'text-btn';
+  no.textContent = 'Cancel';
+  no.addEventListener('click', () => box.remove());
+  box.append(gb, label, yes, reset, no);
+  li.after(box);
+  gb.focus();
 }
 
 // Admin: open sign-ups or not, the daily limit, and the waitlist.
@@ -10309,6 +10487,11 @@ async function init() {
   el.adminBtn.addEventListener('click', openAdmin);
   el.inviteBtn.addEventListener('click', onMakeInvite);
   el.signupsOpen.addEventListener('change', () => saveSignups({ open: el.signupsOpen.checked }));
+  el.storageFile.addEventListener('change', () => saveStorage({ fileMb: Number(el.storageFile.value) }));
+  el.storagePerson.addEventListener('change', () => saveStorage({ personMb: Math.round(Number(el.storagePerson.value) * 1024) }));
+  el.filesDetails.addEventListener('toggle', () => {
+    if (el.filesDetails.open) renderFilesList();
+  });
   el.signupsCap.addEventListener('change', () => saveSignups({ cap: Number(el.signupsCap.value) }));
   el.waitlistRelease.addEventListener('click', async () => {
     try {

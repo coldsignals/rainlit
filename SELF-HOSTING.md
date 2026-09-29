@@ -77,7 +77,7 @@ account without an invite. To keep bots and floods out: there's a bot check (a s
 each person's browser solves while they fill in the form, so no CAPTCHA company is involved),
 throwaway email addresses aren't allowed, one place can only make a few accounts a day, and
 new accounts confirm their email before they can add friends or join spaces. You choose how
-many new accounts a day, at most (50 to start with). Past that, people can join a waitlist,
+many new accounts a day, at most (10 to start with). Past that, people can join a waitlist,
 and every hour, as room opens up, the next ones on it get an invite by email (so the
 waitlist needs email: step 12). Invite codes always work, whatever the limit.
 
@@ -213,8 +213,9 @@ for 3,000 emails a month):
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels and group calls (step 11). |
 | `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |
 | `COMPOSE_PROFILES` | Docker only: `voice` runs LiveKit alongside Rainlit (step 11). |
-| `MAX_FILE_MB` | The biggest file people can send, in MB (100 to start with). |
-| `NOTES_MAX`, `NOTES_MB` | How many notes each person's Notes holds (100), and how much their files can add up to, in MB (500). |
+| `MAX_FILE_MB` | The biggest file people can send, in MB, to start with (25). After that, it's changed in the admin panel (Storage). |
+| `STORAGE_MB` | How much each person's files can add up to, in MB, to start with (1536, which is 1.5 GB). After that, it's changed in the admin panel. |
+| `NOTES_MAX` | How many notes each person's Notes holds (100). Their files count toward their room for files. |
 | `PRIVACY_URL`, `TERMS_URL` | Links to your own privacy policy and terms. Without them, /privacy and /terms show rainlit.app's, which say they're for rainlit.app. |
 | `LINK_PREVIEWS` | `off` turns off link previews (an X post, a video, or a page's title and picture under links in messages). They're on to start with: your server fetches the links people send, and passes their pictures along. |
 | `RECONNECT_MINUTES` | How long someone who dropped out of a call can take to come back (30). Someone whose phone froze the app mid-call, while the call's sound still gets through, isn't counted as dropped. |
@@ -228,3 +229,12 @@ at once and can't sign back in, or sign up again with its email, until you let i
 take someone's homepage down, from the list of accounts or right from a report. People's conversations and files are on your server, not end-to-end
 encrypted, so run it for people who trust you, keep your server's keys and passwords to
 yourself, and keep it updated.
+
+**Room for files.** Under **Storage** in the admin panel: the biggest file anyone can send
+(25 MB to start with), and how much each person's files can add up to (1.5 GB), counting
+everything they've sent that's still there, notes too. Next to someone's account, you can give
+them more, or less. Big photos get a smaller copy for the chat to show (the original opens when
+it's tapped), which saves a lot of bandwidth. Uploads pause by themselves when the disk is
+nearly full, so there's always room for messages, and the panel shows how full it is. On
+Render, make the disk bigger any time (your service, then **Disks**): it takes seconds, with no
+downtime, but it can't be made smaller again, so grow it as you need to.

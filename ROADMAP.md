@@ -86,8 +86,14 @@ first; opening sign-ups is the very last step.
       February 2026) can't sink the server
 - [x] Reports that reach whoever runs the server, and tools to act on them (suspending
       an account everywhere on the server, taking a homepage down)
-- [ ] Limits that keep free affordable, mainly on file sizes (Discord's free limit is
-      10 MB)
+- [x] Limits that keep free affordable: 25 MB a file (Discord's free limit is 10 MB) and
+      1.5 GB for everything each person's sent, both set in the admin panel (and more for
+      someone, one at a time), uploads that pause before the disk fills up, and "Your files"
+      to make room
+- [x] Big photos show as a smaller copy (tap for the original), like Discord, and big
+      profile pictures are made smaller losslessly
+- [x] Hidden details (where and when a photo or video was taken, on what, and more) taken
+      out of everything uploaded
 - [x] Deleting your account yourself, in the app or on the website (both app stores require
       it): your messages, files and everything else of yours go with it
 - [x] Terms of service and a privacy policy in plain language (what Rainlit keeps, why,
