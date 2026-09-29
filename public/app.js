@@ -105,7 +105,8 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -1067,6 +1068,10 @@ function handleServerMessage(msg) {
     case 'guestbook-new':
       // (If your homepage is open, it shows it; otherwise a note.)
       if (!Homepage.onSigned(msg.from)) toast(`${msg.from} signed your guestbook.`);
+      return;
+    case 'announcement':
+      // (Not the one you just sent yourself.)
+      if (msg.from !== S.clientId) queueAnnouncements([msg.announcement]);
       return;
     case 'question-new':
       // (Someone asked you something in your homepage's box: from is null if they asked anonymously.)
@@ -3190,6 +3195,7 @@ const MY_BUILD = (document.querySelector('meta[name="rainlit-build"]') || {}).co
 function onHello(msg) {
   trace('hello', { build: String(msg.build || '').slice(0, 12) });
   setWaiting(msg.waiting);
+  loadAnnouncements(); // (anything announced while this was closed or offline)
   if (S.voice && S.voice.state === 'connected') {
     if (S.voice.room && S.voice.room.serverBack) S.voice.room.serverBack(); // (Cloudflare)
     wsSend(voiceJoinMsg(S.voice, { again: true, since: S.voice.joinedAt }));
@@ -3704,6 +3710,136 @@ async function openDm(friendId) {
   if (S.openDm !== friendId) return;
   markDmSeen(dm);
   if (matchMedia('(pointer: fine)').matches) el.chatInput.focus();
+}
+
+// ----- Announcements -----
+// Whoever runs the server can tell everyone something (Admin > Announcements): a change to the
+// terms or privacy policy (at least 3 days before it starts, as both promise), or some planned
+// downtime. Each shows once, in a box over everything, until "Got it".
+
+const announceQueue = [];
+
+async function loadAnnouncements() {
+  try {
+    queueAnnouncements((await api('GET', '/announcements')).announcements);
+  } catch {}
+}
+
+function queueAnnouncements(list) {
+  for (const a of list || []) if (a && !announceQueue.some((q) => q.id === a.id)) announceQueue.push(a);
+  showAnnouncement();
+}
+
+// "Friday, October 2", from "2026-10-02".
+function dayName(day) {
+  const [y, m, d] = String(day).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function showAnnouncement() {
+  const a = announceQueue[0];
+  if (!a || el.announceDialog.open) return;
+  el.announceFrom.textContent = OFFICIAL ? 'From Rainlit' : 'From whoever runs this Rainlit';
+  el.announceHeading.textContent = a.title;
+  el.announceStarts.hidden = !a.startsOn;
+  el.announceStarts.textContent = a.startsOn ? `Starts ${dayName(a.startsOn)}` : '';
+  el.announceText.textContent = a.body || '';
+  el.announceRead.hidden = !a.link;
+  if (a.link) el.announceRead.setAttribute('href', a.link);
+  el.announceCount.textContent = announceQueue.length > 1 ? `1 of ${announceQueue.length}` : '';
+  el.announceDialog.showModal();
+}
+
+// "Got it": not shown again (on any of your devices), and the next one, if there's another.
+function onAnnouncementClosed() {
+  const a = announceQueue.shift();
+  if (a) api('POST', '/announcements/seen', { upTo: a.id }).catch(() => {});
+  showAnnouncement();
+}
+
+// The Admin panel: sending one, and the ones sent.
+async function renderAnnouncements() {
+  let data;
+  try {
+    data = await api('GET', '/admin/announcements');
+  } catch {
+    return;
+  }
+  if (!data.announcements.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'None sent yet.';
+    el.announceList.replaceChildren(li);
+    return;
+  }
+  el.announceList.replaceChildren(...data.announcements.map((a) => {
+    const li = document.createElement('li');
+    li.className = 'announce-item';
+    const words = document.createElement('span');
+    words.className = 'user-words';
+    const title = document.createElement('strong');
+    title.textContent = a.title;
+    const when = document.createElement('small');
+    when.textContent = `Sent ${fmtWhen(a.at)}${a.startsOn ? ` · starts ${dayName(a.startsOn)}` : ''} · seen by ${a.seenBy} of ${a.of}`;
+    words.append(title, when);
+    const down = document.createElement('button');
+    down.type = 'button';
+    down.className = 'text-btn danger';
+    down.textContent = 'Take down';
+    down.title = "Nobody who hasn't seen it yet will";
+    down.addEventListener('click', async () => {
+      try {
+        await api('DELETE', `/admin/announcements/${a.id}`);
+        renderAnnouncements();
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    li.append(words, down);
+    return li;
+  }));
+}
+
+// Days from today to a date input's day (0: today).
+function daysUntil(day) {
+  const [y, m, d] = String(day).split('-').map(Number);
+  const today = new Date();
+  return Math.round((new Date(y, m - 1, d) - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 86_400_000);
+}
+const dateInputValue = (t) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+
+// A change: its day, 3 days from now to start with (the notice the terms promise), with a word
+// if it's sooner than that.
+function renderAnnounceWhen() {
+  const on = el.announceChange.checked;
+  el.announceDate.disabled = !on;
+  if (on && !el.announceDate.value) el.announceDate.value = dateInputValue(new Date(Date.now() + 3 * 86_400_000));
+  const days = on && el.announceDate.value ? daysUntil(el.announceDate.value) : null;
+  el.announceSoon.hidden = days === null || days >= 3;
+  el.announceSoon.textContent = days !== null && days < 0 ? "That day's already gone."
+    : "That's less than 3 days away. For a big change to the terms or privacy policy, they promise at least 3 days' notice (sooner only if it can't wait).";
+}
+
+async function onAnnounceSend(e) {
+  e.preventDefault();
+  el.announceError.hidden = true;
+  const btn = el.announceForm.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  try {
+    await api('POST', '/admin/announcements', {
+      title: el.announceTitle.value, body: el.announceBody.value, link: el.announceLink.value.trim(),
+      startsOn: el.announceChange.checked ? el.announceDate.value : '',
+    });
+    el.announceForm.reset();
+    renderAnnounceWhen();
+    renderAnnouncements();
+    toast('Sent. Everyone sees it the next time they open Rainlit.');
+  } catch (err) {
+    el.announceError.textContent = err.message;
+    el.announceError.hidden = false;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ----- 18+ channels -----
@@ -10377,6 +10513,7 @@ async function renderAdmin() {
   renderTraceList(pairs);
   renderSignups();
   renderStorage();
+  renderAnnouncements();
   if (!reports.length) {
     const li = document.createElement('li');
     li.className = 'muted';
@@ -11213,6 +11350,10 @@ async function init() {
     openReportDialog({ userId: p.id, name: p.displayName, spaceId }); // (the server checks you're both in it)
   });
   el.reportForm.addEventListener('submit', onReportSend);
+  el.announceDialog.addEventListener('close', onAnnouncementClosed);
+  el.announceForm.addEventListener('submit', onAnnounceSend);
+  el.announceChange.addEventListener('change', renderAnnounceWhen);
+  el.announceDate.addEventListener('input', renderAnnounceWhen);
   el.ageGateYes.addEventListener('click', onAgeGateYes);
   el.ageGateNo.addEventListener('click', onAgeGateNo);
   el.reportForm.addEventListener('change', () => {

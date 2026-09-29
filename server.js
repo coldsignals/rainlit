@@ -25,6 +25,7 @@ const discord = require('./lib/discord');
 const accounts = require('./lib/accounts');
 const emojis = require('./lib/emoji');
 const homepages = require('./lib/homepages');
+const announcements = require('./lib/announcements');
 const images = require('./lib/images');
 const { imageKind } = images;
 const embeds = require('./lib/embeds');
@@ -287,6 +288,32 @@ api.post('/admin/waitlist/release', needAdmin, (req, res) => {
   res.json({ invited, ...signupState() });
 });
 
+// ----- Announcements (lib/announcements.js) -----
+// Whoever runs the server telling everyone something: each shows once, until "Got it".
+
+api.get('/announcements', needUser, (req, res) => res.json({ announcements: announcements.unseenFor(req.user) }));
+api.post('/announcements/seen', needUser, (req, res) => {
+  announcements.markSeen(req.user.id, (req.body || {}).upTo);
+  res.json({ ok: true });
+});
+api.get('/admin/announcements', needAdmin, (_req, res) => res.json({ announcements: announcements.list(), noticeDays: announcements.NOTICE_DAYS }));
+api.post('/admin/announcements', needAdmin, (req, res) => {
+  let made;
+  try {
+    made = announcements.create(req.user.id, req.body || {});
+  } catch (err) {
+    if (err instanceof announcements.AnnouncementError) return fail(res, 400, err.message);
+    throw err;
+  }
+  announcements.markSeen(req.user.id, made.id); // (not shown to whoever sent it)
+  realtime.sendToEveryone({ type: 'announcement', announcement: made, from: req.user.id }); // (anyone with Rainlit open sees it now)
+  res.json({ announcement: made });
+});
+api.delete('/admin/announcements/:id', needAdmin, (req, res) => {
+  if (!announcements.remove(req.params.id)) return fail(res, 404, "That announcement isn't there any more.");
+  res.json({ ok: true });
+});
+
 // An account made without an invite confirms its email before it can reach out to anyone.
 function needConfirmed(req, res, next) {
   if (req.user.open_signup && !req.user.email_confirmed_at) {
@@ -368,6 +395,7 @@ api.post('/signup', async (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(id, username, email, hash, displayName, firstAccount ? 1 : 0, now, open ? 1 : 0);
       badges.welcome(id, now);
+      announcements.skipOld(id); // (made under things as they are now)
       if (!firstAccount && !open) {
         const used = db.prepare('UPDATE invites SET used_by = ?, used_at = ? WHERE code = ? AND used_by IS NULL')
           .run(id, Date.now(), code);

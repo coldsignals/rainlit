@@ -2072,3 +2072,27 @@ button.person.open { background: var(--dusk-hi); }
 .age-gate-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 4px; }
 .age-gate .hint, .age-dialog .hint { color: var(--mist); }
 .age-dialog { width: min(440px, calc(100% - 32px)); padding: 0; }
+
+/* ----- Announcements ----- */
+/* (Writing one, in the Admin panel; and one showing, once.) */
+.announce-form { display: grid; gap: 12px; padding: 12px; background: var(--deep); border: 1px solid var(--line); border-radius: var(--radius); }
+.announce-form .field input, .announce-form .field textarea { background: var(--dusk); }
+.announce-form .field .hint { font-weight: 400; }
+.announce-form .primary-btn { justify-self: start; }
+.announce-when { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.announce-when input[type="date"] { padding: 7px 10px; background: var(--dusk); color: var(--text); border: 1px solid var(--line); border-radius: 8px; color-scheme: dark; }
+.announce-when input[type="date"]:disabled { opacity: 0.45; }
+.announce-soon { color: #f5b94a; }
+.announce-dialog { width: min(460px, calc(100vw / var(--zoom) - 32px)); }
+.announce-card { display: grid; gap: 10px; padding: 20px 22px 18px; }
+.announce-from { margin: 0; color: var(--mist); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.announce-heading { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
+.announce-starts { margin: 0; color: var(--lamp); font-weight: 650; }
+.announce-starts[hidden] { display: none; }
+.announce-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.announce-text:empty { display: none; }
+.announce-read { justify-self: start; color: var(--lamp); font-weight: 600; }
+.announce-read[hidden] { display: none; }
+.announce-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.admin-list .announce-item { align-items: flex-start; }
+.announce-item .user-words small { color: var(--mist); }

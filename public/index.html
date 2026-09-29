@@ -838,6 +838,21 @@
   </dialog>
 
   <!-- Reporting a message or a person -->
+  <!-- ============ An announcement from whoever runs the server (once, until "Got it") ============ -->
+  <dialog id="announce-dialog" class="settings announce-dialog" aria-labelledby="announce-heading">
+    <form method="dialog" class="announce-card">
+      <p id="announce-from" class="announce-from">An announcement</p>
+      <h2 id="announce-heading" class="announce-heading"></h2>
+      <p id="announce-starts" class="announce-starts" hidden></p>
+      <p id="announce-text" class="announce-text"></p>
+      <a id="announce-read" class="legal-link announce-read" href="/terms" target="_blank" rel="noopener" hidden>Read more</a>
+      <div class="announce-row">
+        <span id="announce-count" class="hint"></span>
+        <button class="primary-btn" type="submit" value="ok">Got it</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- ============ A voice channel marked 18+: asked before joining ============ -->
   <dialog id="age-dialog" class="settings age-dialog" aria-labelledby="age-dialog-title">
     <form method="dialog" class="age-gate-card">
@@ -949,6 +964,25 @@
         <h3>Reports</h3>
         <p class="hint">Everything reported on this server. Reports from a space also go to its moderators.</p>
         <ol id="report-list" class="report-list"></ol>
+      </section>
+      <section class="admin-section">
+        <h3>Announcements</h3>
+        <p class="hint">Tell everyone something. It shows once to each person, the next time they open Rainlit (right
+          away if it's open). For a big change to the terms or privacy policy, send it at least 3 days before
+          the change starts: they both promise that.</p>
+        <form id="announce-form" class="announce-form">
+          <label class="field"><span>Title</span><input id="announce-title" maxlength="80" required placeholder="The terms are changing" /></label>
+          <label class="field"><span>What to tell everyone</span><textarea id="announce-body" maxlength="1000" rows="3" placeholder="What's changing, and why"></textarea></label>
+          <label class="field"><span>Where to read more <small class="hint">(optional: a page here like /terms, or an https:// link)</small></span><input id="announce-link" maxlength="500" placeholder="/terms" /></label>
+          <div class="announce-when">
+            <label class="toggle"><input id="announce-change" type="checkbox" /><span>It's about a change, starting on</span></label>
+            <input id="announce-date" type="date" disabled />
+          </div>
+          <p id="announce-soon" class="hint announce-soon" hidden></p>
+          <p id="announce-error" class="form-error" role="alert" hidden></p>
+          <button class="primary-btn small" type="submit">Send to everyone</button>
+        </form>
+        <ol id="announce-list" class="admin-list"></ol>
       </section>
       <section class="admin-section">
         <div class="admin-head">

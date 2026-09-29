@@ -61,6 +61,12 @@ bot check, a daily limit and a waitlist (see [SELF-HOSTING.md](SELF-HOSTING.md#4
 account and send them the link. It works once, for 24 hours, and signs them
 out everywhere else.
 
+**Announcements:** the same panel tells everyone something (a change to the
+terms, some planned downtime). It shows once to each person, the next time
+they open Rainlit (right away if it's open), until they press **Got it**. For
+a big change to the terms or privacy policy, send it at least 3 days before
+the change starts: they both promise that.
+
 ## 4. Relay and GIFs
 
 If calls get stuck on "Connecting" on some networks, add a relay (a TURN server;
