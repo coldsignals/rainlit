@@ -97,7 +97,7 @@ for (const id of [
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
-  'call', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
+  'call', 'call-resize', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-away', 'peer-away-time', 'offline-banner',
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
@@ -3558,9 +3558,75 @@ function renderDmHead() {
 function renderCallPlacement() {
   const here = S.inCall && S.callWith === S.openDm;
   el.call.hidden = !here;
+  el.callResize.hidden = !here;
   el.callElsewhere.hidden = !S.inCall || here;
   if (S.inCall && !here) el.callElsewhereText.textContent = `You're in a call with ${friendName(S.callWith)}.`;
   renderDmHead();
+  fitCall();
+}
+
+// ----- The call's size, above the conversation -----
+// The line under the call, dragged (or its arrow keys): up for more of the conversation, down
+// for more of the call. Remembered, on this device, as a share of the conversation's height;
+// double-click (or Enter) puts it back.
+
+const CALL_STAGE_MIN = 64; // (the least of the call there is: a strip with their picture and name)
+const CALL_CHAT_MIN = 150; // (and the least of the conversation, below it)
+
+function callLimits() {
+  const main = el.call.querySelector('.main');
+  const edges = el.call.querySelector('.topbar').offsetHeight + el.call.querySelector('.controls').offsetHeight;
+  const min = Math.ceil(edges + (parseFloat(getComputedStyle(main).paddingTop) || 0) + CALL_STAGE_MIN + 1); // (+1: the line)
+  return { min, max: Math.max(min, el.dm.clientHeight - el.call.offsetTop - CALL_CHAT_MIN) };
+}
+
+function fitCall() {
+  if (el.call.hidden) return;
+  const share = Number(store.get('callShare', '')) || 0;
+  const { min, max } = callLimits();
+  el.call.style.height = share ? `${Math.round(Math.min(max, Math.max(min, share * el.dm.clientHeight)))}px` : '';
+  el.call.style.minHeight = share ? '0' : '';
+  const now = el.call.offsetHeight;
+  el.callResize.setAttribute('aria-valuenow', String(max > min ? Math.round(((Math.min(max, Math.max(min, now)) - min) / (max - min)) * 100) : 100));
+}
+
+function setCallHeight(px) {
+  const { min, max } = callLimits();
+  const h = Math.min(max, Math.max(min, px));
+  store.set('callShare', String(Math.round((h / el.dm.clientHeight) * 1000) / 1000));
+  fitCall();
+}
+
+function onCallResizeDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  e.preventDefault(); // (no text selected on the way)
+  const from = { y: e.clientY, h: el.call.offsetHeight, z: uiZoom() };
+  el.callResize.setPointerCapture(e.pointerId);
+  el.callResize.classList.add('dragging');
+  const move = (ev) => setCallHeight(from.h + (ev.clientY - from.y) / from.z);
+  const done = () => {
+    el.callResize.classList.remove('dragging');
+    el.callResize.removeEventListener('pointermove', move);
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) el.callResize.removeEventListener(type, done);
+  };
+  el.callResize.addEventListener('pointermove', move);
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) el.callResize.addEventListener(type, done);
+}
+
+function resetCallSize() {
+  store.set('callShare', '');
+  fitCall();
+}
+
+function onCallResizeKey(e) {
+  const { min, max } = callLimits();
+  const h = el.call.offsetHeight;
+  const step = e.shiftKey ? 96 : 24;
+  const to = { ArrowUp: h - step, ArrowDown: h + step, Home: min, End: max }[e.key];
+  if (to !== undefined) setCallHeight(to);
+  else if (e.key === 'Enter') resetCallSize();
+  else return;
+  e.preventDefault();
 }
 
 let saveConfirmTimer = null;
@@ -10980,6 +11046,11 @@ async function init() {
   el.flipBtn.addEventListener('click', flipCam);
   el.popoutBtn.addEventListener('click', () => popOut('call', callVideoTitle, callVideoTracks));
   el.pinBtn.addEventListener('click', () => pinVideo(el.remoteVideo));
+  el.callResize.addEventListener('pointerdown', onCallResizeDown);
+  el.callResize.addEventListener('dblclick', resetCallSize);
+  el.callResize.addEventListener('keydown', onCallResizeKey);
+  // (The window, or the conversation, changing size: the call fits again.)
+  if (window.ResizeObserver) new ResizeObserver(() => fitCall()).observe(el.dm);
   el.voiceGrid.addEventListener('click', (e) => {
     const b = e.target.closest('.tile-pop, .tile-pin');
     const key = b && b.closest('.voice-tile') && b.closest('.voice-tile').dataset.key;

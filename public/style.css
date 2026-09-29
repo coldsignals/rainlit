@@ -1110,6 +1110,43 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .dm .avatar { width: clamp(72px, calc(15vh / var(--zoom)), 136px); height: clamp(72px, calc(15vh / var(--zoom)), 136px); font-size: clamp(30px, calc(6vh / var(--zoom)), 56px); }
 .dm-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
+/* The line under the call, to drag. It takes no room of its own: it sits over the call's edge. */
+.call-resize {
+  position: relative; z-index: 3;
+  flex: none;
+  height: 13px;
+  margin: -7px 0 -6px;
+  cursor: row-resize;
+  touch-action: none;
+}
+.call-resize::after {
+  content: "";
+  position: absolute; left: 50%; top: 50%;
+  width: 44px; height: 4px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--line);
+  transition: background 0.15s, width 0.15s;
+}
+.call-resize:hover::after, .call-resize.dragging::after { background: var(--mist); width: 64px; }
+.call-resize:focus-visible { outline: none; }
+.call-resize:focus-visible::after { background: var(--lamp); width: 64px; }
+
+/* A small call (dragged up): their picture and name side by side, in a strip. */
+.dm .stage { container-type: size; }
+@container (max-height: 190px) {
+  .dm .peer-card { grid-auto-flow: column; align-items: center; gap: 12px; }
+  .dm .stage .avatar { width: 44px; height: 44px; font-size: 18px; }
+  .dm .stage .mute-badge { width: 20px; height: 20px; border-width: 2px; right: -3px; bottom: -3px; }
+  .dm .stage .mute-badge .icon { width: 11px; height: 11px; }
+  .dm .peer-name { font-size: 16px; }
+  .dm .peer-away { display: none; }
+  .dm .waiting { padding: 8px 16px; }
+  .dm .waiting img, .dm .waiting p { display: none; }
+  .dm .waiting h2 { font-size: 17px; margin: 0; }
+  .dm .self-view { width: clamp(80px, 18%, 160px); right: 8px; bottom: 8px; }
+}
+
 /* Messages from the same person a few minutes apart share one name and time, like Discord. */
 .chat-log li.cont { margin-top: -8px; }
 .chat-log li.cont > .msg-name { display: none; }
