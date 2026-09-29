@@ -28,25 +28,33 @@ function card(s) {
   name.textContent = s.name;
   label.append(name);
   btn.append(img, label);
-  btn.addEventListener('click', () => select(s.id, btn));
-  btn.addEventListener('dblclick', () => { select(s.id, btn); share(); });
+  btn.addEventListener('click', () => select(s, btn));
+  btn.addEventListener('dblclick', () => { select(s, btn); share(); });
   return btn;
 }
 
-function select(id, btn) {
-  chosen = id;
+// (A window picked: the note about games and videos lights up.)
+function select(s, btn) {
+  chosen = s.id;
   for (const b of list.querySelectorAll('.source')) b.setAttribute('aria-pressed', String(b === btn));
+  const note = document.getElementById('window-note');
+  if (note) note.classList.toggle('lit', !s.screen);
   shareBtn.disabled = false;
 }
 
-function section(title, items) {
+function section(title, items, note = '') {
   if (!items.length) return [];
   const h = document.createElement('h2');
   h.textContent = title;
   const grid = document.createElement('div');
   grid.className = 'grid';
   grid.append(...items.map(card));
-  return [h, grid];
+  if (!note) return [h, grid];
+  const p = document.createElement('p');
+  p.className = 'note';
+  p.id = 'window-note';
+  p.textContent = note;
+  return [h, p, grid];
 }
 
 function share() {
@@ -60,7 +68,10 @@ function share() {
   const screens = data.sources.filter((s) => s.screen);
   const windows = data.sources.filter((s) => !s.screen);
   screens.forEach((s, i) => { if (screens.length > 1 && /^(Entire screen|Screen \d+)$/i.test(s.name)) s.name = `Screen ${i + 1}`; });
-  list.replaceChildren(...section('Screens', screens), ...section('Windows', windows));
+  // (On Windows, the app's engine grabs a single window the slow way, a few times a second, so
+  // a game or a video shared on its own is choppy; a whole screen comes the fast way.)
+  const note = screens.length ? 'Games and videos are choppy when you share just their window. For those, share the whole screen.' : '';
+  list.replaceChildren(...section('Screens', screens), ...section('Windows', windows, note));
   if (!data.sources.length) list.innerHTML = '<p class="empty">Nothing to share was found.</p>';
   const first = list.querySelector('.source');
   if (first) first.focus();
