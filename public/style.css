@@ -2052,3 +2052,23 @@ button.person.open { background: var(--dusk-hi); }
   .drop-glow::before { animation: none; opacity: 0.85; }
   * { transition-duration: 0s !important; }
 }
+
+/* ----- 18+ channels ----- */
+/* (Its tag, in the channel list and settings; and asking, the first time you open one.) */
+.age-tag {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid rgba(239, 107, 99, 0.7); border-radius: 6px;
+  color: #ff9a92; font-size: 11px; font-weight: 700; line-height: 16px; letter-spacing: 0.02em;
+}
+.age-tag.big { align-self: center; padding: 2px 10px; font-size: 15px; line-height: 22px; border-radius: 999px; }
+.channel .age-tag { margin-left: auto; }
+.channel .age-tag + .badge, .channel .age-tag + .unread-orb { margin-left: 6px; }
+.age-gate { flex: 1; min-height: 0; display: grid; place-items: center; padding: 24px 16px; overflow-y: auto; }
+.age-gate[hidden] { display: none; }
+.age-gate-card { display: grid; gap: 12px; justify-items: center; width: min(420px, 100%); padding: 24px 22px; text-align: center; }
+.age-gate-title { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
+.age-gate-text { margin: 0; color: var(--mist); }
+.age-gate-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 4px; }
+.age-gate .hint, .age-dialog .hint { color: var(--mist); }
+.age-dialog { width: min(440px, calc(100% - 32px)); padding: 0; }

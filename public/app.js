@@ -3,6 +3,8 @@
 // Where the Rainlit server lives. For the web version this is the page's own
 // address. A packaged app (like the Android APK) can set window.RAINLIT_SERVER.
 const SERVER = (window.RAINLIT_SERVER || location.origin).replace(/\/$/, '');
+// rainlit.app itself, rather than a Rainlit server someone else runs (with rules of its own).
+const OFFICIAL = /(^|\.)rainlit\.app$/.test(new URL(SERVER).hostname);
 // Set when this page is running inside the Rainlit desktop app (see desktop/preload.js).
 const DESKTOP = window.rainlitDesktop || null;
 // Set inside the Rainlit Android app (see mobile/android/.../RainlitPlugin.java). The app
@@ -103,7 +105,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -3695,10 +3697,85 @@ async function openDm(friendId) {
   renderFriends();
   renderTray();
   renderTyping();
+  // A channel marked 18+ that you haven't said you're old enough for: asked, instead of it.
+  const gated = renderAgeGate(dm);
+  if (gated) return;
   if (!dm.loaded) await loadDmHistory(dm);
   if (S.openDm !== friendId) return;
   markDmSeen(dm);
   if (matchMedia('(pointer: fine)').matches) el.chatInput.focus();
+}
+
+// ----- 18+ channels -----
+// A space can mark a channel 18+ (for things like gore, horror or crude jokes). Nothing in one
+// reaches you until you've said you're 18 or older, which you're asked the first time you open
+// one; after that it opens like any other. (The server holds it back, not just this page.)
+
+// Shows the question in place of a channel's messages (and its message box), or not. Returns
+// whether it's asking.
+function renderAgeGate(dm) {
+  const c = dm.channelId && S.channels.get(dm.channelId);
+  const gated = Boolean(c && c.gated);
+  el.ageGate.hidden = !gated;
+  dm.log.hidden = gated;
+  el.chatForm.hidden = gated;
+  if (gated) {
+    // (Anything shown before it was marked goes; it's all fetched again once it opens.)
+    dm.log.replaceChildren();
+    dm.early = [];
+    dm.loaded = false;
+    const space = S.spaces.get(c.spaceId);
+    el.ageGateTitle.textContent = `#${c.name} is marked 18+`;
+    el.ageGateText.textContent = `${space ? space.name : 'Its space'} marked it for people who are 18 or older. Only go in if you are.`;
+  }
+  return gated;
+}
+
+// Saying you're 18 or older (once, for your account). Resolves whether it worked.
+async function confirmAdult() {
+  try {
+    const { user } = await api('POST', '/me/adult');
+    setMe(user);
+    await refreshSpaces();
+    return true;
+  } catch (err) {
+    toast(err.message);
+    return false;
+  }
+}
+
+async function onAgeGateYes() {
+  const key = S.openDm;
+  el.ageGateYes.disabled = true;
+  const ok = await confirmAdult();
+  el.ageGateYes.disabled = false;
+  if (ok && S.openDm === key) openDm(key);
+}
+
+// Not old enough (or not now): back to the space's other channels (on a phone, its list), or
+// Home if all of its channels are 18+.
+function onAgeGateNo() {
+  const c = S.channels.get(channelIdOf(S.openDm));
+  const space = c && S.spaces.get(c.spaceId);
+  const other = space && space.channels.find((x) => x.kind !== 'voice' && !x.gated);
+  if (!other) return showHome();
+  if (!phoneLayout()) return openDm(`ch:${other.id}`);
+  closeDm();
+  showSpace(space.id);
+}
+
+// A voice channel marked 18+: asked before joining. Resolves whether you said yes (and it worked).
+function askAgeForVoice(c) {
+  const space = S.spaces.get(c.spaceId);
+  el.ageDialogTitle.textContent = `#${c.name} is marked 18+`;
+  el.ageDialogText.textContent = `${space ? space.name : 'Its space'} marked this voice channel for people who are 18 or older. Only join if you are.`;
+  el.ageDialog.returnValue = '';
+  el.ageDialog.showModal();
+  return new Promise((resolve) => {
+    el.ageDialog.addEventListener('close', () => {
+      resolve(el.ageDialog.returnValue === 'yes' ? confirmAdult() : false);
+    }, { once: true });
+  });
 }
 
 // Phones: back to the friends list. (A call carries on.)
@@ -6318,7 +6395,9 @@ async function checkSignedIn() {
 const PRESENCE_LABEL = { online: 'Online', away: 'Away', offline: 'Offline' };
 
 function setMe(user) {
+  const nowAdult = Boolean(S.me && !S.me.adult && user.adult);
   S.me = user;
+  if (nowAdult) refreshSpaces(); // (said so on another device: 18+ channels open up here too)
   S.clientId = user.id;
   S.name = user.displayName;
   renderMe();
@@ -6434,6 +6513,9 @@ async function refreshSpaces() {
     if (S.openDm === key) closeDm();
     S.dms.delete(key);
   }
+  // The open channel was just marked 18+ (or not any more): show it as it is now.
+  const openChannel = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
+  if (openChannel && !el.dm.hidden && Boolean(openChannel.gated) === el.ageGate.hidden) openDm(S.openDm);
   if (S.view !== 'home' && !S.spaces.has(S.view)) S.view = 'home';
   // Someone put you in a group: say so.
   if (S.spacesLoaded) {
@@ -6646,6 +6728,7 @@ function channelItem(c) {
   name.className = 'channel-name';
   name.textContent = c.name;
   b.append(name);
+  if (c.adult) b.append(ageTag());
   // New messages light a little orb; mentions of you get a count instead, like Discord.
   if (dm.mentions && S.openDm !== key) {
     const badge = document.createElement('span');
@@ -6694,7 +6777,7 @@ async function showSpace(spaceId) {
   if (S.view !== spaceId || phoneLayout()) return;
   const last = lastChannels()[spaceId];
   const texts = space.channels.filter((c) => c.kind !== 'voice');
-  const channel = texts.find((c) => c.id === last) || texts[0];
+  const channel = texts.find((c) => c.id === last) || texts.find((c) => !c.gated) || texts[0];
   if (channel && S.openDm !== `ch:${channel.id}`) openDm(`ch:${channel.id}`);
 }
 
@@ -6730,7 +6813,7 @@ function renderChannelHead() {
   el.dmFace.classList.add('channel-face');
   el.dmFace.innerHTML = `<svg class="icon"><use href="#${c.private ? 'i-lock' : 'i-hash'}"/></svg>`;
   el.dmName.textContent = c.name;
-  el.dmSub.textContent = space ? `${space.name} · ${space.memberCount} member${space.memberCount === 1 ? '' : 's'}` : '';
+  el.dmSub.textContent = space ? `${c.adult ? '18+ · ' : ''}${space.name} · ${space.memberCount} member${space.memberCount === 1 ? '' : 's'}` : '';
   el.dmWho.title = 'See who is here';
   el.dmBack.setAttribute('aria-label', 'Back to channels');
   el.dmBack.title = 'Back to channels';
@@ -7662,6 +7745,7 @@ function spaceLogText(e) {
     case 'channel-create': return `${who} made #${d.name}`;
     case 'channel-rename': return `${who} renamed #${d.from} to #${d.to}`;
     case 'channel-access': return `${who} changed who can see or post in #${d.name}`;
+    case 'channel-adult': return d.on ? `${who} marked #${d.name} 18+` : `${who} made #${d.name} not 18+ any more`;
     case 'channel-delete': return `${who} deleted #${d.name}`;
     case 'role-create': return `${who} made the role ${d.name}`;
     case 'role-update': return d.from ? `${who} renamed the role ${d.from} to ${d.name}` : `${who} changed the role ${d.name}`;
@@ -7828,6 +7912,7 @@ function renderChannelsPanel(space) {
   el.spaceChannelAdmin.replaceChildren(...space.channels.flatMap((c) => {
     const li = document.createElement('li');
     li.innerHTML = `<svg class="icon"><use href="#${c.private ? 'i-lock' : 'i-hash'}"/></svg>`;
+    if (c.adult) li.append(ageTag());
     const input = document.createElement('input');
     input.value = c.name;
     input.maxLength = 32;
@@ -7934,11 +8019,37 @@ function channelAccessEditor(space, c) {
     }
     return wrap;
   };
+  // 18+: asked before it opens (see "18+ channels").
+  const adult = document.createElement('div');
+  adult.className = 'access-part';
+  const toggle = document.createElement('label');
+  toggle.className = 'toggle';
+  const box = document.createElement('input');
+  box.type = 'checkbox';
+  box.checked = Boolean(c.adult);
+  box.addEventListener('change', () => save({ adult: box.checked }));
+  const words = document.createElement('span');
+  words.textContent = '18+ channel';
+  toggle.append(box, words);
+  const small = document.createElement('small');
+  small.className = 'hint';
+  small.textContent = `For things like gore, horror or crude jokes. Nothing in it reaches anyone until they've said they're 18 or older.${OFFICIAL ? " Sexually explicit things aren't allowed on rainlit.app, even here." : ''}`;
+  adult.append(toggle, small);
   li.append(
     section('Private channel', 'Only the roles you pick (and administrators) can see it.', c.private, 'private', 'seeRoles'),
     section('Only some roles can post', 'Everyone who can see it can still read it and react.', c.readonly, 'readonly', 'sendRoles'),
   );
+  if (!isGroupSpace(space)) li.append(adult);
   return li;
+}
+
+// The little "18+" on a channel marked so.
+function ageTag() {
+  const tag = document.createElement('span');
+  tag.className = 'age-tag';
+  tag.textContent = '18+';
+  tag.title = 'For people who are 18 or older';
+  return tag;
 }
 
 // ----- Roles -----
@@ -8367,6 +8478,10 @@ async function joinVoice(channelId) {
   const c = S.channels.get(channelId);
   if (!c || c.kind !== 'voice') return;
   if (S.voice && S.voice.channelId === channelId) return showVoiceView();
+  if (c.gated) {
+    if (await askAgeForVoice(c)) joinVoice(channelId);
+    return;
+  }
   if (!S.voiceEnabled) return toast("Voice channels aren't set up on this server yet.");
   if (S.inCall || S.startingCall) {
     const group = groupOfChannel(channelId);
@@ -9073,6 +9188,7 @@ function voiceChannelItem(c) {
   name.className = 'channel-name';
   name.textContent = c.name;
   b.append(name);
+  if (c.adult) b.append(ageTag());
   b.title = here ? 'Open the voice channel' : `Join #${c.name}`;
   b.addEventListener('click', () => joinVoice(c.id));
   li.append(b);
@@ -11097,6 +11213,8 @@ async function init() {
     openReportDialog({ userId: p.id, name: p.displayName, spaceId }); // (the server checks you're both in it)
   });
   el.reportForm.addEventListener('submit', onReportSend);
+  el.ageGateYes.addEventListener('click', onAgeGateYes);
+  el.ageGateNo.addEventListener('click', onAgeGateNo);
   el.reportForm.addEventListener('change', () => {
     const reason = el.reportForm.querySelector('input[name="report-reason"]:checked');
     el.reportDanger.hidden = !reason || reason.value !== 'danger';

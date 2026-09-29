@@ -463,6 +463,19 @@
             <button id="dm-waiting-join" class="primary-btn small" type="button">Join</button>
           </div>
           <div id="mention-pick" class="mention-pick" role="listbox" aria-label="People to mention" hidden></div>
+          <!-- (A channel marked 18+, for someone who hasn't said they're 18 or older yet.) -->
+          <div id="age-gate" class="age-gate" hidden>
+            <div class="age-gate-card">
+              <span class="age-tag big" aria-hidden="true">18+</span>
+              <h2 id="age-gate-title" class="age-gate-title">This channel is marked 18+</h2>
+              <p id="age-gate-text" class="age-gate-text"></p>
+              <div class="age-gate-row">
+                <button id="age-gate-no" class="text-btn" type="button">Go back</button>
+                <button id="age-gate-yes" class="primary-btn" type="button">I'm 18 or older</button>
+              </div>
+              <small class="hint">You're only asked once: Rainlit remembers it for your account.</small>
+            </div>
+          </div>
           <ol id="chat-log" class="chat-log"></ol>
           <p id="dm-notice" class="dm-notice" hidden></p>
           <div id="typing" class="typing" aria-live="polite"></div>
@@ -825,6 +838,20 @@
   </dialog>
 
   <!-- Reporting a message or a person -->
+  <!-- ============ A voice channel marked 18+: asked before joining ============ -->
+  <dialog id="age-dialog" class="settings age-dialog" aria-labelledby="age-dialog-title">
+    <form method="dialog" class="age-gate-card">
+      <span class="age-tag big" aria-hidden="true">18+</span>
+      <h2 id="age-dialog-title" class="age-gate-title">This voice channel is marked 18+</h2>
+      <p id="age-dialog-text" class="age-gate-text"></p>
+      <div class="age-gate-row">
+        <button class="text-btn" type="submit" value="no">Go back</button>
+        <button class="primary-btn" type="submit" value="yes">I'm 18 or older</button>
+      </div>
+      <small class="hint">You're only asked once: Rainlit remembers it for your account.</small>
+    </form>
+  </dialog>
+
   <dialog id="report-dialog" class="settings space-dialog" aria-labelledby="report-title">
     <form id="report-form" class="settings-inner" novalidate>
       <div class="settings-head"><h2 id="report-title">Report</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>

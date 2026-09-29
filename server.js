@@ -571,6 +571,15 @@ api.get('/me/deletion', needUser, (req, res) => {
 });
 
 // For good. Your password first, so a device someone else picked up can't do it.
+// Saying you're 18 or older, to open the channels spaces have marked 18+ (asked once, the first
+// time you open one). Your other devices hear, and their channel lists open up too.
+api.post('/me/adult', needUser, (req, res) => {
+  people.confirmAdult(req.user.id);
+  const user = people.selfUser(people.userById(req.user.id));
+  realtime.sendToUser(req.user.id, { type: 'me', user });
+  res.json({ user });
+});
+
 api.delete('/me', needUser, async (req, res) => {
   if (ipTries.blocked(req.ip)) return fail(res, 429, 'Too many tries. Wait 15 minutes and try again.');
   if (!(await auth.checkPassword(String((req.body || {}).password || ''), req.user.password_hash))) {
@@ -1114,6 +1123,19 @@ function needChannel(req, res, next) {
   next();
 }
 
+// Changing or deleting a channel: for those who could see it, even an 18+ one they haven't
+// said they're old enough to open (they can still un-mark it, rename it or delete it).
+function needChannelToManage(req, res, next) {
+  const channel = spaces.channel(req.params.channelId);
+  const member = channel && spaces.memberOf(channel.space_id, req.user.id);
+  const access = member && spaces.channelAccess(channel, { ...member, adult: true });
+  if (!access || !access.see) return fail(res, 404, "That channel isn't there, or you can't see it.");
+  if (!spaces.can(member, 'manageChannels')) return fail(res, 403, NOT_ALLOWED.manageChannels);
+  req.channel = channel;
+  req.member = member;
+  next();
+}
+
 const needConv = (req, res, next) => (req.params.channelId
   ? needChannel(req, res, () => (req.channel.kind === 'voice' ? fail(res, 400, "Voice channels don't have messages.") : next()))
   : needFriend(req, res, next));
@@ -1465,7 +1487,7 @@ function spaceChanged(spaceId) {
 
 // Who's in each voice channel, on your spaces.
 function withVoice(list) {
-  for (const s of list) for (const c of s.channels) if (c.kind === 'voice') c.voice = realtime.voiceList(c.id);
+  for (const s of list) for (const c of s.channels) if (c.kind === 'voice' && !c.gated) c.voice = realtime.voiceList(c.id);
   return list;
 }
 const mySpace = (userId, spaceId) => withVoice(spaces.spacesFor(userId)).find((s) => s.id === spaceId) || null;
@@ -1605,10 +1627,17 @@ api.post('/spaces/:spaceId/channels', needUser, needMember, needPerm('manageChan
 });
 
 // Its name, and who it's for: private (only some roles see it) or read-only (only some
-// roles post in it), with the roles each is open to.
-api.patch('/channels/:channelId', needUser, needChannel, (req, res) => {
-  if (!spaces.can(req.member, 'manageChannels')) return fail(res, 403, NOT_ALLOWED.manageChannels);
+// roles post in it), with the roles each is open to, and whether it's 18+.
+api.patch('/channels/:channelId', needUser, needChannelToManage, (req, res) => {
   const b = req.body || {};
+  if (b.adult !== undefined) {
+    if (spaces.isGroup(spaces.getSpace(req.channel.space_id))) return fail(res, 400, "A group's chat can't be 18+.");
+    const on = Boolean(b.adult);
+    if (on !== Boolean(req.channel.adult)) {
+      spaces.setChannelAdult(req.channel.id, on);
+      spaces.log(req.channel.space_id, req.user.id, 'channel-adult', req.channel.id, { name: req.channel.name, on });
+    }
+  }
   if (b.name !== undefined) {
     const name = spaces.channelName(b.name);
     if (!name) return fail(res, 400, 'Channel names can have letters, numbers and dashes.');
@@ -1632,8 +1661,7 @@ api.patch('/channels/:channelId', needUser, needChannel, (req, res) => {
   res.json({ ok: true });
 });
 
-api.delete('/channels/:channelId', needUser, needChannel, (req, res) => {
-  if (!spaces.can(req.member, 'manageChannels')) return fail(res, 403, NOT_ALLOWED.manageChannels);
+api.delete('/channels/:channelId', needUser, needChannelToManage, (req, res) => {
   if (spaces.channelsOf(req.channel.space_id).length <= 1) return fail(res, 400, 'A space needs at least one channel.');
   for (const uid of realtime.voiceMembers(req.channel.id)) {
     realtime.voiceLeave(uid);
