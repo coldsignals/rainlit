@@ -34,7 +34,6 @@
   }
 
   const shown = H.mount(page, data);
-  H.setSky(document.getElementById('hp-sky'), shown.doc.bg.sky);
   document.title = shown.doc.title || `${data.owner.displayName}'s homepage`;
   if (data.mine) {
     document.getElementById('hp-mine').hidden = false;

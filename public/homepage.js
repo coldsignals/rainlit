@@ -306,7 +306,7 @@
   function tapePiece(node, p) {
     const c = hex(p.color, '#f4a9c8');
     node.style.clipPath = zigzag(p.w, p.h, ['left', 'right']);
-    const base = rgba(c, 0.78);
+    const base = rgba(c, 0.6); // (see-through, like washi tape)
     const hi = rgba('#ffffff', 0.35);
     node.style.backgroundColor = base;
     node.style.backgroundImage = {
@@ -734,6 +734,11 @@
     canvas.className = 'hp-canvas';
     canvas.style.width = `${WIDTH}px`;
     canvas.style.height = `${doc.height}px`;
+    // The weather: part of the page, behind everything on it. Paper and pictures cover it, as
+    // they cover the background, and see-through tape shows a bit of both.
+    const sky = document.createElement('div');
+    setSky(sky, doc.bg && doc.bg.sky);
+    canvas.append(sky);
     for (const p of doc.pieces || []) canvas.append(pieceEl(p, ctx));
     stage.append(canvas);
     page.append(stage);
@@ -749,7 +754,7 @@
     return { doc, canvas, ctx, fit };
   }
 
-  // Weather over the page (it stays put while the page scrolls under it).
+  // The weather on a page (behind its pieces).
   function setSky(sky, kind) {
     sky.className = `hp-sky hp-sky-${SKIES[kind] ? kind : 'none'}`;
   }

@@ -89,7 +89,6 @@
     $('hp-message').hidden = true;
     $('hp-page').replaceChildren();
     $('hp-page').removeAttribute('style');
-    H.setSky($('hp-sky'), 'none');
     $('hp-name').textContent = 'Homepage';
     $('hp-sub').textContent = '';
     $('hp-view-actions').hidden = true;
@@ -121,7 +120,6 @@
     const page = $('hp-page');
     const top = page.scrollTop;
     state.mounted = H.mount(page, { owner: state.data.owner, doc: state.doc, views: state.data.views }, { edit: state.editing });
-    H.setSky($('hp-sky'), state.doc.bg.sky);
     page.scrollTop = top;
     if (state.editing) drawPicked();
   }
