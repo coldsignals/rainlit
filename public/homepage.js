@@ -719,8 +719,8 @@
     };
   }
 
-  // Draws a page into `page` (an element that scrolls): its background, and a canvas with its
-  // pieces, scaled to fit. Returns { doc, canvas, fit }.
+  // Draws a page into `page` (an element that scrolls): its background, the weather, and a
+  // canvas with its pieces, scaled to fit. Returns { doc, canvas, fit }.
   function mount(page, data, opts = {}) {
     const doc = data.doc || starter();
     const ctx = { owner: data.owner || {}, views: data.views || 0, fileUrl: (id) => `/homepage-files/${id}`, edit: Boolean(opts.edit) };
@@ -728,30 +728,137 @@
     page.replaceChildren();
     page.classList.add('hp-page');
     Object.assign(page.style, backgroundStyle(doc.bg, ctx.fileUrl));
+    // The weather and the pieces, one over the other: the weather stays in view as the page
+    // scrolls, over all of it and behind everything on it. Paper and pictures cover it, as they
+    // cover the background, and see-through tape shows a bit of both.
+    const room = document.createElement('div');
+    room.className = 'hp-room';
+    const sky = document.createElement('div');
+    setSky(sky, doc.bg && doc.bg.sky);
     const stage = document.createElement('div');
     stage.className = 'hp-stage';
     const canvas = document.createElement('div');
     canvas.className = 'hp-canvas';
     canvas.style.width = `${WIDTH}px`;
     canvas.style.height = `${doc.height}px`;
-    // The weather: part of the page, behind everything on it. Paper and pictures cover it, as
-    // they cover the background, and see-through tape shows a bit of both.
-    const sky = document.createElement('div');
-    setSky(sky, doc.bg && doc.bg.sky);
-    canvas.append(sky);
-    for (const p of doc.pieces || []) canvas.append(pieceEl(p, ctx));
+    const turns = new Map();
+    for (const p of doc.pieces || []) {
+      canvas.append(pieceEl(p, ctx));
+      turns.set(p.id, ((p.r || 0) * Math.PI) / 180);
+    }
     stage.append(canvas);
-    page.append(stage);
+    room.append(sky, stage);
+    page.append(room);
+    // Pieces can reach past the page's 800px (and above or below it). On a screen wide enough,
+    // the page is centered as it was made, with those showing around it. On a narrower one,
+    // everything is shown: all of it, scaled down to fit. (Times the zoom, from pinching.)
+    const reach = () => {
+      const b = { left: 0, right: WIDTH, top: 0, bottom: doc.height };
+      for (const node of canvas.children) {
+        const a = turns.get(node.dataset.id) || 0;
+        const w = node.offsetWidth, h = node.offsetHeight;
+        const hw = (Math.abs(w * Math.cos(a)) + Math.abs(h * Math.sin(a))) / 2;
+        const hh = (Math.abs(w * Math.sin(a)) + Math.abs(h * Math.cos(a))) / 2;
+        const cx = node.offsetLeft + w / 2, cy = node.offsetTop + h / 2;
+        b.left = Math.min(b.left, cx - hw);
+        b.right = Math.max(b.right, cx + hw);
+        b.top = Math.min(b.top, cy - hh);
+        b.bottom = Math.max(b.bottom, cy + hh);
+      }
+      return b;
+    };
+    // (A page opens at its fitted size.)
+    page.hpZoom = 1;
+    if (page.hpBack) page.hpBack.hidden = true;
     const fit = () => {
-      const s = Math.min(1, (page.clientWidth || WIDTH) / WIDTH);
-      canvas.style.transform = `scale(${s})`;
-      stage.style.width = `${WIDTH * s}px`;
-      stage.style.height = `${doc.height * s}px`;
+      const b = reach();
+      const avail = page.clientWidth || WIDTH;
+      const past = Math.max(-b.left, b.right - WIDTH);
+      let s = 1, width = WIDTH + 2 * past, left = past;
+      if (avail < width) {
+        width = b.right - b.left;
+        left = -b.left;
+        s = Math.min(1, avail / width);
+      }
+      s *= page.hpZoom || 1;
+      canvas.style.transform = `translate(${left * s}px, ${-b.top * s}px) scale(${s})`;
+      stage.style.width = `${width * s}px`;
+      stage.style.height = `${(b.bottom - b.top) * s}px`;
+      sky.style.width = `${page.clientWidth}px`;
+      sky.style.height = `${page.clientHeight}px`;
       page.style.setProperty('--hp-scale', String(s));
+      page.classList.toggle('hp-zoomed', (page.hpZoom || 1) > 1);
       return s;
     };
+    page.hpFit = opts.edit ? null : fit; // (for zooming; not while it's being edited)
+    zoomable(page);
     fit();
     return { doc, canvas, ctx, fit };
+  }
+
+  // Zooming a page: two fingers (up to 4 times), or a double tap (in, or back out). The
+  // browser's own zoom is off in the Android app, and this zooms the page under its bar rather
+  // than everything. "Fit" puts it back.
+  function zoomable(page) {
+    if (page.hpZoomable) return;
+    page.hpZoomable = true;
+    page.hpZoom = page.hpZoom || 1;
+    const frame = page.parentElement;
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'hp-unzoom';
+    back.textContent = 'Fit';
+    back.title = 'Back to the whole page';
+    back.hidden = true;
+    if (frame) frame.append(back);
+    page.hpBack = back;
+    const stageOf = () => page.querySelector('.hp-stage');
+    // Zooms to z, keeping the spot at (x, y) (in the page's box) where it is.
+    const zoomTo = (z, x, y) => {
+      const stage = stageOf();
+      if (!page.hpFit || !stage) return;
+      const s0 = Number(page.style.getPropertyValue('--hp-scale')) || 1;
+      const px = (page.scrollLeft + x - stage.offsetLeft) / s0;
+      const py = (page.scrollTop + y - stage.offsetTop) / s0;
+      page.hpZoom = Math.min(4, Math.max(1, z));
+      const s1 = page.hpFit();
+      page.scrollLeft = px * s1 + stage.offsetLeft - x;
+      page.scrollTop = py * s1 + stage.offsetTop - y;
+      back.hidden = page.hpZoom <= 1;
+    };
+    back.addEventListener('click', () => zoomTo(1, page.clientWidth / 2, page.clientHeight / 2));
+    let pinch = null;
+    let tap = null;
+    const point = (t) => {
+      const r = page.getBoundingClientRect();
+      return { x: t.clientX - r.left, y: t.clientY - r.top };
+    };
+    page.addEventListener('touchstart', (e) => {
+      if (!page.hpFit) return;
+      if (e.touches.length === 2) {
+        const [a, b] = [point(e.touches[0]), point(e.touches[1])];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: page.hpZoom };
+        tap = null;
+      } else if (e.touches.length === 1) {
+        const p = point(e.touches[0]);
+        const now = Date.now();
+        if (tap && now - tap.at < 300 && Math.hypot(p.x - tap.x, p.y - tap.y) < 30) {
+          e.preventDefault();
+          zoomTo(page.hpZoom > 1 ? 1 : 2.5, p.x, p.y);
+          tap = null;
+        } else {
+          tap = { ...p, at: now };
+        }
+      }
+    }, { passive: false });
+    page.addEventListener('touchmove', (e) => {
+      if (!pinch || e.touches.length !== 2 || !page.hpFit) return;
+      e.preventDefault();
+      const [a, b] = [point(e.touches[0]), point(e.touches[1])];
+      zoomTo((pinch.z * Math.hypot(a.x - b.x, a.y - b.y)) / pinch.d, (a.x + b.x) / 2, (a.y + b.y) / 2);
+    }, { passive: false });
+    page.addEventListener('touchend', (e) => { if (e.touches.length < 2) pinch = null; });
+    page.addEventListener('touchcancel', () => { pinch = null; });
   }
 
   // The weather on a page (behind its pieces).

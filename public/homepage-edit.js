@@ -349,7 +349,7 @@
       if (already || e.pointerType !== 'touch') gesture(e, 'move');
       return;
     }
-    if (e.target.closest('.hp-stage') || e.target === $('hp-page')) {
+    if (e.target.closest('.hp-room') || e.target === $('hp-page')) {
       if (state.picked) pick(null);
     }
   }

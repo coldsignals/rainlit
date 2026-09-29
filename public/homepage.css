@@ -9,9 +9,22 @@
   overflow-x: hidden; overflow-y: auto;
   background-attachment: local; /* (a pattern scrolls with the page, like the old web) */
   overscroll-behavior: contain;
+  touch-action: pan-x pan-y; /* (two fingers zoom the page itself: homepage.js) */
 }
+.hp-page.hp-zoomed { overflow-x: auto; }
+.hp-editing .hp-page { touch-action: auto; }
+/* The weather and the pieces, in the same place: the weather first, so behind. */
+.hp-room { display: grid; min-height: 100%; width: max-content; min-width: 100%; }
+.hp-room > * { grid-area: 1 / 1; }
 .hp-stage { position: relative; margin: 0 auto; }
 .hp-canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+/* Zoomed in: back to the whole page. */
+.hp-unzoom {
+  position: absolute; right: 14px; bottom: 14px; z-index: 5;
+  padding: 8px 16px; border: 1px solid #364156; border-radius: 999px;
+  background: rgba(14, 18, 28, 0.88); color: #eceaf3;
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
 
 .hp-piece {
   position: absolute;
@@ -413,9 +426,9 @@ a.hp-shelf-item:hover .hp-cover img { transform: translateY(-3px); transition: t
 a.hp-button:hover .hp-in { filter: brightness(1.12); }
 
 /* ================= Weather on a page ================= */
-/* (Part of the page, behind everything on it: homepage.js puts it first.) */
+/* (Behind everything on the page, and always in view as it scrolls: homepage.js.) */
 
-.hp-sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.hp-sky { position: sticky; top: 0; left: 0; align-self: start; justify-self: start; overflow: hidden; pointer-events: none; } /* (sized to the view: homepage.js) */
 .hp-sky-none { display: none; }
 .hp-sky::before, .hp-sky::after { content: ''; position: absolute; left: 0; right: 0; will-change: transform; }
 .hp-sky-rain::before, .hp-sky-rain::after {
