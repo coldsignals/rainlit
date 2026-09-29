@@ -11,6 +11,11 @@
 //
 // Frames and sound go to JavaScript callbacks (thread-safe functions). If JavaScript falls
 // behind, frames are dropped, never queued up.
+//
+// And for your activity ("Playing ...", "Listening to ..."): the windows that are open and their
+// programs, what Windows' media controls say is playing, and where Steam keeps its games. What
+// these say stays on the computer: the app only ever sends on a game's or song's name, and only
+// if you've said so.
 
 #include <unknwn.h> // (before C++/WinRT, so it can implement a classic COM interface)
 #include <windows.h>
@@ -20,10 +25,13 @@
 #include <audioclient.h>
 #include <audioclientactivationparams.h>
 #include <mmdeviceapi.h>
+#include <dwmapi.h>
 
 #include <winrt/base.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Metadata.h>
+#include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/Windows.Media.Control.h>
 #include <winrt/Windows.Graphics.h>
 #include <winrt/Windows.Graphics.Capture.h>
 #include <winrt/Windows.Graphics.DirectX.h>
@@ -755,6 +763,156 @@ static Napi::Value StopAudio(const Napi::CallbackInfo& info) {
   return info.Env().Undefined();
 }
 
+// ================= What you're doing (your activity) =================
+
+static std::string Utf8(const std::wstring& w) {
+  if (w.empty()) return {};
+  int n = WideCharToMultiByte(CP_UTF8, 0, w.data(), static_cast<int>(w.size()), nullptr, 0, nullptr, nullptr);
+  std::string s(n, '\0');
+  WideCharToMultiByte(CP_UTF8, 0, w.data(), static_cast<int>(w.size()), s.data(), n, nullptr, nullptr);
+  return s;
+}
+
+// A process's program file, in full ("C:\...\Hades.exe"), or "".
+static std::wstring ProgramPath(DWORD pid) {
+  HANDLE p = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+  if (!p) return L"";
+  wchar_t buf[MAX_PATH * 2];
+  DWORD n = ARRAYSIZE(buf);
+  std::wstring out = QueryFullProcessImageNameW(p, 0, buf, &n) ? std::wstring(buf, n) : L"";
+  CloseHandle(p);
+  return out;
+}
+
+struct OpenWindow {
+  std::wstring path, title;
+  DWORD pid = 0;
+};
+
+// The windows you'd see on the taskbar, more or less: shown, not owned by another window, not
+// a tool window, not hidden away by Windows (cloaked), and with a title.
+static BOOL CALLBACK EachWindow(HWND hwnd, LPARAM lp) {
+  auto* list = reinterpret_cast<std::vector<OpenWindow>*>(lp);
+  if (!IsWindowVisible(hwnd) || GetWindow(hwnd, GW_OWNER)) return TRUE;
+  if (GetWindowLongW(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW) return TRUE;
+  BOOL cloaked = FALSE;
+  if (SUCCEEDED(DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, &cloaked, sizeof cloaked)) && cloaked) return TRUE;
+  int len = GetWindowTextLengthW(hwnd);
+  if (len <= 0) return TRUE;
+  std::wstring title(static_cast<size_t>(len) + 1, L'\0');
+  title.resize(GetWindowTextW(hwnd, title.data(), len + 1));
+  OpenWindow w;
+  GetWindowThreadProcessId(hwnd, &w.pid);
+  w.path = ProgramPath(w.pid);
+  w.title = title;
+  list->push_back(std::move(w));
+  return TRUE;
+}
+
+// listWindows() -> [{ path, exe, title, pid }]
+static Napi::Value ListWindows(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+  std::vector<OpenWindow> list;
+  EnumWindows(EachWindow, reinterpret_cast<LPARAM>(&list));
+  auto out = Napi::Array::New(env, list.size());
+  for (size_t i = 0; i < list.size(); i++) {
+    const auto& w = list[i];
+    size_t slash = w.path.find_last_of(L"\\/");
+    auto o = Napi::Object::New(env);
+    o.Set("path", Utf8(w.path));
+    o.Set("exe", Utf8(slash == std::wstring::npos ? w.path : w.path.substr(slash + 1)));
+    o.Set("title", Utf8(w.title));
+    o.Set("pid", static_cast<double>(w.pid));
+    out[static_cast<uint32_t>(i)] = o;
+  }
+  return out;
+}
+
+namespace wmc = winrt::Windows::Media::Control;
+
+struct Playing {
+  std::wstring app, title, artist, album;
+  int status = 0;
+  double position = -1, duration = -1, updated = 0; // ms (updated: since 1970)
+};
+
+// DateTime (100ns since 1601) -> ms since 1970.
+static double UnixMs(winrt::Windows::Foundation::DateTime t) {
+  int64_t ticks = winrt::clock::to_file_time(t).value;
+  return ticks > 116444736000000000LL ? static_cast<double>((ticks - 116444736000000000LL) / 10000) : 0;
+}
+
+// mediaSessions() -> [{ app, title, artist, album, status, position, duration, updated }]: what
+// each app playing sound has told Windows' media controls (status 4: playing, 5: paused).
+// Windows 10 1809 and newer; [] before that.
+static Napi::Value MediaSessions(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+  std::vector<Playing> list;
+  InMta([&] {
+    try {
+      auto manager = wmc::GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
+      for (auto const& s : manager.GetSessions()) {
+        Playing m;
+        m.app = std::wstring(s.SourceAppUserModelId());
+        try {
+          m.status = static_cast<int>(s.GetPlaybackInfo().PlaybackStatus());
+        } catch (...) {
+        }
+        try {
+          auto props = s.TryGetMediaPropertiesAsync().get();
+          m.title = std::wstring(props.Title());
+          m.artist = std::wstring(props.Artist());
+          m.album = std::wstring(props.AlbumTitle());
+        } catch (...) {
+        }
+        try {
+          auto t = s.GetTimelineProperties();
+          auto ms = [](winrt::Windows::Foundation::TimeSpan d) { return static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(d).count()); };
+          if (t.EndTime() > t.StartTime()) {
+            m.duration = ms(t.EndTime() - t.StartTime());
+            m.position = ms(t.Position() - t.StartTime());
+            m.updated = UnixMs(t.LastUpdatedTime());
+          }
+        } catch (...) {
+        }
+        list.push_back(std::move(m));
+      }
+    } catch (...) {
+    }
+  });
+  auto out = Napi::Array::New(env, list.size());
+  for (size_t i = 0; i < list.size(); i++) {
+    const auto& m = list[i];
+    auto o = Napi::Object::New(env);
+    o.Set("app", Utf8(m.app));
+    o.Set("title", Utf8(m.title));
+    o.Set("artist", Utf8(m.artist));
+    o.Set("album", Utf8(m.album));
+    o.Set("status", m.status);
+    o.Set("position", m.position);
+    o.Set("duration", m.duration);
+    o.Set("updated", m.updated);
+    out[static_cast<uint32_t>(i)] = o;
+  }
+  return out;
+}
+
+// steam() -> { path, appId }: where Steam is installed (its games are in its libraries), and
+// the game Steam says is running (0: none).
+static Napi::Value Steam(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+  DWORD appId = 0, size = sizeof appId;
+  RegGetValueW(HKEY_CURRENT_USER, L"Software\\Valve\\Steam", L"RunningAppID", RRF_RT_REG_DWORD, nullptr, &appId, &size);
+  wchar_t path[MAX_PATH * 2];
+  DWORD pathSize = sizeof path;
+  std::wstring steamPath;
+  if (RegGetValueW(HKEY_CURRENT_USER, L"Software\\Valve\\Steam", L"SteamPath", RRF_RT_REG_SZ, nullptr, path, &pathSize) == ERROR_SUCCESS) steamPath = path;
+  auto o = Napi::Object::New(env);
+  o.Set("path", Utf8(steamPath));
+  o.Set("appId", static_cast<double>(appId));
+  return o;
+}
+
 static Napi::Object Init(Napi::Env env, Napi::Object exports) {
   static CO_MTA_USAGE_COOKIE keep = nullptr;
   if (!keep) CoIncrementMTAUsage(&keep);
@@ -765,6 +923,9 @@ static Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set("stopWindow", Napi::Function::New(env, StopWindow));
   exports.Set("startAudio", Napi::Function::New(env, StartAudio));
   exports.Set("stopAudio", Napi::Function::New(env, StopAudio));
+  exports.Set("listWindows", Napi::Function::New(env, ListWindows));
+  exports.Set("mediaSessions", Napi::Function::New(env, MediaSessions));
+  exports.Set("steam", Napi::Function::New(env, Steam));
   return exports;
 }
 

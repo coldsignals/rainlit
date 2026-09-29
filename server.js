@@ -829,7 +829,7 @@ api.get('/friends', needUser, (req, res) => {
   for (const c of people.connectionsOf(req.user.id)) {
     const u = people.publicUser(c.user);
     if (c.kind === 'friend') {
-      out.friends.push({ ...u, presence: realtime.presenceOf(u.id), dm: convos[u.id] || { save: true, unread: 0, readAt: 0, lastAt: 0 } });
+      out.friends.push({ ...u, presence: realtime.presenceOf(u.id), doing: realtime.doingOf(u.id), dm: convos[u.id] || { save: true, unread: 0, readAt: 0, lastAt: 0 } });
     } else {
       out[c.kind].push(u);
     }
@@ -1012,7 +1012,7 @@ api.get('/users/:id', needUser, (req, res) => {
   const f = u && people.friendship(req.user.id, u.id);
   if (!u || (!f && u.id !== req.user.id && !spaces.shareSpace(req.user.id, u.id))) return fail(res, 404, 'Not found.');
   const presence = f && f.status === 'accepted' ? realtime.presenceOf(u.id) : null;
-  res.json({ user: { ...people.publicUser(u), presence } });
+  res.json({ user: { ...people.publicUser(u), presence, doing: realtime.doingOf(u.id) } });
 });
 
 // ----- Homepages -----
@@ -1681,7 +1681,7 @@ api.post('/spaces', needUser, (req, res) => {
 });
 
 api.get('/spaces/:spaceId', needUser, needMember, (req, res) => {
-  const members = spaces.members(req.space.id).map((m) => ({ ...m, presence: realtime.presenceOf(m.id) }));
+  const members = spaces.members(req.space.id).map((m) => ({ ...m, presence: realtime.presenceOf(m.id), doing: realtime.doingOf(m.id) }));
   res.json({ space: mySpace(req.user.id, req.space.id), members });
 });
 

@@ -100,6 +100,8 @@ own window, plus:
 - Push to talk that works while you're in another app or a game.
 - Screen sharing with sound, with Rainlit's own sound left out so your friend
   doesn't hear themselves.
+- Your activity, if you want it: "Playing Hades" or "Listening to (a song)" by
+  your name, for your friends and people in your spaces (see below).
 - It keeps running in the tray by the clock, so calls and messages still reach
   you with the window closed, with Windows notifications and a flashing taskbar
   button.
@@ -128,6 +130,17 @@ and released is in [desktop/README.md](desktop/README.md).
   hour. Changing your email needs your password, and the old address is told.
   (A Rainlit that doesn't send email: its admin makes reset links instead. See
   [SELF-HOSTING.md](SELF-HOSTING.md) to turn email on.)
+- **What you're doing:** with Rainlit for Windows, your friends and the people
+  in your spaces can see "Playing Hades" or "Listening to (a song) · (artist)" by
+  your name, and on your profile card, for how long you've played and how far
+  into the song you are. It finds games itself (any Steam game, and popular ones
+  from elsewhere: League, VALORANT, Minecraft, Roblox...), and you can add any
+  program in **Settings**. Songs come from Spotify, Apple Music and other music
+  apps, as Windows' media controls show them (web browsers only if you want).
+  It's off until you say yes, it asks once, and nobody sees it while you appear
+  offline. Only the game's or song's name leaves your computer, and Rainlit
+  doesn't keep it. (Spotify's own API only lets small apps have 5 users, so
+  Rainlit doesn't use it.)
 - **A friend's menu:** right-click a friend in the list (long-press on a phone,
   or the "..." that appears when you hover) for **Message**, **Call**, **View
   profile** and **Remove friend**. Clicking their name at the top of your

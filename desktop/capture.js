@@ -4,7 +4,9 @@
 // works, and a problem here can't take the app down.
 //
 // From the main process: { type: 'supported' }, and { type: 'start', id, hwnd, audio, maxWidth,
-// maxHeight, fps } with the port to send on. It answers each with { id, ... }.
+// maxHeight, fps } with the port to send on. It answers each with { id, ... }. And for your
+// activity, { type: 'activity', id, media }: the windows that are open, what's playing (if
+// `media`), and where Steam is (see main.js).
 // Through the port: { t: 'v', w, h, format, ts, data } (a frame), { t: 'a', frames, rate,
 // channels, ts, data } (10ms of sound), { t: 'noaudio' }, { t: 'ended' }. The page can send
 // { t: 'stop' } or { t: 'tune', maxWidth, maxHeight, fps }, or just close the port.
@@ -84,5 +86,12 @@ process.parentPort.on('message', (e) => {
     process.parentPort.postMessage(start(m, e.ports[0]));
   } else if (m.type === 'stop') {
     stop(m.id);
+  } else if (m.type === 'activity') {
+    if (!native || !native.listWindows) return process.parentPort.postMessage({ id: m.id, ok: false });
+    try {
+      process.parentPort.postMessage({ id: m.id, ok: true, windows: native.listWindows(), media: m.media ? native.mediaSessions() : [], steam: native.steam() });
+    } catch (err) {
+      process.parentPort.postMessage({ id: m.id, ok: false, message: err.message });
+    }
   }
 });

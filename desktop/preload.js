@@ -42,6 +42,10 @@ contextBridge.exposeInMainWorld('rainlitDesktop', {
   // A popped-out video's window (not the app's own): kept on top of other windows, or not.
   // Resolves whether it is.
   setOnTop: (on) => ipcRenderer.invoke('desktop:on-top', Boolean(on)),
+  // Your activity (only if you've said so in Settings): { exes, steam, media } now, and what's
+  // open, to pick a program to add as a game.
+  activityScan: () => ipcRenderer.invoke('desktop:activity'),
+  activityPrograms: () => ipcRenderer.invoke('desktop:activity-programs'),
   // Save a file or GIF (asks where), or open a web address in your browser.
   download: (url) => ipcRenderer.send('desktop:download', String(url || '')),
   openExternal: (url) => ipcRenderer.send('desktop:open', String(url || '')),

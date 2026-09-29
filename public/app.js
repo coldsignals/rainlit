@@ -99,6 +99,8 @@ for (const id of [
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
   'support-card', 'support-badge', 'support-title', 'support-note', 'support-btn', 'support-link', 'support-admin', 'support-state', 'support-costs',
+  'mp-doing', 'activity-field', 'activity-playing', 'activity-listening', 'activity-others', 'activity-now', 'activity-game-list', 'activity-add', 'activity-pick',
+  'activity-ask', 'activity-ask-mark', 'activity-ask-title', 'activity-ask-text',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-resize', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
@@ -138,6 +140,7 @@ const S = {
   clientId: '', // your account id; the server knows you by it in calls
   name: '', // your display name
   friends: new Map(), // id -> { id, username, displayName, statusText, avatar, presence }
+  doing: new Map(), // id -> what they're doing now: { playing, listening } (lib/realtime.js)
   incoming: [], // friend requests you've been sent
   outgoing: [], // friend requests you've sent
   blocked: new Set(), // people you've blocked (their ids)
@@ -1060,7 +1063,9 @@ function handleServerMessage(msg) {
     case 'hello':
       return onHello(msg);
     case 'presence':
-      return onPresence(msg.id, msg.presence);
+      return onPresence(msg.id, msg.presence, msg.doing);
+    case 'doing':
+      return onDoing(msg.id, msg.doing);
     case 'profile':
       return onProfile(msg.user);
     case 'friends-changed':
@@ -3211,6 +3216,7 @@ const MY_BUILD = (document.querySelector('meta[name="rainlit-build"]') || {}).co
 function onHello(msg) {
   trace('hello', { build: String(msg.build || '').slice(0, 12) });
   setWaiting(msg.waiting);
+  if (activity.doing) wsSend({ type: 'doing', doing: activity.doing }); // (what you're doing, again)
   loadAnnouncements(); // (anything announced while this was closed or offline)
   if (S.voice && S.voice.state === 'connected') {
     if (S.voice.room && S.voice.room.serverBack) S.voice.room.serverBack(); // (Cloudflare)
@@ -4029,7 +4035,8 @@ function renderDmHead() {
   el.dmBack.title = 'Back to friends';
   renderFace(el.dmFace, f, f.presence);
   el.dmName.textContent = f.displayName;
-  el.dmSub.textContent = f.statusText || PRESENCE_LABEL[f.presence];
+  const doing = f.presence !== 'offline' && S.doing.get(f.id);
+  el.dmSub.textContent = doing ? doingWords(doing) : f.statusText || PRESENCE_LABEL[f.presence];
   if (!el.dmSave.classList.contains('confirm')) {
     el.dmSave.classList.toggle('on', dm.save);
     el.dmSave.textContent = dm.save ? 'Saving on' : 'Saving off';
@@ -6115,6 +6122,8 @@ async function fillDeviceLists() {
   el.noiseInput.checked = S.micFx.noiseSuppression;
   el.echoInput.checked = S.micFx.echoCancellation;
   el.gainInput.checked = S.micFx.autoGainControl;
+  el.activityPick.hidden = true;
+  renderActivitySettings();
 }
 
 // Picks up a new microphone or new clean-up settings. Chrome only applies those
@@ -6504,6 +6513,7 @@ async function signedIn(user) {
   followDeleteLink();
   followHomepageLink();
   followSupportLink();
+  startActivity();
 }
 
 // rainlit.app/?next=support: signing in to support Rainlit (from the support page), and back.
@@ -6573,6 +6583,8 @@ function renderPushNote() {
 }
 
 function signedOut(message = '') {
+  stopActivity();
+  S.doing.clear();
   if (S.inCall) teardown({ sendLeave: false });
   stopRinging();
   S.me = null;
@@ -6760,7 +6772,10 @@ async function refreshSpaces() {
 async function loadMembers(spaceId) {
   try {
     const { members } = await api('GET', `/spaces/${spaceId}`);
-    for (const m of members) S.people.set(m.id, m);
+    for (const m of members) {
+      S.people.set(m.id, m);
+      if (m.id !== S.clientId) setDoingFor(m.id, m.doing);
+    }
     const space = S.spaces.get(spaceId);
     if (space) {
       space.members = members;
@@ -8064,10 +8079,12 @@ function memberPanelRow(space, m, dim) {
   name.style.color = memberColor(space, m.id);
   if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
   text.append(name);
-  if (m.statusText && !dim) {
+  const doing = !dim && S.doing.get(m.id);
+  if (doing || (m.statusText && !dim)) {
     const status = document.createElement('span');
     status.className = 'panel-member-status';
-    status.textContent = m.statusText;
+    status.textContent = doing ? doingWords(doing) : m.statusText;
+    if (doing) markDoing(status, doing);
     text.append(status);
   }
   b.append(makeFace(m, dim ? null : presenceIn(m)), text);
@@ -9448,6 +9465,7 @@ async function refreshFriends() {
   try {
     const data = await api('GET', '/friends');
     S.friends = new Map(data.friends.map((f) => [f.id, f]));
+    for (const f of data.friends) setDoingFor(f.id, f.presence === 'offline' ? null : f.doing);
     S.incoming = data.incoming;
     S.outgoing = data.outgoing;
     S.maxFileMb = data.maxFileMb || S.maxFileMb;
@@ -9538,7 +9556,9 @@ async function resumeAfterRestart() {
   startCall(a.with);
 }
 
-function onPresence(id, presence) {
+function onPresence(id, presence, doing) {
+  if (doing !== undefined) setDoingFor(id, doing);
+  if (S.openDm === id) renderDmHead();
   const p = S.people.get(id);
   if (p) p.presence = presence;
   if (!el.memberPanel.hidden) renderMemberPanel();
@@ -9904,9 +9924,11 @@ function friendRow(f) {
   const inCallWith = S.inCall && S.callWith === f.id;
   const typing = typersIn(f.id).length > 0;
   const waiting = waitingForYou(f.id);
-  const text = personText(f.displayName, typing ? 'typing…' : inCallWith ? 'In a call with you' : waiting ? waitingText(f.id) : f.statusText || PRESENCE_LABEL[f.presence]);
+  const doing = !typing && !inCallWith && !waiting && f.presence !== 'offline' && S.doing.get(f.id);
+  const text = personText(f.displayName, typing ? 'typing…' : inCallWith ? 'In a call with you' : waiting ? waitingText(f.id) : doing ? doingWords(doing) : f.statusText || PRESENCE_LABEL[f.presence]);
   if (typing) text.querySelector('.person-sub').classList.add('typing-now');
   else if (waiting) text.querySelector('.person-sub').classList.add('waiting-now');
+  else if (doing) markDoing(text.querySelector('.person-sub'), doing);
   btn.append(makeFace(f, f.presence), text);
   if (waiting) {
     const w = document.createElement('span');
@@ -10048,6 +10070,390 @@ async function onMenuRemove() {
   }
 }
 
+// ---------------- What people are doing (their activity) ----------------
+// "Playing Hades", or "Listening to (a song)", by people's names, like Discord's. Friends' and
+// space members' come from the server (with their presence, and as it changes: lib/realtime.js);
+// yours from Rainlit for Windows, which can tell what you're playing and listening to (below).
+
+// A few words, for a list: "Playing Hades", "Listening to Song · Artist".
+function doingWords(d) {
+  if (!d) return '';
+  if (d.playing) return `Playing ${d.playing.name}`;
+  if (d.listening) return `Listening to ${d.listening.title}${d.listening.artist ? ` · ${d.listening.artist}` : ''}`;
+  return '';
+}
+
+// A line of a list turned into what they're doing: its little picture in front.
+function markDoing(node, d) {
+  node.classList.add('doing-now');
+  node.title = doingWords(d);
+  node.insertAdjacentHTML('afterbegin', `<svg class="icon" aria-hidden="true"><use href="#${d.playing ? 'i-game' : 'i-music'}"/></svg>`);
+}
+
+function setDoingFor(id, doing) {
+  if (doing && (doing.playing || doing.listening)) S.doing.set(id, doing);
+  else S.doing.delete(id);
+}
+
+function onDoing(id, doing) {
+  setDoingFor(id, doing);
+  if (S.friends.has(id)) renderFriends();
+  if (!el.memberPanel.hidden) renderMemberPanel();
+  if (el.miniProfile.open && miniProfileId === id) renderMiniProfile();
+  if (S.openDm === id) renderDmHead();
+}
+
+// "for 42 minutes", "for 1 hour 5 minutes".
+function forHowLong(since) {
+  const all = Math.max(0, Math.floor((serverNow() - since) / 60_000));
+  if (all < 1) return 'just now';
+  const part = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const h = Math.floor(all / 60);
+  const m = all % 60;
+  return `for ${h ? `${part(h, 'hour')}${m ? ` ${part(m, 'minute')}` : ''}` : part(m, 'minute')}`;
+}
+
+// Their profile card: what they're playing, for how long, and what they're listening to, how far in.
+function renderMpDoing(id) {
+  const d = S.doing.get(id);
+  el.mpDoing.hidden = !d;
+  if (!d) return;
+  const row = (icon, label, main, sub, share) => {
+    const r = document.createElement('div');
+    r.className = 'mp-doing-row';
+    r.innerHTML = `<span class="mp-doing-mark"><svg class="icon" aria-hidden="true"><use href="#${icon}"/></svg></span>`;
+    const words = document.createElement('span');
+    words.className = 'mp-doing-words';
+    for (const [tag, text] of [['small', label], ['strong', main], ['span', sub]]) {
+      if (!text) continue;
+      const n = document.createElement(tag);
+      n.textContent = text;
+      n.title = text;
+      words.append(n);
+    }
+    r.append(words);
+    if (share != null) {
+      const bar = document.createElement('span');
+      bar.className = 'mp-doing-bar';
+      bar.innerHTML = '<i></i>';
+      bar.firstChild.style.width = `${Math.round(share * 100)}%`;
+      r.append(bar);
+    }
+    return r;
+  };
+  const rows = [];
+  if (d.playing) rows.push(row('i-game', 'Playing', d.playing.name, forHowLong(d.playing.since)));
+  const l = d.listening;
+  if (l) {
+    const at = l.position != null && l.duration ? Math.min(l.duration, l.position + Math.max(0, serverNow() - l.at)) : null;
+    rows.push(row('i-music', l.app ? `Listening on ${l.app}` : 'Listening', l.title, [l.artist && `by ${l.artist}`, l.album].filter(Boolean).join(' · '), at == null ? null : at / l.duration));
+  }
+  el.mpDoing.replaceChildren(...rows);
+}
+
+// ----- Yours, from Rainlit for Windows -----
+// Every 15 seconds the app says which programs have windows open, the Steam game that's running
+// (if one is) and what Windows' media controls say is playing (desktop/main.js). The game is the
+// first of: one you added yourself, a Steam game, one Rainlit knows (below), unless you've said
+// not to show it. The song is one playing in a music app (or, if you've said so, in a browser or
+// any other app). Nothing's shown until you say yes: the first time there's a game (or a song),
+// Rainlit asks, once. Only its name is sent, and only to the people who can see you're online.
+
+const CAN_TELL_ACTIVITY = Boolean(DESKTOP && DESKTOP.activityScan);
+const ACTIVITY_EVERY = 15_000;
+
+// Games that don't come from Steam (or that people often start some other way), by program.
+const KNOWN_GAMES = {
+  'minecraft: java edition': 'Minecraft', 'minecraft.windows.exe': 'Minecraft', 'league of legends.exe': 'League of Legends',
+  'valorant-win64-shipping.exe': 'VALORANT', 'fortniteclient-win64-shipping.exe': 'Fortnite', 'robloxplayerbeta.exe': 'Roblox',
+  'genshinimpact.exe': 'Genshin Impact', 'starrail.exe': 'Honkai: Star Rail', 'zenlesszonezero.exe': 'Zenless Zone Zero',
+  'overwatch.exe': 'Overwatch 2', 'wow.exe': 'World of Warcraft', 'hearthstone.exe': 'Hearthstone', 'diablo iv.exe': 'Diablo IV',
+  'cod.exe': 'Call of Duty', 'r5apex.exe': 'Apex Legends', 'rocketleague.exe': 'Rocket League', 'osu!.exe': 'osu!',
+  'gta5.exe': 'Grand Theft Auto V', 'gta5_enhanced.exe': 'Grand Theft Auto V', 'rdr2.exe': 'Red Dead Redemption 2',
+  'fallguys_client_game.exe': 'Fall Guys', 'destiny2.exe': 'Destiny 2', 'escapefromtarkov.exe': 'Escape from Tarkov',
+  'pathofexile_x64.exe': 'Path of Exile', 'terraria.exe': 'Terraria', 'stardew valley.exe': 'Stardew Valley', 'among us.exe': 'Among Us',
+  'cs2.exe': 'Counter-Strike 2', 'dota2.exe': 'Dota 2', 'rainbowsix.exe': "Tom Clancy's Rainbow Six Siege", 'forzahorizon5.exe': 'Forza Horizon 5',
+  'haloinfinite.exe': 'Halo Infinite', 'seaofthieves.exe': 'Sea of Thieves', 'ts4_x64.exe': 'The Sims 4', 'marvel-win64-shipping.exe': 'Marvel Rivals',
+  'warframe.x64.exe': 'Warframe', 'ffxiv_dx11.exe': 'Final Fantasy XIV', 'gw2-64.exe': 'Guild Wars 2', 'bg3.exe': "Baldur's Gate 3",
+  'bg3_dx11.exe': "Baldur's Gate 3", 'cyberpunk2077.exe': 'Cyberpunk 2077', 'witcher3.exe': 'The Witcher 3', 'eldenring.exe': 'Elden Ring',
+  'helldivers2.exe': 'Helldivers 2', 'valheim.exe': 'Valheim', 'tslgame.exe': 'PUBG: Battlegrounds', 'rustclient.exe': 'Rust',
+  'geometrydash.exe': 'Geometry Dash', 'vrchat.exe': 'VRChat', 'balatro.exe': 'Balatro', 'hades.exe': 'Hades', 'hades2.exe': 'Hades II',
+  'hollow_knight.exe': 'Hollow Knight', 'deltarune.exe': 'DELTARUNE', 'undertale.exe': 'Undertale', 'factorio.exe': 'Factorio',
+  'rimworldwin64.exe': 'RimWorld', 'phasmophobia.exe': 'Phasmophobia', 'lethal company.exe': 'Lethal Company',
+  'deadbydaylight-win64-shipping.exe': 'Dead by Daylight', 'projectzomboid64.exe': 'Project Zomboid',
+};
+// Music apps, by how Windows knows them (a part of the name is enough).
+const MUSIC_APPS = [
+  ['spotify', 'Spotify'], ['applemusic', 'Apple Music'], ['itunes', 'iTunes'], ['tidal', 'TIDAL'], ['deezer', 'Deezer'],
+  ['amazonmusic', 'Amazon Music'], ['amazon music', 'Amazon Music'], ['youtube-music', 'YouTube Music'], ['youtube music', 'YouTube Music'],
+  ['ytmdesktop', 'YouTube Music'], ['soundcloud', 'SoundCloud'], ['foobar2000', 'foobar2000'], ['musicbee', 'MusicBee'], ['aimp', 'AIMP'],
+  ['winamp', 'Winamp'], ['zunemusic', 'Media Player'], ['qobuz', 'Qobuz'], ['pandora', 'Pandora'], ['plexamp', 'Plexamp'], ['cider', 'Cider'],
+  ['audirvana', 'Audirvana'], ['dopamine', 'Dopamine'], ['strawberry', 'Strawberry'],
+];
+
+const activity = { timer: 0, now: { game: '', song: null }, sent: '', doing: undefined, asking: false, look: 0 };
+const activityPref = (key) => store.get(key, ''); // 'on', 'off', or '' (not asked yet)
+
+function myGames() {
+  try {
+    const list = JSON.parse(store.get('activityGames', '[]'));
+    return Array.isArray(list) ? list.filter((g) => g && typeof g.exe === 'string' && typeof g.name === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+function hiddenGames() {
+  try {
+    const list = JSON.parse(store.get('activityHidden', '[]'));
+    return Array.isArray(list) ? list.filter((n) => typeof n === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+// What app something's playing in: { name, music } (null: Rainlit's own sounds).
+function playingApp(aumid) {
+  const a = String(aumid || '').toLowerCase();
+  if (!a || a.includes('rainlit')) return null;
+  const music = MUSIC_APPS.find(([key]) => a.includes(key));
+  if (music) return { name: music[1], music: true };
+  // ("firefox.exe", "VideoLAN.VLC", "Company.App_8wekyb3d8bbwe!App": the app's own part.)
+  const base = a.split('!')[0].replace(/_[a-z0-9]{13}$/, '').replace(/\.exe$/, '').split('.').pop() || a;
+  return { name: base.charAt(0).toUpperCase() + base.slice(1), music: false };
+}
+
+async function scanActivity() {
+  if (!CAN_TELL_ACTIVITY || !S.me) return;
+  const look = ++activity.look; // (a newer look, begun meanwhile, wins)
+  if (activityPref('activityPlaying') === 'off' && activityPref('activityListening') === 'off') {
+    activity.now = { game: '', song: null };
+    return sendDoing(null);
+  }
+  let r = null;
+  try { r = await DESKTOP.activityScan(); } catch {}
+  if (!r || look !== activity.look || !S.me) return;
+  const playOn = activityPref('activityPlaying');
+  const listenOn = activityPref('activityListening');
+  const exes = new Set(r.exes || []);
+  let game = '';
+  for (const g of myGames()) if (exes.has(g.exe)) { game = g.name; break; }
+  if (!game && r.steam && r.steam.name) game = r.steam.name;
+  if (!game) for (const exe of exes) if (KNOWN_GAMES[exe]) { game = KNOWN_GAMES[exe]; break; }
+  if (game && hiddenGames().some((n) => n.toLowerCase() === game.toLowerCase())) game = '';
+  const others = activityPref('activityOthers') === 'on';
+  let song = null;
+  for (const m of r.media || []) {
+    const app = m.playing && m.title && playingApp(m.app);
+    if (!app || (!app.music && !others)) continue;
+    song = { title: m.title, artist: m.artist || '', album: m.album || '', app: app.name, position: m.position, duration: m.duration };
+    break;
+  }
+  activity.now = { game, song };
+  if (el.settings.open) renderActivityNow();
+  // (The first time there's something to show, it asks: when you're back in Rainlit, not in a call.)
+  if ((game && !playOn) || (song && !listenOn)) askActivity(game && !playOn ? 'playing' : 'listening');
+  sendDoing({ playing: game && playOn === 'on' ? { name: game } : null, listening: song && listenOn === 'on' ? song : null });
+}
+
+// Only when it's news: a new game or song, or one stopped. (Not where a song's got to.)
+function sendDoing(d) {
+  const doing = d && (d.playing || d.listening) ? d : null;
+  const key = doing ? JSON.stringify([doing.playing && doing.playing.name, doing.listening && [doing.listening.title, doing.listening.artist, doing.listening.app]]) : 'none';
+  if (key === activity.sent) return;
+  activity.sent = key;
+  activity.doing = doing;
+  wsSend({ type: 'doing', doing });
+}
+
+function askActivity(kind) {
+  if (activity.asking || S.inCall || S.voice || !document.hasFocus() || document.querySelector('dialog[open]')) return;
+  const { game, song } = activity.now;
+  activity.asking = true;
+  el.activityAsk.dataset.kind = kind;
+  el.activityAskMark.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#${kind === 'playing' ? 'i-game' : 'i-music'}"/></svg>`;
+  el.activityAskTitle.textContent = kind === 'playing' ? `Show your friends you're playing ${game}?` : 'Show your friends what you listen to?';
+  el.activityAskText.textContent = kind === 'playing'
+    ? `They'd see "Playing ${game}" by your name while you play, as would people in your spaces (not while you appear offline). Rainlit for Windows finds your games on this computer: only a game's name is shared.`
+    : `They'd see "Listening to ${song.title}${song.artist ? ` · ${song.artist}` : ''}" while it plays, from ${song.app} and other music apps, as would people in your spaces (not while you appear offline). Only the song's name is shared.`;
+  el.activityAsk.showModal();
+}
+
+function onActivityAnswer() {
+  const kind = el.activityAsk.dataset.kind;
+  store.set(kind === 'playing' ? 'activityPlaying' : 'activityListening', el.activityAsk.returnValue === 'yes' ? 'on' : 'off');
+  activity.asking = false;
+  if (el.settings.open) renderActivitySettings();
+  scanActivity();
+}
+
+function startActivity() {
+  if (!CAN_TELL_ACTIVITY) return;
+  clearInterval(activity.timer);
+  activity.timer = setInterval(scanActivity, ACTIVITY_EVERY);
+  setTimeout(scanActivity, 3000);
+}
+
+function stopActivity() {
+  clearInterval(activity.timer);
+  Object.assign(activity, { now: { game: '', song: null }, sent: '', doing: undefined, asking: false });
+}
+
+// ----- Settings: Your activity (Rainlit for Windows) -----
+
+function renderActivitySettings() {
+  el.activityField.hidden = !CAN_TELL_ACTIVITY;
+  if (!CAN_TELL_ACTIVITY) return;
+  el.activityPlaying.checked = activityPref('activityPlaying') === 'on';
+  el.activityListening.checked = activityPref('activityListening') === 'on';
+  el.activityOthers.checked = activityPref('activityOthers') === 'on';
+  el.activityOthers.disabled = !el.activityListening.checked;
+  renderActivityNow();
+  renderActivityGames();
+}
+
+// What it sees now, and whether it's shown.
+function renderActivityNow() {
+  const { game, song } = activity.now;
+  const lines = [];
+  if (game) {
+    const shown = activityPref('activityPlaying') === 'on';
+    const p = document.createElement('span');
+    p.textContent = `Right now: playing ${game}${shown ? '' : ' (not shown)'}. `;
+    const hide = document.createElement('button');
+    hide.type = 'button';
+    hide.className = 'text-btn';
+    hide.textContent = "Don't show this game";
+    hide.addEventListener('click', () => {
+      store.set('activityHidden', JSON.stringify([...hiddenGames(), game]));
+      activity.now.game = '';
+      renderActivitySettings();
+      scanActivity();
+    });
+    p.append(hide);
+    lines.push(p);
+  }
+  if (song) {
+    const p = document.createElement('span');
+    p.textContent = `Right now: listening to ${song.title}${song.artist ? ` · ${song.artist}` : ''} on ${song.app}${activityPref('activityListening') === 'on' ? '' : ' (not shown)'}.`;
+    lines.push(p);
+  }
+  if (!lines.length) lines.push(document.createTextNode('Nothing playing right now.'));
+  el.activityNow.replaceChildren(...lines);
+}
+
+// The games you added yourself, and the ones you've said not to show.
+function renderActivityGames() {
+  const rows = myGames().map((g) => {
+    const li = document.createElement('li');
+    const words = document.createElement('span');
+    words.className = 'grow';
+    words.textContent = `${g.name} `;
+    const exe = document.createElement('small');
+    exe.className = 'muted';
+    exe.textContent = g.exe;
+    words.append(exe);
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'text-btn';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => {
+      store.set('activityGames', JSON.stringify(myGames().filter((x) => x.exe !== g.exe)));
+      renderActivityGames();
+      scanActivity();
+    });
+    li.append(words, remove);
+    return li;
+  });
+  for (const name of hiddenGames()) {
+    const li = document.createElement('li');
+    const words = document.createElement('span');
+    words.className = 'grow muted';
+    words.textContent = `${name} (not shown)`;
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'text-btn';
+    back.textContent = 'Show it again';
+    back.addEventListener('click', () => {
+      store.set('activityHidden', JSON.stringify(hiddenGames().filter((n) => n !== name)));
+      renderActivityGames();
+      scanActivity();
+    });
+    li.append(words, back);
+    rows.push(li);
+  }
+  if (!rows.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'None yet.';
+    rows.push(li);
+  }
+  el.activityGameList.replaceChildren(...rows);
+}
+
+// "Add a program": what's open now; pick the game, and name it.
+async function openActivityPicker() {
+  el.activityPick.hidden = false;
+  const wait = document.createElement('li');
+  wait.className = 'muted';
+  wait.textContent = 'Looking at what’s open…';
+  el.activityPick.replaceChildren(wait);
+  let list = [];
+  try { list = (await DESKTOP.activityPrograms()) || []; } catch {}
+  const mine = new Set(myGames().map((g) => g.exe));
+  const rows = list.filter((p) => !mine.has(p.exe)).map((p) => {
+    const li = document.createElement('li');
+    const words = document.createElement('span');
+    words.className = 'grow';
+    words.textContent = `${p.title || p.exe} `;
+    const exe = document.createElement('small');
+    exe.className = 'muted';
+    exe.textContent = p.exe;
+    words.append(exe);
+    const pick = document.createElement('button');
+    pick.type = 'button';
+    pick.className = 'small-btn';
+    pick.textContent = 'This one';
+    pick.addEventListener('click', () => nameActivityGame(li, p));
+    li.append(words, pick);
+    return li;
+  });
+  if (!rows.length) {
+    const none = document.createElement('li');
+    none.className = 'muted';
+    none.textContent = 'Nothing else is open. Start the game, then look again.';
+    rows.push(none);
+  }
+  el.activityPick.replaceChildren(...rows);
+}
+
+function nameActivityGame(li, p) {
+  const input = document.createElement('input');
+  input.maxLength = 100;
+  input.value = String(p.title || p.exe.replace(/\.exe$/i, '')).slice(0, 100);
+  input.setAttribute('aria-label', 'The game’s name, as your friends will see it');
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'small-btn';
+  save.textContent = 'Add';
+  const add = () => {
+    const name = input.value.replace(/\s+/g, ' ').trim();
+    if (!name) return input.focus();
+    store.set('activityGames', JSON.stringify([...myGames().filter((g) => g.exe !== p.exe), { exe: p.exe, name }]));
+    el.activityPick.hidden = true;
+    renderActivityGames();
+    scanActivity();
+  };
+  save.addEventListener('click', add);
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault(); // (not the settings form's own Enter, which would close it)
+    add();
+  });
+  li.replaceChildren(input, save);
+  input.focus();
+  input.select();
+}
+
 // ---------------- Badges ----------------
 
 // The little marks on people's profiles, in the order they're shown. Their pictures are in
@@ -10148,6 +10554,7 @@ async function openMiniProfile(id) {
   try {
     const { user } = await api('GET', `/users/${id}`);
     S.people.set(id, Object.assign(S.people.get(id) || {}, user));
+    if (id !== S.clientId && user.doing !== undefined) setDoingFor(id, user.doing);
   } catch {
     return;
   }
@@ -10173,6 +10580,7 @@ function renderMiniProfile() {
     el.mpPresence.dataset.presence = presence;
   }
   el.mpStatus.textContent = p.statusText || '';
+  renderMpDoing(id);
   const blocked = !self && S.blocked && S.blocked.has(id);
   el.mpBlocked.hidden = !blocked;
   el.mpSafety.hidden = self;
@@ -12172,6 +12580,22 @@ async function init() {
     if (ANDROID && S.inCall) ANDROID.setDucking({ on: el.duckInput.checked }).then(renderDuckStatus).catch(() => {});
     else renderDuckStatus();
   });
+  // (Your activity, Rainlit for Windows: see scanActivity.)
+  el.activityPlaying.addEventListener('change', () => {
+    store.set('activityPlaying', el.activityPlaying.checked ? 'on' : 'off');
+    scanActivity();
+  });
+  el.activityListening.addEventListener('change', () => {
+    store.set('activityListening', el.activityListening.checked ? 'on' : 'off');
+    el.activityOthers.disabled = !el.activityListening.checked;
+    scanActivity();
+  });
+  el.activityOthers.addEventListener('change', () => {
+    store.set('activityOthers', el.activityOthers.checked ? 'on' : 'off');
+    scanActivity();
+  });
+  el.activityAdd.addEventListener('click', openActivityPicker);
+  el.activityAsk.addEventListener('close', onActivityAnswer);
   el.callSoundsInput.addEventListener('change', () => {
     S.callSounds = el.callSoundsInput.checked;
     store.set('callSounds', S.callSounds ? 'on' : 'off');

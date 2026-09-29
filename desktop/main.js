@@ -3,6 +3,8 @@
 // - A push-to-talk key that works while you're in another app or a game.
 // - Sharing your screen with its sound, without your friend hearing their own voice; and a
 //   window, captured by the app itself: smooth (a game's too), with only that app's sound.
+// - Your activity: the game you're playing, or what you're listening to, for your friends to see
+//   (only if you've said so in Settings; only its name leaves the computer).
 // - A tray icon, so calls and messages still reach you with the window closed.
 // - Notifications and a taskbar flash when someone calls or messages.
 
@@ -402,6 +404,98 @@ async function capturerCan() {
 }
 
 const whole = (n, fallback, max) => Math.min(max, Math.max(2, Math.round(Number(n) || fallback)));
+
+// ================= Your activity =================
+// The page asks every so often what's running and playing (desktop:activity) to show your
+// friends "Playing Hades" or "Listening to ...", if you've said so in Settings. It gets the
+// names of the programs with windows open (not their titles: only Minecraft's is looked at, to
+// tell it apart from other Java programs), a Steam game if one's running, and what Windows'
+// media controls say is playing. It decides what counts, and only ever sends on a game's or
+// song's name. The list for "Add a program" (desktop:activity-programs) has titles, so you can
+// tell which is which.
+
+// Steam's games: its libraries (steamapps/libraryfolders.vdf), and each game's manifest there
+// (appmanifest_<id>.acf) for its name and folder. Read again every 10 minutes at most.
+const steamGames = { at: 0, path: '', byId: new Map(), byDir: new Map() };
+function steamLibrary(steamPath) {
+  if (!steamPath) return steamGames;
+  if (steamGames.path === steamPath && Date.now() - steamGames.at < 10 * 60_000) return steamGames;
+  Object.assign(steamGames, { at: Date.now(), path: steamPath, byId: new Map(), byDir: new Map() });
+  const libraries = new Set([path.join(steamPath, 'steamapps')]);
+  try {
+    const vdf = fs.readFileSync(path.join(steamPath, 'steamapps', 'libraryfolders.vdf'), 'utf8');
+    for (const m of vdf.matchAll(/"path"\s+"([^"]+)"/g)) libraries.add(path.join(m[1].replace(/\\\\/g, '\\'), 'steamapps'));
+  } catch {}
+  for (const dir of libraries) {
+    let files = [];
+    try { files = fs.readdirSync(dir).filter((f) => /^appmanifest_\d+\.acf$/.test(f)); } catch {}
+    for (const f of files) {
+      try {
+        const acf = fs.readFileSync(path.join(dir, f), 'utf8');
+        const id = Number((/"appid"\s+"(\d+)"/.exec(acf) || [])[1]);
+        const name = (/"name"\s+"([^"]+)"/.exec(acf) || [])[1];
+        const installdir = (/"installdir"\s+"([^"]+)"/.exec(acf) || [])[1];
+        if (!id || !name || STEAM_SOFTWARE.has(id)) continue;
+        steamGames.byId.set(id, { id, name });
+        if (installdir) steamGames.byDir.set(installdir.toLowerCase(), { id, name });
+      } catch {}
+    }
+  }
+  return steamGames;
+}
+// Programs on Steam that aren't games (a wallpaper, VR's own, a soundboard...).
+const STEAM_SOFTWARE = new Set([431960, 250820, 629520, 993090, 1905180, 365670, 431730, 388080, 228980, 1070560, 1391110, 1628350]);
+
+async function openWindows(media) {
+  const r = await askCapturer({ type: 'activity', id: `activity-${++shareIds}`, media });
+  return r && r.ok ? r : null;
+}
+
+ipcMain.handle('desktop:activity', async (e) => {
+  if (!fromPage(e)) return null;
+  const r = await openWindows(true);
+  if (!r) return null;
+  const exes = new Set();
+  const lib = steamLibrary(r.steam && r.steam.path);
+  let steam = null;
+  for (const w of r.windows) {
+    if (w.pid === process.pid) continue;
+    const exe = String(w.exe || '').toLowerCase();
+    // (Minecraft: Java Edition runs as Java itself, so its window's title says which it is.)
+    if (exe === 'javaw.exe' && /^minecraft\b/i.test(w.title || '')) exes.add('minecraft: java edition');
+    else if (exe) exes.add(exe);
+    // A window whose program is in a Steam library's game folder: that game.
+    const dir = /\\steamapps\\common\\([^\\]+)\\/i.exec(w.path || '');
+    const game = dir && lib.byDir.get(dir[1].toLowerCase());
+    if (game && (!steam || game.id === (r.steam && r.steam.appId))) steam = game;
+  }
+  return {
+    exes: [...exes],
+    steam,
+    media: (r.media || []).map((m) => ({
+      app: m.app, title: m.title, artist: m.artist, album: m.album, playing: m.status === 4,
+      position: m.position >= 0 ? Math.round(m.position + (m.status === 4 && m.updated ? Math.max(0, Date.now() - m.updated) : 0)) : null,
+      duration: m.duration > 0 ? Math.round(m.duration) : null,
+    })),
+  };
+});
+
+// What's open, to pick one to add as a game: each program once, with a window's title.
+const NOT_GAMES = new Set(['explorer.exe', 'applicationframehost.exe', 'textinputhost.exe', 'systemsettings.exe', 'shellexperiencehost.exe',
+  'searchhost.exe', 'startmenuexperiencehost.exe', 'lockapp.exe', 'rainlit.exe', 'electron.exe', 'steamwebhelper.exe', 'cmd.exe',
+  'windowsterminal.exe', 'conhost.exe', 'taskmgr.exe']);
+ipcMain.handle('desktop:activity-programs', async (e) => {
+  if (!fromPage(e)) return [];
+  const r = await openWindows(false);
+  if (!r) return [];
+  const seen = new Map();
+  for (const w of r.windows) {
+    const exe = String(w.exe || '').toLowerCase();
+    if (!exe || NOT_GAMES.has(exe) || seen.has(exe)) continue;
+    seen.set(exe, { exe, title: String(w.title || '').slice(0, 120) });
+  }
+  return [...seen.values()].sort((a, b) => a.title.localeCompare(b.title));
+});
 
 // A popped-out video's window, kept on top of other windows (above a game, say), or not. Only
 // a window the page opened: never the app's own.

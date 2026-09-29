@@ -17,6 +17,13 @@ reinstall. On top of the website it adds:
   second. With **Share audio**, only that app's sound comes along (Windows 10 2004
   and newer). On Windows 10, Windows draws a yellow border around a window while
   it's captured.
+- **Your activity.** If you say yes (it asks the first time), your friends see
+  "Playing Hades" or "Listening to (a song)" by your name. The app looks at which
+  programs have windows open (any Steam game, a list of others, and ones you add
+  in Settings) and at what Windows' media controls say is playing (Spotify, Apple
+  Music and other music apps; browsers only if you want). Only the game's or
+  song's name leaves the computer. (The native add-on's `listWindows`,
+  `mediaSessions` and `steam`, run in the capture process.)
 - **Tray icon.** Closing the window keeps Rainlit running by the clock, so calls
   and messages still reach you. Right-click the tray icon to quit, or to start
   Rainlit with Windows.

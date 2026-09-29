@@ -687,6 +687,8 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .person-text { flex: 1; min-width: 0; display: grid; }
 .person-name { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person-sub { color: var(--mist); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* What someone's doing ("Playing Hades"), in a list: a little game pad or note in front. */
+.doing-now .icon { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; color: var(--lamp); stroke-width: 2.2; }
 .person-actions { display: flex; gap: 4px; }
 .person-actions .icon-btn { width: 32px; height: 32px; }
 .person-actions .icon { width: 16px; height: 16px; }
@@ -840,6 +842,29 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   overflow-wrap: anywhere;
 }
 .mp-status:empty { display: none; }
+/* Their profile card: what they're playing (and for how long), what they're listening to. */
+.mp-doing { display: grid; gap: 10px; padding: 10px 12px; background: var(--deep); border: 1px solid var(--line); border-radius: 12px; }
+.mp-doing[hidden] { display: none; }
+.mp-doing-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 4px 10px; align-items: center; }
+.mp-doing-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: color-mix(in srgb, var(--lamp) 16%, transparent); color: var(--lamp); }
+.mp-doing-mark .icon { width: 19px; height: 19px; }
+.mp-doing-words { display: grid; min-width: 0; }
+.mp-doing-words small { color: var(--mist); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.mp-doing-words strong, .mp-doing-words span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-doing-words strong { font-size: 14px; }
+.mp-doing-words span { color: var(--mist); font-size: 12.5px; }
+.mp-doing-bar { grid-column: 2; height: 4px; overflow: hidden; background: var(--line); border-radius: 999px; }
+.mp-doing-bar i { display: block; height: 100%; background: var(--lamp); border-radius: inherit; }
+/* Settings: your activity (Rainlit for Windows). */
+.activity-field { display: grid; gap: 10px; }
+.activity-field[hidden] { display: none; }
+.activity-sub { margin-left: 28px; }
+.activity-now { margin: 0; display: grid; gap: 2px; }
+.activity-now .text-btn { padding: 0; font-size: inherit; }
+.activity-pick { max-height: 240px; overflow-y: auto; }
+.activity-pick input { flex: 1; min-width: 0; }
+.activity-ask-mark { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto; border-radius: 16px; background: color-mix(in srgb, var(--lamp) 16%, transparent); color: var(--lamp); }
+.activity-ask-mark .icon { width: 30px; height: 30px; }
 .mp-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .mp-buttons { display: flex; gap: 8px; }
 .mp-buttons button { white-space: nowrap; }

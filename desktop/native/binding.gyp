@@ -1,5 +1,6 @@
 {
-  # rainlit_capture: a window's picture and one app's sound, for sharing (src/capture.cc).
+  # rainlit_capture: a window's picture and one app's sound, for sharing, and what's open and
+  # playing, for your activity (src/capture.cc).
   # Built for the desktop app's Electron with `npm run native` (in desktop/).
   "targets": [
     {
@@ -13,7 +14,7 @@
           "AdditionalOptions": ["/std:c++20", "/permissive-", "/bigobj", "/utf-8", "/Zc:__cplusplus"]
         }
       },
-      "libraries": ["d3d11.lib", "dxgi.lib", "windowsapp.lib", "mmdevapi.lib", "ole32.lib"]
+      "libraries": ["d3d11.lib", "dxgi.lib", "windowsapp.lib", "mmdevapi.lib", "ole32.lib", "dwmapi.lib", "advapi32.lib"]
     }
   ]
 }
