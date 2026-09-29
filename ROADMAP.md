@@ -127,7 +127,7 @@ profile card. The card stays, as the quick look, with a way into the homepage.
 - [x] 88x31 buttons, to make and to link to friends' pages
 - [x] Old-web touches: a music player (your song, when a visitor presses play), a guestbook
       visitors sign, a visitor counter
-- [ ] An "ask me anything" box that can be anonymous
+- [x] An "ask me anything" box that can be anonymous
 - [x] Shelves to show off favourite games, music and shows, with their covers (from a
       picture, or found from a link to them)
 - [x] Who can see it: friends, people in your spaces, or anyone with its link

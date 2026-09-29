@@ -139,6 +139,11 @@ from your own (**Your homepage**, then **Edit**).
   when someone signs it), and a music player for a song of yours (MP3, M4A,
   OGG, FLAC or WAV, up to 10 MB), as a tunebox, a cassette or just a button.
   It only plays when a visitor presses play.
+- **Ask me anything:** a box visitors ask you things in, anonymously if you
+  let them (you aren't told who asked; whoever runs the server is, only if
+  you report the question). Only you see a question until you answer it,
+  right on your page; then it shows there with your answer. Report one to
+  stop whoever asked from asking again, without finding out who it was.
 - **Shelves and buttons:** a shelf shows off favourite games, music or shows
   by their covers, with name tags and links: add pictures, or paste a link
   (a Steam page, an album, a film's page) and its cover and name are found

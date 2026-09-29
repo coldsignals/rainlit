@@ -208,29 +208,29 @@ a.hp-piece:focus-visible { outline: 3px solid #f5b94a; outline-offset: 3px; }
 .hp-counter-plain .hp-digits span { font: 700 52cqh/1 "Times New Roman", Times, serif; color: var(--tint); }
 .hp-count-label { font: 400 17cqh/1 "Pixelify Sans", monospace; color: var(--tint); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 
-/* ----- The guestbook ----- */
-.hp-guestbook { display: flex; flex-direction: column; overflow: hidden; color: var(--gb-ink); }
-.hp-guestbook-paper {
+/* ----- The guestbook (and the "ask me anything" box, which looks like it) ----- */
+.hp-guestbook, .hp-ask { display: flex; flex-direction: column; overflow: hidden; color: var(--gb-ink); }
+.hp-guestbook-paper, .hp-ask-paper {
   padding: 14px 16px 12px;
   background: var(--gb) repeating-linear-gradient(transparent 0 25px, rgba(74, 120, 181, 0.2) 25px 26px);
   border-radius: 2px;
   box-shadow: 0 12px 22px -14px rgba(0, 0, 0, 0.6), 0 1px 2px rgba(0, 0, 0, 0.14);
 }
-.hp-guestbook-retro {
+.hp-guestbook-retro, .hp-ask-retro {
   padding: 8px;
   background: #c3c3c3; color: #000;
   border: 2px solid; border-color: #fff #3c3c3c #3c3c3c #fff;
   font-family: "Times New Roman", Times, serif;
 }
-.hp-guestbook-retro .hp-gb-title { color: #000080; font-weight: 700; }
-.hp-guestbook-retro .hp-gb-list li { background: #fff; border: 1px solid #828282; border-radius: 0; }
-.hp-guestbook-dark {
+.hp-guestbook-retro .hp-gb-title, .hp-ask-retro .hp-gb-title { color: #000080; font-weight: 700; }
+.hp-guestbook-retro .hp-gb-list li, .hp-ask-retro .hp-gb-list li { background: #fff; border: 1px solid #828282; border-radius: 0; }
+.hp-guestbook-dark, .hp-ask-dark {
   padding: 14px;
   background: var(--gb); color: var(--gb-ink);
   border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 14px;
   box-shadow: 0 14px 28px -16px rgba(0, 0, 0, 0.8);
 }
-.hp-guestbook-dark .hp-gb-list li { background: rgba(255, 255, 255, 0.07); }
+.hp-guestbook-dark .hp-gb-list li, .hp-ask-dark .hp-gb-list li { background: rgba(255, 255, 255, 0.07); }
 .hp-gb-title { flex: none; margin-bottom: 8px; font-size: 26px; line-height: 1.1; text-align: center; overflow-wrap: anywhere; }
 .hp-gb-list { flex: 1; min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 8px; margin: 0; padding: 0; list-style: none; overscroll-behavior: contain; }
 .hp-gb-list li {
@@ -285,6 +285,39 @@ a.hp-piece:focus-visible { outline: 3px solid #f5b94a; outline-offset: 3px; }
 .hp-sign-cancel { padding: 8px 10px; background: none; border: 0; color: #a9b4c8; font: inherit; font-weight: 600; cursor: pointer; }
 .hp-sign-send { padding: 10px 16px; background: #f5b94a; color: #22190a; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; }
 .hp-sign-error { margin: 0; color: #ffb4ae; font-size: 14px; }
+
+/* ----- The "ask me anything" box ----- */
+/* (A question, then its answer, set in from it; one waiting for an answer has a dashed edge.) */
+.hp-ask-list li { padding-bottom: 9px; }
+.hp-ask-list .hp-ask-waiting { background: transparent; outline: 2px dashed rgba(127, 127, 127, 0.55); outline-offset: -2px; }
+.hp-ask-retro .hp-ask-list .hp-ask-waiting { background: #ececec; border-style: dashed; outline: 0; }
+.hp-avatar.hp-anon { background: #7a7590; }
+.hp-ask-list .hp-ask-q { font-weight: 650; }
+.hp-ask-list .hp-ask-a { margin-top: 5px; padding-left: 10px; border-left: 3px solid rgba(127, 127, 127, 0.45); }
+.hp-ask-tools { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 6px; padding-right: 54px; }
+.hp-ask-tool {
+  padding: 0; background: none; border: 0; color: inherit;
+  font: inherit; font-size: 13px; font-weight: 650; text-decoration: underline; text-underline-offset: 2px;
+  opacity: 0.8; cursor: pointer;
+}
+.hp-ask-tool:hover { opacity: 1; }
+.hp-ask-tool.main {
+  padding: 4px 12px;
+  border: 2px solid currentColor; border-radius: 999px;
+  text-decoration: none; opacity: 1;
+}
+.hp-ask-tool.main:hover { background: rgba(127, 127, 127, 0.15); }
+.hp-ask-wait { font-size: 12px; font-style: italic; opacity: 0.7; }
+/* Asking one, or answering it. */
+.hp-write-quote {
+  margin: 0; padding: 8px 12px;
+  background: #0e121c; border-left: 3px solid #f5b94a; border-radius: 6px;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.hp-write-quote[hidden], .hp-write-check[hidden], .hp-write-note[hidden] { display: none; }
+.hp-write-check { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+.hp-write-check input { width: 18px; height: 18px; margin: 0; accent-color: #f5b94a; }
+.hp-write-note { margin: -4px 0 0; color: #a9b4c8; font-size: 14px; }
 
 /* ----- The music player ----- */
 .hp-music .hp-in { align-items: center; gap: 4cqw; }

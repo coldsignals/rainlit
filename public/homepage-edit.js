@@ -119,7 +119,7 @@
   function draw() {
     const page = $('hp-page');
     const top = page.scrollTop;
-    state.mounted = H.mount(page, { owner: state.data.owner, doc: state.doc, views: state.data.views }, { edit: state.editing });
+    state.mounted = H.mount(page, { owner: state.data.owner, doc: state.doc, views: state.data.views }, { edit: state.editing, report: app.report });
     page.scrollTop = top;
     if (state.editing) drawPicked();
   }
@@ -798,6 +798,10 @@
           class: 'hp-item wide', type: 'button', text: 'Guestbook',
           onclick: () => add({ t: 'guestbook', style: 'paper', title: 'sign my guestbook!', color: '#fffdf6', font: 'hand', w: 300, h: 380 }),
         }),
+        el('button', {
+          class: 'hp-item wide', type: 'button', text: 'Ask me anything',
+          onclick: () => add({ t: 'ask', style: 'paper', title: 'ask me anything!', color: '#fffdf6', font: 'hand', anon: true, w: 320, h: 420 }),
+        }),
         songButton('Music player (pick a song)…'),
         el('button', {
           class: 'hp-item wide', type: 'button', text: 'Shelf',
@@ -807,7 +811,7 @@
           class: 'hp-item wide', type: 'button', text: '88x31 button',
           onclick: () => add({ t: 'button', text: 'my page', icon: 'flame', style: 'bevel', c1: '#1b2a8f', c2: '#ffffff', font: 'tiny', href: '', w: 132, h: 46.5 }),
         })),
-      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers; an 88x31 button can link to a friend\'s page.' }),
+      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers; an 88x31 button can link to a friend\'s page.' }),
     ];
   }
 
@@ -891,7 +895,7 @@
   // The picked piece's settings.
   function pickedPanel(p) {
     const set = (fields) => change(() => Object.assign(p, fields));
-    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter', guestbook: 'Guestbook', music: 'Music player', shelf: 'Shelf', button: '88x31 button' };
+    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter', guestbook: 'Guestbook', music: 'Music player', shelf: 'Shelf', button: '88x31 button', ask: 'Ask me anything' };
     const words = (label, key, max, placeholder) => {
       const input = el('input', { type: 'text', maxlength: String(max), value: p[key] || '', placeholder });
       input.addEventListener('change', () => set({ [key]: input.value.trim() }));
@@ -995,6 +999,36 @@
       out.push(el('p', { class: 'hp-note-small', text: 'Anyone who can see your page can sign it (they can delete what they wrote). Delete anything in it with its ×.' }),
         words('Its title', 'title', 40, 'sign my guestbook!'),
         field('Kind', chips(H.GUESTBOOKS, p.style, (style) => set({ style }))),
+        field(p.style === 'retro' ? 'Color (for "Dark" and "Paper")' : 'Color', colors(p.color, (color) => set({ color }))),
+        field('Title font', fonts('font')));
+    } else if (p.t === 'ask') {
+      // (Whose questions you've stopped, by reporting one: they can be let back.)
+      const stops = el('p', { class: 'hp-note-small', hidden: true });
+      app.api('GET', `/homepages/${encodeURIComponent(state.data.owner.id)}/questions`).then((d) => {
+        if (!d.stoppedCount) return;
+        const again = el('button', {
+          class: 'hp-tool', type: 'button', text: 'Let them ask again',
+          onclick: async () => {
+            try {
+              await app.api('DELETE', '/homepages/me/question-stops');
+              stops.hidden = true;
+              note('Everyone can ask you questions again.');
+            } catch (err) {
+              note(err.message);
+            }
+          },
+        });
+        stops.replaceChildren(`You've stopped ${d.stoppedCount === 1 ? "someone's questions" : `${d.stoppedCount} people's questions`} (by reporting them). `, again);
+        stops.hidden = false;
+      }).catch(() => {});
+      out.push(el('p', { class: 'hp-note-small', text: 'Anyone signed in who can see your page can ask you something. Only you see a question until you answer it; then everyone who can see your page can read both. Answer, delete or report them on your page (after Done).' }),
+        el('div', { class: 'hp-row' }, el('button', {
+          class: 'hp-chip', type: 'button', 'aria-pressed': String(p.anon !== false), text: 'Anonymous questions',
+          title: "Let people ask without you seeing who they are", onclick: () => set({ anon: p.anon === false }),
+        })),
+        stops,
+        words('Its title', 'title', 40, 'ask me anything!'),
+        field('Kind', chips(H.ASKS, p.style, (style) => set({ style }))),
         field(p.style === 'retro' ? 'Color (for "Dark" and "Paper")' : 'Color', colors(p.color, (color) => set({ color }))),
         field('Title font', fonts('font')));
     } else if (p.t === 'music') {
@@ -1116,5 +1150,22 @@
     return true;
   }
 
-  Object.assign(H, { connect, open, close, back, onSigned, isOpen: () => $('homepage').open });
+  // Someone asked you a question (from: their name, or null if they asked anonymously): if your
+  // page is showing, it shows up in your box.
+  function onAsked(from) {
+    if (!$('homepage').open || !state.data || !state.data.mine) return false;
+    if (!state.editing) H.reloadQuestions($('hp-page'), state.mounted.ctx);
+    note(from ? `${from} asked you a question!` : 'Someone asked you a question!');
+    return true;
+  }
+
+  // A question you asked was answered: if their page is showing, the answer shows up.
+  function onAnswered(ownerId, by) {
+    if (!$('homepage').open || !state.data || state.data.owner.id !== ownerId) return false;
+    if (!state.editing) H.reloadQuestions($('hp-page'), state.mounted.ctx);
+    note(`${by} answered your question!`);
+    return true;
+  }
+
+  Object.assign(H, { connect, open, close, back, onSigned, onAsked, onAnswered, isOpen: () => $('homepage').open });
 })();

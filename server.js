@@ -778,7 +778,15 @@ api.post('/reports', needUser, (req, res) => {
   if (!safety.REASONS.includes(b.reason)) return fail(res, 400, 'Pick what the problem is.');
   if (safety.reportsLastHour(req.user.id) >= safety.REPORTS_PER_HOUR) return fail(res, 429, "You've sent a lot of reports. Try again in a while.");
   const r = { reporterId: req.user.id, reason: b.reason, note: b.note || '' };
-  if (b.messageId) {
+  let question = null;
+  if (b.questionId) {
+    // A question in your own "ask me anything" box. Whoever handles the report sees who asked it;
+    // you still aren't told, if they asked anonymously.
+    question = homepages.questionById(String(b.questionId));
+    if (!question || question.owner_id !== req.user.id) return fail(res, 404, "That question isn't there any more.");
+    r.targetId = question.asker_id;
+    r.snapshot = { kind: 'question', text: question.text, anonymous: Boolean(question.anonymous), answer: question.answer || null, at: question.created_at };
+  } else if (b.messageId) {
     const m = dms.getMessage(String(b.messageId)) || dms.passingMessage(String(b.messageId));
     if (!m || !['text', 'file', 'gif'].includes(m.kind)) return fail(res, 404, "That message isn't there any more.");
     const channel = spaces.channel(m.dm);
@@ -816,12 +824,17 @@ api.post('/reports', needUser, (req, res) => {
     // From a space's members list: that space's moderators see it too.
     if (b.spaceId && spaces.isMember(b.spaceId, req.user.id) && spaces.isMember(b.spaceId, target.id)) r.spaceId = String(b.spaceId);
   }
-  const already = safety.openReportFor(req.user.id, r.messageId || null, r.targetId);
+  // (A question's report is always a new one: matching it to an earlier report about the same
+  // person would tell you two anonymous questions came from the same someone.)
+  const already = !question && safety.openReportFor(req.user.id, r.messageId || null, r.targetId);
   const id = already ? already.id : safety.addReport(r);
   if (!already) {
     for (const uid of reportHandlers(r.spaceId)) realtime.sendToUser(uid, { type: 'report-new', space: r.spaceId || null });
   }
-  if (b.block) {
+  if (b.block && question && question.anonymous) {
+    // (Whoever asked it anonymously can't ask you any more, and you still don't know who it was.)
+    homepages.stopAsker(req.user.id, question.asker_id);
+  } else if (b.block) {
     safety.block(req.user.id, r.targetId);
     realtime.friendsChanged(req.user.id, r.targetId);
   }
@@ -980,6 +993,86 @@ api.delete('/homepages/:who/guestbook/:entryId', needUser, (req, res) => {
     throw err;
   }
   res.json(guestbookJson(found.owner, found.page, req.user));
+});
+
+// The "ask me anything" box on someone's page: anyone signed in who can see the page can ask its
+// owner something (anonymously, if the box lets them). Only the owner sees a question until they
+// answer it; then anyone who can see the page can read both. Whoever asked can take theirs back,
+// and the owner can delete any.
+function questionsJson(owner, page, user) {
+  const box = homepages.askBox(page.doc);
+  const mine = Boolean(user && user.id === owner.id);
+  const stopped = Boolean(box && user && !mine && homepages.isStopped(owner.id, user.id));
+  return {
+    questions: homepages.questionsFor(owner.id, user),
+    canAsk: Boolean(box && user && !mine && !stopped),
+    stopped,
+    anon: Boolean(box && box.anon),
+    signedIn: Boolean(user),
+    mine,
+    ...(mine ? { stoppedCount: homepages.stoppedCount(owner.id) } : {}),
+  };
+}
+
+api.get('/homepages/:who/questions', (req, res) => {
+  const found = guestbookPage(req, res);
+  if (found) res.json(questionsJson(found.owner, found.page, req.user));
+});
+
+api.post('/homepages/:who/questions', needUser, needConfirmed, (req, res) => {
+  const found = guestbookPage(req, res);
+  if (!found) return;
+  const { owner, page } = found;
+  const box = homepages.askBox(page.doc);
+  const anonymous = Boolean((req.body || {}).anonymous);
+  if (owner.id === req.user.id) return fail(res, 400, "That's your own box.");
+  if (!box) return fail(res, 400, "There's no question box on this page.");
+  if (anonymous && !box.anon) return fail(res, 400, "They aren't taking anonymous questions.");
+  try {
+    homepages.ask(owner.id, req.user.id, (req.body || {}).text, anonymous);
+  } catch (err) {
+    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    throw err;
+  }
+  realtime.sendToUser(owner.id, { type: 'question-new', from: anonymous ? null : req.user.display_name });
+  res.json(questionsJson(owner, page, req.user));
+});
+
+// The owner answering one, or changing their answer.
+api.put('/homepages/:who/questions/:questionId', needUser, (req, res) => {
+  const found = guestbookPage(req, res);
+  if (!found) return;
+  const { owner, page } = found;
+  if (owner.id !== req.user.id) return fail(res, 403, 'Only they can answer it.');
+  let q;
+  try {
+    q = homepages.answerQuestion(owner.id, req.params.questionId, (req.body || {}).answer);
+  } catch (err) {
+    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    throw err;
+  }
+  if (!q) return fail(res, 404, "That question isn't there any more.");
+  // (Whoever asked hears it's been answered, the first time.)
+  if (!q.answered_at) realtime.sendToUser(q.asker_id, { type: 'question-answered', by: owner.display_name, owner: owner.id });
+  res.json(questionsJson(owner, page, req.user));
+});
+
+api.delete('/homepages/:who/questions/:questionId', needUser, (req, res) => {
+  const found = guestbookPage(req, res);
+  if (!found) return;
+  try {
+    homepages.unask(found.owner.id, req.params.questionId, req.user.id);
+  } catch (err) {
+    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    throw err;
+  }
+  res.json(questionsJson(found.owner, found.page, req.user));
+});
+
+// Everyone whose questions you stopped (by reporting one) can ask you again.
+api.delete('/homepages/me/question-stops', needUser, (req, res) => {
+  homepages.letAllAsk(req.user.id);
+  res.json({ ok: true, stoppedCount: 0 });
 });
 
 // ----- Conversations -----

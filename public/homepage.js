@@ -35,6 +35,7 @@
   const ME_STYLES = { card: 'Card', sticker: 'Sticker', plain: 'Plain' };
   const COUNTERS = { odometer: 'Odometer', led: 'LED', plain: 'Plain' };
   const GUESTBOOKS = { paper: 'Paper', retro: '1999', dark: 'Dark' };
+  const ASKS = { paper: 'Paper', retro: '1999', dark: 'Dark' };
   const MUSICS = { tunebox: 'Tunebox', cassette: 'Cassette', plain: 'Plain' };
   const SHELVES = { wood: 'Wood', glass: 'Glass', pixel: 'Pixel', white: 'White' };
   const BUTTONS = { bevel: 'Classic', shiny: 'Shiny', stripes: 'Stripes', dark: 'Dark' };
@@ -423,14 +424,17 @@
 
   const shortDate = (t) => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
 
-  async function guestbookCall(ctx, method = 'GET', path = '', body) {
-    const res = await fetch(`/api/homepages/${encodeURIComponent(ctx.owner.id)}/guestbook${path}`, {
+  // The page owner's guestbook or question box, on the server.
+  async function ownerCall(ctx, what, method = 'GET', path = '', body) {
+    const res = await fetch(`/api/homepages/${encodeURIComponent(ctx.owner.id)}/${what}${path}`, {
       method, headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined,
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Something went wrong. Try again.');
     return data;
   }
+  const guestbookCall = (ctx, ...rest) => ownerCall(ctx, 'guestbook', ...rest);
+  const questionsCall = (ctx, ...rest) => ownerCall(ctx, 'questions', ...rest);
 
   async function loadGuestbook(node, ctx, data = null) {
     const list = node.querySelector('.hp-gb-list');
@@ -554,6 +558,266 @@
     d.querySelector('.hp-sign-error').hidden = true;
     d.showModal();
     d.querySelector('textarea').focus();
+  }
+
+  // The "ask me anything" box: questions visitors asked and the owner's answers, the newest
+  // answers first, and a way to ask one. Its owner also sees the questions waiting for an answer
+  // (first), to answer, delete or report; whoever asked one sees their own until it's answered.
+  // (They come from the server when the page is shown; see lib/homepages.js.)
+  function askPiece(node, p, ctx) {
+    node.classList.add(`hp-ask-${ASKS[p.style] ? p.style : 'paper'}`);
+    const c = hex(p.color, '#fffdf6');
+    node.style.setProperty('--gb', c);
+    node.style.setProperty('--gb-ink', light(c) ? '#2b2233' : '#f6f2fb');
+    const title = document.createElement('div');
+    title.className = 'hp-gb-title';
+    title.style.fontFamily = (FONTS[p.font] || FONTS.hand).css;
+    title.textContent = p.title || '';
+    const list = document.createElement('ol');
+    list.className = 'hp-gb-list hp-ask-list';
+    const foot = document.createElement('div');
+    foot.className = 'hp-gb-foot';
+    node.append(title, list, foot);
+    if (ctx.edit) {
+      const li = document.createElement('li');
+      li.className = 'hp-gb-empty';
+      li.textContent = 'Questions you answer show up here.';
+      list.append(li);
+      return;
+    }
+    loadQuestions(node, ctx);
+  }
+
+  async function loadQuestions(node, ctx, data = null) {
+    const list = node.querySelector('.hp-ask-list');
+    const foot = node.querySelector('.hp-gb-foot');
+    try {
+      data = data || (await questionsCall(ctx));
+    } catch {
+      return;
+    }
+    list.replaceChildren(...data.questions.map((q) => questionItem(q, node, ctx, data)));
+    if (!data.questions.length) {
+      const li = document.createElement('li');
+      li.className = 'hp-gb-empty';
+      li.textContent = data.mine ? 'No questions yet. When someone asks you one, it shows up here for you to answer.' : 'Nothing answered yet.';
+      list.append(li);
+    }
+    foot.replaceChildren();
+    if (data.canAsk) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'hp-gb-sign';
+      b.textContent = 'Ask something';
+      b.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openAsk(node, ctx, data);
+      });
+      foot.append(b);
+    } else if (!data.signedIn) {
+      const a = document.createElement('a');
+      a.className = 'hp-gb-sign';
+      a.href = `/?homepage=${encodeURIComponent(`@${ctx.owner.username}`)}`;
+      a.textContent = 'Sign in to ask';
+      foot.append(a);
+    }
+  }
+
+  // One question: who asked (or "anonymous"), when, what, and the answer. What you can do with it
+  // under it (its owner: answer or change the answer, or report it; whoever asked: see that it's
+  // waiting), and a × to delete it.
+  function questionItem(q, node, ctx, data) {
+    const li = document.createElement('li');
+    li.className = `hp-ask-item${q.answeredAt ? '' : ' hp-ask-waiting'}`;
+    const who = document.createElement('span');
+    who.className = 'hp-gb-who';
+    if (q.asker) {
+      who.append(avatarEl(q.asker), document.createTextNode(q.yours ? `${q.asker.displayName} (you)` : q.asker.displayName));
+    } else {
+      const face = document.createElement('span');
+      face.className = 'hp-avatar hp-anon';
+      face.textContent = '?';
+      who.append(face, document.createTextNode(q.yours ? 'you, anonymously' : 'anonymous'));
+    }
+    const when = document.createElement('time');
+    when.dateTime = new Date(q.at).toISOString();
+    when.textContent = shortDate(q.at);
+    const text = document.createElement('p');
+    text.className = 'hp-ask-q';
+    text.textContent = q.text;
+    li.append(who, when, text);
+    if (q.answeredAt) {
+      const answer = document.createElement('p');
+      answer.className = 'hp-ask-a';
+      answer.textContent = q.answer;
+      li.append(answer);
+    }
+    const tools = document.createElement('div');
+    tools.className = 'hp-ask-tools';
+    const tool = (label, onClick, main = false) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `hp-ask-tool${main ? ' main' : ''}`;
+      b.textContent = label;
+      b.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        onClick();
+      });
+      return b;
+    };
+    if (data.mine) {
+      tools.append(tool(q.answeredAt ? 'Change answer' : 'Answer', () => openAnswer(node, ctx, q), !q.answeredAt));
+      // (In the app: see "Reporting" in public/app.js.)
+      if (!q.answeredAt && ctx.report) {
+        tools.append(tool('Report', () => ctx.report({
+          questionId: q.id, anonymous: q.anonymous, userId: q.asker ? q.asker.id : null, name: q.asker ? q.asker.displayName : 'whoever asked it',
+        })));
+      }
+    } else if (q.yours && !q.answeredAt) {
+      const wait = document.createElement('span');
+      wait.className = 'hp-ask-wait';
+      wait.textContent = 'Waiting for an answer';
+      tools.append(wait);
+    }
+    if (tools.childNodes.length) li.append(tools);
+    if (q.canDelete) li.append(deleteButton(async () => loadQuestions(node, ctx, await questionsCall(ctx, 'DELETE', `/${q.id}`))));
+    return li;
+  }
+
+  // A × that asks "Delete?" first.
+  function deleteButton(onSure) {
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'hp-gb-delete';
+    x.textContent = '×';
+    x.title = 'Delete this';
+    x.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      if (!x.dataset.sure) {
+        x.dataset.sure = '1';
+        x.textContent = 'Delete?';
+        return;
+      }
+      try {
+        await onSure();
+      } catch {
+        x.textContent = '×';
+        delete x.dataset.sure;
+      }
+    });
+    return x;
+  }
+
+  function openAsk(node, ctx, data) {
+    const name = ctx.owner.displayName;
+    openWrite({
+      title: `Ask ${name} something`,
+      placeholder: 'what do you want to know?',
+      max: 300,
+      button: 'Ask',
+      check: data.anon ? {
+        label: 'Ask anonymously',
+        on: `${name} won't find out it was you (if it's reported, whoever runs the server can). It shows on their page if they answer it.`,
+        off: `${name} will see it's from you. It shows on their page, with your name, if they answer it.`,
+      } : null,
+      note: `${name} will see it's from you (they don't take anonymous questions). It shows on their page, with your name, if they answer it.`,
+      send: async (text, anonymous) => loadQuestions(node, ctx, await questionsCall(ctx, 'POST', '', { text, anonymous: Boolean(data.anon && anonymous) })),
+    });
+  }
+
+  function openAnswer(node, ctx, q) {
+    openWrite({
+      title: q.answeredAt ? 'Change your answer' : 'Answer it',
+      quote: q.text,
+      placeholder: 'your answer',
+      max: 1000,
+      rows: 5,
+      value: q.answer || '',
+      button: q.answeredAt ? 'Save' : 'Answer',
+      note: q.answeredAt ? '' : `Your answer shows on your page with the question${q.asker ? ` (and ${q.asker.displayName}'s name)` : ''}, for everyone who can see it.`,
+      send: async (text) => loadQuestions(node, ctx, await questionsCall(ctx, 'PUT', `/${q.id}`, { answer: text })),
+    });
+  }
+
+  // Writing something for a page, in a box over it: a question for someone's box, or its owner's
+  // answer. o: { title, quote, placeholder, max, rows, value, button, note, send(text, checked),
+  // and check: a tick box (its label, and the note with it ticked and not) or null }.
+  function openWrite(o) {
+    let d = document.getElementById('hp-write');
+    if (!d) {
+      d = document.createElement('dialog');
+      d.id = 'hp-write';
+      d.className = 'hp-sign hp-write';
+      const form = document.createElement('form');
+      const h = document.createElement('h2');
+      const quote = document.createElement('blockquote');
+      quote.className = 'hp-write-quote';
+      const box = document.createElement('textarea');
+      box.required = true;
+      const check = document.createElement('label');
+      check.className = 'hp-write-check';
+      const tick = document.createElement('input');
+      tick.type = 'checkbox';
+      check.append(tick, document.createElement('span'));
+      const note = document.createElement('p');
+      note.className = 'hp-write-note';
+      const error = document.createElement('p');
+      error.className = 'hp-sign-error';
+      error.hidden = true;
+      const row = document.createElement('div');
+      row.className = 'hp-sign-row';
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'hp-sign-cancel';
+      cancel.textContent = 'Cancel';
+      cancel.addEventListener('click', () => d.close());
+      const send = document.createElement('button');
+      send.type = 'submit';
+      send.className = 'hp-sign-send';
+      row.append(cancel, send);
+      form.append(h, quote, box, check, note, error, row);
+      d.append(form);
+      document.body.append(d);
+      const noteText = () => {
+        const c = d.opts.check;
+        note.textContent = c ? (tick.checked ? c.on : c.off) : d.opts.note || '';
+        note.hidden = !note.textContent;
+      };
+      d.noteText = noteText;
+      tick.addEventListener('change', noteText);
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        send.disabled = true;
+        try {
+          await d.opts.send(box.value, tick.checked);
+          d.close();
+        } catch (err) {
+          error.textContent = err.message;
+          error.hidden = false;
+        } finally {
+          send.disabled = false;
+        }
+      });
+    }
+    d.opts = o;
+    d.querySelector('h2').textContent = o.title;
+    const quote = d.querySelector('.hp-write-quote');
+    quote.textContent = o.quote || '';
+    quote.hidden = !o.quote;
+    const box = d.querySelector('textarea');
+    box.maxLength = o.max;
+    box.rows = o.rows || 4;
+    box.placeholder = o.placeholder || '';
+    box.value = o.value || '';
+    const check = d.querySelector('.hp-write-check');
+    check.hidden = !o.check;
+    check.querySelector('input').checked = false;
+    check.querySelector('span').textContent = o.check ? o.check.label : '';
+    d.noteText();
+    d.querySelector('.hp-sign-error').hidden = true;
+    d.querySelector('.hp-sign-send').textContent = o.button;
+    d.showModal();
+    box.focus();
   }
 
   // The music player: the owner's song, when a visitor presses play (never by itself), over and over.
@@ -680,6 +944,7 @@
   const DRAW = {
     text: textPiece, image: imagePiece, sticker: stickerPiece, tape: tapePiece, paper: paperPiece, me: mePiece,
     counter: counterPiece, guestbook: guestbookPiece, music: musicPiece, shelf: shelfPiece, button: buttonPiece,
+    ask: askPiece,
   };
 
   // One piece, placed and turned. (In the editor, links don't go anywhere.)
@@ -720,10 +985,11 @@
   }
 
   // Draws a page into `page` (an element that scrolls): its background, the weather, and a
-  // canvas with its pieces, scaled to fit. Returns { doc, canvas, fit }.
+  // canvas with its pieces, scaled to fit. Returns { doc, canvas, fit }. (opts: edit, and in the
+  // app, report(what), to report a question in your own box.)
   function mount(page, data, opts = {}) {
     const doc = data.doc || starter();
-    const ctx = { owner: data.owner || {}, views: data.views || 0, fileUrl: (id) => `/homepage-files/${id}`, edit: Boolean(opts.edit) };
+    const ctx = { owner: data.owner || {}, views: data.views || 0, fileUrl: (id) => `/homepage-files/${id}`, edit: Boolean(opts.edit), report: opts.report || null };
     hush(page);
     page.replaceChildren();
     page.classList.add('hp-page');
@@ -868,9 +1134,10 @@
 
   window.Homepage = {
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PIXEL, PIXEL_NAMES,
-    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS,
+    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS,
     pixelSrc, pixelRatio, backgroundStyle, pieceEl, starter, mount, setSky, light, hush,
-    // (someone signed a guestbook that's showing: read it again)
+    // (someone signed a guestbook, or asked or answered a question, that's showing: read it again)
     reloadGuestbooks: (page, ctx) => { for (const n of page.querySelectorAll('.hp-guestbook')) loadGuestbook(n, ctx); },
+    reloadQuestions: (page, ctx) => { for (const n of page.querySelectorAll('.hp-ask')) loadQuestions(n, ctx); },
   };
 })();

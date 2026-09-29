@@ -1066,6 +1066,13 @@ function handleServerMessage(msg) {
       // (If your homepage is open, it shows it; otherwise a note.)
       if (!Homepage.onSigned(msg.from)) toast(`${msg.from} signed your guestbook.`);
       return;
+    case 'question-new':
+      // (Someone asked you something in your homepage's box: from is null if they asked anonymously.)
+      if (!Homepage.onAsked(msg.from)) toast(`${msg.from || 'Someone'} asked you a question. It's in the box on your homepage.`);
+      return;
+    case 'question-answered':
+      if (!Homepage.onAnswered(msg.owner, msg.by)) toast(`${msg.by} answered your question.`);
+      return;
     case 'space-changed':
       return onSpaceChanged(msg.space);
     case 'space-removed':
@@ -7256,20 +7263,26 @@ const REPORT_REASONS = {
 let reportTarget = null;
 
 // { messageId } or { userId }, with who it's about and (for a person) the space it's from, or
-// { userId, homepage: true } for their homepage.
+// { userId, homepage: true } for their homepage, or { questionId, anonymous } for a question in
+// your homepage's "ask me anything" box (with userId, if it wasn't anonymous).
 function openReportDialog(target) {
   reportTarget = target;
   const c = target.messageId && S.channels.get(target.channelId);
-  const space = !target.homepage && S.spaces.get(c ? c.spaceId : target.spaceId);
-  el.reportTitle.textContent = target.messageId ? `Report ${target.name}'s message` : target.homepage ? `Report ${target.name}'s homepage` : `Report ${target.name}`;
-  const copy = target.messageId ? ', with a copy of the message' : target.homepage ? ', with a copy of what the page says' : '';
-  el.reportText.textContent = `${space ? `${space.name}'s moderators and ` : ''}${space ? 'this' : 'This'} server's admin will see your report${copy}. ${target.name} won't be told who sent it.`;
+  const space = !target.homepage && !target.questionId && S.spaces.get(c ? c.spaceId : target.spaceId);
+  el.reportTitle.textContent = target.questionId ? 'Report this question' : target.messageId ? `Report ${target.name}'s message` : target.homepage ? `Report ${target.name}'s homepage` : `Report ${target.name}`;
+  const copy = target.questionId ? ', with a copy of the question and who asked it' : target.messageId ? ', with a copy of the message' : target.homepage ? ', with a copy of what the page says' : '';
+  el.reportText.textContent = target.questionId && target.anonymous
+    ? `This server's admin will see your report${copy}. You still won't be told who it was, and they won't be told who sent it.`
+    : `${space ? `${space.name}'s moderators and ` : ''}${space ? 'this' : 'This'} server's admin will see your report${copy}. ${target.name} won't be told who sent it.`;
   for (const r of el.reportForm.querySelectorAll('input[name="report-reason"]')) r.checked = false;
   el.reportDanger.hidden = true;
   el.reportNote.value = '';
   el.reportBlock.checked = false;
-  el.reportBlockField.hidden = !target.userId || S.blocked.has(target.userId) || target.userId === S.clientId;
-  el.reportBlockText.textContent = `Block ${target.name} too`;
+  // (Whoever asked a question anonymously can be stopped from asking any more, without you being
+  // told who they are.)
+  const stop = Boolean(target.questionId && target.anonymous);
+  el.reportBlockField.hidden = !stop && (!target.userId || S.blocked.has(target.userId) || target.userId === S.clientId);
+  el.reportBlockText.textContent = stop ? 'Stop their questions too' : `Block ${target.name} too`;
   el.reportError.hidden = true;
   el.reportDialog.showModal();
 }
@@ -7287,11 +7300,14 @@ async function onReportSend(e) {
   el.reportSend.disabled = true;
   try {
     await api('POST', '/reports', {
-      ...(t.messageId ? { messageId: t.messageId } : { userId: t.userId, spaceId: t.spaceId || null, homepage: Boolean(t.homepage) }),
+      ...(t.questionId ? { questionId: t.questionId } : t.messageId ? { messageId: t.messageId } : { userId: t.userId, spaceId: t.spaceId || null, homepage: Boolean(t.homepage) }),
       reason: reason.value, note: el.reportNote.value.trim(), block: !el.reportBlockField.hidden && el.reportBlock.checked,
     });
     el.reportDialog.close();
-    toast(el.reportBlock.checked && !el.reportBlockField.hidden ? `Thanks. Your report was sent, and ${t.name} is blocked.` : 'Thanks. Your report was sent.');
+    const blocked = el.reportBlock.checked && !el.reportBlockField.hidden;
+    toast(!blocked ? 'Thanks. Your report was sent.'
+      : t.questionId && t.anonymous ? "Thanks. Your report was sent, and they can't ask you questions any more."
+      : `Thanks. Your report was sent, and ${t.name} is blocked.`);
     if (el.reportBlock.checked) refreshFriends();
   } catch (err) {
     el.reportError.textContent = err.message;
@@ -7323,7 +7339,8 @@ function reportItem(r, { spaceId = null, onResolve }) {
   head.className = 'report-head';
   const who = document.createElement('span');
   const whom = r.target ? r.target.displayName : 'someone';
-  who.textContent = `${r.reporter ? r.reporter.displayName : 'Someone'} reported ${r.messageId ? `a message from ${whom}` : whom}`;
+  const asked = (r.snapshot || {}).kind === 'question';
+  who.textContent = `${r.reporter ? r.reporter.displayName : 'Someone'} reported ${r.messageId ? `a message from ${whom}` : asked ? `a question from ${whom}` : whom}`;
   const time = document.createElement('time');
   time.textContent = fmtWhen(r.at);
   head.append(who, time);
@@ -7350,6 +7367,15 @@ function reportItem(r, { spaceId = null, onResolve }) {
     look.textContent = 'See the page';
     look.addEventListener('click', () => Homepage.open(r.target.id));
     li.append(quote, where, look);
+  }
+  if (s.kind === 'question') {
+    // (Asked in the reporter's homepage box. If it was anonymous, they weren't told who asked.)
+    const quote = document.createElement('blockquote');
+    quote.className = 'report-quote';
+    quote.textContent = s.text || '';
+    const where = document.createElement('small');
+    where.textContent = `asked ${s.anonymous ? 'anonymously ' : ''}in ${r.reporter ? `${r.reporter.displayName}'s` : 'their'} homepage's question box${s.anonymous ? ` (${r.reporter ? r.reporter.displayName : 'the reporter'} wasn't told who asked)` : ''}`;
+    li.append(quote, where);
   }
   if (r.messageId) {
     const quote = document.createElement('blockquote');
