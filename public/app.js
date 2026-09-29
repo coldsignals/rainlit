@@ -4625,9 +4625,16 @@ async function renderDuckStatus() {
 // which means they're older than 1.3.6). Says so once for each new version.
 async function checkAndroidApp() {
   if (!ANDROID) return;
-  let mine = '';
+  let info = {};
+  try { info = (await ANDROID.appInfo()) || {}; } catch {}
+  const mine = info.version || '';
+  // (Installed from Google Play: Play keeps it up to date, and an app from Play mustn't offer
+  // updates of its own.)
+  if (info.store === 'play') {
+    S.androidApp = { mine, latest: '', outdated: false, play: true };
+    return renderAppNote();
+  }
   let latest = '';
-  try { mine = (await ANDROID.appInfo()).version || ''; } catch {}
   try { latest = (await api('GET', '/android-latest')).version || ''; } catch {}
   S.androidApp = { mine, latest, outdated: Boolean(latest && (!mine || newerVersion(latest, mine))) };
   renderAppNote();

@@ -30,7 +30,12 @@ On top of the website:
 People install it from rainlit.app/android, which points at `Rainlit.apk` on the
 newest release in the public repo `coldsignals/rainlit-android` (Obtainium users add
 that repo). The first time, Android asks to
-allow installing apps from the browser.
+allow installing apps from the browser. Installed that way, the page says when a newer
+version is out (Settings, and a note).
+
+Installed from Google Play, updates are left to Play: Play's rules don't let an app from
+Play offer updates any other way. The app tells the page who installed it (`appInfo`
+answers `store: "play"`), and the page doesn't check for newer versions then.
 
 ## Building it
 
@@ -45,7 +50,9 @@ cd android
 JAVA_HOME="C:/Program Files/Java/jdk-22" ./gradlew.bat assembleRelease
 ```
 
-The APK lands in `android/app/build/outputs/apk/release/app-release.apk`.
+The APK lands in `android/app/build/outputs/apk/release/app-release.apk`. For Google
+Play, build the bundle instead (`./gradlew.bat bundleRelease`): it lands in
+`android/app/build/outputs/bundle/release/app-release.aab`.
 `android/local.properties` (not in git) tells Gradle where the SDK is:
 `sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk`.
 

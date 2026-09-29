@@ -144,7 +144,11 @@ public class RainlitPlugin extends Plugin {
         call.resolve(result);
     }
 
-    /** Which version of the app this is (shown in Settings). */
+    /**
+     * Which version of the app this is (shown in Settings), and whether Google Play installed it:
+     * then Play keeps it up to date, and the page doesn't offer newer versions itself (Play's
+     * rules don't allow an app from Play to update itself any other way).
+     */
     @PluginMethod
     public void appInfo(PluginCall call) {
         JSObject result = new JSObject();
@@ -152,7 +156,22 @@ public class RainlitPlugin extends Plugin {
             PackageInfo info = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0);
             result.put("version", info.versionName);
         } catch (PackageManager.NameNotFoundException ignored) {}
+        result.put("store", "com.android.vending".equals(installer(getContext())) ? "play" : "");
         call.resolve(result);
+    }
+
+    /** Which app installed this one (the Play Store, a browser, Obtainium...), or null. */
+    @SuppressWarnings("deprecation")
+    private static String installer(Context context) {
+        try {
+            PackageManager pm = context.getPackageManager();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                return pm.getInstallSourceInfo(context.getPackageName()).getInstallingPackageName();
+            }
+            return pm.getInstallerPackageName(context.getPackageName());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // ----- Another Rainlit server -----
