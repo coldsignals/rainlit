@@ -79,7 +79,7 @@ for (const id of [
   'auth', 'signin-tab', 'signup-tab', 'signin-form', 'signin-login', 'signin-password',
   'signup-form', 'setup-note', 'code-label', 'signup-code', 'signup-email', 'signup-username', 'signup-name', 'signup-password',
   'reset-form', 'reset-password', 'auth-error',
-  'signup-full', 'signup-waitlist', 'waitlist-form', 'waitlist-email', 'waitlist-send', 'waitlist-sent', 'waitlist-back', 'signups-open', 'signups-more', 'signups-cap', 'signups-state', 'waitlist-release',
+  'signup-spots', 'signup-spots-text', 'signup-full', 'signup-waitlist', 'waitlist-form', 'waitlist-email', 'waitlist-send', 'waitlist-sent', 'waitlist-back', 'signups-open', 'signups-more', 'signups-cap', 'signups-state', 'waitlist-release',
   'forgot-btn', 'forgot-hint', 'forgot-form', 'forgot-login', 'forgot-send', 'forgot-sent', 'forgot-back',
   'email-row', 'email-state', 'email-confirm-btn', 'email-next', 'email-password', 'email-btn',
   'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty', 'notes-row',
@@ -5769,6 +5769,8 @@ function showAuth(mode) {
   el.forgotForm.hidden = mode !== 'forgot';
   el.waitlistForm.hidden = mode !== 'waitlist';
   el.signupFull.hidden = !(S.signupsFull && mode === 'signup');
+  renderSpots();
+  watchSpots();
   if (S.openSignups && (mode === 'signup' || mode === 'waitlist') && !proofPending) startProof();
   // (A server that sends email can send a reset link; otherwise its admin makes one.)
   el.forgotBtn.hidden = !S.mailEnabled;
@@ -5793,14 +5795,49 @@ async function submitAuth(form, request) {
     const { user } = await request();
     await signedIn(user);
   } catch (err) {
-    if (err.data && err.data.waitlist) {
+    if (err.data && err.data.full && S.spots) {
       S.signupsFull = true;
-      toWaitlist();
+      S.spots.left = 0;
+      renderSpots();
     }
+    if (err.data && err.data.waitlist) toWaitlist();
     showAuthError(err.message);
   } finally {
     btn.disabled = false;
   }
+}
+
+// While sign-ups are open, the sign-in page says how many spots are left today (or that it's
+// full, and how many are waiting). It's checked again every 30 seconds while it's showing.
+function renderSpots() {
+  const s = S.spots;
+  el.signupSpots.hidden = !s || S.setupNeeded;
+  if (!s) return;
+  const full = s.left === 0;
+  el.signupSpots.classList.toggle('full', full);
+  el.signupSpotsText.textContent = !full ? `${s.left} of ${s.perDay} ${s.perDay === 1 ? 'spot' : 'spots'} left today`
+    : s.waiting ? `Full for today · ${s.waiting} on the waitlist`
+    : S.mailEnabled ? "Full for today · there's a waitlist" : 'Full for today · more tomorrow';
+}
+
+function setSpots(config) {
+  S.openSignups = Boolean(config.openSignups);
+  S.signupsFull = Boolean(config.full);
+  S.spots = config.openSignups ? { left: config.spotsLeft, perDay: config.spotsPerDay, waiting: config.waiting } : null;
+}
+
+let spotsTimer = null;
+function watchSpots() {
+  clearInterval(spotsTimer);
+  spotsTimer = setInterval(async () => {
+    if (el.auth.hidden) return clearInterval(spotsTimer);
+    if (document.hidden) return;
+    try {
+      setSpots(await api('GET', '/config'));
+      renderSpots();
+      el.signupFull.hidden = !(S.signupsFull && !el.signupForm.hidden);
+    } catch {}
+  }, 30_000);
 }
 
 function toWaitlist() {
@@ -11204,8 +11241,7 @@ async function init() {
     const config = await api('GET', '/config');
     S.setupNeeded = Boolean(config.setupNeeded);
     S.mailEnabled = Boolean(config.mail);
-    S.openSignups = Boolean(config.openSignups);
-    S.signupsFull = Boolean(config.full);
+    setSpots(config);
   } catch {}
   const invite = new URLSearchParams(location.search).get('invite');
   if (invite) {

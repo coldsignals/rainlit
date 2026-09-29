@@ -226,7 +226,12 @@ function signIn(req, res, userId) {
 
 api.get('/config', (_req, res) => {
   const open = !setupCode && signups.isOpen();
-  res.json({ setupNeeded: Boolean(setupCode), mail: mail.enabled, openSignups: open, full: open && signups.roomToday() === 0 });
+  const left = open ? signups.spotsLeft(mail.enabled) : 0;
+  res.json({
+    setupNeeded: Boolean(setupCode), mail: mail.enabled, openSignups: open, full: open && left === 0,
+    // (The sign-in page's live count: spots left today, of how many a day, and who's waiting.)
+    ...(open ? { spotsLeft: left, spotsPerDay: signups.dailyCap(), waiting: mail.enabled ? signups.waiting() : 0 } : {}),
+  });
 });
 
 // ----- Open sign-ups (lib/signups.js) -----
@@ -238,6 +243,7 @@ api.get('/signup-challenge', (_req, res) => res.json(signups.challenge()));
 api.post('/waitlist', (req, res) => {
   const b = req.body || {};
   if (!signups.isOpen()) return fail(res, 400, 'Sign-ups here need an invite code.');
+  if (!mail.enabled) return fail(res, 400, "This Rainlit can't send emails, so it has no waitlist. Try again tomorrow.");
   if (!signups.checkProof(b.proof)) return fail(res, 400, 'That took too long. Try again.');
   const email = String(b.email || '').trim().toLowerCase();
   if (!people.EMAIL_RE.test(email) || email.length > 254) return fail(res, 400, "That email address doesn't look right.");
@@ -247,7 +253,8 @@ api.post('/waitlist', (req, res) => {
   res.json({ ok: true, waiting: signups.waiting() });
 });
 
-// Every hour: invite as many from the waitlist as there's room for today.
+// Every ten minutes: invite as many from the waitlist as there's room for today. (They come
+// before anyone new: see spotsLeft.)
 function releaseWaitlist(count) {
   if (!mail.enabled) return 0;
   return signups.release(count, (email, code) => {
@@ -258,7 +265,7 @@ function releaseWaitlist(count) {
 setInterval(() => {
   signups.tidy();
   if (signups.isOpen()) releaseWaitlist(signups.roomToday());
-}, 3600_000).unref();
+}, 600_000).unref();
 
 // The admin's side: open sign-ups or not, the daily cap, and the waitlist.
 const signupState = () => ({ open: signups.isOpen(), cap: signups.dailyCap(), room: signups.roomToday(), waiting: signups.waiting(), mail: mail.enabled });
@@ -330,7 +337,11 @@ api.post('/signup', async (req, res) => {
   if (open) {
     if (!signups.checkProof(b.proof)) return fail(res, 400, 'That took too long. Try again.');
     if (openSignupTries.blocked(req.ip)) return fail(res, 429, "You've made a few accounts today. Try again tomorrow.");
-    if (signups.roomToday() === 0) return res.status(409).json({ error: "Rainlit's full for today. Join the waitlist, and we'll email you an invite as soon as there's room.", waitlist: true });
+    if (signups.spotsLeft(mail.enabled) === 0) {
+      return res.status(409).json(mail.enabled
+        ? { error: "Rainlit's full for today. Join the waitlist, and we'll email you an invite as soon as there's room.", full: true, waitlist: true }
+        : { error: "Rainlit's full for today. Try again tomorrow.", full: true });
+    }
   }
   if (!firstAccount && signups.throwaway(email)) return fail(res, 400, 'Please use your real email address, not a throwaway one.');
   if (!people.USERNAME_RE.test(username)) return fail(res, 400, 'Usernames are 2 to 32 characters: letters, numbers, dots and underscores.');

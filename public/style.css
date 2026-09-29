@@ -509,6 +509,12 @@ button { cursor: pointer; }
 .admin-list .user-words { flex: 1; min-width: 0; display: grid; justify-items: start; }
 .user-words .user-room { padding: 0; font-size: 12.5px; color: var(--mist); }
 .user-words .user-room:hover { color: var(--text); }
+/* While sign-ups are open: how many spots are left today, live. */
+.signup-spots { display: inline-flex; align-items: center; gap: 9px; margin: -20px 0 30px; padding: 7px 15px 7px 12px; border-radius: 999px; background: var(--dusk); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+.spots-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #7be0a4; animation: spots-pulse 2.2s ease-out infinite; }
+.signup-spots.full .spots-dot { background: var(--lamp); animation: none; }
+@keyframes spots-pulse { 0% { box-shadow: 0 0 0 0 rgba(123, 224, 164, 0.55); } 70%, 100% { box-shadow: 0 0 0 8px rgba(123, 224, 164, 0); } }
+@media (prefers-reduced-motion: reduce) { .spots-dot { animation: none; } }
 .signup-full { display: grid; gap: 4px; justify-items: start; }
 .signup-full .text-btn { color: var(--lamp); padding: 2px 0; }
 .signups-more { display: grid; gap: 8px; margin-top: 10px; padding-left: 28px; }

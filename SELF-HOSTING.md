@@ -77,9 +77,10 @@ account without an invite. To keep bots and floods out: there's a bot check (a s
 each person's browser solves while they fill in the form, so no CAPTCHA company is involved),
 throwaway email addresses aren't allowed, one place can only make a few accounts a day, and
 new accounts confirm their email before they can add friends or join spaces. You choose how
-many new accounts a day, at most (10 to start with). Past that, people can join a waitlist,
-and every hour, as room opens up, the next ones on it get an invite by email (so the
-waitlist needs email: step 12). Invite codes always work, whatever the limit.
+many new accounts a day, at most (10 to start with), and the sign-in page shows how many
+spots are left today, live. Past that, people can join a waitlist, and as room opens up
+(it's checked every ten minutes), the next ones on it get an invite by email, before anyone
+new (so the waitlist needs email: step 12). Invite codes always work, whatever the limit.
 
 ## 5. Make calls work on every network (recommended)
 
