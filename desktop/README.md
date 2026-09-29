@@ -8,9 +8,15 @@ reinstall. On top of the website it adds:
 
 - **Push to talk anywhere.** Your talk key works while you're in another app or a
   game. Letters, numbers, F keys, Ctrl, Alt and Shift all work.
-- **Screen sharing with sound.** Share a screen or a window with everything your
-  computer is playing, except Rainlit itself, so your friend doesn't hear their
-  own voice come back.
+- **Screen sharing with sound.** Share a screen with everything your computer is
+  playing, except Rainlit itself, so your friend doesn't hear their own voice come
+  back.
+- **Smooth window sharing, with just that app's sound.** A window (a game's too) is
+  captured by the app itself, with Windows Graphics Capture, at up to 60 frames a
+  second: Chromium on its own grabs a single window the old way, a few frames a
+  second. With **Share audio**, only that app's sound comes along (Windows 10 2004
+  and newer). On Windows 10, Windows draws a yellow border around a window while
+  it's captured.
 - **Tray icon.** Closing the window keeps Rainlit running by the clock, so calls
   and messages still reach you. Right-click the tray icon to quit, or to start
   Rainlit with Windows.
@@ -25,14 +31,22 @@ reinstall. On top of the website it adds:
 ```bash
 cd desktop
 npm install
+npm run native   # builds the window capture add-on (see below)
 npm run dev      # the app, pointed at a local server (http://localhost:3000)
 npm start        # the app, pointed at https://rainlit.app
-npm run dist     # builds dist/Rainlit-Setup.exe
+npm run dist     # builds dist/Rainlit-Setup.exe (the add-on too)
 ```
 
 `main.js` is the app itself: the window, tray, screen chooser, talk key and
 notifications. `preload.js` is what the page can use (`window.rainlitDesktop`),
 and `public/app.js` on the website checks for it.
+
+Window sharing: `native/src/capture.cc` is a small add-on (C++, with Windows Graphics
+Capture and Windows' per-app sound capture), built for the app's Electron by
+`npm run native`. That needs Visual Studio Build Tools (the C++ tools and the Windows
+SDK) and Python. `capture.js` runs it in a process of its own, and sends each frame
+straight to the page, which makes the shared tracks. Without the add-on, a window is
+shared the usual way.
 
 ## Releasing an update
 

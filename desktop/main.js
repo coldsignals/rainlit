@@ -1,12 +1,14 @@
 // Rainlit for Windows: a window onto rainlit.app (or another Rainlit server you pick), plus
 // what a browser can't do.
 // - A push-to-talk key that works while you're in another app or a game.
-// - Sharing your screen with its sound, without your friend hearing their own voice.
+// - Sharing your screen with its sound, without your friend hearing their own voice; and a
+//   window, captured by the app itself: smooth (a game's too), with only that app's sound.
 // - A tray icon, so calls and messages still reach you with the window closed.
 // - Notifications and a taskbar flash when someone calls or messages.
 
 const {
   app, BrowserWindow, Tray, Menu, Notification, desktopCapturer, ipcMain, nativeImage, screen, session, shell,
+  utilityProcess, MessageChannelMain,
 } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -218,7 +220,10 @@ function lockDown() {
 
   ses.setDisplayMediaRequestHandler((request, callback) => {
     if (!fromApp(request.securityOrigin)) return callback({});
-    pickSource(request.audioRequested)
+    // (Just picked in the chooser, through the page (desktop:share-pick): that, without asking again.)
+    const picked = pendingShare && Date.now() - pendingShare.at < 30_000 ? pendingShare.choice : null;
+    pendingShare = null;
+    (picked ? Promise.resolve(picked) : pickSource(request.audioRequested))
       .then((choice) => {
         if (!choice) return callback({});
         // Everything your computer is playing except Rainlit itself, so your friend doesn't
@@ -270,6 +275,7 @@ async function pickSource(audioRequested) {
   if (picking) return null;
   picking = true;
   try {
+    const native = await capturerCan();
     const own = win.getMediaSourceId();
     const sources = (await desktopCapturer.getSources({
       types: ['screen', 'window'],
@@ -303,6 +309,7 @@ async function pickSource(audioRequested) {
         if (e.sender !== picker.webContents) return null;
         return {
           audio: audioRequested,
+          native: { window: Boolean(native.window), audio: Boolean(native.audio) },
           sources: sources.map((s) => ({
             id: s.id,
             name: s.name,
@@ -325,6 +332,90 @@ async function pickSource(audioRequested) {
     picking = false;
   }
 }
+
+// ================= Sharing a window, the smooth way =================
+// Chromium grabs a single window the old way (GDI), a few frames a second for a game. So a window
+// is captured by the app itself instead (capture.js, in a process of its own, with the native
+// add-on): Windows Graphics Capture for its picture, and, where Windows can, only its app's sound.
+// The page asks first (desktop:share-pick), through Rainlit's chooser: a window picked there
+// comes to the page through a port; a screen (or a window, when this can't) is then shared the
+// usual way, with no second asking. Only a window picked in the chooser is ever captured.
+
+let capturer = null;
+let capturerAbility = null;
+const capturerWaits = new Map(); // id -> answer
+let shareIds = 0;
+let pendingShare = null; // { choice, at }: picked in the chooser, for the page's getDisplayMedia next
+
+function capturerProcess() {
+  if (capturer) return capturer;
+  capturer = utilityProcess.fork(path.join(__dirname, 'capture.js'), [], { serviceName: 'Rainlit window capture' });
+  capturer.on('message', (m) => {
+    const done = m && capturerWaits.get(m.id);
+    if (done) {
+      capturerWaits.delete(m.id);
+      done(m);
+    }
+  });
+  capturer.on('exit', () => {
+    capturer = null;
+    capturerAbility = null;
+    for (const done of capturerWaits.values()) done({ ok: false });
+    capturerWaits.clear();
+  });
+  return capturer;
+}
+
+function askCapturer(msg, ports = []) {
+  return new Promise((resolve) => {
+    capturerWaits.set(msg.id, resolve);
+    try {
+      capturerProcess().postMessage(msg, ports);
+    } catch {
+      capturerWaits.delete(msg.id);
+      return resolve({ ok: false });
+    }
+    setTimeout(() => {
+      if (capturerWaits.delete(msg.id)) resolve({ ok: false });
+    }, 10_000);
+  });
+}
+
+// What the app can capture itself here: { window, audio } (asked once).
+async function capturerCan() {
+  if (!capturerAbility) {
+    const r = await askCapturer({ type: 'supported', id: `supported-${++shareIds}` });
+    capturerAbility = r && r.ok ? { window: Boolean(r.window), audio: Boolean(r.audio) } : { window: false, audio: false };
+  }
+  return capturerAbility;
+}
+
+const whole = (n, fallback, max) => Math.min(max, Math.max(2, Math.round(Number(n) || fallback)));
+
+ipcMain.handle('desktop:share-pick', async (e, opts = {}) => {
+  if (!fromPage(e)) return null;
+  const choice = await pickSource(Boolean(opts.audio));
+  if (!choice) return null;
+  const { source } = choice;
+  const hwnd = source.id.startsWith('window:') ? Number(source.id.split(':')[1]) : 0;
+  if (hwnd) {
+    const can = await capturerCan();
+    if (can.window) {
+      const id = ++shareIds;
+      const { port1, port2 } = new MessageChannelMain();
+      const r = await askCapturer({
+        type: 'start', id, hwnd, audio: Boolean(choice.audio && can.audio),
+        maxWidth: whole(opts.maxWidth, 1920, 3840), maxHeight: whole(opts.maxHeight, 1080, 2160), fps: whole(opts.fps, 30, 60),
+      }, [port1]);
+      if (r && r.ok) {
+        e.sender.postMessage('desktop:share-port', { share: id }, [port2]);
+        return { kind: 'window', share: id, audio: Boolean(r.audio), name: source.name };
+      }
+    }
+  }
+  pendingShare = { choice, at: Date.now() };
+  return { kind: hwnd ? 'window-plain' : 'screen' };
+});
 
 // ================= Push to talk, anywhere =================
 // The page tells us the key (as KeyboardEvent.code). While the Rainlit window has focus

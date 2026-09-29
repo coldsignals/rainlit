@@ -513,6 +513,130 @@ async function tuneVideoSender() {
   }
 }
 
+// ----- Sharing a window, from the desktop app -----
+// The desktop app has its own chooser (DESKTOP.pickShare), asked first. A whole screen is then
+// shared the usual way (getDisplayMedia). A window is captured by the app itself: smooth, a
+// game's too, with only that app's sound. Its frames and sound come through a port and become
+// this page's own tracks here, so a call or a voice channel takes them like any other. (Older
+// desktop apps have no chooser to ask: they share the usual way.)
+
+const sharePorts = new Map(); // share id -> its port (it can come before the chooser answers)
+const shareWaits = new Map(); // share id -> waiting for its port
+const mostOf = (c) => (typeof c === 'number' ? c : (c && (c.max || c.ideal || c.exact)) || 0);
+
+function initWindowSharing() {
+  const md = navigator.mediaDevices;
+  if (!DESKTOP || !DESKTOP.pickShare || !md || !md.getDisplayMedia || !window.MediaStreamTrackGenerator) return;
+  window.addEventListener('message', (e) => {
+    const id = e.source === window && e.data && e.data.rainlitShare;
+    if (!id || !e.ports[0]) return;
+    const waiting = shareWaits.get(id);
+    if (waiting) {
+      shareWaits.delete(id);
+      waiting(e.ports[0]);
+    } else {
+      sharePorts.set(id, e.ports[0]);
+    }
+  });
+  const usual = md.getDisplayMedia.bind(md);
+  md.getDisplayMedia = async (constraints = {}) => {
+    const v = constraints.video && typeof constraints.video === 'object' ? constraints.video : {};
+    const choice = await DESKTOP.pickShare({ audio: Boolean(constraints.audio), maxWidth: mostOf(v.width), maxHeight: mostOf(v.height), fps: mostOf(v.frameRate) });
+    if (!choice) throw new DOMException('Nothing was picked to share.', 'NotAllowedError');
+    if (choice.kind !== 'window') return usual(constraints);
+    const port = sharePorts.get(choice.share) || await new Promise((resolve) => {
+      shareWaits.set(choice.share, resolve);
+      setTimeout(() => { if (shareWaits.delete(choice.share)) resolve(null); }, 5000);
+    });
+    sharePorts.delete(choice.share);
+    if (!port) throw new DOMException("The window couldn't be shared.", 'AbortError');
+    return windowShareStream(port, choice, mostOf(v.frameRate) || 30);
+  };
+}
+
+// A window's frames and sound, as tracks of this page's own (MediaStreamTrackGenerator).
+function windowShareStream(port, choice, fps) {
+  const video = new MediaStreamTrackGenerator({ kind: 'video' });
+  const vw = video.writable.getWriter();
+  const audio = choice.audio ? new MediaStreamTrackGenerator({ kind: 'audio' }) : null;
+  const aw = audio ? audio.writable.getWriter() : null;
+  const size = { width: 0, height: 0 };
+  let last = null; // (the latest frame, sent again while the window's still)
+  let lastTs = 0;
+  let lastAt = 0;
+  let over = false;
+  let keep = 0;
+  const end = () => {
+    if (over) return;
+    over = true;
+    clearInterval(keep);
+    try { port.postMessage({ t: 'stop' }); } catch {}
+    try { port.close(); } catch {}
+    if (last) last.close();
+    last = null;
+    vw.close().catch(() => {});
+    if (aw) aw.close().catch(() => {});
+  };
+  // (Behind: a frame's skipped, rather than piling up.)
+  const put = (frame) => {
+    if (vw.desiredSize !== null && vw.desiredSize <= 0) return frame.close();
+    vw.write(frame).catch(() => {});
+  };
+  port.onmessage = (e) => {
+    const m = e.data || {};
+    if (m.t === 'v') {
+      let frame;
+      try {
+        frame = new VideoFrame(new Uint8Array(m.data), {
+          format: m.format, codedWidth: m.w, codedHeight: m.h, timestamp: m.ts,
+          ...(m.format === 'NV12' ? { colorSpace: { primaries: 'bt709', transfer: 'bt709', matrix: 'bt709', fullRange: false } } : {}),
+        });
+      } catch {
+        return;
+      }
+      size.width = m.w;
+      size.height = m.h;
+      if (last) last.close();
+      last = frame.clone();
+      lastTs = m.ts;
+      lastAt = performance.now();
+      put(frame);
+    } else if (m.t === 'a' && aw) {
+      if (aw.desiredSize !== null && aw.desiredSize <= 0) return;
+      try {
+        aw.write(new AudioData({ format: 'f32', sampleRate: m.rate, numberOfFrames: m.frames, numberOfChannels: m.channels, timestamp: m.ts, data: new Float32Array(m.data) })).catch(() => {});
+      } catch {}
+    } else if (m.t === 'ended') {
+      end();
+    }
+  };
+  // A still window sends no new frames: its latest one again, every second, so someone joining
+  // (or asking for a fresh keyframe) still gets a picture.
+  keep = setInterval(() => {
+    if (!last || over || performance.now() - lastAt < 1000) return;
+    lastTs += Math.round((performance.now() - lastAt) * 1000);
+    lastAt = performance.now();
+    try { put(new VideoFrame(last, { timestamp: lastTs })); } catch {}
+  }, 500);
+  // Like a shared screen's tracks: stopping either stops the sharing; another size or frame rate
+  // is asked of the app; and they say what they are (a window, its size).
+  for (const t of [video, audio]) {
+    if (!t) continue;
+    const stop = t.stop.bind(t);
+    t.stop = () => {
+      stop();
+      end();
+    };
+  }
+  const settings = video.getSettings.bind(video);
+  video.getSettings = () => ({ ...settings(), width: size.width, height: size.height, frameRate: fps, displaySurface: 'window' });
+  video.applyConstraints = async (c = {}) => {
+    fps = mostOf(c.frameRate) || fps;
+    if (!over) port.postMessage({ t: 'tune', maxWidth: mostOf(c.width) || 1920, maxHeight: mostOf(c.height) || 1080, fps });
+  };
+  return new MediaStream(audio ? [video, audio] : [video]);
+}
+
 async function onShareQualityChange() {
   S.shareQuality = el.shareQuality.value;
   store.set('shareQuality', S.shareQuality);
@@ -11568,6 +11692,7 @@ async function init() {
   addEventListener('resize', () => { if (S.rainFrame) sizeRain(); });
   // The desktop app hears the talk key while you're in another app, and tells us.
   if (DESKTOP) DESKTOP.onPushToTalk((held) => { if (S.inCall || S.voice) setPttHeld(held); });
+  initWindowSharing();
   renderAppNote();
   initServerSwitch();
   el.serverSwitchBtn.addEventListener('click', openServerDialog);
