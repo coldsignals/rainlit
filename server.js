@@ -27,6 +27,13 @@ const emojis = require('./lib/emoji');
 const homepages = require('./lib/homepages');
 const announcements = require('./lib/announcements');
 const blobs = require('./lib/blobs');
+const abuse = require('./lib/abuse');
+// (A new flag: the admin hears, wherever they are in the app.)
+abuse.whenFlagged((userId, kind, detail) => {
+  const u = people.userById(userId);
+  console.log(`[flags] @${u ? u.username : userId}: ${detail}`);
+  for (const r of db.prepare('SELECT id FROM users WHERE is_admin = 1').all()) realtime.sendToUser(r.id, { type: 'flag-new' });
+});
 const images = require('./lib/images');
 const { imageKind } = images;
 const embeds = require('./lib/embeds');
@@ -173,6 +180,7 @@ app.get('/homepage-files/:id', (req, res) => {
   const f = /^[a-f0-9]{24}$/.test(req.params.id) && homepages.fileById(req.params.id);
   const owner = f && people.userById(f.user_id);
   if (!owner || !homepages.canView(homepageViewer(req), owner, homepages.get(owner.id).visibility)) return res.sendStatus(404);
+  abuse.noteOut(f.bytes);
   sendHomepageFile(res, 'homepages', f.file);
 });
 
@@ -413,6 +421,7 @@ api.post('/signup', async (req, res) => {
     console.log(`[accounts] New account: @${username}${open ? ' (open sign-up)' : ''}`);
   }
   if (open) openSignupTries.fail(req.ip);
+  if (!firstAccount) abuse.noteSignup(req.ip, id); // (several from one place in a day: a flag)
   sendConfirm(req, people.userById(id));
   signIn(req, res, id);
 });
@@ -734,7 +743,7 @@ api.get('/friends', needUser, (req, res) => {
     blocked: safety.blockedBy(req.user.id).map((id) => people.userById(id)).filter(Boolean).map(people.publicUser),
     voice: voice.enabled,
     mail: mail.enabled,
-    ...(req.user.is_admin ? { openReports: safety.openReportCount() } : {}),
+    ...(req.user.is_admin ? { openReports: safety.openReportCount(), openFlags: abuse.openCount() } : {}),
   };
   const convos = dms.summariesFor(req.user.id);
   for (const c of people.connectionsOf(req.user.id)) {
@@ -955,8 +964,11 @@ api.put('/homepages/me', needUser, (req, res) => {
 
 // A picture (or a song) for your page. It stays as long as it's on the page.
 api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit: homepages.AUDIO_MAX + 1024 }), async (req, res) => {
+  const slow = abuse.checkPace(req.user, Buffer.isBuffer(req.body) ? req.body.length : 0);
+  if (slow) return fail(res, 429, slow);
   try {
     const file = await homepages.addFile(req.user.id, Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0));
+    abuse.noteIn(file.bytes);
     res.json({ file: { ...file, url: `/homepage-files/${file.id}` }, usage: homepages.usage(req.user.id) });
   } catch (err) {
     if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
@@ -1304,6 +1316,9 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
   const room = storage.of(req.user);
   const noRoom = `You've used ${storage.size(room.used)} of your ${storage.size(room.limit)} for files. Delete some you don't need any more to make room (Your profile, then Your files).`;
   if (room.used + declared > room.limit) return fail(res, 413, noRoom);
+  // (A new or flagged account's pace: lib/abuse.js.)
+  const slow = abuse.checkPace(req.user, declared);
+  if (slow) return fail(res, 429, slow);
   if (!storage.diskHasRoom(declared)) {
     console.warn('[storage] The disk is nearly full, so uploads are paused. Make it bigger (on Render: your service, then Disks).');
     return fail(res, 507, "Rainlit's out of room for files right now, so uploads are paused for a bit. Try again later.");
@@ -1340,8 +1355,13 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
     tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
     if (req.channel) pushChannelMessage(req, null);
     const row = dms.getRow(id);
-    // (Its smaller copy, ready for the chat; then it goes to R2, if that's set up.)
-    Promise.resolve(row && dms.previewOf(row)).finally(() => blobs.offload('files', id));
+    // (Its fingerprint and a look at the sender's files (lib/abuse.js), its smaller copy for the
+    // chat, then it goes to R2, if that's set up.)
+    abuse.noteIn(size);
+    Promise.resolve()
+      .then(() => abuse.afterUpload(req.user, id, final, size))
+      .then(() => row && dms.previewOf(row))
+      .finally(() => blobs.offload('files', id));
     res.json({ message, storage: storage.of(req.user) });
   });
 });
@@ -2171,11 +2191,18 @@ api.get('/admin/users', needAdmin, (_req, res) => {
 
 // Room for files (lib/storage.js): the biggest file, how much each person's can add up to, and
 // the disk. And one person's own amount (more, or less, than everyone's; null goes back).
-api.get('/admin/storage', needAdmin, (_req, res) => res.json({ ...storage.overview(), r2: blobs.status() }));
+api.get('/admin/storage', needAdmin, (_req, res) => res.json({ ...storage.overview(), r2: blobs.status(), usage: abuse.usage() }));
+
+// Flagged accounts (lib/abuse.js): what was noticed, and the admin saying it's fine.
+api.get('/admin/flags', needAdmin, (_req, res) => res.json({ flags: abuse.openFlags(), dailyMb: abuse.DAILY_MB }));
+api.post('/admin/flags/:id/clear', needAdmin, (req, res) => {
+  if (!abuse.clear(req.params.id, req.user.id)) return fail(res, 404, "That flag isn't there any more.");
+  res.json({ ok: true, open: abuse.openCount() });
+});
 api.put('/admin/storage', needAdmin, (req, res) => {
   const b = req.body || {};
   storage.configure({ fileMb: b.fileMb, personMb: b.personMb });
-  res.json({ ...storage.overview(), r2: blobs.status() });
+  res.json({ ...storage.overview(), r2: blobs.status(), usage: abuse.usage() });
 });
 api.put('/admin/users/:id/storage', needAdmin, (req, res) => {
   const u = people.userById(req.params.id);
@@ -2310,12 +2337,14 @@ app.get('/files/:id/:name', async (req, res) => {
     if (!user) return res.sendStatus(401);
     r = fileFor(user, req.params.id);
     if (!r) return res.sendStatus(404);
+    if (user.id !== r.author_id && !r.opened_at) abuse.opened(r.id); // (lib/abuse.js: files nobody else opens)
   }
   const showable = dms.SHOWABLE_TYPES.test(r.file_type);
   // The chat's smaller copy of a photo (opening it shows the original), if it has one.
   const small = req.query.preview && !req.query.link ? await dms.previewOf(r) : null;
   // (?download: saving it, rather than showing it.)
   const shown = showable && !req.query.download;
+  abuse.noteOut(small ? Math.min(r.file_size, 250 * 1024) : r.file_size);
   // From here, or on to R2 (lib/blobs.js).
   blobs.send(res, small ? 'previews' : 'files', small || r.file_path, {
     type: small ? 'image/webp' : showable ? r.file_type : 'application/octet-stream',

@@ -61,6 +61,14 @@ bot check, a daily limit and a waitlist (see [SELF-HOSTING.md](SELF-HOSTING.md#4
 account and send them the link. It works once, for 24 hours, and signs them
 out everywhere else.
 
+**Flagged accounts:** the same panel lists accounts that look like they're
+filling up the free tier (bots, mostly), each with what was noticed: a new
+account hitting its daily limit, the same file sent again and again, a lot in
+files nobody else opens, several accounts made from one place in a day. New
+accounts can send up to 250 MB of files a day for their first week, and so can
+a flagged one until you press **Looks fine**. Nobody's suspended unless you do
+it.
+
 **Announcements:** the same panel tells everyone something (a change to the
 terms, some planned downtime). It shows once to each person, the next time
 they open Rainlit (right away if it's open), until they press **Got it**. For

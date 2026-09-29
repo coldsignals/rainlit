@@ -105,7 +105,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -1068,6 +1068,13 @@ function handleServerMessage(msg) {
     case 'guestbook-new':
       // (If your homepage is open, it shows it; otherwise a note.)
       if (!Homepage.onSigned(msg.from)) toast(`${msg.from} signed your guestbook.`);
+      return;
+    case 'flag-new':
+      // (For the admin: an account that looks like it's filling up the free tier.)
+      S.openFlags = (S.openFlags || 0) + 1;
+      el.adminBtn.classList.add('has-reports');
+      if (el.admin.open) renderFlags();
+      else toast('An account was flagged for a look. See Flagged accounts, in the admin panel.', 6000);
       return;
     case 'announcement':
       // (Not the one you just sent yourself.)
@@ -3713,6 +3720,65 @@ async function openDm(friendId) {
   if (S.openDm !== friendId) return;
   markDmSeen(dm);
   if (matchMedia('(pointer: fine)').matches) el.chatInput.focus();
+}
+
+// ----- Flagged accounts -----
+// (lib/abuse.js) Accounts that look like they're filling up the free tier, with what was
+// noticed, for the admin: "Looks fine" clears it; Suspend is the usual one.
+
+async function renderFlags() {
+  let data;
+  try {
+    data = await api('GET', '/admin/flags');
+  } catch {
+    return;
+  }
+  S.openFlags = data.flags.length;
+  el.adminBtn.classList.toggle('has-reports', (S.openReports || 0) + S.openFlags > 0);
+  if (!data.flags.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'Nothing flagged.';
+    el.flagList.replaceChildren(li);
+    return;
+  }
+  el.flagList.replaceChildren(...data.flags.map((f) => {
+    const li = document.createElement('li');
+    li.className = 'flag-item';
+    const words = document.createElement('span');
+    words.className = 'user-words';
+    const who = document.createElement('strong');
+    who.textContent = `${f.user.displayName} (@${f.user.username})${f.user.suspended ? ' · suspended' : ''}`;
+    const what = document.createElement('span');
+    what.textContent = `${f.label}: ${f.detail}`;
+    const when = document.createElement('small');
+    when.className = 'muted';
+    when.textContent = fmtWhen(f.at);
+    words.append(who, what, when);
+    const fine = document.createElement('button');
+    fine.type = 'button';
+    fine.className = 'text-btn';
+    fine.textContent = 'Looks fine';
+    fine.title = 'Clear it: their pace goes back to normal (if nothing else is flagged)';
+    fine.addEventListener('click', async () => {
+      try {
+        await api('POST', `/admin/flags/${f.id}/clear`, {});
+        renderFlags();
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    li.append(makeFace(f.user, null), words, fine);
+    if (!f.user.suspended) {
+      const off = document.createElement('button');
+      off.type = 'button';
+      off.className = 'text-btn danger';
+      off.textContent = 'Suspend';
+      off.addEventListener('click', () => askSuspend(li, f.user));
+      li.append(off);
+    }
+    return li;
+  }));
 }
 
 // ----- Announcements -----
@@ -9375,8 +9441,9 @@ async function refreshFriends() {
     S.blockedUsers = data.blocked || [];
     S.blocked = new Set(S.blockedUsers.map((u) => u.id));
     S.openReports = data.openReports || 0;
+    S.openFlags = data.openFlags || 0;
     applyBlocks();
-    el.adminBtn.classList.toggle('has-reports', S.openReports > 0);
+    el.adminBtn.classList.toggle('has-reports', S.openReports + S.openFlags > 0);
     if (el.profile.open) renderBlockedList();
     if (el.miniProfile.open) renderMiniProfile();
     for (const f of data.friends) {
@@ -10517,6 +10584,7 @@ async function renderAdmin() {
   renderSignups();
   renderStorage();
   renderAnnouncements();
+  renderFlags();
   if (!reports.length) {
     const li = document.createElement('li');
     li.className = 'muted';
@@ -10651,7 +10719,14 @@ async function renderStorage(state) {
     + (r2 ? ` They're kept in Cloudflare R2 (${r2.inR2} files, ${fmtBytes(r2.bytes)})${r2.left ? `, with ${r2.left} still moving there` : ''}.` : '')
     + (d ? ` The disk has ${fmtBytes(d.free)} free, of ${fmtBytes(d.total)}.` : '')
     + (d && d.full ? " It's nearly full, so uploads are paused: make it bigger (on Render: your service, then Disks; it takes seconds)." : '');
-  el.storageState.classList.toggle('storage-warn', Boolean(d && d.free < d.total * 0.2));
+  const u = state.usage && state.usage.days[0];
+  if (u) {
+    const week = state.usage.days.slice(1);
+    const usual = week.reduce((sum, x) => sum + x.out, 0) / week.length;
+    el.storageState.textContent += ` Today so far: ${fmtBytes(u.in)} sent in, ${fmtBytes(u.out)} sent out (about ${fmtBytes(usual)} out a day, this last week).`
+      + (state.usage.jump ? " That's far more than usual: see Flagged accounts, and who's been sending what." : '');
+  }
+  el.storageState.classList.toggle('storage-warn', Boolean((d && d.free < d.total * 0.2) || (state.usage && state.usage.jump)));
 }
 
 async function saveStorage(fields) {

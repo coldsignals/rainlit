@@ -2096,3 +2096,7 @@ button.person.open { background: var(--dusk-hi); }
 .announce-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
 .admin-list .announce-item { align-items: flex-start; }
 .announce-item .user-words small { color: var(--mist); }
+
+/* ----- Flagged accounts (Admin) ----- */
+.flag-item { align-items: flex-start; }
+.flag-item .user-words > span { font-size: 14px; }
