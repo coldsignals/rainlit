@@ -98,7 +98,7 @@ for (const id of [
   'call', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-away', 'peer-away-time', 'offline-banner',
-  'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'self-view', 'local-video',
+  'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
   'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
@@ -214,6 +214,7 @@ const S = {
   clickSounds: store.get('clickSounds', 'on') !== 'off',
   embeds: store.get('embeds', 'on') !== 'off', // link previews
   compactChat: store.get('compactChat', 'off') === 'on', // messages without people's pictures beside them
+  facing: store.get('camFacing', ''), // on a phone, the camera used last: front ('user') or back ('environment')
   callSounds: store.get('callSounds', 'on') !== 'off',
   typing: new Map(), // conversation -> who's typing in it right now -> when to stop showing it
   waitingFor: new Map(), // friend id -> { call, away }: in your call with them, and you're not
@@ -628,7 +629,7 @@ async function toggleCam() {
   } else {
     el.camBtn.disabled = true;
     try {
-      // (On a phone, the camera it faced last time in this call: front or back.)
+      // (On a phone, the camera it used last, in this call or an earlier one: front or back.)
       const t = S.facing && isPhone() ? await getFacingTrack(S.facing).catch(() => getCamTrack(S.devices.cam)) : await getCamTrack(S.devices.cam);
       if (!S.inCall) { t.stop(); return; }
       useCamTrack(t);
@@ -649,6 +650,7 @@ async function toggleCam() {
 function useCamTrack(t) {
   S.local.cam = t;
   S.facing = t.getSettings().facingMode || S.facing || 'user';
+  store.set('camFacing', S.facing);
   t.onended = () => { if (S.local.cam === t) toggleCam(); };
 }
 
@@ -667,6 +669,7 @@ async function countCameras() {
     S.cameraCount = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput').length;
   } catch {}
   renderControls();
+  if (S.voice) renderVoice(); // (a voice channel's flip button too)
 }
 
 async function flipCam() {
@@ -1791,6 +1794,7 @@ function renderPeer() {
     el.remoteVideo.hidden = true;
     el.videoLabel.hidden = true;
     el.fullscreenBtn.hidden = true;
+    el.popoutBtn.hidden = el.pinBtn.hidden = true;
     updateTitle();
     return;
   }
@@ -1801,6 +1805,8 @@ function renderPeer() {
   el.peerCard.classList.toggle('away', awayView);
   el.peerAway.hidden = !awayView;
   el.fullscreenBtn.hidden = !showVideo && !el.stage.classList.contains('self-big');
+  el.popoutBtn.hidden = !showVideo || !canPopOut();
+  el.pinBtn.hidden = !showVideo || !canPin();
   if (el.fullscreenBtn.hidden && stageFull()) setStageFull(false);
   el.videoLabel.hidden = !showVideo;
   el.videoName.textContent = p.state.screen ? `${p.name}'s screen` : p.name;
@@ -7997,6 +8003,110 @@ function tickVoice(v) {
   renderTrayIcon(v.speaking.has(S.clientId));
 }
 
+// ----- Popping a video out, and keeping one on top -----
+// A camera or a screen being shared (in a call, a group call or a voice channel) can open in a
+// window of its own, to put on another screen or make big, and be kept on top of other
+// windows: the browser's Picture-in-Picture, a small window that floats above everything. (The
+// Android app's page can't open windows or float one, so it doesn't offer them.)
+
+const canPopOut = () => !ANDROID && !isPhone();
+const canPin = () => !ANDROID && Boolean(document.pictureInPictureEnabled);
+const popouts = new Map(); // what's popped out -> { win, timer }
+
+// `title()` is what it's called and `tracks()` what to show, right now: the window follows the
+// video as it changes (a camera turned off and on again, a new screen share), and closes a
+// while after it stops (the call's over, or they stopped sharing).
+function popOut(key, title, tracks) {
+  const had = popouts.get(key);
+  if (had && !had.win.closed) return had.win.focus();
+  const win = window.open('/popout.html', `rainlit-${key.replace(/[^A-Za-z0-9]/g, '')}`, 'popup,width=960,height=560');
+  if (!win) return toast("Couldn't open a window: your browser may have blocked it. Allow pop-ups for Rainlit.", 7000);
+  const p = { win, timer: null };
+  popouts.set(key, p);
+  const stop = () => {
+    clearInterval(p.timer);
+    if (popouts.get(key) === p) popouts.delete(key);
+  };
+  const setUp = () => {
+    const doc = win.document;
+    const video = doc.getElementById('pop-video');
+    const ended = doc.getElementById('pop-ended');
+    const pin = doc.getElementById('pop-pin');
+    pin.hidden = !canPin();
+    pin.addEventListener('click', () => pinVideo(video));
+    const full = () => (doc.fullscreenElement ? doc.exitFullscreen() : doc.documentElement.requestFullscreen()).catch(() => {});
+    doc.getElementById('pop-full').addEventListener('click', full);
+    video.addEventListener('dblclick', full);
+    let shown = '';
+    let gone = 0;
+    const sync = () => {
+      if (win.closed) return stop();
+      const name = title();
+      doc.title = `${name} · Rainlit`;
+      doc.getElementById('pop-name').textContent = name;
+      const now = tracks().filter((t) => t.readyState === 'live');
+      const ids = now.map((t) => t.id).join();
+      if (ids !== shown) {
+        shown = ids;
+        video.srcObject = now.length ? new MediaStream(now) : null;
+        if (now.length) video.play().catch(() => {});
+      }
+      ended.hidden = now.length > 0;
+      if (now.length) {
+        gone = 0;
+      } else {
+        ended.textContent = `${name} isn't showing anything right now.`;
+        if (++gone > 15) {
+          stop();
+          win.close();
+        }
+      }
+    };
+    sync();
+    p.timer = setInterval(sync, 1000);
+    win.addEventListener('pagehide', stop);
+  };
+  // (It starts as a blank page; set it up once its own page has loaded.)
+  let tries = 0;
+  const wait = setInterval(() => {
+    let ready = false;
+    try {
+      ready = win.location.pathname === '/popout.html' && win.document.readyState !== 'loading' && Boolean(win.document.getElementById('pop-video'));
+    } catch {}
+    if (ready || win.closed || ++tries > 100) {
+      clearInterval(wait);
+      if (ready) setUp();
+      else stop();
+    }
+  }, 100);
+}
+
+// Keeps a video on top of other windows, or stops: Picture-in-Picture.
+async function pinVideo(video) {
+  const doc = video.ownerDocument;
+  try {
+    if (doc.pictureInPictureElement === video) await doc.exitPictureInPicture();
+    else await video.requestPictureInPicture();
+  } catch {
+    toast("Couldn't keep it on top here.");
+  }
+}
+
+// The call's video (your friend's camera or screen): what's popped out follows it.
+const callVideoTitle = () => (S.peer ? (S.peer.state && S.peer.state.screen ? `${S.peer.name}'s screen` : S.peer.name) : 'Your call');
+const callVideoTracks = () => (el.remoteVideo.srcObject && !el.remoteVideo.hidden ? el.remoteVideo.srcObject.getVideoTracks() : []);
+
+// A voice channel's (or group call's) tile, by its key: its video, and its name.
+const tileVideo = (key) => {
+  const t = S.voice && S.voice.tiles.get(key);
+  return (t && t.querySelector('video')) || null;
+};
+const tileTitle = (key) => {
+  const t = S.voice && S.voice.tiles.get(key);
+  const n = t && t.querySelector('.voice-tile-name');
+  return n ? n.textContent : 'Voice';
+};
+
 // ----- Your buttons: mute, deafen, camera, screen, leave -----
 
 async function onVoiceControl(act) {
@@ -8031,8 +8141,17 @@ async function onVoiceControl(act) {
       for (const a of el.voiceAudio.children) a.muted = v.deafened;
     } else if (act === 'camera') {
       if (!v.speak) return toast("You can't share video in this channel.");
-      await me.setCameraEnabled(!me.isCameraEnabled, S.devices.cam ? { deviceId: S.devices.cam } : undefined);
+      // (On a phone, the camera it used last: front or back.)
+      await me.setCameraEnabled(!me.isCameraEnabled, isPhone() && S.facing ? { facingMode: S.facing } : S.devices.cam ? { deviceId: S.devices.cam } : undefined);
       playControlSound(me.isCameraEnabled ? 'camera-on' : 'camera-off');
+      if (me.isCameraEnabled) countCameras();
+    } else if (act === 'flip') {
+      const pub = me.getTrackPublication(window.LivekitClient.Track.Source.Camera);
+      if (!pub || !pub.track) return;
+      const to = S.facing === 'environment' ? 'user' : 'environment';
+      await pub.track.restartTrack({ facingMode: to });
+      S.facing = to;
+      store.set('camFacing', to);
     } else if (act === 'screen') {
       if (!S.callSounds) playClick(); // (its own sound is a call sound; without those, the plain click)
       if (!v.speak) return toast("You can't share your screen in this channel.");
@@ -8093,6 +8212,11 @@ function renderVoice() {
         b.setAttribute('aria-label', label);
       }
       if (act === 'screen') b.hidden = Boolean(ANDROID) || !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+      if (act === 'flip') {
+        b.hidden = !(me && me.isCameraEnabled && isPhone() && S.cameraCount > 1);
+        b.title = 'Switch between your front and back cameras';
+        b.setAttribute('aria-label', b.title);
+      }
     }
     el.voiceHear.hidden = !(v.room && !v.room.canPlaybackAudio);
   }
@@ -8200,6 +8324,21 @@ function renderVoiceView() {
     const mic = p.getTrackPublication(window.LivekitClient.Track.Source.Microphone);
     const muted = !mic || mic.isMuted;
     label.replaceChildren(`${source === 'screen' ? `${person.displayName}'s screen` : person.id === S.clientId ? `${person.displayName} (you)` : person.displayName}`);
+    tile.dataset.key = key;
+    let tools = tile.querySelector('.tile-tools');
+    if (track && (canPopOut() || canPin())) {
+      if (!tools) {
+        tools = document.createElement('span');
+        tools.className = 'tile-tools';
+        tools.innerHTML = '<button type="button" class="tile-pop" title="Pop out into its own window" aria-label="Pop out into its own window"><svg class="icon"><use href="#i-popout"/></svg></button>'
+          + '<button type="button" class="tile-pin" title="Keep on top of other windows" aria-label="Keep on top of other windows"><svg class="icon"><use href="#i-pin"/></svg></button>';
+        tile.append(tools);
+      }
+      tools.querySelector('.tile-pop').hidden = !canPopOut();
+      tools.querySelector('.tile-pin').hidden = !canPin();
+    } else if (tools) {
+      tools.remove();
+    }
     if (source !== 'screen' && muted) label.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Muted"><use href="#i-mic-off"/></svg>');
     el.voiceGrid.append(tile);
   }
@@ -9855,7 +9994,6 @@ function teardown({ sendLeave, keepActive = false }) {
   }
   S.inCall = false;
   S.onPhone = false;
-  S.facing = '';
   setStageFull(false);
   S.mediaDropped = false;
   updateTitle(); // (and the corner glow)
@@ -10282,6 +10420,29 @@ async function init() {
   el.leaveBtn.addEventListener('click', onLeaveClick);
   el.fullscreenBtn.addEventListener('click', () => setStageFull(!stageFull()));
   el.flipBtn.addEventListener('click', flipCam);
+  el.popoutBtn.addEventListener('click', () => popOut('call', callVideoTitle, callVideoTracks));
+  el.pinBtn.addEventListener('click', () => pinVideo(el.remoteVideo));
+  el.voiceGrid.addEventListener('click', (e) => {
+    const b = e.target.closest('.tile-pop, .tile-pin');
+    const key = b && b.closest('.voice-tile') && b.closest('.voice-tile').dataset.key;
+    if (!key) return;
+    e.stopPropagation();
+    if (b.classList.contains('tile-pin')) {
+      const v = tileVideo(key);
+      if (v) pinVideo(v);
+      return;
+    }
+    popOut(`voice-${key}`, () => tileTitle(key), () => {
+      const v = tileVideo(key);
+      return v && v.srcObject ? v.srcObject.getVideoTracks() : [];
+    });
+  });
+  // Rainlit's window closing (or reloading) closes what it popped out.
+  window.addEventListener('pagehide', () => {
+    for (const p of popouts.values()) {
+      try { p.win.close(); } catch {}
+    }
+  });
   el.remoteVideo.addEventListener('dblclick', () => el.fullscreenBtn.click());
   // Click your own camera or screen to see it big; click it (or your friend) again to swap back.
   el.selfView.addEventListener('click', () => toggleSelfBig());
