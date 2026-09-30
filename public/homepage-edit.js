@@ -84,7 +84,7 @@
 
   async function open(who, { edit = false } = {}) {
     const dialog = $('homepage');
-    Object.assign(state, { data: null, doc: null, editing: false, picked: null, undo: [], redo: [], dirty: false });
+    Object.assign(state, { data: null, doc: null, editing: false, picked: null, undo: [], redo: [], dirty: false, trying: null, glowTold: false });
     dialog.classList.remove('hp-editing');
     $('hp-dock').hidden = true;
     $('hp-message').hidden = true;
@@ -120,7 +120,8 @@
   function draw() {
     const page = $('hp-page');
     const top = page.scrollTop;
-    state.mounted = H.mount(page, { owner: state.data.owner, doc: state.doc, views: state.data.views }, { edit: state.editing, report: app.report });
+    const doc = state.trying ? tried() : state.doc;
+    state.mounted = H.mount(page, { owner: state.data.owner, doc, views: state.data.views }, { edit: state.editing, report: app.report });
     page.scrollTop = top;
     if (state.editing) drawPicked();
   }
@@ -186,6 +187,7 @@
 
   async function stopEditing() {
     await flush();
+    state.trying = null;
     state.editing = false;
     state.picked = null;
     $('homepage').classList.remove('hp-editing');
@@ -201,9 +203,46 @@
 
   // A change to the page: one step of Undo, then drawn again and saved.
   function change(fn) {
+    if (state.catching) {
+      state.caught = fn; // (trying a Glow extra on: see tryOn)
+      return;
+    }
     const before = snapshot();
+    state.trying = null;
     fn(state.doc);
     commit(before);
+  }
+
+  // A Glow extra, for someone without Glow: tried on. It's drawn on the page (a copy of it), never
+  // saved; the same one again, or any real change, ends it. Glow's box shows the first time.
+  function tryOn(key, label, onPick) {
+    if (state.trying && state.trying.key === key) {
+      state.trying = null;
+    } else {
+      state.catching = true;
+      try {
+        onPick(key); // (its change, caught instead of made)
+      } finally {
+        state.catching = false;
+      }
+      if (!state.caught) return;
+      state.trying = { key, label, fn: state.caught };
+      state.caught = null;
+    }
+    draw();
+    renderTray();
+    if (state.trying && !state.glowTold && app && app.openGlow) {
+      state.glowTold = true;
+      app.openGlow({ because: `${label} comes with Glow. It's on your page to see, but not saved.` });
+    }
+  }
+
+  function tried() {
+    const doc = clone(state.doc);
+    try {
+      state.trying.fn(doc);
+    } catch {}
+    return doc;
   }
 
   function commit(before) {
@@ -240,6 +279,7 @@
   }
 
   function afterHistory() {
+    state.trying = null;
     if (state.picked && !piece(state.picked)) state.picked = null;
     draw();
     renderTray();
@@ -294,6 +334,7 @@
   // ---------- Picking and moving pieces ----------
 
   function pick(id) {
+    if (state.trying && id !== state.picked) state.trying = null;
     state.picked = id;
     state.typing = false;
     drawPicked();
@@ -823,27 +864,32 @@
   // tag, like the supporters' themes in Settings.)
   function chips(options, current, onPick, style, extras = []) {
     const supporter = Boolean(state.data && state.data.supporter);
-    const offered = !app || !app.offersSupport || app.offersSupport();
+    const offered = !app ? true : app.glowShown ? app.glowShown() : !app.offersSupport || app.offersSupport();
+    // (Trying one of this row's on: that's the one lit.)
+    const trying = state.trying && Object.prototype.hasOwnProperty.call(options, state.trying.key) ? state.trying.key : null;
     const chip = ([key, label]) => {
       const extra = extras.includes(key);
       const locked = extra && !supporter && key !== current;
       if (locked && !offered) return null;
       return el('button', {
-        class: `hp-chip${extra ? ' hp-chip-extra' : ''}`, type: 'button', 'aria-pressed': String(current === key), text: label,
+        class: `hp-chip${extra ? ' hp-chip-extra' : ''}${key === trying ? ' hp-chip-trying' : ''}`, type: 'button',
+        'aria-pressed': String((trying || current) === key), text: label,
         style: style ? style(key) : undefined,
-        title: extra ? (locked ? 'Comes with Glow' : "One of Glow's extras") : undefined,
-        disabled: locked,
-        onclick: () => onPick(key),
+        title: extra ? (locked ? 'Comes with Glow: try it on' : "One of Glow's extras") : undefined,
+        onclick: () => (locked ? tryOn(key, label, onPick) : onPick(key)),
       });
     };
     const all = Object.entries(options);
     const row = el('div', { class: 'hp-chips' }, ...all.filter(([key]) => !extras.includes(key)).map(chip).filter(Boolean));
     const perks = all.filter(([key]) => extras.includes(key)).map(chip).filter(Boolean);
     if (!perks.length) return row;
+    const note = trying ? el('p', { class: 'hp-perk-note' },
+      `Trying ${state.trying.label} on: it isn't saved. `,
+      el('button', { class: 'hp-perk-more', type: 'button', text: 'See Glow', onclick: () => app && app.openGlow && app.openGlow() })) : null;
     return el('div', { class: 'hp-chip-sets' }, row,
       el('div', { class: 'hp-perks', role: 'group', 'aria-label': 'Comes with Glow' },
-        el('span', { class: 'hp-perk-tag', text: (app && app.perkName) || 'Glow' }),
-        el('div', { class: 'hp-chips' }, ...perks)));
+        el('button', { class: 'hp-perk-tag', type: 'button', title: "What's Glow?", text: (app && app.perkName) || 'Glow', onclick: () => app && app.openGlow && app.openGlow() }),
+        el('div', { class: 'hp-chips' }, ...perks), note));
   }
 
   function colors(current, onPick) {

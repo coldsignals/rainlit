@@ -1134,13 +1134,13 @@
           <p class="theme-extras-title theme-free-title">Everyone's</p>
           <div id="theme-list" class="theme-list"></div>
           <div id="theme-extras-box" class="perk-box theme-perks" hidden>
-            <span class="perk-tag" data-perk-name>Glow</span>
+            <button class="perk-tag" type="button" data-perk-name data-glow-open title="What's Glow?">Glow</button>
             <p id="theme-extras-title" class="theme-extras-title">Each with weather of its own</p>
             <div id="theme-extras" class="theme-list"></div>
           </div>
           <div id="theme-try" class="theme-try" hidden>
             <span id="theme-try-text"></span>
-            <button id="theme-try-btn" class="primary-btn small" type="button">Get Glow</button>
+            <button id="theme-try-btn" class="primary-btn small" type="button">See Glow</button>
           </div>
         </div>
       </div>
@@ -1337,6 +1337,79 @@
         <ol id="feedback-mine" class="feedback-list"></ol>
       </div>
     </form>
+  </dialog>
+
+  <!-- ============ Rainlit Glow: what it gets you ============ -->
+  <!-- (Opened from a Glow theme or homepage extra someone tries on, the GLOW tags, and Your
+       profile. Everything in it is live: the themes' weather moves, and the homepage extras are the
+       page's own. The numbers are this server's: app.js fills them in.) -->
+  <dialog id="glow" class="glow-dialog" aria-labelledby="glow-title">
+    <header class="glow-hero">
+      <span class="glow-sparks" aria-hidden="true"></span>
+      <button class="icon-btn ghost glow-close" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      <img class="glow-drop" src="/badges/supporter-lamplight.svg" alt="" />
+      <div class="glow-hero-words">
+        <h2 id="glow-title">Rainlit <span class="glow-word">Glow</span></h2>
+        <p class="glow-tagline">Keep Rainlit free for everyone, and get more of it.</p>
+        <p id="glow-because" class="glow-because" hidden></p>
+      </div>
+    </header>
+    <div class="glow-perks">
+      <section class="glow-perk wide">
+        <div class="glow-show glow-themes" aria-hidden="true">
+          <span class="glow-theme"><span class="theme-mini" data-theme-preview="sakura"><i class="tm-rail"></i><i class="tm-side"></i><i class="tm-main"></i></span>Sakura</span>
+          <span class="glow-theme"><span class="theme-mini" data-theme-preview="monsoon"><i class="tm-rail"></i><i class="tm-side"></i><i class="tm-main"></i></span>Monsoon</span>
+          <span class="glow-theme"><span class="theme-mini" data-theme-preview="aurora"><i class="tm-rail"></i><i class="tm-side"></i><i class="tm-main"></i></span>Aurora</span>
+          <span class="glow-theme"><span class="theme-mini" data-theme-preview="fireflies"><i class="tm-rail"></i><i class="tm-side"></i><i class="tm-main"></i></span>Fireflies</span>
+        </div>
+        <h3>Themes with weather of their own</h3>
+        <p>Cherry blossoms falling at night, the monsoon rains, snow under the northern lights, and fireflies in the woods: all over Rainlit.</p>
+      </section>
+      <section class="glow-perk wide">
+        <div class="glow-show glow-homepage" aria-hidden="true">
+          <span class="glow-words">
+            <span class="hp-fx-shimmer"><span class="hp-ink">Shimmer</span></span>
+            <span class="hp-fx-lamplight"><span class="hp-ink">Lamplight</span></span>
+          </span>
+          <span class="glow-frames">
+            <span class="hp-frame-gilded glow-frame"><i></i></span>
+            <span class="hp-frame-neon glow-frame"><i></i></span>
+          </span>
+          <span class="glow-skies">
+            <span class="glow-sky-item"><span class="glow-sky"><span class="hp-sky hp-sky-fireflies"></span></span>Fireflies</span>
+            <span class="glow-sky-item"><span class="glow-sky"><span class="hp-sky hp-sky-aurora"></span></span>Aurora</span>
+            <span class="glow-sky-item"><span class="glow-sky"><span class="hp-sky hp-sky-storm"></span></span>Thunderstorm</span>
+            <span class="glow-sky-item"><span class="glow-sky"><span class="hp-sky hp-sky-blossoms"></span></span>Cherry blossoms</span>
+          </span>
+        </div>
+        <h3>Homepage extras</h3>
+        <p>Shimmer and Lamplight words, Gilded and Neon frames, and fireflies, an aurora, a thunderstorm and cherry blossoms for your page's weather, with room for <span data-glow="homepage">200 MB and 500 pieces</span>.</p>
+      </section>
+      <section class="glow-perk"><strong class="glow-big" data-glow="fileMb">100 MB</strong><h3>Bigger files</h3><p>Everyone: <span data-free="fileMb">25 MB</span></p></section>
+      <section class="glow-perk"><strong class="glow-big" data-glow="roomMb">50 GB</strong><h3>Room for your files</h3><p>Everyone: <span data-free="roomMb">1.5 GB</span></p></section>
+      <section class="glow-perk"><strong class="glow-big">1080p60</strong><h3>Sharper streams</h3><p>Screen sharing in voice channels, up to 60 fps.</p></section>
+      <section class="glow-perk"><strong class="glow-big" data-glow="notes">1,000</strong><h3>Notes</h3><p>Everyone: <span data-free="notes">100</span></p></section>
+      <section class="glow-perk wide">
+        <div class="glow-show glow-levels" aria-hidden="true">
+          <span><img src="/badges/supporter-drizzle.svg" alt="" />Drizzle</span>
+          <span><img src="/badges/supporter-shower.svg" alt="" />Shower</span>
+          <span><img src="/badges/supporter-downpour.svg" alt="" />Downpour</span>
+          <span><img src="/badges/supporter-storm.svg" alt="" />Storm</span>
+          <span><img src="/badges/supporter-monsoon.svg" alt="" />Monsoon</span>
+          <span><img src="/badges/supporter-lamplight.svg" alt="" />Lamplight</span>
+        </div>
+        <h3>A badge that grows</h3>
+        <p>A raindrop on your profile that gathers light the longer you have Glow, from Drizzle to Lamplight. If you stop, it keeps its level.</p>
+      </section>
+    </div>
+    <footer class="glow-foot">
+      <p class="glow-why">Rainlit is paid for by one person. Glow keeps it free for everyone, and the free tier never shrinks to make a perk.</p>
+      <div class="glow-actions">
+        <button id="glow-get" class="glow-get" type="button">Get Glow · $5 a month</button>
+        <button class="text-btn" type="button" data-close>Maybe later</button>
+      </div>
+      <p id="glow-price" class="glow-price">or $50 a year (two months free). Stop any time.</p>
+    </footer>
   </dialog>
 
   <!-- ============ End-of-call summary ============ -->

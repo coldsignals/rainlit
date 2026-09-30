@@ -161,8 +161,11 @@ or Rainlit, as your device is set). With Glow (below), there's also
 **Sakura** (cherry blossoms at night, with falling petals), **Monsoon** (deep
 green, and the rains), **Aurora** (the northern lights, and snow) and
 **Fireflies** (a summer night in the woods), each with its own weather in
-place of the rain; anyone else can try them on while Settings is open. Your
-theme is kept with your account, so it's the same on all your devices.
+place of the rain; anyone else can try them on while Settings is open (and
+sees what Glow gets you). Your theme is kept with your account, so it's the
+same on all your devices. If your Glow ends, a Glow theme you're using stays
+until you switch to another; switching back to it takes Glow again (the same
+goes for a homepage's Glow extras).
 
 ## Homepages
 

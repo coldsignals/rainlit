@@ -842,3 +842,10 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .hp-perks .hp-chip-extra::after { display: none; } /* (the tag says it) */
+
+/* Trying a Glow extra on (someone without Glow): lit with a dashed ring, and a note under them
+   that it isn't saved (with the way to Glow's box, which the GLOW tag opens too). */
+button.hp-perk-tag { border: 0; cursor: pointer; }
+.hp-chip-trying { outline: 2px dashed #b77bff; outline-offset: 2px; }
+.hp-perks .hp-perk-note { margin: 10px 0 0; color: #6b5840; font-size: 12.5px; }
+.hp-perk-more { margin-left: 2px; padding: 0; border: 0; background: none; color: #7d45cf; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }

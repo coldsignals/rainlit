@@ -138,6 +138,7 @@ for (const id of [
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
+  'glow', 'glow-because', 'glow-get', 'glow-price',
   'feedback', 'feedback-form', 'feedback-btn', 'feedback-note', 'feedback-what', 'feedback-text', 'feedback-diag-field', 'feedback-diag',
   'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
 ]) {
@@ -6586,13 +6587,19 @@ function setTheme(id) {
   if (el.settings.open) renderThemes();
 }
 
-// Picking one. A supporter's, for anyone else: tried on until Settings closes (or picked again).
+// Picking one. A Glow one, for anyone without Glow: tried on until Settings closes (or it's picked
+// again), with what Glow gets you the first time. (One that's theirs already, from when they had
+// Glow, stays theirs until they switch off it: lib/themes.js.)
 function pickTheme(id) {
   const t = themeById(id);
-  if (t.extra && !supporting()) {
+  if (t.extra && !supporting() && S.theme !== t.id) {
     S.themeTry = S.themeTry === t.id ? '' : t.id;
     showTheme();
     renderThemes();
+    if (S.themeTry && !S.glowTold && glowShown()) {
+      S.glowTold = true;
+      openGlow({ because: `${t.name} comes with Glow. You're trying it on: yours comes back when you close Settings.` });
+    }
     return;
   }
   S.themeTry = '';
@@ -6637,10 +6644,10 @@ function takeAccountTheme(user) {
 
 // Each one in miniature (Auto: Rainlit, with Light across a corner of it).
 function renderThemes() {
-  const offered = offersSupport();
   const on = S.themeTry || S.theme;
+  const kept = themeById(S.theme).extra && !supporting() ? themeById(S.theme) : null; // (from when they had Glow)
   const card = (t) => {
-    const locked = t.extra && !supporting();
+    const locked = t.extra && !supporting() && S.theme !== t.id;
     const shot = document.createElement('span');
     shot.className = 'theme-shot';
     for (const id of t.id === 'auto' ? ['rainlit', 'light'] : [t.id]) {
@@ -6664,15 +6671,17 @@ function renderThemes() {
     return b;
   };
   el.themeList.replaceChildren(...THEMES.filter((t) => !t.extra).map(card));
-  // (Supporters' themes, for anyone else to try on: not in an app that can't mention supporting.)
-  const extras = THEMES.filter((t) => t.extra && (supporting() || offered));
+  // (Glow's themes, for anyone else to try on: wherever Glow is shown.)
+  const extras = THEMES.filter((t) => t.extra && (supporting() || glowShown() || t === kept));
   el.themeExtras.replaceChildren(...extras.map(card));
   el.themeExtrasBox.hidden = !extras.length;
-  withGlow(el.themeExtrasTitle, supporting() ? 'Yours with Glow, each with weather of its own' : 'Each with weather of its own: try one on');
+  withGlow(el.themeExtrasTitle, supporting() ? 'Yours with Glow, each with weather of its own'
+    : kept ? `${kept.name} stays yours until you switch off it; the rest, try on`
+    : 'Each with weather of its own: try one on');
   const trying = S.themeTry ? themeById(S.themeTry) : null;
   el.themeTry.hidden = !trying;
   if (trying) withGlow(el.themeTryText, `${trying.name}: ${trying.about}. It's one of Glow's themes; yours comes back when you close Settings.`);
-  el.themeTryBtn.hidden = !offered;
+  el.themeTryBtn.hidden = !glowShown();
 }
 
 // ----- Size -----
@@ -11529,12 +11538,65 @@ function renderProfileBadges() {
 // offer anything bought outside it: there it only says how you support.
 
 const offersSupport = () => S.support && (!ANDROID || Boolean(S.androidApp && S.androidApp.play === false));
+// Whether Glow's shown here (what it gets you, to try on and to get): where it's sold, or on
+// rainlit.app before it is ("opens soon"); not on a Rainlit someone else runs without it, nor in the
+// app from the Google Play Store.
+const glowShown = () => (S.support || OFFICIAL) && (!ANDROID || Boolean(S.androidApp && S.androidApp.play === false));
+
+// ----- Rainlit Glow's box -----
+// What Glow gets you, all of it live (the themes' weather moving, the homepage extras as they are
+// on a page), and the way to get it: shown when someone tries a Glow theme or homepage extra on,
+// from the GLOW tags, and from Your profile. Its numbers are this server's (/api/support).
+
+let glowInfo = null;
+async function openGlow({ because = '' } = {}) {
+  if (!glowShown() && !supporting()) return;
+  el.glowBecause.hidden = !because;
+  if (because) withGlow(el.glowBecause, because);
+  renderGlowInfo();
+  if (!el.glow.open) el.glow.showModal();
+  el.glow.scrollTop = 0;
+  if (!glowInfo) {
+    try {
+      glowInfo = await api('GET', '/support');
+    } catch {
+      return;
+    }
+    renderGlowInfo();
+  }
+}
+
+function renderGlowInfo() {
+  const d = glowInfo;
+  const size = (mb) => (mb >= 1024 ? `${Math.round((mb / 1024) * 10) / 10} GB` : `${Math.round(mb)} MB`);
+  const money = (cents) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
+  if (d && d.perks && d.free) {
+    const glow = {
+      fileMb: size(Math.max(d.perks.fileMb, d.free.fileMb || 0)), roomMb: size(Math.max(d.perks.roomMb, d.free.roomMb || 0)),
+      notes: Math.max(d.perks.notes, d.free.notes || 0).toLocaleString(),
+      homepage: `${size(Math.max(d.perks.homepageMb, d.free.homepageMb || 0))} and ${Math.max(d.perks.homepagePieces, d.free.homepagePieces || 0)} pieces`,
+    };
+    const free = { fileMb: size(d.free.fileMb), roomMb: size(d.free.roomMb), notes: Number(d.free.notes).toLocaleString() };
+    for (const n of el.glow.querySelectorAll('[data-glow]')) if (glow[n.dataset.glow]) n.textContent = glow[n.dataset.glow];
+    for (const n of el.glow.querySelectorAll('[data-free]')) if (free[n.dataset.free]) n.textContent = free[n.dataset.free];
+  }
+  const month = d ? d.plans.month.cents : 500;
+  const year = d ? d.plans.year.cents : 5000;
+  const s = S.me && S.me.supporter;
+  const paying = Boolean(s && s.active && s.plan !== 'gift');
+  const open = Boolean(d && d.enabled);
+  el.glowGet.disabled = paying || !open;
+  el.glowGet.textContent = paying ? 'You have Glow. Thank you!' : open ? `Get Glow · ${money(month)} a month` : 'Glow opens soon';
+  el.glowPrice.textContent = paying ? 'Everything here is yours.'
+    : open ? `or ${money(year)} a year (two months free). Stop any time.`
+    : `It'll be ${money(month)} a month, or ${money(year)} a year. Rainlit can't take payments just yet.`;
+}
 const shortDate = (t) => new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 
 function renderSupportCard() {
   const s = S.me && S.me.supporter;
   const offered = offersSupport();
-  el.supportCard.hidden = !s || (!s.first && !offered);
+  el.supportCard.hidden = !s || (!s.first && !glowShown());
   if (el.supportCard.hidden) return;
   const level = SUPPORT_LEVELS[s.level] || 'Drizzle';
   el.supportBadge.src = `/badges/supporter-${s.level || 'drizzle'}.svg`;
@@ -11552,13 +11614,13 @@ function renderSupportCard() {
     withGlow(el.supportTitle, 'Rainlit Glow');
     el.supportNote.textContent = "Rainlit's free, and paid for by one person. Glow keeps it that way, and gets you bigger files, more room, sharper streams, themes with weather of their own and a badge that grows.";
   }
-  el.supportBtn.hidden = !offered;
+  el.supportBtn.hidden = s.active && s.plan !== 'gift' ? !offered : !glowShown();
   el.supportBtn.textContent = s.active && s.plan !== 'gift' ? 'Manage' : s.first && !s.active ? 'Get Glow again' : 'Get Glow';
 }
 
 // Settings' link to the support page.
 function renderSupportLink() {
-  el.supportLink.hidden = !offersSupport();
+  el.supportLink.hidden = !glowShown();
   el.supportLink.previousSibling.textContent = el.supportLink.hidden ? '' : ' · ';
 }
 
@@ -12902,11 +12964,17 @@ async function init() {
   el.storageFile.addEventListener('change', () => saveStorage({ fileMb: Number(el.storageFile.value) }));
   el.storagePerson.addEventListener('change', () => saveStorage({ personMb: Math.round(Number(el.storagePerson.value) * 1024) }));
   el.supportCosts.addEventListener('change', saveSupportCosts);
-  el.supportBtn.addEventListener('click', openSupportPage);
+  el.supportBtn.addEventListener('click', () => {
+    const s = S.me && S.me.supporter;
+    if (s && s.active && s.plan !== 'gift') openSupportPage(); // (Manage)
+    else openGlow();
+  });
   el.supportLink.addEventListener('click', (e) => {
     e.preventDefault();
-    openSupportPage();
+    openGlow();
   });
+  el.glowGet.addEventListener('click', openSupportPage);
+  for (const tag of document.querySelectorAll('[data-glow-open]')) tag.addEventListener('click', () => openGlow());
   el.filesDetails.addEventListener('toggle', () => {
     if (el.filesDetails.open) renderFilesList();
   });
@@ -12972,6 +13040,8 @@ async function init() {
     spaceEmoji: myEmoji,
     me: () => S.me,
     offersSupport,
+    glowShown,
+    openGlow,
     perkName: PERK_NAME,
   });
 
@@ -13220,7 +13290,7 @@ async function init() {
   el.deleteDetails.addEventListener('toggle', () => { if (el.deleteDetails.open) renderDeletion(); });
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 
@@ -13463,11 +13533,12 @@ async function init() {
   }, true);
   el.settings.addEventListener('close', () => { if (pickingKey) stopPickingKey(); });
   el.settings.addEventListener('close', () => {
+    S.glowTold = false; // (the next time Settings opens, trying one on shows Glow's box again)
     if (!S.themeTry) return;
     S.themeTry = '';
     showTheme();
   });
-  el.themeTryBtn.addEventListener('click', openSupportPage);
+  el.themeTryBtn.addEventListener('click', () => openGlow({ because: S.themeTry ? `${themeById(S.themeTry).name} comes with Glow.` : '' }));
   for (const tag of document.querySelectorAll('[data-perk-name]')) tag.textContent = PERK_NAME;
   // Feedback: to the people making Rainlit (on rainlit.app), or whoever runs this server.
   el.feedbackNote.textContent = OFFICIAL ? 'Found a bug, or have an idea? Send it straight to the people making Rainlit.'
