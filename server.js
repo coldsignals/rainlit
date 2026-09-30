@@ -215,6 +215,12 @@ app.get('/switching', (_req, res) => {
   res.sendFile('switching.html', { root: path.join(__dirname, 'public') });
 });
 
+// How to delete your data without deleting your account (Google Play links to it), and what's kept.
+app.get('/delete-data', (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile('delete-data.html', { root: path.join(__dirname, 'public') });
+});
+
 // Supporting Rainlit (lib/supporters.js): the plan, and choosing it (public/support.js).
 app.get('/support', (_req, res) => {
   res.set('Cache-Control', 'no-cache');
