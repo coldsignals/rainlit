@@ -161,9 +161,10 @@ and released is in [desktop/README.md](desktop/README.md).
 Settings > **Theme**: Rainlit's own (the night, lit by a lamp), **Dark** (plain
 greys), **Midnight** (black, for OLED screens), **Light**, or **Auto** (Light
 or Rainlit, as your device is set). With Glow (below), there's also
-**Sakura** (cherry blossoms at night, with falling petals), **Monsoon** (deep
-green, and the rains), **Aurora** (the northern lights, and snow) and
-**Fireflies** (a summer night in the woods), each with its own weather in
+a theme for each season: **Sakura** (cherry blossoms at night, with falling
+petals), **Monsoon** (deep green, and the rains), **Fireflies** (a summer
+night in the woods), **Maple** (autumn at dusk, with falling leaves) and
+**Aurora** (the northern lights, and snow), each with its own weather in
 place of the rain; anyone else can try them on while Settings is open (and
 sees what Glow gets you). Your theme is kept with your account, so it's the
 same on all your devices. If your Glow ends, a Glow theme you're using stays
@@ -234,8 +235,8 @@ it and keep it that way, for $5 a month or $50 a year (and tips), at
 marked with a Glow tag wherever it is, and it's more of what costs money: files up
 to 100 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
 channels (1080p at up to 60 fps, while it fits in what Cloudflare sends for
-free), no slower start for a new account, homepage extras, four themes with
-weather of their own (Sakura, Monsoon, Aurora and Fireflies), and a badge, a
+free), no slower start for a new account, homepage extras, five themes with
+weather of their own (Sakura, Monsoon, Fireflies, Maple and Aurora), and a badge, a
 raindrop that gathers light the longer they support (Drizzle, then Shower,
 Downpour, Storm, Monsoon and Lamplight). If they stop, it dims, and keeps its
 level. Stripe takes the payments (as the seller, through Link), so Rainlit

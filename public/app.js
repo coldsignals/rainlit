@@ -5412,8 +5412,8 @@ window.rainlitBack = () => {
 };
 
 // ================= Weather =================
-// Light rain falling over the app, drawn on one canvas; or the weather of a supporter's theme
-// instead: a monsoon's downpour, cherry blossom petals, snow under the aurora, fireflies. Near
+// Light rain falling over the app, drawn on one canvas; or the weather of a Glow theme instead: a
+// monsoon's downpour, cherry blossom petals, maple leaves, snow under the aurora, fireflies. Near
 // drops are longer, faster and brighter than far ones (near petals and snowflakes, bigger and
 // faster). It stops while you're in a call (and whenever the tab is hidden, since the browser
 // stops drawing it).
@@ -5435,6 +5435,7 @@ const WEATHER = {
   rain: { name: 'Gentle rain', per: 20000, min: 30, max: 110, layers: RAIN_LAYERS, slant: 0.16 },
   downpour: { name: 'Monsoon rain', per: 8000, min: 70, max: 260, layers: DOWNPOUR_LAYERS, slant: 0.24 },
   petals: { name: 'Falling petals', per: 32000, min: 16, max: 56 },
+  leaves: { name: 'Falling leaves', per: 34000, min: 14, max: 50 },
   snow: { name: 'Snow', per: 14000, min: 40, max: 140 },
   fireflies: { name: 'Fireflies', per: 40000, min: 12, max: 42 },
 };
@@ -5496,17 +5497,19 @@ function newDrop(w, h, anywhere) {
       speed: between(...L.speed),
     };
   }
-  // Petals and snow drift down, swaying (petals turn over as they go).
+  // Petals, leaves and snow drift down, swaying (petals and leaves turn over as they go; leaves
+  // are bigger, and slower).
   if (weather !== 'fireflies') {
     const near = Math.random();
-    const petal = weather === 'petals';
+    const shape = SHAPES[weather];
+    const leaf = weather === 'leaves';
     return {
       x: Math.random() * w, y: anywhere ? Math.random() * h : -14, near,
-      size: petal ? 4 + near * 5 : 0.7 + near * 1.9,
-      fall: petal ? 24 + near * 40 : 14 + near * 38,
-      sway: petal ? between(14, 36) : between(6, 18), swayRate: between(0.4, 1.1), phase: Math.random() * Math.PI * 2,
+      size: leaf ? 5.5 + near * 6.5 : shape ? 4 + near * 5 : 0.7 + near * 1.9,
+      fall: leaf ? 20 + near * 34 : shape ? 24 + near * 40 : 14 + near * 38,
+      sway: leaf ? between(18, 44) : shape ? between(14, 36) : between(6, 18), swayRate: between(0.4, 1.1), phase: Math.random() * Math.PI * 2,
       turn: Math.random() * Math.PI * 2, spin: between(-1.6, 1.6), flip: between(1.2, 2.6),
-      tone: Math.floor(Math.random() * PETAL_TONES.length),
+      tone: Math.floor(Math.random() * (shape ? shape.tones.length : 1)),
     };
   }
   // Fireflies wander, and light up every few seconds.
@@ -5557,9 +5560,17 @@ function drawRain(ctx, dt, w, h) {
 // A cherry blossom petal, with the little notch at its tip (2 across and 2 tall), in three pinks.
 const PETAL = typeof Path2D === 'function' ? new Path2D('M0 1C-.95 .45-.8-.75-.18-1L0-.74.18-1C.8-.75.95 .45 0 1Z') : null;
 const PETAL_TONES = ['255, 183, 213', '255, 206, 227', '247, 158, 196'];
+// A maple leaf (its five points and a stem, about 2 across and 2 tall), in autumn's colours.
+const LEAF = typeof Path2D === 'function' ? new Path2D('M0-1L.18-.5L.55-.62L.42-.25L.85-.15L.5.12L.62.45L.12.35L.05.95H-.05L-.12.35L-.62.45L-.5.12L-.85-.15L-.42-.25L-.55-.62L-.18-.5Z') : null;
+const LEAF_TONES = ['236, 112, 48', '214, 62, 44', '240, 176, 64', '178, 94, 52'];
+// (What turns over as it drifts down: how wide it is to how tall, and how bright near and far.)
+const SHAPES = {
+  petals: { path: PETAL, tones: PETAL_TONES, wide: 0.72, alpha: [0.45, 0.45] },
+  leaves: { path: LEAF, tones: LEAF_TONES, wide: 0.95, alpha: [0.5, 0.4] },
+};
 
 function drawDrifting(ctx, dt, w, h, t) {
-  const petals = weather === 'petals';
+  const shape = SHAPES[weather];
   const flakes = [[], [], []]; // (snow: far, middle and near, each lot drawn at once)
   for (const d of rainDrops) {
     d.y += d.fall * dt;
@@ -5572,23 +5583,23 @@ function drawDrifting(ctx, dt, w, h, t) {
       d.x += x < 0 ? w + 40 : -(w + 40);
       x = d.x + Math.sin(t * d.swayRate + d.phase) * d.sway;
     }
-    if (!petals) {
+    if (!shape) {
       flakes[Math.min(2, Math.floor(d.near * 3))].push(x, d.y, d.size);
       continue;
     }
-    if (!PETAL) continue;
+    if (!shape.path) continue;
     // Turning as it falls, and tumbling: narrower as it tips away.
     const a = d.turn + t * d.spin;
     const k = d.size * rainDpr;
     const tip = 0.35 + 0.65 * Math.abs(Math.cos(t * d.flip + d.phase));
     const cos = Math.cos(a);
     const sin = Math.sin(a);
-    ctx.setTransform(cos * k * 0.72, sin * k * 0.72, -sin * k * tip, cos * k * tip, x * rainDpr, d.y * rainDpr);
-    ctx.fillStyle = `rgba(${PETAL_TONES[d.tone]}, ${0.45 + d.near * 0.45})`;
-    ctx.fill(PETAL);
+    ctx.setTransform(cos * k * shape.wide, sin * k * shape.wide, -sin * k * tip, cos * k * tip, x * rainDpr, d.y * rainDpr);
+    ctx.fillStyle = `rgba(${shape.tones[d.tone]}, ${shape.alpha[0] + d.near * shape.alpha[1]})`;
+    ctx.fill(shape.path);
   }
   ctx.setTransform(rainDpr, 0, 0, rainDpr, 0, 0);
-  if (petals) return;
+  if (shape) return;
   flakes.forEach((list, i) => {
     ctx.beginPath();
     for (let j = 0; j < list.length; j += 3) {
@@ -6534,7 +6545,7 @@ function renderTransfer(t) {
 
 // ----- Theme -----
 // Settings > Theme: Rainlit's own, Dark, Midnight (black, for OLED screens), Light, or Auto (Light
-// or Rainlit, as the device is set); and four for people supporting Rainlit, each with weather of
+// or Rainlit, as the device is set); and five that come with Glow, each with weather of
 // its own, which anyone else can try on while Settings is open. Yours is kept with your account,
 // so it's the same everywhere (lib/themes.js), and on this device for the next start (boot.js puts
 // it on before anything's drawn). Their colours are in style.css.
@@ -6547,8 +6558,9 @@ const THEMES = [
   { id: 'auto', name: 'Auto', about: 'Light or Rainlit, as your device is set' },
   { id: 'sakura', name: 'Sakura', extra: true, weather: 'petals', about: 'cherry blossoms at night, and falling petals' },
   { id: 'monsoon', name: 'Monsoon', extra: true, weather: 'downpour', about: 'deep green, and the rains' },
-  { id: 'aurora', name: 'Aurora', extra: true, weather: 'snow', about: 'the northern lights, and snow' },
   { id: 'fireflies', name: 'Fireflies', extra: true, weather: 'fireflies', about: 'a summer night in the woods, with fireflies' },
+  { id: 'maple', name: 'Maple', extra: true, weather: 'leaves', about: 'autumn at dusk, and falling leaves' },
+  { id: 'aurora', name: 'Aurora', extra: true, weather: 'snow', about: 'the northern lights, and snow' },
 ];
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 // What supporters get is marked with this, on a tag (see .perk-box): the supporter plan's name
