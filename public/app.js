@@ -12173,7 +12173,7 @@ function askGift(li, u) {
   months.setAttribute('aria-label', 'How long');
   for (const n of [1, 3, 6, 12]) months.append(new Option(monthsText(n), String(n)));
   const label = document.createElement('span');
-  label.textContent = `of supporting, for @${u.username}`;
+  label.textContent = `of Glow, for @${u.username}`;
   const yes = document.createElement('button');
   yes.type = 'button';
   yes.className = 'small-btn';
