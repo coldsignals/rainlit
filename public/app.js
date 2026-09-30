@@ -3924,7 +3924,7 @@ async function onAnnounceSend(e) {
 }
 
 // ----- 18+ channels -----
-// A space can mark a channel 18+ (for things like gore, horror or crude jokes). Nothing in one
+// A space can mark a channel 18+ (for things like horror, gory films and games, or crude jokes). Nothing in one
 // reaches you until you've said you're 18 or older, which you're asked the first time you open
 // one; after that it opens like any other. (The server holds it back, not just this page.)
 
@@ -8274,7 +8274,7 @@ function channelAccessEditor(space, c) {
   toggle.append(box, words);
   const small = document.createElement('small');
   small.className = 'hint';
-  small.textContent = `For things like gore, horror or crude jokes. Nothing in it reaches anyone until they've said they're 18 or older.${OFFICIAL ? " Sexually explicit things aren't allowed on rainlit.app, even here." : ''}`;
+  small.textContent = `For things like horror, gory films and games, or crude jokes. Nothing in it reaches anyone until they've said they're 18 or older.${OFFICIAL ? " Nudity, sexually explicit things and real gore aren't allowed on rainlit.app, even here." : ''}`;
   adult.append(toggle, small);
   li.append(
     section('Private channel', 'Only the roles you pick (and administrators) can see it.', c.private, 'private', 'seeRoles'),

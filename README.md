@@ -232,11 +232,12 @@ at the top closes it (on a phone, the back arrow).
   that takes Nitro): type `:` and a name, or pick one from the emoji button,
   and react with them. A message that's only emoji shows them big.
 - **18+ channels:** a space can mark a channel 18+ (in its settings, under
-  **Who**), for things like gore, horror or crude jokes. Nothing in one reaches
+  **Who**), for things like horror, gory films and games, or crude jokes. Nothing in one reaches
   anyone until they've said they're 18 or older, which they're asked once, the
   first time they open one: not its messages, files, pings or who's in it.
   Channels that were age-restricted on Discord come over 18+. (On rainlit.app,
-  sexually explicit things aren't allowed even there: see the terms.)
+  nudity, sexually explicit things and real gore aren't allowed even there: see the
+  terms.)
 - **Notes:** a conversation with yourself, at the top of Home, for notes, links
   and files you want on all your devices (send a file from your phone, open it
   on your computer). Only you see it, and it's always kept. It holds 100 notes
