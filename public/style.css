@@ -2324,3 +2324,48 @@ button.person.open { background: var(--dusk-hi); }
 /* ----- Flagged accounts (Admin) ----- */
 .flag-item { align-items: flex-start; }
 .flag-item .user-words > span { font-size: 14px; }
+
+/* ----- Settings, in sections ----- */
+.settings-cols, .settings-col, .settings-sec { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.settings-cols { gap: 24px; }
+.settings-sec > h3 { margin: 0; color: var(--mist); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.settings-sec > h3 + * { margin-top: -6px; }
+.settings-foot { display: grid; gap: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
+.theme-free-title { display: none; }
+/* (A phone: the sections one after another, the voice and video ones second.) */
+@media (max-width: 899px) {
+  .settings-col { display: contents; }
+  .set-voice { order: 1; }
+  .set-messages { order: 2; }
+  .settings-sec.activity-field { order: 3; }
+}
+
+/* ----- Dialogs on a computer ----- */
+/* Sized for the screen they're on, not a phone's: a little bigger all round; Settings with the
+   themes across the top and two columns under them; Admin with its lists across both columns and
+   its smaller parts side by side. (The profile card stays a card.) */
+@media (min-width: 900px) {
+  .settings { width: min(480px, calc(100vw / var(--zoom) - 32px)); }
+  .settings.profile-dialog { width: min(560px, calc(100vw / var(--zoom) - 32px)); }
+  .settings.space-settings { width: min(680px, calc(100vw / var(--zoom) - 32px)); }
+  .settings.announce-dialog { width: min(520px, calc(100vw / var(--zoom) - 32px)); }
+  .settings.age-dialog { width: min(480px, calc(100vw / var(--zoom) - 32px)); }
+
+  .settings.app-settings { width: min(920px, calc(100vw / var(--zoom) - 48px)); }
+  .app-settings > .settings-inner, .admin > .settings-inner { gap: 22px; padding: 20px 28px 26px; }
+  .app-settings .settings-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
+  .app-settings .settings-col { gap: 26px; }
+  /* (Everyone's themes, and supporters' beside them.) */
+  .app-settings .theme-lists { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); column-gap: 32px; row-gap: 8px; }
+  .app-settings .theme-free-title { display: block; grid-column: 1; grid-row: 1; }
+  .app-settings #theme-list { grid-column: 1; grid-row: 2; }
+  .app-settings #theme-extras-title { grid-column: 2; grid-row: 1; }
+  .app-settings #theme-extras { grid-column: 2; grid-row: 2; }
+  .app-settings .theme-try { grid-column: 1 / -1; margin-top: 4px; }
+  .app-settings .theme-lists:has(#theme-extras[hidden]) .theme-free-title { display: none; }
+
+  .settings.admin { width: min(960px, calc(100vw / var(--zoom) - 48px)); }
+  .admin > .settings-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; align-items: start; }
+  .admin > .settings-inner > :is(.settings-head, .admin-section.wide) { grid-column: 1 / -1; }
+  .admin .announce-form { max-width: 640px; }
+}
