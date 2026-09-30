@@ -2073,8 +2073,9 @@ button.person.open { background: var(--dusk-hi); }
 .settings-head h2 { margin: 0; font-size: 20px; font-weight: 600; }
 .settings .field select { background-color: var(--deep); }
 .settings input[type="range"] { width: 100%; accent-color: var(--lamp); }
-.toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.toggle input { width: 18px; height: 18px; margin: 0; accent-color: var(--lamp); cursor: pointer; }
+/* (The box stays its size, beside the first line of words that run onto more.) */
+.toggle { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.toggle input { flex: none; width: 18px; height: 18px; margin: 1.5px 0 0; accent-color: var(--lamp); cursor: pointer; }
 .toggle-group { display: grid; gap: 10px; margin-top: -6px; }
 .ptt-field { display: grid; gap: 10px; }
 .ptt-details { display: grid; gap: 6px; padding-left: 28px; }
