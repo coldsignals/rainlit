@@ -583,11 +583,298 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 @keyframes hp-rise { from { transform: translateY(0); } to { transform: translateY(-240px); } }
 @keyframes hp-twinkle { 50% { opacity: 0.25; } }
 
+/* ================= Glow's moving patterns ================= */
+/* (Layers of the pattern sliding over each other, behind everything: in view as the page scrolls,
+   like the weather. homepage.js sizes it to the view. Each layer reaches a tile past the edges it
+   moves away from, and moves one tile a loop, so it never ends.) */
+.hp-backdrop { position: sticky; top: 0; left: 0; align-self: start; justify-self: start; overflow: hidden; pointer-events: none; }
+.hp-backdrop i { position: absolute; inset: 0; background-repeat: repeat; will-change: transform; }
+@keyframes hp-bd-drift { to { transform: translate(var(--dx, 0px), var(--dy, 0px)); } }
+@keyframes hp-bd-twinkle { from { opacity: 1; } to { opacity: 0.2; } }
+@keyframes hp-bd-sheen { to { transform: translateX(-66.667%); } }
+/* Starfield: stars drifting past, the bright ones twinkling. */
+.hp-bd-starfield i:nth-child(1) { inset: -240px 0 0 -240px; background-size: 240px 240px; --dx: 240px; --dy: 240px; animation: hp-bd-drift 110s linear infinite; }
+.hp-bd-starfield i:nth-child(2) { inset: -330px 0 0 -330px; background-size: 330px 330px; --dx: 330px; --dy: 330px; animation: hp-bd-drift 90s linear infinite, hp-bd-twinkle 2.8s ease-in-out infinite alternate; }
+.hp-bd-starfield i:nth-child(3) { inset: -380px 0 0 -380px; background-size: 380px 380px; --dx: 380px; --dy: 380px; animation: hp-bd-drift 66s linear infinite, hp-bd-twinkle 2.2s ease-in-out -1.1s infinite alternate; }
+/* Bokeh: soft lights rising, the near ones faster. */
+.hp-bd-bokeh i:nth-child(1) { inset: 0 0 -320px; background-size: 320px 320px; --dy: -320px; animation: hp-bd-drift 48s linear infinite; }
+.hp-bd-bokeh i:nth-child(2) { inset: 0 0 -240px -240px; background-size: 240px 240px; --dx: 240px; --dy: -240px; animation: hp-bd-drift 34s linear infinite; }
+.hp-bd-bokeh i:nth-child(3) { inset: 0 0 -200px; background-size: 200px 200px; --dy: -200px; animation: hp-bd-drift 21s linear infinite, hp-bd-twinkle 3.4s ease-in-out infinite alternate; }
+/* Holo: a sheen like a hologram's sliding across, fine lines, and glints. */
+.hp-bd-holo i:nth-child(1) { right: -200%; background-size: 100% 100%; opacity: 0.8; animation: hp-bd-sheen 14s ease-in-out infinite alternate; }
+.hp-bd-holo i:nth-child(2) { background-size: auto; }
+.hp-bd-holo i:nth-child(3) { background-size: 200px 200px; animation: hp-bd-twinkle 1.9s ease-in-out infinite alternate; }
+/* Waves: rows of them, the far ones going the other way. */
+.hp-bd-waves i:nth-child(1) { right: -240px; background-size: 240px 64px; --dx: -240px; animation: hp-bd-drift 8s linear infinite; }
+.hp-bd-waves i:nth-child(2) { left: -320px; background-size: 320px 64px; background-position: 0 32px; --dx: 320px; animation: hp-bd-drift 14s linear infinite; }
+/* (As a swatch: the same, a quarter the size.) */
+.hp-pattern-swatch { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; border-radius: 6px; }
+.hp-pattern-swatch .hp-backdrop { position: absolute; width: 400%; height: 400%; transform: scale(0.25); transform-origin: 0 0; }
+
+/* ================= Effects for visitors (Glow's) ================= */
+.hp-fx { position: absolute; inset: 0; z-index: 4; width: 100%; height: 100%; pointer-events: none; }
+
+/* ================= The fortune ball (Glow's) ================= */
+.hp-fortune { container-type: size; }
+.hp-fortune .hp-in { flex-direction: column; align-items: center; }
+.hp-ball {
+  position: relative; flex: none; overflow: hidden;
+  width: min(100cqw, 76cqh); aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 50% 62%, color-mix(in srgb, var(--tint) 45%, #fff) 0%, var(--tint) 36%, color-mix(in srgb, var(--tint) 40%, #0b0620) 76%, #0b0620 100%);
+  box-shadow: inset 0 0 0 1.4cqmin rgba(255, 255, 255, 0.22), inset 0 -4cqmin 8cqmin rgba(0, 0, 0, 0.35), 0 0 8cqmin color-mix(in srgb, var(--tint) 65%, transparent);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.hp-ball:focus-visible { outline: 3px solid #f5b94a; outline-offset: 3px; }
+.hp-ball-mist {
+  position: absolute; inset: -25%;
+  background: conic-gradient(from 20deg, transparent, rgba(255, 255, 255, 0.34), transparent 30%, rgba(255, 255, 255, 0.22) 55%, transparent 72%, rgba(255, 255, 255, 0.28) 88%, transparent);
+  filter: blur(5cqmin); border-radius: 50%;
+  animation: hp-spin 11s linear infinite;
+}
+.hp-asking .hp-ball-mist { animation-duration: 1.1s; }
+.hp-ball-shine { position: absolute; left: 17%; top: 11%; width: 32%; height: 18%; border-radius: 50%; background: radial-gradient(rgba(255, 255, 255, 0.85), transparent 70%); transform: rotate(-32deg); pointer-events: none; }
+.hp-ball-answer {
+  position: absolute; inset: 20%;
+  display: grid; place-items: center;
+  color: #fff; font: 700 max(11px, 12.5cqmin)/1.05 Caveat, cursive; text-align: center; overflow-wrap: anywhere;
+  text-shadow: 0 0 1.2cqmin rgba(38, 12, 74, 0.95), 0 0 3cqmin rgba(38, 12, 74, 0.7), 0 0 7cqmin var(--tint);
+  opacity: 0; filter: blur(4px); transform: scale(0.85);
+  transition: opacity 0.9s, filter 0.9s, transform 0.9s;
+  pointer-events: none;
+}
+.hp-ball-answer.on { opacity: 1; filter: none; transform: none; }
+.hp-asking .hp-ball { animation: hp-shake 0.45s ease-in-out 2; }
+@keyframes hp-shake {
+  20% { transform: translate(-3%, 1%) rotate(-4deg); }
+  40% { transform: translate(3%, -1%) rotate(4deg); }
+  60% { transform: translate(-2%, 0) rotate(-2deg); }
+  80% { transform: translate(2%, 0) rotate(2deg); }
+}
+.hp-ball-stand {
+  flex: none; width: 58cqw; height: 9cqh; margin-top: -4cqh;
+  border-radius: 45% 45% 14% 14% / 80% 80% 22% 22%;
+  background: linear-gradient(#f0d07e, #b17c22 70%, #8a5c14);
+  box-shadow: inset 0 1.5cqh 0 rgba(255, 255, 255, 0.3), 0 2cqh 3cqh -1cqh rgba(0, 0, 0, 0.45);
+}
+.hp-ball-label { margin-top: 3cqh; max-width: 100%; color: #fff; font: 600 max(10px, 7cqh)/1.2 "Pixelify Sans", sans-serif; text-align: center; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); overflow-wrap: anywhere; }
+
+/* ================= Pets ================= */
+/* A page's pet (homepage.js). Drawn facing right; parts move with what it's doing: walking (its
+   legs step in turn), resting (lying down, legs tucked), sleeping, joy (a hop, eyes smiling),
+   eating, and sad (hungry). Glow's pets glow. Its bits (hearts, z's) and name tag are sized for
+   the screen, whatever the page's scale. */
+.hp-pet { position: relative; display: block; flex: none; width: 84px; height: 70px; --pw: 84px; }
+.hp-pet-live { position: absolute; left: 0; top: 0; z-index: 4; cursor: pointer; outline: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; will-change: transform; }
+.hp-editing .hp-pet-live { pointer-events: none; }
+.hp-pet-live:focus-visible .hp-pet-in { outline: calc(2px / var(--hp-scale, 1)) dashed #f5b94a; outline-offset: 2px; border-radius: 12px; }
+.hp-pet-shadow { position: absolute; left: 24%; right: 24%; bottom: 0; height: 8%; border-radius: 50%; background: rgba(0, 0, 0, 0.24); }
+.hp-pet-lift, .hp-pet-bounce, .hp-pet-in { position: absolute; inset: 0; display: block; }
+.hp-pet-bounce { transform-origin: 50% 100%; }
+.hp-pet-in { transition: transform 0.18s ease; }
+.hp-pet-in.left { transform: scaleX(-1); }
+.hp-pet-glowy .hp-pet-in { filter: drop-shadow(0 0 4px var(--pg)) drop-shadow(0 0 10px color-mix(in srgb, var(--pg) 55%, transparent)); }
+.hp-pet-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.hp-pet-svg .o { stroke: var(--pk); stroke-width: 3px; stroke-linejoin: round; stroke-linecap: round; }
+.hp-pet-svg .f1 { fill: var(--p1); }
+.hp-pet-svg .f2 { fill: var(--p2); }
+.hp-pet-svg .f3 { fill: var(--p3); }
+.hp-pet-svg .f4 { fill: var(--p4); }
+.hp-pet-svg .fs { fill: var(--p5); }
+.hp-pet-svg .fk { fill: var(--pk); }
+.hp-pet-svg .fw { fill: #fff; }
+.hp-pet-svg .fe { fill: var(--pe); }
+.hp-pet-svg .fn { fill: #ff7f9f; }
+.hp-pet-svg .fb { fill: #ff7fa8; opacity: 0.5; }
+.hp-pet-svg .ln { fill: none; stroke: var(--pk); stroke-width: 2.2px; stroke-linecap: round; stroke-linejoin: round; }
+.hp-pet-svg .st { fill: none; stroke: var(--p3); stroke-width: 3px; stroke-linecap: round; }
+.hp-pet-svg .bl { fill: none; stroke: var(--p3); stroke-width: 2px; stroke-linecap: round; opacity: 0.5; }
+.hp-pet-svg .wh { fill: none; stroke: var(--pk); stroke-width: 1.4px; stroke-linecap: round; opacity: 0.55; }
+.hp-pet-svg .tl-o { fill: none; stroke: var(--pk); stroke-width: 12px; stroke-linecap: round; }
+.hp-pet-svg .tl-i { fill: none; stroke: var(--p1); stroke-width: 6px; stroke-linecap: round; }
+.hp-pet-svg .tip, .hp-pet-svg .wisp { fill: var(--pg); }
+.hp-pet-svg .cl-o circle { fill: var(--pk); stroke: var(--pk); stroke-width: 6px; }
+.hp-pet-svg .cl-f circle { fill: var(--p1); }
+.hp-pet-svg .cl-s { fill: none; stroke: var(--p2); stroke-width: 5px; stroke-linecap: round; opacity: 0.8; }
+.hp-pet-svg .pt-drops path { fill: var(--p3); }
+.hp-pet-svg .pt-bow path { fill: none; stroke-width: 6px; }
+.hp-pet-svg .pt-flame path { fill: #ffb347; stroke: #ff7a2e; stroke-width: 2px; stroke-linejoin: round; }
+
+/* Moving parts. */
+.hp-pet-svg .leg, .hp-pet-svg .pt-eyes, .hp-pet-svg .pt-head, .hp-pet-svg .pt-breathe, .hp-pet-svg .leg-back,
+.hp-pet-svg .pt-flame, .hp-pet-svg .pt-bow, .hp-pet-svg .pt-throat, .hp-pet-svg .wisp, .hp-pet-svg .pt-ear { transform-box: fill-box; }
+.hp-pet-svg .leg { transform-origin: 50% 12%; transition: opacity 0.25s; }
+.hp-pet-svg .pt-up { transition: transform 0.35s ease; }
+.hp-pet-svg .pt-tail { animation: pet-swish 2.8s ease-in-out infinite alternate; }
+.hp-pet-svg .pt-eyes { transform-origin: 50% 50%; animation: pet-blink 4.8s var(--blink, 0s) infinite; }
+.hp-pet-svg .pt-shut, .hp-pet-svg .pt-joy, .hp-pet-svg .pt-tongue, .hp-pet-svg .pt-flame { display: none; }
+.hp-pet-svg .pt-head { transform-origin: 30% 90%; transition: transform 0.3s ease; }
+.hp-pet-svg .pt-breathe { transform-origin: 50% 100%; }
+@keyframes pet-swish { from { transform: rotate(-7deg); } to { transform: rotate(8deg); } }
+@keyframes pet-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+@keyframes pet-step { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+@keyframes pet-wag { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+@keyframes pet-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.015, 1.045); } }
+@keyframes pet-nom { from { transform: rotate(0); } to { transform: rotate(9deg) translateY(2px); } }
+@keyframes pet-joy {
+  0%, 100% { transform: none; }
+  30% { transform: translateY(-18%) scaleY(1.05); }
+  55% { transform: translateY(0) scaleY(0.92); }
+  70% { transform: translateY(-5%); }
+}
+/* Walking and running. */
+.hp-pet.walk .leg.a { animation: pet-step 0.44s ease-in-out infinite alternate; }
+.hp-pet.walk .leg.b { animation: pet-step 0.44s ease-in-out infinite alternate-reverse; }
+.hp-pet.run .leg { animation-duration: 0.22s !important; }
+.hp-pet.walk .hp-pet-bounce { animation: pet-trot 0.44s ease-in-out infinite; }
+.hp-pet.run .hp-pet-bounce { animation-duration: 0.22s; }
+@keyframes pet-trot { 0%, 50%, 100% { transform: none; } 25%, 75% { transform: translateY(-2.5%); } }
+.hp-pet-pup.walk .pt-tail, .hp-pet.joy .pt-tail { animation: pet-wag 0.18s ease-in-out infinite alternate; }
+.hp-pet-pup.run .pt-tongue, .hp-pet-pup.joy .pt-tongue { display: inline; }
+/* Lying down (and asleep: eyes shut, breathing slowly). Frogs sit as they are, and cloudlets
+   float lower. */
+.hp-pet.rest .pt-up { transform: translateY(11px); }
+.hp-pet.rest .leg { opacity: 0; }
+.hp-pet-frog.rest .pt-up, .hp-pet-cloud.rest .pt-up { transform: none; }
+.hp-pet-frog.rest .leg { opacity: 1; }
+.hp-pet.rest .pt-tail { animation-duration: 5s; }
+.hp-pet.sleep .pt-eyes { display: none; }
+.hp-pet.sleep .pt-shut { display: inline; }
+.hp-pet.sleep .pt-breathe { animation: pet-breathe 3.2s ease-in-out infinite; }
+.hp-pet.sleep .pt-tail { animation-play-state: paused; }
+/* Glad (just petted): a hop, eyes smiling. */
+.hp-pet.joy .hp-pet-bounce { animation: pet-joy 0.6s ease-out 2; }
+.hp-pet.joy .pt-eyes { display: none; }
+.hp-pet.joy .pt-joy { display: inline; }
+/* Eating: nodding into its bowl. */
+.hp-pet.eat .pt-head { animation: pet-nom 0.28s ease-in-out infinite alternate; }
+.hp-pet.eat .pt-eyes { display: none; }
+.hp-pet.eat .pt-shut { display: inline; }
+/* Hungry: head down, and slower. */
+.hp-pet.sad .pt-head { transform: translateY(2px) rotate(5deg); }
+.hp-pet.sad .pt-tail { animation-duration: 6s; }
+
+/* Frogs hop: in the air, their back legs stretch out; sitting, their throats puff. */
+.hp-pet-frog .leg { animation: none !important; }
+.hp-pet-frog .leg-back { transform-origin: 90% 40%; transition: transform 0.15s; }
+.hp-pet-frog.air .leg-back { transform: rotate(-18deg) translate(-8%, 4%); }
+.hp-pet-frog .pt-throat { transform-origin: 50% 20%; animation: frog-puff 3.6s ease-in-out infinite; }
+.hp-pet-frog.walk .pt-throat { animation: none; }
+@keyframes frog-puff { 0%, 70%, 100% { transform: none; } 80% { transform: scale(1.12, 1.25); } }
+.hp-pet-frog.walk .hp-pet-bounce { animation: none; }
+/* Cloudlets drizzle (and stop, asleep); petted, a rainbow. */
+.hp-pet-svg .pt-drops path { animation: cloud-drip 1.3s linear infinite; }
+.hp-pet-svg .pt-drops path:nth-child(2) { animation-delay: -0.45s; }
+.hp-pet-svg .pt-drops path:nth-child(3) { animation-delay: -0.9s; }
+@keyframes cloud-drip { from { transform: translateY(-6px); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(12px); opacity: 0; } }
+.hp-pet.sleep .pt-drops { display: none; }
+.hp-pet-svg .pt-bow { transform-origin: 50% 100%; opacity: 0; transform: scale(0.6); transition: opacity 0.4s, transform 0.4s; }
+.hp-pet-cloud.joy .pt-bow { opacity: 1; transform: none; }
+.hp-pet-cloud.walk .hp-pet-bounce, .hp-pet-cloud .leg { animation: none; }
+/* Dragons' wings flap (faster when they're off somewhere); petted, a puff of flame. */
+.hp-pet-svg .pt-wing { animation: dragon-flap 0.9s ease-in-out infinite alternate; }
+.hp-pet-dragon.walk .pt-wing, .hp-pet-dragon.joy .pt-wing { animation-duration: 0.3s; }
+.hp-pet-dragon.sleep .pt-wing { animation-play-state: paused; }
+@keyframes dragon-flap { from { transform: rotate(-14deg); } to { transform: rotate(10deg); } }
+.hp-pet-dragon.joy .pt-flame { display: inline; transform-origin: 0% 50%; animation: dragon-puff 0.7s ease-out 2; }
+@keyframes dragon-puff { from { transform: scale(0.2); opacity: 1; } 70% { opacity: 1; } to { transform: scale(1.15); opacity: 0; } }
+/* Spirit foxes' wisps float about them, and their tails' tips glow. */
+.hp-pet-svg .wisp { transform-origin: 50% 50%; animation: fox-wisp 3.4s ease-in-out infinite; }
+.hp-pet-svg .wisp.w2 { animation-duration: 4.4s; animation-direction: reverse; }
+@keyframes fox-wisp { 0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.95; } 33% { transform: translate(5px, -6px) scale(0.8); opacity: 0.6; } 66% { transform: translate(-4px, -3px) scale(1.15); opacity: 1; } }
+.hp-pet-fox .tip { animation: fox-glow 2.4s ease-in-out infinite alternate; }
+@keyframes fox-glow { from { opacity: 0.7; } to { opacity: 1; } }
+
+/* Its name (and how it's doing), over it when it's pointed at or petted. */
+.hp-pet-tag {
+  position: absolute; left: 50%; bottom: 100%;
+  display: grid; justify-items: center;
+  margin-bottom: calc(4px / var(--hp-scale, 1));
+  padding: calc(4px / var(--hp-scale, 1)) calc(10px / var(--hp-scale, 1));
+  border-radius: 999px; background: rgba(22, 16, 32, 0.84); color: #fff;
+  font: 400 calc(11px / var(--hp-scale, 1))/1.2 "Bricolage Grotesque", system-ui, sans-serif; white-space: nowrap;
+  transform: translateX(-50%); opacity: 0; transition: opacity 0.15s; pointer-events: none;
+}
+.hp-pet-tag b { font-size: calc(13px / var(--hp-scale, 1)); }
+.hp-pet-live:hover .hp-pet-tag, .hp-pet-live.tagged .hp-pet-tag { opacity: 1; }
+.hp-editing .hp-pet-tag { display: none; }
+/* Thinking of food (it's hungry). */
+.hp-pet-think {
+  position: absolute; left: 60%; bottom: 84%;
+  display: block; width: calc(30px / var(--hp-scale, 1)); height: calc(30px / var(--hp-scale, 1)); padding: calc(4px / var(--hp-scale, 1));
+  box-sizing: border-box; border-radius: 50%; background: #fff; box-shadow: 0 0 0 calc(2px / var(--hp-scale, 1)) #2a1f33;
+  opacity: 0; transform: scale(0.3); transform-origin: 0 100%; transition: opacity 0.25s, transform 0.25s; pointer-events: none;
+}
+.hp-pet.lf .hp-pet-think { left: auto; right: 60%; transform-origin: 100% 100%; }
+.hp-pet-think.on { opacity: 1; transform: none; }
+.hp-pet-think svg, .hp-pet-bowl svg { display: block; width: 100%; height: 100%; }
+/* Hearts, z's and sparkles coming up from its head. */
+.hp-pet-bits { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.hp-pet-bit { position: absolute; top: 12%; display: block; font-style: normal; animation: pet-rise 1.2s ease-out forwards; }
+@keyframes pet-rise {
+  from { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+  15% { opacity: 1; }
+  to { transform: translate(calc(-50% + var(--pw) * var(--drift, 0)), calc(var(--pw) * -0.95)) scale(1); opacity: 0; }
+}
+.hp-pet-heart, .hp-pet-spark { width: calc(18px / var(--hp-scale, 1)); height: calc(18px / var(--hp-scale, 1)); }
+.hp-pet-heart {
+  background: #ff5f93;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 18'%3E%3Cpath d='M10 18 1.6 9.6A5 5 0 0 1 10 3.3a5 5 0 0 1 8.4 6.3Z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 18'%3E%3Cpath d='M10 18 1.6 9.6A5 5 0 0 1 10 3.3a5 5 0 0 1 8.4 6.3Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.hp-pet-spark {
+  background: var(--pg); animation-duration: 1.4s;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 2 2'%3E%3Cpath d='M0-1Q.14-.14 1 0Q.14.14 0 1Q-.14.14-1 0Q-.14-.14 0-1Z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 2 2'%3E%3Cpath d='M0-1Q.14-.14 1 0Q.14.14 0 1Q-.14.14-1 0Q-.14-.14 0-1Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.hp-pet-z { color: #fff; font: 700 calc(14px / var(--hp-scale, 1))/1 "Pixelify Sans", monospace; text-shadow: 0 0 3px rgba(0, 0, 0, 0.6); animation-duration: 1.9s; }
+/* Its bowl, and its ball. */
+.hp-pet-bowl, .hp-pet-ball { position: absolute; left: 0; top: 0; z-index: 3; display: block; pointer-events: none; transition: opacity 0.5s; }
+.hp-pet-bowl { animation: pet-plop 0.35s ease-out; }
+@keyframes pet-plop { from { opacity: 0; translate: 0 -20px; } }
+.hp-pet-ball {
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #fff 0 12%, transparent 13%), conic-gradient(#ff5f8f 0 25%, #ffe14d 0 50%, #57c7ff 0 75%, #6be07e 0);
+  box-shadow: 0 0 0 calc(2px / var(--hp-scale, 1)) #2a1f33;
+  transition: transform 0.7s cubic-bezier(0.2, 0.75, 0.3, 1), opacity 0.5s;
+}
+.hp-pet-bowl.gone, .hp-pet-ball.gone { opacity: 0; }
+/* Its owner's care card: how it's doing, and feeding it or playing with it. */
+.hp-pet-care {
+  position: absolute; z-index: 7; width: 240px; box-sizing: border-box;
+  display: grid; gap: 8px; padding: 14px 14px 12px;
+  background: #fffaf0; color: #3b2f25;
+  border: 2px solid #3b2f25; border-radius: 16px;
+  box-shadow: 0 16px 34px -12px rgba(0, 0, 0, 0.6);
+  font: 400 14px/1.3 "Bricolage Grotesque", system-ui, sans-serif;
+}
+.hp-pet-care[hidden] { display: none; }
+.hp-pet-care strong { padding-right: 24px; font: 700 17px/1.15 "Pixelify Sans", "Bricolage Grotesque", sans-serif; overflow-wrap: anywhere; }
+.hp-pet-x { position: absolute; top: 4px; right: 6px; padding: 2px 6px; border: 0; background: none; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
+.hp-pet-meters { display: grid; gap: 6px; }
+.hp-pet-meter { display: grid; grid-template-columns: 44px minmax(0, 1fr) 76px; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+.hp-pet-meter .bar { height: 10px; overflow: hidden; border-radius: 999px; background: #eadfc8; box-shadow: inset 0 0 0 1.5px #3b2f25; }
+.hp-pet-meter .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff9f43, #ffd23f); box-shadow: inset 0 0 0 1.5px #3b2f25; transition: width 0.4s; }
+.hp-pet-meter.happy .bar i { background: linear-gradient(90deg, #ff6b9d, #ffb3d1); }
+.hp-pet-meter em { color: #8a7457; font-size: 12px; font-style: normal; text-align: right; }
+.hp-pet-sub, .hp-pet-msg { margin: 0; color: #8a7457; font-size: 12.5px; }
+.hp-pet-msg { color: #b3263e; font-weight: 650; }
+.hp-pet-do { display: flex; gap: 8px; }
+.hp-pet-do button {
+  flex: 1; min-width: 0; padding: 8px 10px;
+  border: 2px solid #3b2f25; border-radius: 999px;
+  background: #ffd23f; color: #3b2f25;
+  font: 700 14px/1.1 "Pixelify Sans", "Bricolage Grotesque", sans-serif; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hp-pet-do .play { flex: none; background: #ff9fc9; }
+.hp-pet-do button:hover { filter: brightness(1.05); transform: translateY(-1px); }
+
 @media (prefers-reduced-motion: reduce) {
   .hp-fx-rainbow .hp-ink, .hp-fx-blink .hp-ink, .hp-fx-marquee .hp-ink, .hp-fx-wave .hp-ink span,
   .hp-fx-shimmer .hp-ink, .hp-fx-lamplight .hp-ink, .hp-frame-neon,
-  .hp-sky::before, .hp-sky::after,
-  .hp-playing .hp-bars i, .hp-playing .hp-reels i, .hp-playing .hp-song span { animation: none; }
+  .hp-sky::before, .hp-sky::after, .hp-backdrop i, .hp-ball-mist, .hp-asking .hp-ball,
+  .hp-pet *, .hp-pet-bit,
+  .hp-playing .hp-bars i, .hp-playing .hp-reels i, .hp-playing .hp-song span { animation: none !important; }
   .hp-fx-marquee .hp-ink { padding-left: 0; }
 }
 
@@ -845,6 +1132,24 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 
 /* Trying a Glow extra on (someone without Glow): lit with a dashed ring, and a note under them
    that it isn't saved (with the way to Glow's box, which the GLOW tag opens too). */
+/* Picking a pet: each one there to see, as it is, standing about. */
+.hp-pet-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.hp-pet-pick {
+  display: grid; justify-items: center; gap: 2px;
+  width: 104px; padding: 8px 6px 7px;
+  background: #fff; color: #3b2f25;
+  border: 1px solid #e0d2b6; border-radius: 12px; box-shadow: 0 2px 0 #e0d2b6;
+  font-size: 13px; font-weight: 650;
+}
+.hp-pet-pick:hover { border-color: #b99b6b; transform: translateY(-1px); }
+.hp-pet-pick[aria-pressed="true"] { border-color: #3b2f25; box-shadow: 0 0 0 2px #3b2f25; }
+.hp-pet-pick .hp-pet { width: 72px; height: 60px; --pw: 72px; }
+.hp-pet-empty { display: grid; place-items: center; width: 60px; height: 60px; }
+.hp-pet-empty::before { content: ''; width: 34px; height: 34px; border: 2px dashed #cdb68f; border-radius: 50%; }
+.hp-coat { display: inline-flex; align-items: center; gap: 6px; }
+.hp-coat-dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 1px rgba(59, 47, 37, 0.45); }
+.hp-pet-care-tray { max-width: 360px; margin-bottom: 8px; }
+
 button.hp-perk-tag { border: 0; cursor: pointer; }
 .hp-chip-trying { outline: 2px dashed #b77bff; outline-offset: 2px; }
 .hp-perks .hp-perk-note { margin: 10px 0 0; color: #6b5840; font-size: 12.5px; }

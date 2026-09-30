@@ -11574,6 +11574,7 @@ async function openGlow({ because = '' } = {}) {
   el.glowBecause.hidden = !because;
   if (because) withGlow(el.glowBecause, because);
   renderGlowInfo();
+  showGlowExtras();
   if (!el.glow.open) el.glow.showModal();
   el.glow.scrollTop = 0;
   if (!glowInfo) {
@@ -11584,6 +11585,34 @@ async function openGlow({ because = '' } = {}) {
     }
     renderGlowInfo();
   }
+}
+
+// Glow's pets (walking along) and moving patterns, drawn by homepage.js, the first time the box
+// opens; and over its homepage extras, sparkles behind the pointer and confetti for a click.
+let glowExtrasShown = false;
+function showGlowExtras() {
+  if (glowExtrasShown || !window.Homepage || !Homepage.petEl) return;
+  glowExtrasShown = true;
+  const pets = el.glow.querySelector('[data-glow-pets]');
+  for (const [kind, coat] of [['cloud', 'day'], ['dragon', 'violet'], ['fox', 'twilight']]) {
+    const pet = Homepage.petEl(kind, coat);
+    pet.classList.add('walk');
+    const item = document.createElement('span');
+    item.className = 'glow-pet';
+    item.append(pet, Homepage.PETS[kind].label);
+    pets.append(item);
+  }
+  const patterns = el.glow.querySelector('[data-glow-patterns]');
+  for (const [pattern, c1, c2] of [['starfield', '#0f1433', '#fff4c8'], ['bokeh', '#2a1640', '#ff9ad5'], ['holo', '#232a5c', '#9fd8ff'], ['waves', '#0d3553', '#8fe3ff']]) {
+    const item = document.createElement('span');
+    item.className = 'glow-sky-item';
+    const tile = document.createElement('span');
+    tile.className = 'glow-sky glow-pattern';
+    tile.append(Homepage.patternSwatch(pattern, c1, c2));
+    item.append(tile, Homepage.PATTERNS[pattern]);
+    patterns.append(item);
+  }
+  Homepage.effectsOver(el.glow.querySelector('.glow-homepage'), { trail: 'sparkles', click: 'confetti' });
 }
 
 function renderGlowInfo() {

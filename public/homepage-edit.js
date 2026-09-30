@@ -121,7 +121,8 @@
     const page = $('hp-page');
     const top = page.scrollTop;
     const doc = state.trying ? tried() : state.doc;
-    state.mounted = H.mount(page, { owner: state.data.owner, doc, views: state.data.views }, { edit: state.editing, report: app.report });
+    const { owner, views, pet, mine } = state.data;
+    state.mounted = H.mount(page, { owner, doc, views, pet, mine }, { edit: state.editing, report: app.report });
     page.scrollTop = top;
     if (state.editing) drawPicked();
   }
@@ -310,8 +311,10 @@
     state.dirty = false;
     try {
       const data = await app.api('PUT', '/homepages/me', { doc: state.doc });
-      Object.assign(state.data, { doc: data.doc, usage: data.usage, visibility: data.visibility });
+      const hadPet = Boolean(state.data.pet);
+      Object.assign(state.data, { doc: data.doc, usage: data.usage, visibility: data.visibility, pet: data.pet || null });
       if (!state.dirty) setSaved('Saved');
+      if (state.tab === 'pet' && !state.picked && hadPet !== Boolean(data.pet)) renderTray(); // (its care, now it's moved in)
     } catch (err) {
       state.dirty = true;
       setSaved(err.status === 413 ? 'Too big to save' : "Couldn't save. Trying again…", true);
@@ -725,7 +728,7 @@
 
   // ---------- The drawer ----------
 
-  const TABS = [['write', 'Write'], ['stickers', 'Stickers'], ['pictures', 'Pictures'], ['tape', 'Tape & paper'], ['oldweb', 'Old web'], ['page', 'Page']];
+  const TABS = [['write', 'Write'], ['stickers', 'Stickers'], ['pictures', 'Pictures'], ['tape', 'Tape & paper'], ['oldweb', 'Old web'], ['pet', 'Pet'], ['page', 'Page']];
 
   function renderTabs() {
     const tabs = $('hp-tabs');
@@ -745,7 +748,7 @@
     const tray = $('hp-tray');
     const top = tray.scrollTop;
     const p = piece(state.picked);
-    tray.replaceChildren(...(p ? pickedPanel(p) : { write: writeTab, stickers: stickersTab, pictures: picturesTab, tape: tapeTab, oldweb: oldWebTab, page: pageTab }[state.tab]()));
+    tray.replaceChildren(...(p ? pickedPanel(p) : { write: writeTab, stickers: stickersTab, pictures: picturesTab, tape: tapeTab, oldweb: oldWebTab, pet: petTab, page: pageTab }[state.tab]()));
     if (p) tray.scrollTop = top;
   }
 
@@ -853,43 +856,141 @@
           class: 'hp-item wide', type: 'button', text: '88x31 button',
           onclick: () => add({ t: 'button', text: 'my page', icon: 'flame', style: 'bevel', c1: '#1b2a8f', c2: '#ffffff', font: 'tiny', href: '', w: 132, h: 46.5 }),
         })),
-      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers; an 88x31 button can link to a friend\'s page.' }),
+      ...(supporter() || glowOffered() ? [el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, glowItem('fortune', 'Fortune ball', 'The fortune ball', {
+        t: 'fortune', color: '#b98bff', label: 'ask me something, then click me', answers: [], w: 200, h: 250,
+      })), tryingNow('piece:')))] : []),
+      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers; an 88x31 button can link to a friend\'s page. A fortune ball answers whatever visitors ask it.' }),
     ];
   }
 
-  // Choices, as a row of chips. Supporters' extras (`extras`) have a little raindrop; for anyone
-  // else they're there to see but not to pick (unless one's on the page already), and in an app
-  // that can't mention supporting, they're left out.
-  // (The extras go together after the rest, in a box in the supporter colours with its name on a
-  // tag, like the supporters' themes in Settings.)
-  function chips(options, current, onPick, style, extras = []) {
-    const supporter = Boolean(state.data && state.data.supporter);
-    const offered = !app ? true : app.glowShown ? app.glowShown() : !app.offersSupport || app.offersSupport();
+  // ---------- Glow's ----------
+  const supporter = () => Boolean(state.data && state.data.supporter);
+  // (Whether this app can show Glow: not the Play Store's.)
+  const glowOffered = () => (!app ? true : app.glowShown ? app.glowShown() : !app.offersSupport || app.offersSupport());
+  // What's being tried on, if its key starts with `prefix` (without it).
+  const tryingNow = (prefix) => (state.trying && state.trying.key.startsWith(prefix) ? state.trying.key.slice(prefix.length) : null);
+  const seeGlow = () => app && app.openGlow && app.openGlow();
+
+  // Glow's things together, in a box in the Glow colours with its name on a tag across the top
+  // (like Glow's themes in Settings), and, while one's tried on, a note that it isn't saved.
+  function perkBox(content, trying) {
+    const note = trying ? el('p', { class: 'hp-perk-note' },
+      `Trying ${state.trying.label.replace(/^The /, 'the ')} on: it isn't saved. `,
+      el('button', { class: 'hp-perk-more', type: 'button', text: 'See Glow', onclick: seeGlow })) : null;
+    return el('div', { class: 'hp-perks', role: 'group', 'aria-label': 'Comes with Glow' },
+      el('button', { class: 'hp-perk-tag', type: 'button', title: "What's Glow?", text: (app && app.perkName) || 'Glow', onclick: seeGlow }),
+      content, note);
+  }
+
+  // A piece that comes with Glow: added, or (without Glow) tried on.
+  function glowItem(key, text, label, fields) {
+    const trying = tryingNow('piece:') === key;
+    return el('button', {
+      class: `hp-item wide${trying ? ' hp-chip-trying' : ''}`, type: 'button', text,
+      title: supporter() ? undefined : 'Comes with Glow: try it on',
+      onclick: () => {
+        if (supporter()) return add(clone(fields));
+        tryOn(`piece:${key}`, label, () => {
+          const p = { id: newId(), r: 0, ...clone(fields) };
+          Object.assign(p, spot(p.w, p.h));
+          change((doc) => doc.pieces.push(p));
+        });
+      },
+    });
+  }
+
+  // ---------- Your pet ----------
+  // Which one lives on your page (Glow's three there to try on), its name and colours, and how
+  // it's doing, with feeding it and playing with it (which clicking it on your page does too).
+  function petTab() {
+    const pet = state.doc.pet || null;
+    const tryingKind = tryingNow('pet:');
+    const setPet = (kind) => change((d) => {
+      const was = d.pet;
+      const named = was && was.name && was.name !== (H.PETS[was.kind] || {}).name;
+      d.pet = { kind, name: named ? was.name : H.PETS[kind].name, coat: Object.keys(H.PETS[kind].coats)[0] };
+    });
+    const card = (kind) => {
+      const info = H.PETS[kind];
+      const locked = H.PERKS.pet.includes(kind) && !supporter() && !(pet && pet.kind === kind);
+      if (locked && !glowOffered()) return null;
+      const on = tryingKind ? tryingKind === kind : Boolean(pet && pet.kind === kind);
+      return el('button', {
+        class: `hp-pet-pick${tryingKind === kind ? ' hp-chip-trying' : ''}`, type: 'button', 'aria-pressed': String(on),
+        title: locked ? 'Comes with Glow: try it on' : undefined,
+        onclick: () => (locked ? tryOn(`pet:${kind}`, `The ${info.label.toLowerCase()}`, () => setPet(kind)) : setPet(kind)),
+      }, H.petEl(kind, pet && pet.kind === kind ? pet.coat : undefined), el('span', { text: info.label }));
+    };
+    const none = el('button', {
+      class: 'hp-pet-pick hp-pet-none', type: 'button', 'aria-pressed': String(!pet && !tryingKind),
+      onclick: () => change((d) => { delete d.pet; }),
+    }, el('span', { class: 'hp-pet-empty', 'aria-hidden': 'true' }), el('span', { text: 'No pet' }));
+    const out = [h3('A pet for your page'), el('div', { class: 'hp-pet-picks' }, ...Object.keys(H.PETS).filter((k) => !H.PERKS.pet.includes(k)).map(card), none)];
+    const glow = H.PERKS.pet.map(card).filter(Boolean);
+    if (glow.length) out.push(perkBox(el('div', { class: 'hp-pet-picks' }, ...glow), tryingKind));
+    if (pet) {
+      const name = el('input', { type: 'text', maxlength: '24', value: pet.name || '', placeholder: H.PETS[pet.kind].label });
+      name.addEventListener('change', () => change((d) => { if (d.pet) d.pet.name = name.value.trim().slice(0, 24); }));
+      const coats = el('div', { class: 'hp-chips' }, ...Object.entries(H.PETS[pet.kind].coats).map(([key, c]) => el('button', {
+        class: 'hp-chip hp-coat', type: 'button', 'aria-pressed': String(pet.coat === key),
+        onclick: () => change((d) => { if (d.pet) d.pet.coat = key; }),
+      }, el('span', { class: 'hp-coat-dot', style: { background: `linear-gradient(135deg, ${c.p1} 50%, ${c.p3 || c.p2} 50%)` } }), c.label)));
+      out.push(el('div', { class: 'hp-two', style: { marginTop: '14px' } }, field('Its name', name), field('Its colours', coats)), ...care(pet));
+    }
+    out.push(el('p', { class: 'hp-note-small', style: { marginTop: '10px' }, text: "Your pet wanders around your page, naps, and comes to see what visitors' pointers are up to. Anyone who can see your page can pet it. You look after it: feed it, and play with it to cheer it up. It never gets ill or runs away; hungry, it just mopes until you feed it." }));
+    return out;
+  }
+
+  // How it's doing (once it's moved in: saved), and feeding it and playing with it.
+  function care(pet) {
+    const st = state.data.pet;
+    const name = pet.name || H.PETS[pet.kind].label;
+    if (!st || !(state.data.doc && state.data.doc.pet)) return [el('p', { class: 'hp-note-small', text: `Once your page has saved, you can look after ${name} here.` })];
+    const days = Math.max(1, Math.ceil((Date.now() - st.since) / 86_400_000));
+    const tend = (what) => async () => {
+      try {
+        const d = await app.api('POST', `/homepages/me/pet/${what}`);
+        state.data.pet = d.pet;
+        H.petDid($('hp-page'), what, d.pet);
+        renderTray();
+      } catch (err) {
+        note(err.message);
+      }
+    };
+    return [h3(`Looking after ${name}`), el('div', { class: 'hp-pet-meters hp-pet-care-tray' }, ...H.petMeters(st)),
+      el('p', { class: 'hp-note-small', text: `Petted ${st.pets.toLocaleString()} ${st.pets === 1 ? 'time' : 'times'}, on your page ${days} ${days === 1 ? 'day' : 'days'}.` }),
+      el('div', { class: 'hp-row' },
+        el('button', { class: 'hp-tool dark', type: 'button', text: `Feed ${name}`, onclick: tend('feed') }),
+        el('button', { class: 'hp-tool', type: 'button', text: 'Play', onclick: tend('play') }))];
+  }
+
+  // Choices, as a row of chips. Glow's extras (`extras`) have a little raindrop; for anyone else
+  // they're there to try on (unless one's on the page already: that's theirs), and in an app that
+  // can't mention Glow, they're left out. (`ns`: what the row's keys are tried on as, where
+  // another row has the same ones.)
+  // (The extras go together after the rest, in a box in the Glow colours: perkBox.)
+  function chips(options, current, onPick, style, extras = [], ns = '') {
+    const offered = glowOffered();
     // (Trying one of this row's on: that's the one lit.)
-    const trying = state.trying && Object.prototype.hasOwnProperty.call(options, state.trying.key) ? state.trying.key : null;
+    const tried = tryingNow(ns);
+    const trying = tried !== null && Object.prototype.hasOwnProperty.call(options, tried) ? tried : null;
     const chip = ([key, label]) => {
       const extra = extras.includes(key);
-      const locked = extra && !supporter && key !== current;
+      const locked = extra && !supporter() && key !== current;
       if (locked && !offered) return null;
       return el('button', {
         class: `hp-chip${extra ? ' hp-chip-extra' : ''}${key === trying ? ' hp-chip-trying' : ''}`, type: 'button',
         'aria-pressed': String((trying || current) === key), text: label,
         style: style ? style(key) : undefined,
         title: extra ? (locked ? 'Comes with Glow: try it on' : "One of Glow's extras") : undefined,
-        onclick: () => (locked ? tryOn(key, label, onPick) : onPick(key)),
+        onclick: () => (locked ? tryOn(ns + key, label, () => onPick(key)) : onPick(key)),
       });
     };
     const all = Object.entries(options);
     const row = el('div', { class: 'hp-chips' }, ...all.filter(([key]) => !extras.includes(key)).map(chip).filter(Boolean));
     const perks = all.filter(([key]) => extras.includes(key)).map(chip).filter(Boolean);
     if (!perks.length) return row;
-    const note = trying ? el('p', { class: 'hp-perk-note' },
-      `Trying ${state.trying.label} on: it isn't saved. `,
-      el('button', { class: 'hp-perk-more', type: 'button', text: 'See Glow', onclick: () => app && app.openGlow && app.openGlow() })) : null;
-    return el('div', { class: 'hp-chip-sets' }, row,
-      el('div', { class: 'hp-perks', role: 'group', 'aria-label': 'Comes with Glow' },
-        el('button', { class: 'hp-perk-tag', type: 'button', title: "What's Glow?", text: (app && app.perkName) || 'Glow', onclick: () => app && app.openGlow && app.openGlow() }),
-        el('div', { class: 'hp-chips' }, ...perks), note));
+    return el('div', { class: 'hp-chip-sets' }, row, perkBox(el('div', { class: 'hp-chips' }, ...perks), trying));
   }
 
   function colors(current, onPick) {
@@ -912,10 +1013,23 @@
     const kinds = bg.file ? { pattern: 'Pattern', color: 'Color', image: 'Picture' } : { pattern: 'Pattern', color: 'Color' };
     const out = [h3('Background'), chips(kinds, bg.kind, (kind) => setBg({ kind }))];
     if (bg.kind === 'pattern') {
-      out.push(el('div', { class: 'hp-grid', style: { marginTop: '10px' } }, ...Object.entries(H.PATTERNS).map(([key, label]) => {
-        const swatch = el('span', { style: { display: 'block', width: '100%', height: '100%', borderRadius: '6px', ...H.backgroundStyle({ kind: 'pattern', pattern: key, c1: bg.c1, c2: bg.c2 }) } });
-        return el('button', { class: 'hp-item hp-swatch', type: 'button', title: label, 'aria-pressed': String(bg.pattern === key), style: { padding: '3px', outline: bg.pattern === key ? '2px solid #3b2f25' : '' }, onclick: () => setBg({ pattern: key }) }, swatch);
-      })));
+      // (Glow's move: they're in its box, to try on.)
+      const tryingPattern = tryingNow('pattern:');
+      const swatch = ([key, label]) => {
+        const locked = H.PERKS.pattern.includes(key) && !supporter() && key !== bg.pattern;
+        if (locked && !glowOffered()) return null;
+        const on = (tryingPattern || bg.pattern) === key;
+        const pickIt = () => setBg({ pattern: key });
+        return el('button', {
+          class: `hp-item hp-swatch${key === tryingPattern ? ' hp-chip-trying' : ''}`, type: 'button', title: locked ? `${label} (comes with Glow: try it on)` : label,
+          'aria-pressed': String(on), style: { padding: '3px', outline: on && key !== tryingPattern ? '2px solid #3b2f25' : '' },
+          onclick: () => (locked ? tryOn(`pattern:${key}`, label, pickIt) : pickIt()),
+        }, H.patternSwatch(key, bg.c1, bg.c2));
+      };
+      const all = Object.entries(H.PATTERNS);
+      out.push(el('div', { class: 'hp-grid', style: { marginTop: '10px' } }, ...all.filter(([key]) => !H.PERKS.pattern.includes(key)).map(swatch).filter(Boolean)));
+      const moving = all.filter(([key]) => H.PERKS.pattern.includes(key)).map(swatch).filter(Boolean);
+      if (moving.length) out.push(el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, ...moving), tryingPattern)));
     }
     if (bg.kind !== 'image') {
       out.push(field(bg.kind === 'pattern' ? 'Background color' : 'Color', colors(bg.c1, (c) => setBg({ c1: c }))));
@@ -925,6 +1039,18 @@
     if (bg.kind === 'image') out.push(field('Picture', chips({ cover: 'Fill the page', tile: 'Repeat it' }, bg.fit, (fit) => setBg({ fit }))));
 
     out.push(h3('Weather'), chips(H.SKIES, bg.sky, (sky) => setBg({ sky }), null, H.PERKS.sky));
+
+    // What visitors see as they move their pointer about, and click (Glow's). Picking one shows it.
+    const fx = doc.effects || {};
+    const setFx = (fields) => {
+      change((d) => { d.effects = { trail: 'none', click: 'none', ...(d.effects || {}), ...fields }; });
+      setTimeout(() => H.showEffects($('hp-page'), fields), 60);
+    };
+    if (supporter() || glowOffered() || fx.trail || fx.click) {
+      out.push(h3('For your visitors'),
+        field('A trail behind their pointer', chips(H.TRAILS, fx.trail || 'none', (trail) => setFx({ trail }), null, H.PERKS.trail, 'trail:')),
+        field('When they click', chips(H.CLICKS, fx.click || 'none', (click) => setFx({ click }), null, H.PERKS.click, 'click:')));
+    }
 
     const length = el('input', { type: 'range', min: '600', max: '6000', step: '100', value: String(doc.height) });
     length.addEventListener('change', () => change((d) => { d.height = Number(length.value); }));
@@ -964,7 +1090,7 @@
   // The picked piece's settings.
   function pickedPanel(p) {
     const set = (fields) => change(() => Object.assign(p, fields));
-    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter', guestbook: 'Guestbook', music: 'Music player', shelf: 'Shelf', button: '88x31 button', ask: 'Ask me anything' };
+    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter', guestbook: 'Guestbook', music: 'Music player', shelf: 'Shelf', button: '88x31 button', ask: 'Ask me anything', fortune: 'Fortune ball' };
     const words = (label, key, max, placeholder) => {
       const input = el('input', { type: 'text', maxlength: String(max), value: p[key] || '', placeholder });
       input.addEventListener('change', () => set({ [key]: input.value.trim() }));
@@ -1166,6 +1292,14 @@
         field('A sticker on it', icons),
         field('Font', fonts('font')),
         linkField());
+    } else if (p.t === 'fortune') {
+      const answers = el('textarea', { rows: '5', maxlength: '1300', placeholder: 'one answer on each line (or leave it empty for its forecasts: "The clouds say yes.", "Foggy... ask again."...)' });
+      answers.value = (p.answers || []).join('\n');
+      answers.addEventListener('change', () => set({ answers: answers.value.split('\n').map((a) => a.trim().slice(0, 60)).filter(Boolean).slice(0, 20) }));
+      out.push(el('p', { class: 'hp-note-small', text: 'Visitors ask it something, then click it for an answer.' }),
+        words('Words with it', 'label', 50, 'ask me something, then click me'),
+        field('Its glow', colors(p.color, (color) => set({ color }))),
+        field('Its answers (up to 20)', answers));
     }
     return out;
   }

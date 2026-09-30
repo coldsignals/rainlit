@@ -2553,11 +2553,23 @@ button.perk-tag:hover { filter: brightness(1.08); }
 @keyframes glow-downpour { to { background-position: 0 26px; } }
 @keyframes glow-snow { to { background-position: 0 24px, 0 0; } }
 @keyframes glow-blink { 50% { opacity: 0.3; } }
-/* (A homepage's extras, as they are on a page: a little night page of their own.) */
+/* (Glow's pets, walking along, on a little meadow at night.) */
+.glow-pets {
+  justify-content: space-around; gap: 10px 18px; padding: 14px 12px 8px; border-radius: 14px;
+  background: radial-gradient(ellipse 70% 40% at 50% 100%, rgba(120, 200, 140, 0.22), transparent 70%), linear-gradient(170deg, #161d3d, #28265a);
+}
+.glow-pet { display: grid; justify-items: center; gap: 4px; color: #cfd6f2; font-size: 12.5px; font-weight: 650; }
+.glow-pet .hp-pet { width: 110px; height: 92px; --pw: 110px; }
+/* (A homepage's extras, as they are on a page: a little night page of their own, with sparkles
+   behind the pointer over it, and confetti for a click.) */
 .glow-homepage {
+  position: relative; overflow: hidden;
   gap: 14px 24px; padding: 14px 16px; border-radius: 14px;
   background: radial-gradient(circle at 18% 22%, rgba(245, 215, 110, 0.16), transparent 42%), linear-gradient(160deg, #1b2140, #2b2f5c);
 }
+.glow-patterns { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 12px 14px; }
+.glow-pattern .hp-pattern-swatch { border-radius: 0; }
+.glow-pattern .hp-backdrop { width: 200%; height: 200%; transform: scale(0.5); }
 .glow-words { display: grid; font: 400 25px/1.25 Pacifico, cursive; }
 .glow-words .hp-fx-shimmer { --ink: #ffcf6b; }
 .glow-words .hp-fx-lamplight { --c3: #ff8fc6; color: #fff3f9; }
@@ -2605,6 +2617,7 @@ button.perk-tag:hover { filter: brightness(1.08); }
   .glow-perks { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 16px 14px 6px; }
   .glow-themes .theme-mini { width: 104px; height: 64px; }
   .glow-sky { width: 104px; height: 62px; }
+  .glow-pet .hp-pet { width: 84px; height: 70px; --pw: 84px; }
   .glow-why { display: none; }
   .glow-foot { gap: 6px; padding: 16px 14px 14px; }
   .glow-get { padding: 11px 22px; font-size: 15px; }

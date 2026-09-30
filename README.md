@@ -204,10 +204,26 @@ from your own (**Your homepage**, then **Edit**).
   link (a link to someone's homepage opens it right in Rainlit).
 - **The page:** a pattern, a color or your own picture behind it, weather
   over it (rain, snow, sparkles, floating hearts), and a name for it.
-- **Glow's extras:** people with Glow also get fireflies, an
+- **A pet:** a cat, a pup or a frog (each in four colours, with a name) lives
+  on your page, like a Tamagotchi or the desktop pets of old. It wanders
+  around the part of the page that's showing (and follows along as it's
+  scrolled), naps, and comes over to see what the pointer's up to. Anyone who
+  can see your page can pet it: it hops, hearts come up, and it counts how many
+  times it's been petted. You look after it (the **Pet** tab, or click it on
+  your page): feed it (a bowl comes, and it eats) and play with it (it chases a
+  ball). It gets hungry over three days and glum over two, but never ill, and
+  never runs away; hungry, it just mopes about, thinking of food, until it's fed.
+- **Glow's extras:** people with Glow also get three more pets (a cloudlet
+  that makes rainbows when it's petted, a dragon that puffs flames, and a spirit
+  fox with glowing tails), backgrounds that move (a starfield, bokeh lights,
+  holographic foil and waves, in the page's colours), effects for visitors (a
+  trail of sparkles, hearts, stars, bubbles or raindrops behind their pointer,
+  and confetti, hearts, stars or ripples where they click), a fortune ball
+  visitors ask things (with its forecasts, or answers you write), fireflies, an
   aurora, a thunderstorm and cherry blossoms for weather, Shimmer and
   Lamplight words, and Gilded and Neon frames, and room for 200 MB and 500
-  pieces. If they stop, what's on their page stays.
+  pieces. Anyone can try them on in the editor (nothing's saved). If Glow ends,
+  what's on the page stays, until it's switched off.
 - **Who can see it:** your friends, people in your spaces too (like your
   profile card; that's where it starts), or anyone with its link,
   `rainlit.app/@yourname`, even without an account, to put in a bio anywhere.
@@ -235,7 +251,8 @@ it and keep it that way, for $5 a month or $50 a year (and tips), at
 marked with a Glow tag wherever it is, and it's more of what costs money: files up
 to 100 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
 channels (1080p at up to 60 fps, while it fits in what Cloudflare sends for
-free), no slower start for a new account, homepage extras, five themes with
+free), no slower start for a new account, homepage extras (three more pets,
+moving backgrounds, effects for visitors, a fortune ball...), five themes with
 weather of their own (Sakura, Monsoon, Fireflies, Maple and Aurora), and a badge, a
 raindrop that gathers light the longer they support (Drizzle, then Shower,
 Downpour, Storm, Monsoon and Lamplight). If they stop, it dims, and keeps its

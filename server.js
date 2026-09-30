@@ -1275,6 +1275,29 @@ api.delete('/homepages/me/question-stops', needUser, (req, res) => {
   res.json({ ok: true, stoppedCount: 0 });
 });
 
+// A page's pet: anyone who can see the page can pet it (without an account too, if the page is
+// public); its owner feeds it and plays with it.
+api.post('/homepages/:who/pet', (req, res) => {
+  const found = guestbookPage(req, res);
+  if (!found) return;
+  if (!found.page.doc || !found.page.doc.pet) return fail(res, 400, "There's no pet on this page.");
+  res.json({ pet: homepages.petIt(found.owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip)) });
+});
+
+api.post('/homepages/me/pet/:what', needUser, (req, res) => {
+  const { doc } = homepages.get(req.user.id);
+  const pet = doc && doc.pet;
+  if (!pet) return fail(res, 400, "There's no pet on your page.");
+  try {
+    if (req.params.what === 'feed') return res.json({ pet: homepages.feed(req.user.id, pet.name || 'Your pet') });
+    if (req.params.what === 'play') return res.json({ pet: homepages.play(req.user.id) });
+  } catch (err) {
+    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    throw err;
+  }
+  fail(res, 404, 'Not found.');
+});
+
 // ----- Conversations -----
 //
 // A conversation is a DM between two friends, or a channel in a space. Either way,
