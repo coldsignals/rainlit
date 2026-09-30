@@ -133,7 +133,7 @@ for (const id of [
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
-  'theme-list', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
+  'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
   'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
@@ -6543,6 +6543,9 @@ const THEMES = [
   { id: 'fireflies', name: 'Fireflies', extra: true, weather: 'fireflies', about: 'a summer night in the woods, with fireflies' },
 ];
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
+// What supporters get is marked with this, on a tag (see .perk-box): the plan's name, when it has
+// one of its own (like Discord's "Nitro").
+const PERK_NAME = 'Supporters';
 const supporting = () => Boolean(S.me && S.me.supporter && S.me.supporter.active);
 const lightDevice = matchMedia('(prefers-color-scheme: light)');
 
@@ -6584,18 +6587,41 @@ function pickTheme(id) {
   }
   S.themeTry = '';
   setTheme(t.id);
-  if (S.me) api('PATCH', '/me', { theme: t.id }).then(({ user }) => setMe(user)).catch((err) => toast(err.message));
+  if (S.me) saveTheme(t.id);
+}
+
+// Saving it to your account: one at a time, and only the latest pick, so picking one after
+// another quickly ends on the last one, here and on the server. (Your other devices hear from the
+// server; so does this one.)
+let themeSaving = null;
+function saveTheme(id) {
+  S.themeWanted = id;
+  if (themeSaving) return; // (sent when the one on its way now is done)
+  themeSaving = (async () => {
+    let sent = null;
+    while (S.themeWanted !== sent) {
+      sent = S.themeWanted;
+      try {
+        await api('PATCH', '/me', { theme: sent });
+      } catch (err) {
+        toast(err.message);
+        break;
+      }
+    }
+    themeSaving = null;
+  })();
 }
 
 // Your account's theme (from another device, say). One that's never had one picked gets this
 // device's; one that's stopped supporting, Rainlit's own again (the server says: lib/themes.js).
 function takeAccountTheme(user) {
+  if (themeSaving) return; // (a pick of yours is on its way: that's the one)
   if (user.theme) {
     if (user.theme !== S.theme) setTheme(user.theme);
   } else if (themeById(S.theme).extra && !supporting()) {
     setTheme('rainlit');
   } else if (S.theme !== 'rainlit') {
-    api('PATCH', '/me', { theme: S.theme }).catch(() => {});
+    saveTheme(S.theme);
   }
 }
 
@@ -6631,8 +6657,8 @@ function renderThemes() {
   // (Supporters' themes, for anyone else to try on: not in an app that can't mention supporting.)
   const extras = THEMES.filter((t) => t.extra && (supporting() || offered));
   el.themeExtras.replaceChildren(...extras.map(card));
-  el.themeExtras.hidden = el.themeExtrasTitle.hidden = !extras.length;
-  el.themeExtrasTitle.textContent = supporting() ? 'Yours for supporting Rainlit, each with weather of its own' : 'For people supporting Rainlit, each with weather of its own';
+  el.themeExtrasBox.hidden = !extras.length;
+  el.themeExtrasTitle.textContent = supporting() ? 'Yours for supporting Rainlit, each with weather of its own' : 'Each with weather of its own: try one on';
   const trying = S.themeTry ? themeById(S.themeTry) : null;
   el.themeTry.hidden = !trying;
   if (trying) el.themeTryText.textContent = `${trying.name}: ${trying.about}. It's one of the themes for people supporting Rainlit; yours comes back when you close Settings.`;
@@ -12936,6 +12962,7 @@ async function init() {
     spaceEmoji: myEmoji,
     me: () => S.me,
     offersSupport,
+    perkName: PERK_NAME,
   });
 
   // ----- A friend's menu -----
@@ -13431,6 +13458,7 @@ async function init() {
     showTheme();
   });
   el.themeTryBtn.addEventListener('click', openSupportPage);
+  for (const tag of document.querySelectorAll('[data-perk-name]')) tag.textContent = PERK_NAME;
   // Feedback: to the people making Rainlit (on rainlit.app), or whoever runs this server.
   el.feedbackNote.textContent = OFFICIAL ? 'Found a bug, or have an idea? Send it straight to the people making Rainlit.'
     : 'Found a bug, or have an idea? Send it straight to whoever runs this Rainlit server.';

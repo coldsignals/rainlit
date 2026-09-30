@@ -820,3 +820,25 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-top .hp-brand img { width: 22px; height: 22px; }
 .hp-top .hp-spacer { flex: 1; }
 .hp-top .hp-join { padding: 7px 12px; border-radius: 10px; background: #f5b94a; color: #22190a; font-weight: 700; }
+
+/* Supporters' extras: together, in a box drawn in the supporter colours with the plan's name on a
+   tag across its top edge (like the supporters' themes in Rainlit's Settings). */
+.hp-chip-sets { display: grid; gap: 14px; }
+.hp-perks {
+  position: relative; margin-top: 4px; padding: 16px 10px 10px;
+  border: 1.5px solid transparent; border-radius: 12px;
+  background: linear-gradient(#fbf6ea, #fbf6ea) padding-box, linear-gradient(115deg, #5aa9ff, #b77bff 50%, #f5b94a) border-box;
+}
+.hp-perk-tag {
+  position: absolute; top: -10px; left: 10px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px 2px 8px; border-radius: 999px;
+  background: linear-gradient(115deg, #5aa9ff, #b77bff 50%, #f5b94a); color: #1d1430;
+  font: 800 11px/16px var(--font, sans-serif); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.hp-perk-tag::before {
+  content: ''; width: 7px; height: 10px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.hp-perks .hp-chip-extra::after { display: none; } /* (the tag says it) */

@@ -45,6 +45,7 @@
   --rain-blend: screen;
   --tint-mix: 100%;      /* names in their roles' colours (darker on a light theme: tint in app.js) */
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9b4c8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --perk-stroke: linear-gradient(115deg, #5aa9ff, #b77bff 50%, #f5b94a); /* what supporters get (.perk-box) */
 }
 /* Dark: plain greys, like most apps' dark mode. */
 :root[data-theme="dark"], [data-theme-preview="dark"] {
@@ -1012,7 +1013,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .support-card {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
-  background: linear-gradient(var(--deep), var(--deep)) padding-box, linear-gradient(115deg, #5aa9ff, #f5b94a) border-box;
+  background: linear-gradient(var(--deep), var(--deep)) padding-box, var(--perk-stroke) border-box;
   border: 1px solid transparent; border-radius: var(--radius);
 }
 .support-card[hidden] { display: none; }
@@ -2146,10 +2147,35 @@ button.person.open { background: var(--dusk-hi); }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .theme-extras-title { margin: 0; color: var(--mist); font-size: 12.5px; }
+
+/* What supporters get: a box drawn in the supporter colours, with the plan's name on a tag across
+   its top edge (PERK_NAME, in app.js). The supporters' themes; the homepage editor's extras have
+   one of their own (homepage.css). */
+.perk-box {
+  position: relative; display: grid; gap: 10px;
+  margin-top: 10px; padding: 18px 12px 12px;
+  border: 1.5px solid transparent; border-radius: 14px;
+  background: linear-gradient(var(--panel), var(--panel)) padding-box, var(--perk-stroke) border-box;
+}
+.perk-box[hidden] { display: none; }
+.perk-tag {
+  position: absolute; top: -10px; left: 12px;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px 2px 8px; border-radius: 999px;
+  background: var(--perk-stroke); color: #1d1430;
+  font-size: 11px; font-weight: 800; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.perk-tag::before {
+  content: ''; width: 7px; height: 10px; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* (Inside the box, a theme needs no raindrop of its own.) */
+.perk-box .theme-card.extra .theme-name::after { display: none; }
 .theme-try {
   display: flex; align-items: center; gap: 12px; padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--lamp) 40%, transparent); border-radius: var(--radius);
-  background: color-mix(in srgb, var(--lamp) 10%, transparent);
+  border: 1.5px solid transparent; border-radius: var(--radius);
+  background: linear-gradient(var(--panel), var(--panel)) padding-box, var(--perk-stroke) border-box;
   font-size: 13.5px; line-height: 1.4;
 }
 .theme-try span { flex: 1; }
@@ -2362,10 +2388,9 @@ button.person.open { background: var(--dusk-hi); }
   .app-settings .theme-lists { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr); column-gap: 32px; row-gap: 8px; }
   .app-settings .theme-free-title { display: block; grid-column: 1; grid-row: 1; }
   .app-settings #theme-list { grid-column: 1; grid-row: 2; }
-  .app-settings #theme-extras-title { grid-column: 2; grid-row: 1; }
-  .app-settings #theme-extras { grid-column: 2; grid-row: 2; }
+  .app-settings #theme-extras-box { grid-column: 2; grid-row: 1 / span 2; align-self: end; }
   .app-settings .theme-try { grid-column: 1 / -1; margin-top: 4px; }
-  .app-settings .theme-lists:has(#theme-extras[hidden]) .theme-free-title { display: none; }
+  .app-settings .theme-lists:has(#theme-extras-box[hidden]) .theme-free-title { display: none; }
 
   .settings.admin { width: min(960px, calc(100vw / var(--zoom) - 48px)); }
   .admin > .settings-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; align-items: start; }

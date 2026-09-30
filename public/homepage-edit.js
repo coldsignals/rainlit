@@ -819,10 +819,12 @@
   // Choices, as a row of chips. Supporters' extras (`extras`) have a little raindrop; for anyone
   // else they're there to see but not to pick (unless one's on the page already), and in an app
   // that can't mention supporting, they're left out.
+  // (The extras go together after the rest, in a box in the supporter colours with its name on a
+  // tag, like the supporters' themes in Settings.)
   function chips(options, current, onPick, style, extras = []) {
     const supporter = Boolean(state.data && state.data.supporter);
     const offered = !app || !app.offersSupport || app.offersSupport();
-    return el('div', { class: 'hp-chips' }, ...Object.entries(options).map(([key, label]) => {
+    const chip = ([key, label]) => {
       const extra = extras.includes(key);
       const locked = extra && !supporter && key !== current;
       if (locked && !offered) return null;
@@ -833,7 +835,15 @@
         disabled: locked,
         onclick: () => onPick(key),
       });
-    }).filter(Boolean));
+    };
+    const all = Object.entries(options);
+    const row = el('div', { class: 'hp-chips' }, ...all.filter(([key]) => !extras.includes(key)).map(chip).filter(Boolean));
+    const perks = all.filter(([key]) => extras.includes(key)).map(chip).filter(Boolean);
+    if (!perks.length) return row;
+    return el('div', { class: 'hp-chip-sets' }, row,
+      el('div', { class: 'hp-perks', role: 'group', 'aria-label': 'For people supporting Rainlit' },
+        el('span', { class: 'hp-perk-tag', text: (app && app.perkName) || 'Supporters' }),
+        el('div', { class: 'hp-chips' }, ...perks)));
   }
 
   function colors(current, onPick) {
