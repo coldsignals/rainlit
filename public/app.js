@@ -147,7 +147,7 @@ for (const id of [
   'feedback', 'feedback-form', 'feedback-btn', 'feedback-note', 'feedback-what', 'feedback-text', 'feedback-diag-field', 'feedback-diag',
   'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
-  'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release',
+  'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -264,6 +264,7 @@ const S = {
   clickSounds: store.get('clickSounds', 'on') !== 'off',
   embeds: store.get('embeds', 'on') !== 'off', // link previews
   compactChat: store.get('compactChat', 'off') === 'on', // messages without people's pictures beside them
+  petButton: store.get('petButton', 'on') !== 'off', // your pet's button, by your profile
   facing: store.get('camFacing', ''), // on a phone, the camera used last: front ('user') or back ('environment')
   callSounds: store.get('callSounds', 'on') !== 'off',
   typing: new Map(), // conversation -> who's typing in it right now -> when to stop showing it
@@ -6756,6 +6757,7 @@ async function fillDeviceLists() {
   el.clicksInput.checked = S.clickSounds;
   el.embedsInput.checked = S.embeds;
   el.compactInput.checked = S.compactChat;
+  el.petBtnInput.checked = S.petButton;
   el.callSoundsInput.checked = S.callSounds;
   el.duckField.hidden = !ANDROID;
   el.duckInput.checked = store.get('duck', 'on') !== 'off';
@@ -11564,7 +11566,9 @@ function renderProfileBadges() {
 // button for it, by your profile, shows your pet, with a dot when it's hungry: it's never a trip
 // to your homepage to feed it.
 
-const petName = (p) => (p && p.name) || (p && Homepage.PETS[p.kind] ? `Your ${Homepage.PETS[p.kind].label.toLowerCase()}` : 'Your pet');
+// Its name ("Your cat", or "your cat" in the middle of a sentence, if it hasn't one).
+const petCalled = (p) => (p && p.name) || (p && Homepage.PETS[p.kind] ? `your ${Homepage.PETS[p.kind].label.toLowerCase()}` : 'your pet');
+const petName = (p) => (p && p.name) || petCalled(p).replace(/^y/, 'Y');
 const petHungry = (p) => Boolean(p && p.full < 0.2);
 let petTimer = 0;
 
@@ -11579,10 +11583,15 @@ async function loadPet() {
   if (!petTimer) petTimer = setInterval(() => { if (S.me) loadPet(); }, 30 * 60_000); // (it gets hungry as time goes by)
 }
 
+// (Hidden, if you'd rather not see it: Settings > Look. Your pet's room is still in your homepage's
+// Pet tab.)
 function renderPetButton() {
   const p = S.pet;
+  el.petBtn.hidden = !S.petButton;
   el.petBtnFace.style.backgroundImage = Homepage.petSheet(p ? p.kind : 'cat', p ? p.coat : 'grey');
   el.petBtn.classList.toggle('none', !p);
+  // (Hungry, it looks it, with a little dot: never more than that.)
+  el.petBtn.classList.toggle('hungry', petHungry(p));
   el.petBtnDot.hidden = !petHungry(p);
   const label = !p ? 'Adopt a pet' : petHungry(p) ? `${petName(p)} is hungry` : petName(p);
   el.petBtn.title = label;
@@ -11633,7 +11642,7 @@ function renderPetCare() {
   const n = Number(p.pets) || 0;
   el.petPetted.textContent = n ? `Petted ${n.toLocaleString()} ${n === 1 ? 'time' : 'times'}${p.home ? ', here and on your homepage' : ''}.`
     : p.home ? 'Anyone who can see your homepage can pet it there.' : 'Click it to pet it.';
-  el.petFeed.textContent = `Feed ${petName(p)}`;
+  el.petFeed.textContent = `Feed ${petCalled(p)}`;
 }
 
 // Which pet: everyone's three, and Glow's (for anyone else to try on, wherever Glow is shown).
@@ -11685,8 +11694,7 @@ function renderPetAbout() {
     return b;
   }));
   el.petHome.checked = p.home;
-  el.petRelease.textContent = `Let ${petName(p)} go…`;
-  delete el.petRelease.dataset.sure;
+  el.petRelease.textContent = `Let ${petCalled(p)} go…`;
 }
 
 // Picking one: yours (a new kind keeps its name, if you've given it one), or, one of Glow's for
@@ -11738,12 +11746,13 @@ async function tendPet(what) {
   renderPetButton();
 }
 
+// Letting it go, once you've said you're sure: it's gone for good.
 async function releasePet() {
-  if (!el.petRelease.dataset.sure) {
-    el.petRelease.dataset.sure = '1';
-    el.petRelease.textContent = `Let ${petName(S.pet)} go? Click again to say goodbye (it can't come back).`;
-    return;
-  }
+  const p = S.pet;
+  if (!p) return;
+  const days = Math.max(1, Math.ceil((Date.now() - p.since) / 86_400_000));
+  const n = Number(p.pets) || 0;
+  if (!confirm(`Let ${petCalled(p)} go? ${p.name || 'It'} (yours for ${days} ${days === 1 ? 'day' : 'days'}, petted ${n.toLocaleString()} ${n === 1 ? 'time' : 'times'}) will be gone for good. You can adopt a new pet any time.`)) return;
   try {
     await api('DELETE', '/pet');
   } catch (err) {
@@ -13873,6 +13882,11 @@ async function init() {
     S.compactChat = el.compactInput.checked;
     store.set('compactChat', S.compactChat ? 'on' : 'off');
     document.body.classList.toggle('compact-chat', S.compactChat);
+  });
+  el.petBtnInput.addEventListener('change', () => {
+    S.petButton = el.petBtnInput.checked;
+    store.set('petButton', S.petButton ? 'on' : 'off');
+    renderPetButton();
   });
   el.embedsInput.addEventListener('change', () => {
     S.embeds = el.embedsInput.checked;

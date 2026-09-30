@@ -2199,8 +2199,8 @@ button.person.open { background: var(--dusk-hi); }
 .theme-try .primary-btn { flex: none; }
 
 /* ----- Your pet ----- */
-/* Its button, by your profile: your pet, still (a dot when it's hungry); with no pet, a faint one
-   to adopt. */
+/* Its button, by your profile: your pet, still (hungry, it looks it, with a little amber dot: a
+   hint, never an alert); with no pet, a faint one to adopt. Settings can hide it. */
 .pet-btn { position: relative; }
 .pet-btn-face {
   display: block; width: 30px; height: 25px;
@@ -2209,8 +2209,9 @@ button.person.open { background: var(--dusk-hi); }
 }
 .pet-btn.none .pet-btn-face { opacity: 0.35; filter: grayscale(1); }
 .pet-btn:hover .pet-btn-face { opacity: 1; filter: none; }
-.pet-btn-dot { position: absolute; top: 4px; right: 3px; width: 9px; height: 9px; border-radius: 2px; background: var(--danger); box-shadow: 0 0 0 2px color-mix(in srgb, var(--dusk) 50%, var(--deep)); }
-.pet-btn-dot[hidden] { display: none; }
+.pet-btn.hungry .pet-btn-face { background-position-x: 100%; } /* (its hungry face) */
+.pet-btn-dot { position: absolute; top: 5px; right: 4px; width: 7px; height: 7px; border-radius: 2px; background: var(--lamp); box-shadow: 0 0 0 2px color-mix(in srgb, var(--dusk) 50%, var(--deep)); }
+.pet-btn-dot[hidden], .pet-btn[hidden] { display: none; }
 /* Its room: a wall and a window with the rain outside, a floor with a rug, and your pet about it
    (homepage.js). */
 .settings.pet-dialog { width: min(560px, calc(100vw / var(--zoom) - 24px)); }

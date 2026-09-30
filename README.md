@@ -238,8 +238,10 @@ it up: click it. It lives on your homepage too (unless you'd rather it didn't),
 where anyone who can see your page can pet it, and it counts how many times it's
 been petted. Glow brings three more: a cloudlet that makes rainbows when it's
 petted, a dragon that puffs flames, and a spirit fox with a glowing tail (anyone
-can try them on in the room). Letting your pet go (at the bottom of its room)
-deletes it, and everything about it.
+can try them on in the room). It's all just for fun: nothing nags you, and if
+you'd rather not see the pet button at all, Settings > Look hides it. Letting
+your pet go (at the bottom of its room, once you've said you're sure) deletes
+it, and everything about it.
 
 ## Feedback
 

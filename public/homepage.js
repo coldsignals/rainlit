@@ -1450,7 +1450,7 @@
 
   // How full and how happy, in words.
   const fullWords = (v) => (v >= 0.7 ? 'Full' : v >= 0.4 ? 'Peckish' : v >= 0.2 ? 'Hungry' : 'Very hungry');
-  const happyWords = (v) => (v >= 0.7 ? 'Happy' : v >= 0.4 ? 'Content' : v >= 0.2 ? 'Bored' : 'Lonely');
+  const happyWords = (v) => (v >= 0.7 ? 'Happy' : v >= 0.4 ? 'Content' : v >= 0.2 ? 'Bored' : 'Mopey');
   // Its meters (for its owner): how full, and how happy.
   function petMeters(info) {
     const meter = (label, v, kind, words) => {
