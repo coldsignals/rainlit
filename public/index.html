@@ -274,6 +274,10 @@
             <span id="me-status" class="me-status"></span>
           </span>
         </button>
+        <button id="pet-btn" class="icon-btn ghost pet-btn none" type="button" aria-label="Adopt a pet" title="Adopt a pet">
+          <i id="pet-btn-face" class="pet-btn-face" aria-hidden="true"></i>
+          <span id="pet-btn-dot" class="pet-btn-dot" hidden></span>
+        </button>
         <button id="admin-btn" class="icon-btn ghost" type="button" aria-label="Invites and accounts" title="Invites and accounts" hidden>
           <svg class="icon"><use href="#i-key"/></svg>
         </button>
@@ -1340,6 +1344,52 @@
     </form>
   </dialog>
 
+  <!-- ============ Your pet (lib/pets.js; homepage.js draws it) ============ -->
+  <!-- (Its room, where it wanders about and you look after it; which pet it is, its name and
+       colours; and whether it lives on your homepage too. Glow's pets are there to try on.) -->
+  <dialog id="pet" class="settings pet-dialog" aria-labelledby="pet-title">
+    <div class="settings-inner">
+      <div class="settings-head">
+        <h2 id="pet-title">Your pet</h2>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <div id="pet-room" class="pet-room" aria-label="Your pet's room">
+        <p id="pet-room-empty" class="pet-room-empty">Pick a pet, and it moves in here.</p>
+      </div>
+      <section id="pet-care" class="pet-care" aria-label="Looking after it" hidden>
+        <div class="pet-care-head"><strong id="pet-name"></strong><span id="pet-since" class="pet-since"></span></div>
+        <div id="pet-meters" class="hp-pet-meters pet-meters"></div>
+        <p id="pet-petted" class="pet-note"></p>
+        <div class="pet-actions">
+          <button id="pet-feed" class="primary-btn" type="button">Feed</button>
+          <button id="pet-play" class="small-btn" type="button">Play</button>
+        </div>
+        <p id="pet-msg" class="pet-msg" role="status" hidden></p>
+      </section>
+      <section class="pet-pick" aria-labelledby="pet-pick-title">
+        <h3 id="pet-pick-title" class="pet-pick-title">Pick a pet</h3>
+        <div id="pet-kinds" class="pet-kinds"></div>
+        <div id="pet-glow-box" class="perk-box pet-perks" hidden>
+          <button class="perk-tag" type="button" data-perk-name data-glow-open title="What's Glow?">Glow</button>
+          <div id="pet-glow-kinds" class="pet-kinds"></div>
+        </div>
+        <div id="pet-try" class="theme-try" hidden>
+          <span id="pet-try-text"></span>
+          <button id="pet-try-btn" class="primary-btn small" type="button">See Glow</button>
+        </div>
+      </section>
+      <section id="pet-about" class="pet-about" aria-label="About it" hidden>
+        <label class="field"><span>Its name</span><input id="pet-name-input" maxlength="24" autocomplete="off" spellcheck="false" /></label>
+        <div class="field"><span>Its colours</span><div id="pet-coats" class="pet-coats"></div></div>
+        <label class="toggle">
+          <input id="pet-home" type="checkbox" />
+          <span>It lives on your homepage too <small class="toggle-note">(it wanders about your page, and anyone who can see your page can pet it)</small></span>
+        </label>
+        <button id="pet-release" class="text-btn pet-release" type="button">Let it go…</button>
+      </section>
+    </div>
+  </dialog>
+
   <!-- ============ Rainlit Glow: what it gets you ============ -->
   <!-- (Opened from a Glow theme or homepage extra someone tries on, the GLOW tags, and Your
        profile. Everything in it is live: the themes' weather moves, and the homepage extras are the
@@ -1370,7 +1420,7 @@
       <section class="glow-perk wide">
         <div class="glow-show glow-pets" aria-hidden="true" data-glow-pets></div>
         <h3>Pets with a little magic</h3>
-        <p>Everyone can have a cat, a pup or a frog living on their homepage. Glow brings three more: a cloudlet that makes rainbows when it's petted, a dragon that puffs flames, and a spirit fox with glowing tails.</p>
+        <p>Everyone can have a pixel pet (a cat, a dog or a fish) to look after, living on their homepage too. Glow brings three more: a cloudlet that makes rainbows when it's petted, a dragon that puffs flames, and a spirit fox with a glowing tail.</p>
       </section>
       <section class="glow-perk wide">
         <div class="glow-show glow-homepage" aria-hidden="true">

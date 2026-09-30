@@ -25,6 +25,7 @@ const discord = require('./lib/discord');
 const accounts = require('./lib/accounts');
 const emojis = require('./lib/emoji');
 const homepages = require('./lib/homepages');
+const pets = require('./lib/pets');
 const announcements = require('./lib/announcements');
 const blobs = require('./lib/blobs');
 const abuse = require('./lib/abuse');
@@ -1100,8 +1101,11 @@ api.get('/homepages/:who', (req, res) => {
       : 'This homepage is just for their friends and people in their spaces.';
     return res.status(403).json({ error, locked: true });
   }
-  // (This visit counts too, on the counter it's about to show.)
-  if ((!req.user || req.user.id !== owner.id) && homepages.countView(owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip))) page.views++;
+  // (This visit counts too, on the counter it's about to show: every visit but its owner's.)
+  if (!req.user || req.user.id !== owner.id) {
+    homepages.countView(owner.id);
+    page.views++;
+  }
   res.json(homepages.forViewer(owner, page, req.user));
 });
 
@@ -1275,28 +1279,40 @@ api.delete('/homepages/me/question-stops', needUser, (req, res) => {
   res.json({ ok: true, stoppedCount: 0 });
 });
 
-// A page's pet: anyone who can see the page can pet it (without an account too, if the page is
-// public); its owner feeds it and plays with it.
+// Someone's pet, on their homepage: anyone who can see the page can pet it (without an account
+// too, if the page is public).
 api.post('/homepages/:who/pet', (req, res) => {
   const found = guestbookPage(req, res);
   if (!found) return;
-  if (!found.page.doc || !found.page.doc.pet) return fail(res, 400, "There's no pet on this page.");
-  res.json({ pet: homepages.petIt(found.owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip)) });
+  if (!pets.onHomepage(found.owner.id)) return fail(res, 400, "There's no pet on this page.");
+  pets.petIt(found.owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip));
+  res.json({ pet: pets.onHomepage(found.owner.id) });
 });
 
-api.post('/homepages/me/pet/:what', needUser, (req, res) => {
-  const { doc } = homepages.get(req.user.id);
-  const pet = doc && doc.pet;
-  if (!pet) return fail(res, 400, "There's no pet on your page.");
+// ----- Your pet -----
+// (lib/pets.js) Adopting one (or changing its kind, name, colours, and whether it's on your
+// homepage), letting it go, and looking after it: feeding it, playing with it, petting it.
+
+const petRoute = (fn) => (req, res) => {
   try {
-    if (req.params.what === 'feed') return res.json({ pet: homepages.feed(req.user.id, pet.name || 'Your pet') });
-    if (req.params.what === 'play') return res.json({ pet: homepages.play(req.user.id) });
+    res.json({ pet: fn(req) });
   } catch (err) {
-    if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
+    if (err instanceof pets.PetError) return fail(res, err.status, err.message);
     throw err;
   }
-  fail(res, 404, 'Not found.');
-});
+};
+api.get('/pet', needUser, petRoute((req) => pets.get(req.user.id)));
+api.put('/pet', needUser, petRoute((req) => pets.set(req.user, req.body || {})));
+api.delete('/pet', needUser, petRoute((req) => {
+  pets.release(req.user.id);
+  return null;
+}));
+api.post('/pet/feed', needUser, petRoute((req) => pets.feed(req.user.id)));
+api.post('/pet/play', needUser, petRoute((req) => pets.play(req.user.id)));
+api.post('/pet/pet', needUser, petRoute((req) => {
+  pets.petIt(req.user.id, req.user.id);
+  return pets.get(req.user.id);
+}));
 
 // ----- Conversations -----
 //

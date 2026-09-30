@@ -185,8 +185,8 @@ from your own (**Your homepage**, then **Edit**).
   window from 1998); pixel stickers, any emoji and your spaces' emoji; tape
   and paper. Drag to move; the handles resize and turn (or press **R**).
   **To front** and **To back** stack them, and **Undo** takes anything back.
-- **The old web:** a visitor counter (each visitor counts once every few
-  hours; you don't), a guestbook anyone who can see your page can sign (they
+- **The old web:** a visitor counter (like the hit counters of old, every
+  visit counts but yours), a guestbook anyone who can see your page can sign (they
   can delete what they wrote, and you can delete anything in it; you hear
   when someone signs it), and a music player for a song of yours (MP3, M4A,
   OGG, FLAC or WAV, up to 10 MB), as a tunebox, a cassette or just a button.
@@ -204,18 +204,11 @@ from your own (**Your homepage**, then **Edit**).
   link (a link to someone's homepage opens it right in Rainlit).
 - **The page:** a pattern, a color or your own picture behind it, weather
   over it (rain, snow, sparkles, floating hearts), and a name for it.
-- **A pet:** a cat, a pup or a frog (each in four colours, with a name) lives
-  on your page, like a Tamagotchi or the desktop pets of old. It wanders
-  around the part of the page that's showing (and follows along as it's
-  scrolled), naps, and comes over to see what the pointer's up to. Anyone who
-  can see your page can pet it: it hops, hearts come up, and it counts how many
-  times it's been petted. You look after it (the **Pet** tab, or click it on
-  your page): feed it (a bowl comes, and it eats) and play with it (it chases a
-  ball). It gets hungry over three days and glum over two, but never ill, and
-  never runs away; hungry, it just mopes about, thinking of food, until it's fed.
-- **Glow's extras:** people with Glow also get three more pets (a cloudlet
-  that makes rainbows when it's petted, a dragon that puffs flames, and a spirit
-  fox with glowing tails), backgrounds that move (a starfield, bokeh lights,
+- **Your pet:** it lives on your page too (unless you'd rather it didn't: the
+  **Pet** tab), wandering around the part of the page that's showing (and
+  following along as it's scrolled), and anyone who can see your page can pet
+  it (see "Pets" below).
+- **Glow's extras:** people with Glow also get backgrounds that move (a starfield, bokeh lights,
   holographic foil and waves, in the page's colours), effects for visitors (a
   trail of sparkles, hearts, stars, bubbles or raindrops behind their pointer,
   and confetti, hearts, stars or ripples where they click), a fortune ball
@@ -231,6 +224,22 @@ from your own (**Your homepage**, then **Edit**).
 - It's built from pieces, not code: pages can't run anything, and their
   pictures come from Rainlit itself. A page can be reported like a message.
   Pictures can be up to 5 MB each, songs 10 MB, and 40 MB in all.
+
+## Pets
+
+Everyone can adopt a pixel pet: a cat, a dog or a fish, each in four colours,
+with a name. It has a room of its own in the app (the button by your profile,
+which shows your pet, and a dot when it's hungry), where it wanders about, naps,
+and comes over to see what the pointer's up to, and where you look after it:
+feed it (a bowl comes, and it eats) and play with it (it chases a ball). It gets
+hungry over three days and glum over two, but never ill, and never runs away;
+hungry, it just mopes about, thinking of food, until it's fed. Petting it cheers
+it up: click it. It lives on your homepage too (unless you'd rather it didn't),
+where anyone who can see your page can pet it, and it counts how many times it's
+been petted. Glow brings three more: a cloudlet that makes rainbows when it's
+petted, a dragon that puffs flames, and a spirit fox with a glowing tail (anyone
+can try them on in the room). Letting your pet go (at the bottom of its room)
+deletes it, and everything about it.
 
 ## Feedback
 
@@ -251,8 +260,8 @@ it and keep it that way, for $5 a month or $50 a year (and tips), at
 marked with a Glow tag wherever it is, and it's more of what costs money: files up
 to 100 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
 channels (1080p at up to 60 fps, while it fits in what Cloudflare sends for
-free), no slower start for a new account, homepage extras (three more pets,
-moving backgrounds, effects for visitors, a fortune ball...), five themes with
+free), no slower start for a new account, three more pets, homepage extras
+(moving backgrounds, effects for visitors, a fortune ball...), five themes with
 weather of their own (Sakura, Monsoon, Fireflies, Maple and Aurora), and a badge, a
 raindrop that gathers light the longer they support (Drizzle, then Shower,
 Downpour, Storm, Monsoon and Lamplight). If they stop, it dims, and keeps its

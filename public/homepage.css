@@ -659,139 +659,80 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-ball-label { margin-top: 3cqh; max-width: 100%; color: #fff; font: 600 max(10px, 7cqh)/1.2 "Pixelify Sans", sans-serif; text-align: center; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); overflow-wrap: anywhere; }
 
 /* ================= Pets ================= */
-/* A page's pet (homepage.js). Drawn facing right; parts move with what it's doing: walking (its
-   legs step in turn), resting (lying down, legs tucked), sleeping, joy (a hop, eyes smiling),
-   eating, and sad (hungry). Glow's pets glow. Its bits (hearts, z's) and name tag are sized for
-   the screen, whatever the page's scale. */
-.hp-pet { position: relative; display: block; flex: none; width: 84px; height: 70px; --pw: 84px; }
+/* A pet (homepage.js), in pixels: its frames side by side in one picture (13 of them), the one
+   showing picked by what it's doing: standing about (now and then its tail moves, or it blinks),
+   walking (and running), lying down, asleep, glad (just petted), eating, and hungry. Its bits
+   (hearts, z's, bubbles) and name tag are sized for the screen, whatever the page's scale. */
+.hp-pet { position: relative; display: block; flex: none; width: 110px; height: 90px; --pw: 110px; }
 .hp-pet-live { position: absolute; left: 0; top: 0; z-index: 4; cursor: pointer; outline: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; will-change: transform; }
 .hp-editing .hp-pet-live { pointer-events: none; }
-.hp-pet-live:focus-visible .hp-pet-in { outline: calc(2px / var(--hp-scale, 1)) dashed #f5b94a; outline-offset: 2px; border-radius: 12px; }
-.hp-pet-shadow { position: absolute; left: 24%; right: 24%; bottom: 0; height: 8%; border-radius: 50%; background: rgba(0, 0, 0, 0.24); }
-.hp-pet-lift, .hp-pet-bounce, .hp-pet-in { position: absolute; inset: 0; display: block; }
-.hp-pet-bounce { transform-origin: 50% 100%; }
-.hp-pet-in { transition: transform 0.18s ease; }
+.hp-pet-live:focus-visible .hp-pet-in { outline: calc(2px / var(--hp-scale, 1)) dashed #f5b94a; outline-offset: 2px; }
+.hp-pet-shadow { position: absolute; left: 22%; right: 22%; bottom: 3%; height: 7%; border-radius: 50%; background: rgba(0, 0, 0, 0.24); }
+.hp-pet-lift, .hp-pet-bounce, .hp-pet-in, .hp-pet-sprite { position: absolute; inset: 0; display: block; }
 .hp-pet-in.left { transform: scaleX(-1); }
-.hp-pet-glowy .hp-pet-in { filter: drop-shadow(0 0 4px var(--pg)) drop-shadow(0 0 10px color-mix(in srgb, var(--pg) 55%, transparent)); }
-.hp-pet-svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.hp-pet-svg .o { stroke: var(--pk); stroke-width: 3px; stroke-linejoin: round; stroke-linecap: round; }
-.hp-pet-svg .f1 { fill: var(--p1); }
-.hp-pet-svg .f2 { fill: var(--p2); }
-.hp-pet-svg .f3 { fill: var(--p3); }
-.hp-pet-svg .f4 { fill: var(--p4); }
-.hp-pet-svg .fs { fill: var(--p5); }
-.hp-pet-svg .fk { fill: var(--pk); }
-.hp-pet-svg .fw { fill: #fff; }
-.hp-pet-svg .fe { fill: var(--pe); }
-.hp-pet-svg .fn { fill: #ff7f9f; }
-.hp-pet-svg .fb { fill: #ff7fa8; opacity: 0.5; }
-.hp-pet-svg .ln { fill: none; stroke: var(--pk); stroke-width: 2.2px; stroke-linecap: round; stroke-linejoin: round; }
-.hp-pet-svg .st { fill: none; stroke: var(--p3); stroke-width: 3px; stroke-linecap: round; }
-.hp-pet-svg .bl { fill: none; stroke: var(--p3); stroke-width: 2px; stroke-linecap: round; opacity: 0.5; }
-.hp-pet-svg .wh { fill: none; stroke: var(--pk); stroke-width: 1.4px; stroke-linecap: round; opacity: 0.55; }
-.hp-pet-svg .tl-o { fill: none; stroke: var(--pk); stroke-width: 12px; stroke-linecap: round; }
-.hp-pet-svg .tl-i { fill: none; stroke: var(--p1); stroke-width: 6px; stroke-linecap: round; }
-.hp-pet-svg .tip, .hp-pet-svg .wisp { fill: var(--pg); }
-.hp-pet-svg .cl-o circle { fill: var(--pk); stroke: var(--pk); stroke-width: 6px; }
-.hp-pet-svg .cl-f circle { fill: var(--p1); }
-.hp-pet-svg .cl-s { fill: none; stroke: var(--p2); stroke-width: 5px; stroke-linecap: round; opacity: 0.8; }
-.hp-pet-svg .pt-drops path { fill: var(--p3); }
-.hp-pet-svg .pt-bow path { fill: none; stroke-width: 6px; }
-.hp-pet-svg .pt-flame path { fill: #ffb347; stroke: #ff7a2e; stroke-width: 2px; stroke-linejoin: round; }
-
-/* Moving parts. */
-.hp-pet-svg .leg, .hp-pet-svg .pt-eyes, .hp-pet-svg .pt-head, .hp-pet-svg .pt-breathe, .hp-pet-svg .leg-back,
-.hp-pet-svg .pt-flame, .hp-pet-svg .pt-bow, .hp-pet-svg .pt-throat, .hp-pet-svg .wisp, .hp-pet-svg .pt-ear { transform-box: fill-box; }
-.hp-pet-svg .leg { transform-origin: 50% 12%; transition: opacity 0.25s; }
-.hp-pet-svg .pt-up { transition: transform 0.35s ease; }
-.hp-pet-svg .pt-tail { animation: pet-swish 2.8s ease-in-out infinite alternate; }
-.hp-pet-svg .pt-eyes { transform-origin: 50% 50%; animation: pet-blink 4.8s var(--blink, 0s) infinite; }
-.hp-pet-svg .pt-shut, .hp-pet-svg .pt-joy, .hp-pet-svg .pt-tongue, .hp-pet-svg .pt-flame { display: none; }
-.hp-pet-svg .pt-head { transform-origin: 30% 90%; transition: transform 0.3s ease; }
-.hp-pet-svg .pt-breathe { transform-origin: 50% 100%; }
-@keyframes pet-swish { from { transform: rotate(-7deg); } to { transform: rotate(8deg); } }
-@keyframes pet-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
-@keyframes pet-step { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
-@keyframes pet-wag { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
-@keyframes pet-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.015, 1.045); } }
-@keyframes pet-nom { from { transform: rotate(0); } to { transform: rotate(9deg) translateY(2px); } }
-@keyframes pet-joy {
-  0%, 100% { transform: none; }
-  30% { transform: translateY(-18%) scaleY(1.05); }
-  55% { transform: translateY(0) scaleY(0.92); }
-  70% { transform: translateY(-5%); }
+.hp-pet-glowy .hp-pet-in { filter: drop-shadow(0 0 calc(var(--pw) / 28) var(--pg)) drop-shadow(0 0 calc(var(--pw) / 11) color-mix(in srgb, var(--pg) 50%, transparent)); }
+/* (Frame n of 13 is at n/12 along.) */
+.hp-pet-sprite {
+  background-repeat: no-repeat; background-size: 1300% 100%; background-position: 0 0;
+  image-rendering: pixelated;
+  animation: pet-idle 5.6s var(--blink, 0s) step-end infinite;
 }
-/* Walking and running. */
-.hp-pet.walk .leg.a { animation: pet-step 0.44s ease-in-out infinite alternate; }
-.hp-pet.walk .leg.b { animation: pet-step 0.44s ease-in-out infinite alternate-reverse; }
-.hp-pet.run .leg { animation-duration: 0.22s !important; }
-.hp-pet.walk .hp-pet-bounce { animation: pet-trot 0.44s ease-in-out infinite; }
-.hp-pet.run .hp-pet-bounce { animation-duration: 0.22s; }
-@keyframes pet-trot { 0%, 50%, 100% { transform: none; } 25%, 75% { transform: translateY(-2.5%); } }
-.hp-pet-pup.walk .pt-tail, .hp-pet.joy .pt-tail { animation: pet-wag 0.18s ease-in-out infinite alternate; }
-.hp-pet-pup.run .pt-tongue, .hp-pet-pup.joy .pt-tongue { display: inline; }
-/* Lying down (and asleep: eyes shut, breathing slowly). Frogs sit as they are, and cloudlets
-   float lower. */
-.hp-pet.rest .pt-up { transform: translateY(11px); }
-.hp-pet.rest .leg { opacity: 0; }
-.hp-pet-frog.rest .pt-up, .hp-pet-cloud.rest .pt-up { transform: none; }
-.hp-pet-frog.rest .leg { opacity: 1; }
-.hp-pet.rest .pt-tail { animation-duration: 5s; }
-.hp-pet.sleep .pt-eyes { display: none; }
-.hp-pet.sleep .pt-shut { display: inline; }
-.hp-pet.sleep .pt-breathe { animation: pet-breathe 3.2s ease-in-out infinite; }
-.hp-pet.sleep .pt-tail { animation-play-state: paused; }
-/* Glad (just petted): a hop, eyes smiling. */
-.hp-pet.joy .hp-pet-bounce { animation: pet-joy 0.6s ease-out 2; }
-.hp-pet.joy .pt-eyes { display: none; }
-.hp-pet.joy .pt-joy { display: inline; }
-/* Eating: nodding into its bowl. */
-.hp-pet.eat .pt-head { animation: pet-nom 0.28s ease-in-out infinite alternate; }
-.hp-pet.eat .pt-eyes { display: none; }
-.hp-pet.eat .pt-shut { display: inline; }
-/* Hungry: head down, and slower. */
-.hp-pet.sad .pt-head { transform: translateY(2px) rotate(5deg); }
-.hp-pet.sad .pt-tail { animation-duration: 6s; }
+@keyframes pet-idle {
+  0% { background-position-x: 0%; }
+  34% { background-position-x: 8.3333%; }
+  44% { background-position-x: 0%; }
+  89% { background-position-x: 16.6667%; }
+  92% { background-position-x: 0%; }
+}
+/* (Fins and raindrops move all the time.) */
+.hp-pet-fish .hp-pet-sprite, .hp-pet-cloud .hp-pet-sprite { animation-name: pet-idle-quick; animation-duration: 4.8s; }
+@keyframes pet-idle-quick {
+  0%, 25%, 50%, 75% { background-position-x: 0%; }
+  12.5%, 37.5%, 62.5% { background-position-x: 8.3333%; }
+  89% { background-position-x: 16.6667%; }
+  92% { background-position-x: 0%; }
+}
+.hp-pet.walk .hp-pet-sprite { animation: pet-walk 0.36s steps(2) infinite; }
+.hp-pet.run .hp-pet-sprite { animation-duration: 0.2s; }
+@keyframes pet-walk { from { background-position-x: 25%; } to { background-position-x: 41.6667%; } }
+.hp-pet.rest .hp-pet-sprite { animation: none; background-position-x: 41.6667%; }
+.hp-pet.sleep .hp-pet-sprite { animation: pet-sleep 1.8s steps(2) infinite; }
+@keyframes pet-sleep { from { background-position-x: 50%; } to { background-position-x: 66.6667%; } }
+.hp-pet.joy .hp-pet-sprite { animation: pet-glad 0.32s steps(2) infinite; }
+@keyframes pet-glad { from { background-position-x: 66.6667%; } to { background-position-x: 83.3333%; } }
+.hp-pet.eat .hp-pet-sprite { animation: pet-eat 0.36s steps(2) infinite; }
+@keyframes pet-eat { from { background-position-x: 83.3333%; } to { background-position-x: 100%; } }
+.hp-pet.sad:not(.walk):not(.rest):not(.joy) .hp-pet-sprite { animation: none; background-position-x: 100%; }
+/* Walking, it bobs a pixel as it steps; glad, it hops. */
+.hp-pet.walk .hp-pet-bounce { animation: pet-trot 0.36s step-end infinite; }
+.hp-pet.run .hp-pet-bounce { animation-duration: 0.2s; }
+@keyframes pet-trot { 0% { transform: none; } 50% { transform: translateY(calc(var(--pw) / -22)); } }
+.hp-pet.joy .hp-pet-bounce { animation: pet-hop 0.64s steps(8) 2; }
+@keyframes pet-hop { 0%, 100% { transform: none; } 40% { transform: translateY(calc(var(--pw) / -5.5)); } }
 
-/* Frogs hop: in the air, their back legs stretch out; sitting, their throats puff. */
-.hp-pet-frog .leg { animation: none !important; }
-.hp-pet-frog .leg-back { transform-origin: 90% 40%; transition: transform 0.15s; }
-.hp-pet-frog.air .leg-back { transform: rotate(-18deg) translate(-8%, 4%); }
-.hp-pet-frog .pt-throat { transform-origin: 50% 20%; animation: frog-puff 3.6s ease-in-out infinite; }
-.hp-pet-frog.walk .pt-throat { animation: none; }
-@keyframes frog-puff { 0%, 70%, 100% { transform: none; } 80% { transform: scale(1.12, 1.25); } }
-.hp-pet-frog.walk .hp-pet-bounce { animation: none; }
-/* Cloudlets drizzle (and stop, asleep); petted, a rainbow. */
-.hp-pet-svg .pt-drops path { animation: cloud-drip 1.3s linear infinite; }
-.hp-pet-svg .pt-drops path:nth-child(2) { animation-delay: -0.45s; }
-.hp-pet-svg .pt-drops path:nth-child(3) { animation-delay: -0.9s; }
-@keyframes cloud-drip { from { transform: translateY(-6px); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(12px); opacity: 0; } }
-.hp-pet.sleep .pt-drops { display: none; }
-.hp-pet-svg .pt-bow { transform-origin: 50% 100%; opacity: 0; transform: scale(0.6); transition: opacity 0.4s, transform 0.4s; }
-.hp-pet-cloud.joy .pt-bow { opacity: 1; transform: none; }
-.hp-pet-cloud.walk .hp-pet-bounce, .hp-pet-cloud .leg { animation: none; }
-/* Dragons' wings flap (faster when they're off somewhere); petted, a puff of flame. */
-.hp-pet-svg .pt-wing { animation: dragon-flap 0.9s ease-in-out infinite alternate; }
-.hp-pet-dragon.walk .pt-wing, .hp-pet-dragon.joy .pt-wing { animation-duration: 0.3s; }
-.hp-pet-dragon.sleep .pt-wing { animation-play-state: paused; }
-@keyframes dragon-flap { from { transform: rotate(-14deg); } to { transform: rotate(10deg); } }
-.hp-pet-dragon.joy .pt-flame { display: inline; transform-origin: 0% 50%; animation: dragon-puff 0.7s ease-out 2; }
-@keyframes dragon-puff { from { transform: scale(0.2); opacity: 1; } 70% { opacity: 1; } to { transform: scale(1.15); opacity: 0; } }
-/* Spirit foxes' wisps float about them, and their tails' tips glow. */
-.hp-pet-svg .wisp { transform-origin: 50% 50%; animation: fox-wisp 3.4s ease-in-out infinite; }
-.hp-pet-svg .wisp.w2 { animation-duration: 4.4s; animation-direction: reverse; }
-@keyframes fox-wisp { 0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.95; } 33% { transform: translate(5px, -6px) scale(0.8); opacity: 0.6; } 66% { transform: translate(-4px, -3px) scale(1.15); opacity: 1; } }
-.hp-pet-fox .tip { animation: fox-glow 2.4s ease-in-out infinite alternate; }
-@keyframes fox-glow { from { opacity: 0.7; } to { opacity: 1; } }
+/* Spirit foxes' wisps: little lights floating about them. */
+.hp-pet-wisp {
+  position: absolute; left: 6%; top: 4%;
+  width: calc(var(--pw) / 22 * 2); height: calc(var(--pw) / 22 * 2);
+  background: var(--pg); box-shadow: 0 0 calc(var(--pw) / 14) var(--pg);
+  animation: pet-wisp 3.4s steps(12) infinite;
+}
+.hp-pet-wisp.w2 { left: 88%; top: 0; width: calc(var(--pw) / 22 * 1.5); height: calc(var(--pw) / 22 * 1.5); animation-duration: 4.2s; animation-direction: reverse; }
+@keyframes pet-wisp {
+  0%, 100% { transform: translate(0, 0); opacity: 0.95; }
+  33% { transform: translate(calc(var(--pw) / 22 * 2), calc(var(--pw) / 22 * -2)); opacity: 0.55; }
+  66% { transform: translate(calc(var(--pw) / 22 * -1), calc(var(--pw) / 22 * -1)); opacity: 1; }
+}
 
-/* Its name (and how it's doing), over it when it's pointed at or petted. */
+/* Its name (and how it's doing), under it when it's pointed at or petted (the hearts go up). */
 .hp-pet-tag {
-  position: absolute; left: 50%; bottom: 100%;
+  position: absolute; left: 50%; top: 100%;
   display: grid; justify-items: center;
-  margin-bottom: calc(4px / var(--hp-scale, 1));
+  margin-top: calc(2px / var(--hp-scale, 1));
   padding: calc(4px / var(--hp-scale, 1)) calc(10px / var(--hp-scale, 1));
-  border-radius: 999px; background: rgba(22, 16, 32, 0.84); color: #fff;
-  font: 400 calc(11px / var(--hp-scale, 1))/1.2 "Bricolage Grotesque", system-ui, sans-serif; white-space: nowrap;
+  border-radius: calc(4px / var(--hp-scale, 1)); background: rgba(22, 16, 32, 0.86); color: #fff;
+  box-shadow: 0 0 0 calc(2px / var(--hp-scale, 1)) rgba(255, 255, 255, 0.18);
+  font: 400 calc(11px / var(--hp-scale, 1))/1.2 "Pixelify Sans", "Bricolage Grotesque", sans-serif; white-space: nowrap;
   transform: translateX(-50%); opacity: 0; transition: opacity 0.15s; pointer-events: none;
 }
 .hp-pet-tag b { font-size: calc(13px / var(--hp-scale, 1)); }
@@ -799,46 +740,70 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-editing .hp-pet-tag { display: none; }
 /* Thinking of food (it's hungry). */
 .hp-pet-think {
-  position: absolute; left: 60%; bottom: 84%;
-  display: block; width: calc(30px / var(--hp-scale, 1)); height: calc(30px / var(--hp-scale, 1)); padding: calc(4px / var(--hp-scale, 1));
+  position: absolute; left: 62%; bottom: 80%;
+  display: grid; place-items: center;
+  width: calc(32px / var(--hp-scale, 1)); height: calc(32px / var(--hp-scale, 1));
   box-sizing: border-box; border-radius: 50%; background: #fff; box-shadow: 0 0 0 calc(2px / var(--hp-scale, 1)) #2a1f33;
-  opacity: 0; transform: scale(0.3); transform-origin: 0 100%; transition: opacity 0.25s, transform 0.25s; pointer-events: none;
+  opacity: 0; transform: scale(0.3); transform-origin: 0 100%; transition: opacity 0.25s, transform 0.25s steps(3); pointer-events: none;
 }
-.hp-pet.lf .hp-pet-think { left: auto; right: 60%; transform-origin: 100% 100%; }
+.hp-pet.lf .hp-pet-think { left: auto; right: 62%; transform-origin: 100% 100%; }
 .hp-pet-think.on { opacity: 1; transform: none; }
-.hp-pet-think svg, .hp-pet-bowl svg { display: block; width: 100%; height: 100%; }
-/* Hearts, z's and sparkles coming up from its head. */
+.hp-pet-think img { width: 66%; height: 66%; object-fit: contain; image-rendering: pixelated; }
+/* Hearts, z's, sparkles and bubbles coming up from its head (and a cloudlet's rainbow, a dragon's
+   puff of flame). */
 .hp-pet-bits { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.hp-pet-bit { position: absolute; top: 12%; display: block; font-style: normal; animation: pet-rise 1.2s ease-out forwards; }
+.hp-pet-bit {
+  position: absolute; top: 14%; display: block; font-style: normal;
+  background: no-repeat center / contain; image-rendering: pixelated;
+  animation: pet-rise 1.2s steps(10) forwards;
+}
 @keyframes pet-rise {
   from { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
   15% { opacity: 1; }
-  to { transform: translate(calc(-50% + var(--pw) * var(--drift, 0)), calc(var(--pw) * -0.95)) scale(1); opacity: 0; }
+  to { transform: translate(calc(-50% + var(--pw) * var(--drift, 0)), calc(var(--pw) * -0.9)) scale(1); opacity: 0; }
 }
 .hp-pet-heart, .hp-pet-spark { width: calc(18px / var(--hp-scale, 1)); height: calc(18px / var(--hp-scale, 1)); }
-.hp-pet-heart {
-  background: #ff5f93;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 18'%3E%3Cpath d='M10 18 1.6 9.6A5 5 0 0 1 10 3.3a5 5 0 0 1 8.4 6.3Z'/%3E%3C/svg%3E") center / contain no-repeat;
-          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 18'%3E%3Cpath d='M10 18 1.6 9.6A5 5 0 0 1 10 3.3a5 5 0 0 1 8.4 6.3Z'/%3E%3C/svg%3E") center / contain no-repeat;
+.hp-pet-spark { animation-duration: 1.4s; }
+.hp-pet-z { color: #fff; font: 700 calc(15px / var(--hp-scale, 1))/1 "Pixelify Sans", monospace; text-shadow: 0 0 3px rgba(0, 0, 0, 0.6); animation-duration: 1.9s; }
+.hp-pet-bubble {
+  top: 40%; width: calc(var(--pw) / 22 * 2); height: calc(var(--pw) / 22 * 2);
+  box-sizing: border-box; border: calc(var(--pw) / 44) solid rgba(214, 240, 255, 0.95); border-radius: 30%;
+  animation: pet-bubble 2.2s steps(14) forwards;
 }
-.hp-pet-spark {
-  background: var(--pg); animation-duration: 1.4s;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 2 2'%3E%3Cpath d='M0-1Q.14-.14 1 0Q.14.14 0 1Q-.14.14-1 0Q-.14-.14 0-1Z'/%3E%3C/svg%3E") center / contain no-repeat;
-          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-1 -1 2 2'%3E%3Cpath d='M0-1Q.14-.14 1 0Q.14.14 0 1Q-.14.14-1 0Q-.14-.14 0-1Z'/%3E%3C/svg%3E") center / contain no-repeat;
+@keyframes pet-bubble {
+  from { transform: translate(-50%, 0); opacity: 0; }
+  15% { opacity: 1; }
+  to { transform: translate(calc(-50% + var(--pw) * var(--drift, 0) * 0.4), calc(var(--pw) * -1.1)); opacity: 0; }
 }
-.hp-pet-z { color: #fff; font: 700 calc(14px / var(--hp-scale, 1))/1 "Pixelify Sans", monospace; text-shadow: 0 0 3px rgba(0, 0, 0, 0.6); animation-duration: 1.9s; }
-/* Its bowl, and its ball. */
+.hp-pet-rainbow {
+  left: 50%; top: -34%; width: 100%; height: 56%;
+  animation: pet-rainbow 1.6s steps(8) forwards;
+}
+@keyframes pet-rainbow {
+  from { transform: translateX(-50%) scale(0.4); opacity: 0; }
+  20%, 70% { transform: translateX(-50%) scale(1); opacity: 1; }
+  to { transform: translateX(-50%) scale(1); opacity: 0; }
+}
+.hp-pet-flame {
+  left: 88% !important; top: 26%; width: calc(var(--pw) / 22 * 5); height: calc(var(--pw) / 22 * 6);
+  animation: pet-flame 0.9s steps(6) forwards;
+}
+.hp-pet.lf .hp-pet-flame { left: 12% !important; }
+@keyframes pet-flame {
+  from { transform: translate(-50%, 10%) scale(0.3); opacity: 1; }
+  60% { opacity: 1; }
+  to { transform: translate(-50%, -60%) scale(1.1); opacity: 0; }
+}
+/* Its bowl (its food on a dish), and its ball. */
 .hp-pet-bowl, .hp-pet-ball { position: absolute; left: 0; top: 0; z-index: 3; display: block; pointer-events: none; transition: opacity 0.5s; }
-.hp-pet-bowl { animation: pet-plop 0.35s ease-out; }
+.hp-pet-bowl { animation: pet-plop 0.35s steps(4); }
+.hp-pet-bowl i { position: absolute; left: 0; right: 0; display: block; background: no-repeat center / contain; image-rendering: pixelated; }
+.hp-pet-bowl i:first-child { top: 18%; height: 48%; }
+.hp-pet-bowl i:last-child { bottom: 0; height: 44%; }
 @keyframes pet-plop { from { opacity: 0; translate: 0 -20px; } }
-.hp-pet-ball {
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, #fff 0 12%, transparent 13%), conic-gradient(#ff5f8f 0 25%, #ffe14d 0 50%, #57c7ff 0 75%, #6be07e 0);
-  box-shadow: 0 0 0 calc(2px / var(--hp-scale, 1)) #2a1f33;
-  transition: transform 0.7s cubic-bezier(0.2, 0.75, 0.3, 1), opacity 0.5s;
-}
+.hp-pet-ball { background: no-repeat center / contain; image-rendering: pixelated; transition: transform 0.7s cubic-bezier(0.2, 0.75, 0.3, 1), opacity 0.5s; }
 .hp-pet-bowl.gone, .hp-pet-ball.gone { opacity: 0; }
-/* Its owner's care card: how it's doing, and feeding it or playing with it. */
+/* Its owner's card, on their homepage: how it's doing, and feeding it or playing with it. */
 .hp-pet-care {
   position: absolute; z-index: 7; width: 240px; box-sizing: border-box;
   display: grid; gap: 8px; padding: 14px 14px 12px;
@@ -852,22 +817,24 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-pet-x { position: absolute; top: 4px; right: 6px; padding: 2px 6px; border: 0; background: none; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
 .hp-pet-meters { display: grid; gap: 6px; }
 .hp-pet-meter { display: grid; grid-template-columns: 44px minmax(0, 1fr) 76px; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
-.hp-pet-meter .bar { height: 10px; overflow: hidden; border-radius: 999px; background: #eadfc8; box-shadow: inset 0 0 0 1.5px #3b2f25; }
-.hp-pet-meter .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff9f43, #ffd23f); box-shadow: inset 0 0 0 1.5px #3b2f25; transition: width 0.4s; }
-.hp-pet-meter.happy .bar i { background: linear-gradient(90deg, #ff6b9d, #ffb3d1); }
+.hp-pet-meter .bar { height: 10px; overflow: hidden; border-radius: 3px; background: #eadfc8; box-shadow: inset 0 0 0 2px #3b2f25; }
+.hp-pet-meter .bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, #ffb13d 0 6px, #ffd23f 6px 12px); box-shadow: inset 0 0 0 2px #3b2f25; transition: width 0.4s steps(6); }
+.hp-pet-meter.happy .bar i { background: repeating-linear-gradient(90deg, #ff6b9d 0 6px, #ff9fc2 6px 12px); }
 .hp-pet-meter em { color: #8a7457; font-size: 12px; font-style: normal; text-align: right; }
 .hp-pet-sub, .hp-pet-msg { margin: 0; color: #8a7457; font-size: 12.5px; }
 .hp-pet-msg { color: #b3263e; font-weight: 650; }
 .hp-pet-do { display: flex; gap: 8px; }
 .hp-pet-do button {
   flex: 1; min-width: 0; padding: 8px 10px;
-  border: 2px solid #3b2f25; border-radius: 999px;
+  border: 2px solid #3b2f25; border-radius: 10px;
   background: #ffd23f; color: #3b2f25;
   font: 700 14px/1.1 "Pixelify Sans", "Bricolage Grotesque", sans-serif; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  box-shadow: 0 3px 0 #3b2f25;
 }
 .hp-pet-do .play { flex: none; background: #ff9fc9; }
-.hp-pet-do button:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.hp-pet-do button:hover { filter: brightness(1.05); }
+.hp-pet-do button:active { transform: translateY(3px); box-shadow: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .hp-fx-rainbow .hp-ink, .hp-fx-blink .hp-ink, .hp-fx-marquee .hp-ink, .hp-fx-wave .hp-ink span,
@@ -1132,6 +1099,11 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 
 /* Trying a Glow extra on (someone without Glow): lit with a dashed ring, and a note under them
    that it isn't saved (with the way to Glow's box, which the GLOW tag opens too). */
+/* Your pet, in the Pet tab: as it is, with whether it's on your page. */
+.hp-pet-here { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+.hp-pet-here .hp-pet { width: 88px; height: 72px; --pw: 88px; }
+.hp-pet-here strong { display: block; margin-bottom: 2px; font: 700 15px/1.2 "Pixelify Sans", sans-serif; color: #3b2f25; }
+.hp-pet-here .hp-row { margin: 6px 0 0; }
 /* Picking a pet: each one there to see, as it is, standing about. */
 .hp-pet-picks { display: flex; flex-wrap: wrap; gap: 8px; }
 .hp-pet-pick {
@@ -1143,7 +1115,7 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 }
 .hp-pet-pick:hover { border-color: #b99b6b; transform: translateY(-1px); }
 .hp-pet-pick[aria-pressed="true"] { border-color: #3b2f25; box-shadow: 0 0 0 2px #3b2f25; }
-.hp-pet-pick .hp-pet { width: 72px; height: 60px; --pw: 72px; }
+.hp-pet-pick .hp-pet { width: 66px; height: 54px; --pw: 66px; }
 .hp-pet-empty { display: grid; place-items: center; width: 60px; height: 60px; }
 .hp-pet-empty::before { content: ''; width: 34px; height: 34px; border: 2px dashed #cdb68f; border-radius: 50%; }
 .hp-coat { display: inline-flex; align-items: center; gap: 6px; }

@@ -146,6 +146,8 @@ for (const id of [
   'glow', 'glow-because', 'glow-get', 'glow-price',
   'feedback', 'feedback-form', 'feedback-btn', 'feedback-note', 'feedback-what', 'feedback-text', 'feedback-diag-field', 'feedback-diag',
   'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
+  'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
+  'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -7263,6 +7265,7 @@ function signedOut(message = '') {
   if (S.inCall) teardown({ sendLeave: false });
   stopRinging();
   S.me = null;
+  S.pet = null;
   S.friends.clear();
   S.incoming = [];
   S.outgoing = [];
@@ -7303,8 +7306,10 @@ const PRESENCE_LABEL = { online: 'Online', away: 'Away', dnd: 'Do not disturb', 
 function setMe(user) {
   const nowAdult = Boolean(S.me && !S.me.adult && user.adult);
   const supportChanged = Boolean(S.me && S.me.supporter && user.supporter && S.me.supporter.active !== user.supporter.active);
+  const first = !S.me;
   S.me = user;
   takeAccountTheme(user);
+  if (first) loadPet();
   if (nowAdult) refreshSpaces(); // (said so on another device: 18+ channels open up here too)
   if (supportChanged) refreshFriends(); // (a supporter's bigger files and room, or everyone's again)
   S.clientId = user.id;
@@ -11552,6 +11557,205 @@ function renderProfileBadges() {
   el.profileBadges.parentElement.hidden = !renderBadges(el.profileBadges, S.me.badges);
 }
 
+// ----- Your pet (lib/pets.js; homepage.js draws it) -----
+// Your pet's room: where it wanders about and you look after it (feed it, play with it, pet it),
+// and where you pick which pet it is, its name and colours, and whether it lives on your homepage
+// too. Glow's pets, for anyone without Glow, are there to try on (in the room; never kept). The
+// button for it, by your profile, shows your pet, with a dot when it's hungry: it's never a trip
+// to your homepage to feed it.
+
+const petName = (p) => (p && p.name) || (p && Homepage.PETS[p.kind] ? `Your ${Homepage.PETS[p.kind].label.toLowerCase()}` : 'Your pet');
+const petHungry = (p) => Boolean(p && p.full < 0.2);
+let petTimer = 0;
+
+async function loadPet() {
+  if (!window.Homepage || !Homepage.petSheet) return;
+  try {
+    S.pet = (await api('GET', '/pet')).pet;
+  } catch {
+    return;
+  }
+  renderPetButton();
+  if (!petTimer) petTimer = setInterval(() => { if (S.me) loadPet(); }, 30 * 60_000); // (it gets hungry as time goes by)
+}
+
+function renderPetButton() {
+  const p = S.pet;
+  el.petBtnFace.style.backgroundImage = Homepage.petSheet(p ? p.kind : 'cat', p ? p.coat : 'grey');
+  el.petBtn.classList.toggle('none', !p);
+  el.petBtnDot.hidden = !petHungry(p);
+  const label = !p ? 'Adopt a pet' : petHungry(p) ? `${petName(p)} is hungry` : petName(p);
+  el.petBtn.title = label;
+  el.petBtn.setAttribute('aria-label', label);
+}
+
+function openPet() {
+  S.petTry = '';
+  el.petMsg.hidden = true;
+  if (!el.pet.open) el.pet.showModal();
+  renderPet();
+  loadPet().then(() => { if (el.pet.open) renderPet(); });
+}
+
+// Your pet, or one of Glow's you're trying on, in the room; and the rest of the box.
+function renderPet() {
+  const p = S.pet;
+  const shown = S.petTry ? { kind: S.petTry, name: '', full: 0.9, happy: 0.9, pets: 0 } : p;
+  if (shown) {
+    S.petLife = Homepage.petRoom(el.petRoom, shown, {
+      petUrl: S.petTry ? null : '/api/pet/pet',
+      onInfo: (info) => {
+        if (S.petTry || !S.pet) return;
+        Object.assign(S.pet, info);
+        renderPetCare();
+        renderPetButton();
+      },
+    });
+  } else if (el.petRoom.hpPet) {
+    el.petRoom.hpPet.stop();
+    el.petRoom.hpPet.node.remove();
+    el.petRoom.hpPet = null;
+  }
+  el.petRoomEmpty.hidden = Boolean(shown);
+  renderPetCare();
+  renderPetKinds();
+  renderPetAbout();
+}
+
+function renderPetCare() {
+  const p = S.pet;
+  el.petCare.hidden = !p || Boolean(S.petTry);
+  if (!p) return;
+  el.petName.textContent = petName(p);
+  const days = Math.max(1, Math.ceil((Date.now() - p.since) / 86_400_000));
+  el.petSince.textContent = `yours ${days} ${days === 1 ? 'day' : 'days'}`;
+  el.petMeters.replaceChildren(...Homepage.petMeters(p));
+  const n = Number(p.pets) || 0;
+  el.petPetted.textContent = n ? `Petted ${n.toLocaleString()} ${n === 1 ? 'time' : 'times'}${p.home ? ', here and on your homepage' : ''}.`
+    : p.home ? 'Anyone who can see your homepage can pet it there.' : 'Click it to pet it.';
+  el.petFeed.textContent = `Feed ${petName(p)}`;
+}
+
+// Which pet: everyone's three, and Glow's (for anyone else to try on, wherever Glow is shown).
+function renderPetKinds() {
+  const p = S.pet;
+  const card = (kind) => {
+    const info = Homepage.PETS[kind];
+    const locked = Homepage.PERKS.pet.includes(kind) && !supporting() && !(p && p.kind === kind);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `pet-kind${locked ? ' locked' : ''}${S.petTry === kind ? ' trying' : ''}`;
+    b.setAttribute('aria-pressed', String(S.petTry ? S.petTry === kind : Boolean(p && p.kind === kind)));
+    b.title = locked ? `The ${info.label.toLowerCase()} comes with Glow: try it on` : info.label;
+    const name = document.createElement('span');
+    name.textContent = info.label;
+    b.append(Homepage.petEl(kind, p && p.kind === kind ? p.coat : undefined), name);
+    b.addEventListener('click', () => pickPet(kind));
+    return b;
+  };
+  const kinds = Object.keys(Homepage.PETS);
+  el.petKinds.replaceChildren(...kinds.filter((k) => !Homepage.PERKS.pet.includes(k)).map(card));
+  const glow = kinds.filter((k) => Homepage.PERKS.pet.includes(k) && (supporting() || glowShown() || (p && p.kind === k)));
+  el.petGlowKinds.replaceChildren(...glow.map(card));
+  el.petGlowBox.hidden = !glow.length;
+  el.petPickTitle.textContent = p ? 'Your pet is a…' : 'Pick a pet';
+  const tried = S.petTry && Homepage.PETS[S.petTry];
+  el.petTry.hidden = !tried;
+  if (tried) withGlow(el.petTryText, `The ${tried.label.toLowerCase()} is one of Glow's pets. It's here to see, but not yours to keep.`);
+  el.petTryBtn.hidden = !glowShown();
+}
+
+// Its name, its colours, whether it's on your homepage, and letting it go.
+function renderPetAbout() {
+  const p = S.pet;
+  el.petAbout.hidden = !p || Boolean(S.petTry);
+  if (!p) return;
+  if (document.activeElement !== el.petNameInput) el.petNameInput.value = p.name || '';
+  el.petNameInput.placeholder = Homepage.PETS[p.kind] ? Homepage.PETS[p.kind].name : '';
+  const coats = (Homepage.PETS[p.kind] || Homepage.PETS.cat).coats;
+  el.petCoats.replaceChildren(...Object.entries(coats).map(([key, c]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pet-coat';
+    b.setAttribute('aria-pressed', String(p.coat === key));
+    const dot = document.createElement('i');
+    dot.style.background = `linear-gradient(135deg, ${c.a} 50%, ${c.c || c.d || c.b} 50%)`;
+    b.append(dot, c.label);
+    b.addEventListener('click', () => savePet({ coat: key }));
+    return b;
+  }));
+  el.petHome.checked = p.home;
+  el.petRelease.textContent = `Let ${petName(p)} go…`;
+  delete el.petRelease.dataset.sure;
+}
+
+// Picking one: yours (a new kind keeps its name, if you've given it one), or, one of Glow's for
+// someone without Glow, tried on (again: taken off). Glow's box shows the first time.
+async function pickPet(kind) {
+  const p = S.pet;
+  if (Homepage.PERKS.pet.includes(kind) && !supporting() && !(p && p.kind === kind)) {
+    S.petTry = S.petTry === kind ? '' : kind;
+    renderPet();
+    if (S.petTry && !S.petGlowTold && glowShown()) {
+      S.petGlowTold = true;
+      openGlow({ because: `The ${Homepage.PETS[kind].label.toLowerCase()} comes with Glow. It's in your pet's room to see, but not yours to keep.` });
+    }
+    return;
+  }
+  S.petTry = '';
+  if (p && p.kind === kind) return renderPet();
+  await savePet({ kind, ...(p && p.name ? {} : { name: Homepage.PETS[kind].name }) });
+}
+
+async function savePet(fields) {
+  el.petMsg.hidden = true;
+  try {
+    S.pet = (await api('PUT', '/pet', fields)).pet;
+  } catch (err) {
+    el.petMsg.textContent = err.message;
+    el.petMsg.hidden = false;
+    return;
+  }
+  if (el.pet.open) renderPet();
+  renderPetButton();
+  if (Homepage.petChanged) Homepage.petChanged(S.pet);
+}
+
+// Feeding it (a bowl comes, and it eats) or playing with it (it chases a ball).
+async function tendPet(what) {
+  el.petMsg.hidden = true;
+  let d;
+  try {
+    d = await api('POST', `/pet/${what}`);
+  } catch (err) {
+    el.petMsg.textContent = err.message;
+    el.petMsg.hidden = false;
+    return;
+  }
+  S.pet = d.pet;
+  if (S.petLife) S.petLife.did(what, d.pet);
+  renderPetCare();
+  renderPetButton();
+}
+
+async function releasePet() {
+  if (!el.petRelease.dataset.sure) {
+    el.petRelease.dataset.sure = '1';
+    el.petRelease.textContent = `Let ${petName(S.pet)} go? Click again to say goodbye (it can't come back).`;
+    return;
+  }
+  try {
+    await api('DELETE', '/pet');
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  S.pet = null;
+  renderPet();
+  renderPetButton();
+  if (Homepage.petChanged) Homepage.petChanged(null);
+}
+
 // ----- Supporting Rainlit (lib/supporters.js) -----
 // Your profile says how you support it (and your badge's level), with a way to the support page,
 // which does the rest (public/support.js). Not in the app from the Google Play Store, which can't
@@ -13092,6 +13296,10 @@ async function init() {
     glowShown,
     openGlow,
     perkName: PERK_NAME,
+    // (your pet: it lives in its room here, and on your homepage too if you'd like)
+    pet: () => S.pet,
+    openPet,
+    petHome: (home) => savePet({ home }),
   });
 
   // ----- A friend's menu -----
@@ -13339,9 +13547,22 @@ async function init() {
   el.deleteDetails.addEventListener('toggle', () => { if (el.deleteDetails.open) renderDeletion(); });
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
+
+  // ----- Your pet -----
+  el.petBtn.addEventListener('click', openPet);
+  el.petFeed.addEventListener('click', () => tendPet('feed'));
+  el.petPlay.addEventListener('click', () => tendPet('play'));
+  el.petNameInput.addEventListener('change', () => savePet({ name: el.petNameInput.value }));
+  el.petHome.addEventListener('change', () => savePet({ home: el.petHome.checked }));
+  el.petRelease.addEventListener('click', releasePet);
+  el.petTryBtn.addEventListener('click', () => openGlow({ because: S.petTry ? `The ${Homepage.PETS[S.petTry].label.toLowerCase()} comes with Glow.` : '' }));
+  el.pet.addEventListener('close', () => {
+    S.petTry = '';
+    if (el.petRoom.hpPet) el.petRoom.hpPet.stop();
+  });
 
   // ----- Calls -----
   el.ringJoin.addEventListener('click', onRingJoin);

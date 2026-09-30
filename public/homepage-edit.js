@@ -311,10 +311,8 @@
     state.dirty = false;
     try {
       const data = await app.api('PUT', '/homepages/me', { doc: state.doc });
-      const hadPet = Boolean(state.data.pet);
       Object.assign(state.data, { doc: data.doc, usage: data.usage, visibility: data.visibility, pet: data.pet || null });
       if (!state.dirty) setSaved('Saved');
-      if (state.tab === 'pet' && !state.picked && hadPet !== Boolean(data.pet)) renderTray(); // (its care, now it's moved in)
     } catch (err) {
       state.dirty = true;
       setSaved(err.status === 413 ? 'Too big to save' : "Couldn't save. Trying again…", true);
@@ -900,68 +898,36 @@
   }
 
   // ---------- Your pet ----------
-  // Which one lives on your page (Glow's three there to try on), its name and colours, and how
-  // it's doing, with feeding it and playing with it (which clicking it on your page does too).
+  // Your pet lives in its room in the app (the button by your profile), where you pick it and look
+  // after it. Here: whether it lives on your page too, wandering about it for visitors to pet.
   function petTab() {
-    const pet = state.doc.pet || null;
-    const tryingKind = tryingNow('pet:');
-    const setPet = (kind) => change((d) => {
-      const was = d.pet;
-      const named = was && was.name && was.name !== (H.PETS[was.kind] || {}).name;
-      d.pet = { kind, name: named ? was.name : H.PETS[kind].name, coat: Object.keys(H.PETS[kind].coats)[0] };
-    });
-    const card = (kind) => {
-      const info = H.PETS[kind];
-      const locked = H.PERKS.pet.includes(kind) && !supporter() && !(pet && pet.kind === kind);
-      if (locked && !glowOffered()) return null;
-      const on = tryingKind ? tryingKind === kind : Boolean(pet && pet.kind === kind);
-      return el('button', {
-        class: `hp-pet-pick${tryingKind === kind ? ' hp-chip-trying' : ''}`, type: 'button', 'aria-pressed': String(on),
-        title: locked ? 'Comes with Glow: try it on' : undefined,
-        onclick: () => (locked ? tryOn(`pet:${kind}`, `The ${info.label.toLowerCase()}`, () => setPet(kind)) : setPet(kind)),
-      }, H.petEl(kind, pet && pet.kind === kind ? pet.coat : undefined), el('span', { text: info.label }));
-    };
-    const none = el('button', {
-      class: 'hp-pet-pick hp-pet-none', type: 'button', 'aria-pressed': String(!pet && !tryingKind),
-      onclick: () => change((d) => { delete d.pet; }),
-    }, el('span', { class: 'hp-pet-empty', 'aria-hidden': 'true' }), el('span', { text: 'No pet' }));
-    const out = [h3('A pet for your page'), el('div', { class: 'hp-pet-picks' }, ...Object.keys(H.PETS).filter((k) => !H.PERKS.pet.includes(k)).map(card), none)];
-    const glow = H.PERKS.pet.map(card).filter(Boolean);
-    if (glow.length) out.push(perkBox(el('div', { class: 'hp-pet-picks' }, ...glow), tryingKind));
-    if (pet) {
-      const name = el('input', { type: 'text', maxlength: '24', value: pet.name || '', placeholder: H.PETS[pet.kind].label });
-      name.addEventListener('change', () => change((d) => { if (d.pet) d.pet.name = name.value.trim().slice(0, 24); }));
-      const coats = el('div', { class: 'hp-chips' }, ...Object.entries(H.PETS[pet.kind].coats).map(([key, c]) => el('button', {
-        class: 'hp-chip hp-coat', type: 'button', 'aria-pressed': String(pet.coat === key),
-        onclick: () => change((d) => { if (d.pet) d.pet.coat = key; }),
-      }, el('span', { class: 'hp-coat-dot', style: { background: `linear-gradient(135deg, ${c.p1} 50%, ${c.p3 || c.p2} 50%)` } }), c.label)));
-      out.push(el('div', { class: 'hp-two', style: { marginTop: '14px' } }, field('Its name', name), field('Its colours', coats)), ...care(pet));
+    const pet = app && app.pet ? app.pet() : null;
+    const room = () => app && app.openPet && app.openPet();
+    if (!pet) {
+      return [h3('A pet for your page'),
+        el('p', { class: 'hp-note-small', text: "Adopt a pixel pet (a cat, a dog or a fish) and it can live here too: it wanders about your page, naps, and comes to see what visitors' pointers are up to, and anyone who can see your page can pet it." }),
+        el('div', { class: 'hp-row' }, el('button', { class: 'hp-tool dark', type: 'button', text: 'Adopt a pet…', onclick: room }))];
     }
-    out.push(el('p', { class: 'hp-note-small', style: { marginTop: '10px' }, text: "Your pet wanders around your page, naps, and comes to see what visitors' pointers are up to. Anyone who can see your page can pet it. You look after it: feed it, and play with it to cheer it up. It never gets ill or runs away; hungry, it just mopes until you feed it." }));
-    return out;
+    const info = H.PETS[pet.kind] || H.PETS.cat;
+    const name = pet.name || `Your ${info.label.toLowerCase()}`;
+    const home = el('button', {
+      class: 'hp-chip', type: 'button', 'aria-pressed': String(Boolean(pet.home)), text: `${name} lives on your page`,
+      onclick: () => app.petHome(!pet.home),
+    });
+    return [h3('Your pet'),
+      el('div', { class: 'hp-pet-here' }, H.petEl(pet.kind, pet.coat),
+        el('div', {}, el('strong', { text: name }),
+          el('p', { class: 'hp-note-small', text: pet.home ? 'It wanders about your page, and anyone who can see your page can pet it.' : "It's only in its room for now." }),
+          el('div', { class: 'hp-row' }, home, el('button', { class: 'hp-tool', type: 'button', text: 'Its room…', onclick: room })))),
+      el('p', { class: 'hp-note-small', text: 'Feed it and play with it in its room (the button by your profile), whenever you like.' })];
   }
 
-  // How it's doing (once it's moved in: saved), and feeding it and playing with it.
-  function care(pet) {
-    const st = state.data.pet;
-    const name = pet.name || H.PETS[pet.kind].label;
-    if (!st || !(state.data.doc && state.data.doc.pet)) return [el('p', { class: 'hp-note-small', text: `Once your page has saved, you can look after ${name} here.` })];
-    const days = Math.max(1, Math.ceil((Date.now() - st.since) / 86_400_000));
-    const tend = (what) => async () => {
-      try {
-        const d = await app.api('POST', `/homepages/me/pet/${what}`);
-        state.data.pet = d.pet;
-        H.petDid($('hp-page'), what, d.pet);
-        renderTray();
-      } catch (err) {
-        note(err.message);
-      }
-    };
-    return [h3(`Looking after ${name}`), el('div', { class: 'hp-pet-meters hp-pet-care-tray' }, ...H.petMeters(st)),
-      el('p', { class: 'hp-note-small', text: `Petted ${st.pets.toLocaleString()} ${st.pets === 1 ? 'time' : 'times'}, on your page ${days} ${days === 1 ? 'day' : 'days'}.` }),
-      el('div', { class: 'hp-row' },
-        el('button', { class: 'hp-tool dark', type: 'button', text: `Feed ${name}`, onclick: tend('feed') }),
-        el('button', { class: 'hp-tool', type: 'button', text: 'Play', onclick: tend('play') }))];
+  // Your pet changed (in its room): your page shows it as it is now.
+  function petChanged(pet) {
+    if (!$('homepage').open || !state.data || !state.data.mine) return;
+    state.data.pet = pet && pet.home ? pet : null;
+    draw();
+    if (state.editing && !state.picked && state.tab === 'pet') renderTray();
   }
 
   // Choices, as a row of chips. Glow's extras (`extras`) have a little raindrop; for anyone else
@@ -1186,7 +1152,7 @@
         field('Font', chips(Object.fromEntries(Object.entries(H.FONTS).map(([k, f]) => [k, f.label])), p.font, (font) => set({ font }),
           (k) => ({ fontFamily: H.FONTS[k].css }))));
     } else if (p.t === 'counter') {
-      out.push(el('p', { class: 'hp-note-small', text: `It counts visits from everyone but you (${state.data.views} so far), each visitor once every few hours.` }),
+      out.push(el('p', { class: 'hp-note-small', text: `Like the hit counters of old, it counts every visit but yours (${state.data.views} so far).` }),
         field('Kind', chips(H.COUNTERS, p.style, (style) => set({ style }))),
         words('Words with it', 'label', 40, 'visitors'),
         field('Color', colors(p.color, (color) => set({ color }))));
@@ -1370,5 +1336,5 @@
     return true;
   }
 
-  Object.assign(H, { connect, open, close, back, onSigned, onAsked, onAnswered, isOpen: () => $('homepage').open });
+  Object.assign(H, { connect, open, close, back, onSigned, onAsked, onAnswered, petChanged, isOpen: () => $('homepage').open });
 })();
