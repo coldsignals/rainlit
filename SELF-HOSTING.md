@@ -272,6 +272,7 @@ account, gifts some months of supporting.
 | `MAX_FILE_MB` | The biggest file people can send, in MB, to start with (25). After that, it's changed in the admin panel (Storage). |
 | `STORAGE_MB` | How much each person's files can add up to, in MB, to start with (1536, which is 1.5 GB). After that, it's changed in the admin panel. |
 | `NEW_ACCOUNT_DAYS`, `NEW_ACCOUNT_DAILY_MB` | How long an account counts as new (7 days), and how much it can send in files a day meanwhile, in MB (250). A flagged account has the same pace until the admin says it's fine. |
+| `MIN_AGE` | How old someone has to be to make an account (13, and never less). Sign-up asks for a birthday without saying what age it takes; someone younger is told they can't make an account. Some countries' laws want 14, 15 or 16. |
 | `NOTES_MAX` | How many notes each person's Notes holds (100; supporters, 1,000). Their files count toward their room for files. |
 | `PRIVACY_URL`, `TERMS_URL` | Links to your own privacy policy and terms. Without them, /privacy and /terms show rainlit.app's, which say they're for rainlit.app. |
 | `LINK_PREVIEWS` | `off` turns off link previews (an X post, a video, or a page's title and picture under links in messages). They're on to start with: your server fetches the links people send, and passes their pictures along. |

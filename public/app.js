@@ -80,6 +80,7 @@ const el = {};
 for (const id of [
   'auth', 'signin-tab', 'signup-tab', 'signin-form', 'signin-login', 'signin-password',
   'signup-form', 'setup-note', 'code-label', 'signup-code', 'signup-email', 'signup-username', 'signup-name', 'signup-password',
+  'signup-month', 'signup-day', 'signup-year',
   'reset-form', 'reset-password', 'auth-error',
   'signup-spots', 'signup-spots-text', 'signup-full', 'signup-waitlist', 'waitlist-form', 'waitlist-email', 'waitlist-send', 'waitlist-sent', 'waitlist-back', 'signups-open', 'signups-more', 'signups-cap', 'signups-state', 'waitlist-release',
   'forgot-btn', 'forgot-hint', 'forgot-form', 'forgot-login', 'forgot-send', 'forgot-sent', 'forgot-back',
@@ -109,7 +110,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
   'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
-  'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
 ]) {
@@ -3942,10 +3943,20 @@ function renderAgeGate(dm) {
     dm.early = [];
     dm.loaded = false;
     const space = S.spaces.get(c.spaceId);
+    const later = notAdultYet();
     el.ageGateTitle.textContent = `#${c.name} is marked 18+`;
-    el.ageGateText.textContent = `${space ? space.name : 'Its space'} marked it for people who are 18 or older. Only go in if you are.`;
+    el.ageGateText.textContent = later
+      ? `${space ? space.name : 'Its space'} marked it for people who are 18 or older. It opens for you when you turn 18, on ${later}.`
+      : `${space ? space.name : 'Its space'} marked it for people who are 18 or older. Only go in if you are.`;
+    el.ageGateYes.hidden = el.ageGateHint.hidden = Boolean(later);
   }
   return gated;
+}
+
+// Someone who signed up under 18: the day they turn 18 ("May 17, 2030"), or ''.
+function notAdultYet() {
+  const from = S.me && S.me.adultFrom;
+  return from && from > Date.now() ? new Date(from).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '';
 }
 
 // Saying you're 18 or older (once, for your account). Resolves whether it worked.
@@ -3983,6 +3994,11 @@ function onAgeGateNo() {
 
 // A voice channel marked 18+: asked before joining. Resolves whether you said yes (and it worked).
 function askAgeForVoice(c) {
+  const later = notAdultYet();
+  if (later) {
+    toast(`#${c.name} is marked 18+. It opens for you when you turn 18, on ${later}.`, 6000);
+    return Promise.resolve(false);
+  }
   const space = S.spaces.get(c.spaceId);
   el.ageDialogTitle.textContent = `#${c.name} is marked 18+`;
   el.ageDialogText.textContent = `${space ? space.name : 'Its space'} marked this voice channel for people who are 18 or older. Only join if you are.`;
@@ -6381,6 +6397,31 @@ function showAuth(mode) {
   if (first && matchMedia('(pointer: fine)').matches) first.focus();
 }
 
+// ----- Your birthday, when you sign up -----
+// A neutral age screen: month, day and year, nothing picked to start with, and nothing that says
+// what age it takes. The server says no to anyone too young (lib/people.js birthdayAge), and then
+// this device doesn't ask again for a day, so a different birthday can't just be tried straight
+// after.
+
+function fillBirthday() {
+  const add = (select, value, text) => select.append(new Option(text, value));
+  ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    .forEach((m, i) => add(el.signupMonth, String(i + 1).padStart(2, '0'), m));
+  for (let d = 1; d <= 31; d++) add(el.signupDay, String(d).padStart(2, '0'), String(d));
+  for (let y = new Date().getFullYear(); y >= 1900; y--) add(el.signupYear, String(y), String(y));
+}
+
+// "2008-05-17", or '' if it's not all picked.
+const birthdayValue = () => (el.signupYear.value && el.signupMonth.value && el.signupDay.value
+  ? `${el.signupYear.value}-${el.signupMonth.value}-${el.signupDay.value}` : '');
+
+function refuseSignup() {
+  try { localStorage.setItem('rainlit.noSignup', String(Date.now() + 86_400_000)); } catch {}
+}
+function signupRefused() {
+  try { return Number(localStorage.getItem('rainlit.noSignup') || 0) > Date.now(); } catch { return false; }
+}
+
 // Runs a sign-in/sign-up form: disables its button while waiting and shows any problem.
 async function submitAuth(form, request) {
   const btn = form.querySelector('button[type="submit"]');
@@ -6396,6 +6437,7 @@ async function submitAuth(form, request) {
       renderSpots();
     }
     if (err.data && err.data.waitlist) toWaitlist();
+    if (err.data && err.data.tooYoung) refuseSignup();
     showAuthError(err.message);
   } finally {
     btn.disabled = false;
@@ -11964,12 +12006,14 @@ async function init() {
   el.waitlistForm.addEventListener('submit', onWaitlist);
   el.waitlistBack.addEventListener('click', () => showAuth('signup'));
   el.signupWaitlist.addEventListener('click', toWaitlist);
+  fillBirthday();
   el.signupForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (signupRefused()) return showAuthError("Sorry, you can't make an account.");
     const code = el.signupCode.value.trim();
     submitAuth(el.signupForm, async () => api('POST', '/signup', {
       code, email: el.signupEmail.value, username: el.signupUsername.value,
-      displayName: el.signupName.value, password: el.signupPassword.value,
+      displayName: el.signupName.value, password: el.signupPassword.value, birthday: birthdayValue(),
       proof: S.openSignups && !code ? await takeProof(el.signupForm.querySelector('button[type="submit"]')) : undefined,
     })).then(() => {
       if (S.me && S.mailEnabled) toast(`Welcome! We sent ${S.me.email} a link to confirm it's yours.`, 7000);

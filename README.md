@@ -54,6 +54,13 @@ make an account.
 
 Each code works once. Unused codes can be deleted.
 
+**Birthdays:** signing up asks for a birthday, without saying what age it takes
+(a "neutral age screen"). Anyone under 13 is told they can't make an account,
+and that device can't try again for a day. The birthday isn't kept: someone
+13 to 17 keeps only the day they turn 18, and 18+ channels stay closed to them
+until then. A server can ask for more than 13 with `MIN_AGE` (some countries'
+laws want 14, 15 or 16).
+
 **Open sign-ups:** the same panel can let anyone sign up without an invite, with a
 bot check, a daily limit and a waitlist (see [SELF-HOSTING.md](SELF-HOSTING.md#4-invite-people)).
 

@@ -80,6 +80,10 @@ const KLIPY_MEDIA = /^https:\/\/static\d*\.klipy\.com\/[^\s"'<>\\]{1,500}$/;
 // can claim the first (admin) account.
 let setupCode = people.countUsers() === 0 ? people.makeCode() : null;
 
+// How old someone has to be to make an account (13 unless this server says more: some
+// countries' laws want 14, 15 or 16). The sign-up form asks their birthday without saying so.
+const MIN_AGE = Math.max(13, Math.round(Number(process.env.MIN_AGE)) || 13);
+
 const signupTries = auth.limiter(20, 3600_000);
 const loginTries = auth.limiter(8, 15 * 60_000); // per person being signed in to
 const ipTries = auth.limiter(40, 15 * 60_000); // per visitor, across everyone
@@ -415,6 +419,15 @@ api.post('/signup', async (req, res) => {
         : { error: "Rainlit's full for today. Try again tomorrow.", full: true });
     }
   }
+  // Their birthday (a neutral age screen: nothing on the form says what age it takes). Too young,
+  // and there's no account. The birthday isn't kept; someone under 18 keeps only the day they
+  // turn 18, so 18+ channels stay closed until then.
+  const born = people.birthdayAge(b.birthday);
+  if (!born) return fail(res, 400, 'Enter your birthday.');
+  if (born.age < MIN_AGE) {
+    console.log('[accounts] A sign-up was turned away: too young.');
+    return res.status(403).json({ error: "Sorry, you can't make an account.", tooYoung: true });
+  }
   if (!firstAccount && signups.throwaway(email)) return fail(res, 400, 'Please use your real email address, not a throwaway one.');
   if (!people.USERNAME_RE.test(username)) return fail(res, 400, 'Usernames are 2 to 32 characters: letters, numbers, dots and underscores.');
   if (['everyone', 'here'].includes(username)) return fail(res, 409, 'That username is taken.'); // (they mean something in a message)
@@ -430,9 +443,9 @@ api.post('/signup', async (req, res) => {
   try {
     transaction(() => {
       db.prepare(`
-        INSERT INTO users (id, username, email, password_hash, display_name, is_admin, created_at, open_signup)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(id, username, email, hash, displayName, firstAccount ? 1 : 0, now, open ? 1 : 0);
+        INSERT INTO users (id, username, email, password_hash, display_name, is_admin, created_at, open_signup, adult_from)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, username, email, hash, displayName, firstAccount ? 1 : 0, now, open ? 1 : 0, born.age < 18 ? born.eighteenAt : null);
       badges.welcome(id, now);
       announcements.skipOld(id); // (made under things as they are now)
       if (!firstAccount && !open) {
@@ -641,7 +654,7 @@ api.get('/me/deletion', needUser, (req, res) => {
 // Saying you're 18 or older, to open the channels spaces have marked 18+ (asked once, the first
 // time you open one). Your other devices hear, and their channel lists open up too.
 api.post('/me/adult', needUser, (req, res) => {
-  people.confirmAdult(req.user.id);
+  if (!people.confirmAdult(req.user.id)) return fail(res, 403, '18+ channels open for you when you turn 18.');
   const user = people.selfUser(people.userById(req.user.id));
   realtime.sendToUser(req.user.id, { type: 'me', user });
   res.json({ user });

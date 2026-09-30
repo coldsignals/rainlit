@@ -165,6 +165,9 @@ button { cursor: pointer; }
 }
 .field textarea:focus-visible { outline-offset: 0; border-color: var(--lamp); }
 .field input:focus-visible, .field select:focus-visible { outline-offset: 0; border-color: var(--lamp); }
+/* The sign-up form's birthday: month, day, year (their arrows closer in, to leave room for "September"). */
+.birthday-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.1fr); gap: 8px; }
+.field .birthday-row select { padding-left: 11px; padding-right: 30px; background-position: right 9px center; background-size: 15px; }
 /* Dropdowns get our own arrow, a little in from the edge (the browser's sits right against it). */
 .field select {
   appearance: none; -webkit-appearance: none;

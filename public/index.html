@@ -145,6 +145,15 @@
           <span>Display name</span>
           <input id="signup-name" autocomplete="nickname" maxlength="32" placeholder="Optional, you can change it any time" />
         </label>
+        <div class="field">
+          <span id="signup-birthday-label">Your birthday</span>
+          <div class="birthday-row" role="group" aria-labelledby="signup-birthday-label">
+            <select id="signup-month" aria-label="Month" autocomplete="bday-month"><option value="">Month</option></select>
+            <select id="signup-day" aria-label="Day" autocomplete="bday-day"><option value="">Day</option></select>
+            <select id="signup-year" aria-label="Year" autocomplete="bday-year"><option value="">Year</option></select>
+          </div>
+          <small class="hint">It isn't shown on your profile.</small>
+        </div>
         <label class="field">
           <span>Password</span>
           <input id="signup-password" type="password" autocomplete="new-password" minlength="8" required />
@@ -475,7 +484,7 @@
                 <button id="age-gate-no" class="text-btn" type="button">Go back</button>
                 <button id="age-gate-yes" class="primary-btn" type="button">I'm 18 or older</button>
               </div>
-              <small class="hint">You're only asked once: Rainlit remembers it for your account.</small>
+              <small id="age-gate-hint" class="hint">You're only asked once: Rainlit remembers it for your account.</small>
             </div>
           </div>
           <ol id="chat-log" class="chat-log"></ol>
