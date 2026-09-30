@@ -157,7 +157,7 @@ and released is in [desktop/README.md](desktop/README.md).
 
 Settings > **Theme**: Rainlit's own (the night, lit by a lamp), **Dark** (plain
 greys), **Midnight** (black, for OLED screens), **Light**, or **Auto** (Light
-or Rainlit, as your device is set). People supporting Rainlit also get
+or Rainlit, as your device is set). With Glow (below), there's also
 **Sakura** (cherry blossoms at night, with falling petals), **Monsoon** (deep
 green, and the rains), **Aurora** (the northern lights, and snow) and
 **Fireflies** (a summer night in the woods), each with its own weather in
@@ -197,7 +197,7 @@ from your own (**Your homepage**, then **Edit**).
   link (a link to someone's homepage opens it right in Rainlit).
 - **The page:** a pattern, a color or your own picture behind it, weather
   over it (rain, snow, sparkles, floating hearts), and a name for it.
-- **Supporters' extras:** people supporting Rainlit also get fireflies, an
+- **Glow's extras:** people with Glow also get fireflies, an
   aurora, a thunderstorm and cherry blossoms for weather, Shimmer and
   Lamplight words, and Gilded and Neon frames, and room for 200 MB and 500
   pieces. If they stop, what's on their page stays.
@@ -220,11 +220,12 @@ sees it all in the Admin panel (the key button gets a dot for new feedback),
 and can reply, which shows under what you sent, or mark it done. Up to 10 a
 day each.
 
-## Supporting Rainlit
+## Rainlit Glow
 
-rainlit.app is free, and paid for by one person. Supporters keep it that way,
-for $5 a month or $50 a year (and tips), at `rainlit.app/support` (Your
-profile, **Supporting Rainlit**). They get more of what costs money: files up
+rainlit.app is free, and paid for by one person. **Glow** is how people support
+it and keep it that way, for $5 a month or $50 a year (and tips), at
+`rainlit.app/support` (Your profile, **Rainlit Glow**). What supporters get is
+marked with a Glow tag wherever it is, and it's more of what costs money: files up
 to 100 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
 channels (1080p at up to 60 fps, while it fits in what Cloudflare sends for
 free), no slower start for a new account, homepage extras, four themes with

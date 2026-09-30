@@ -831,7 +831,7 @@
       return el('button', {
         class: `hp-chip${extra ? ' hp-chip-extra' : ''}`, type: 'button', 'aria-pressed': String(current === key), text: label,
         style: style ? style(key) : undefined,
-        title: extra ? (locked ? 'For people supporting Rainlit' : "A supporter's extra") : undefined,
+        title: extra ? (locked ? 'Comes with Glow' : "One of Glow's extras") : undefined,
         disabled: locked,
         onclick: () => onPick(key),
       });
@@ -841,8 +841,8 @@
     const perks = all.filter(([key]) => extras.includes(key)).map(chip).filter(Boolean);
     if (!perks.length) return row;
     return el('div', { class: 'hp-chip-sets' }, row,
-      el('div', { class: 'hp-perks', role: 'group', 'aria-label': 'For people supporting Rainlit' },
-        el('span', { class: 'hp-perk-tag', text: (app && app.perkName) || 'Supporters' }),
+      el('div', { class: 'hp-perks', role: 'group', 'aria-label': 'Comes with Glow' },
+        el('span', { class: 'hp-perk-tag', text: (app && app.perkName) || 'Glow' }),
         el('div', { class: 'hp-chips' }, ...perks)));
   }
 

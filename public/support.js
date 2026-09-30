@@ -148,9 +148,9 @@
 
   if (!data.enabled) {
     if (data.me && data.me.active) {
-      me.append(make('p', {}, make('strong', { text: "You're supporting Rainlit." }), ` ${LEVELS[data.me.level] || 'Drizzle'}, ${length(data.me.months)} so far. Thank you!`));
+      me.append(make('p', {}, make('strong', { text: 'You have Glow.' }), ` ${LEVELS[data.me.level] || 'Drizzle'}, ${length(data.me.months)} so far. Thank you!`));
     } else {
-      me.append(make('p', {}, make('strong', { text: 'Supporting opens soon.' }), ' This server doesn’t take payments yet.'));
+      me.append(make('p', {}, make('strong', { text: 'Glow opens soon.' }), ' This server doesn’t take payments yet.'));
     }
     me.hidden = false;
     return;
@@ -158,7 +158,7 @@
 
   if (!data.me) {
     me.append(
-      make('p', {}, make('strong', { text: 'Sign in to support Rainlit.' }), ' Your perks and badge go with your account.'),
+      make('p', {}, make('strong', { text: 'Sign in to get Glow.' }), ' It goes with your account, badge and all.'),
       make('a', { class: 'go', href: '/?next=support', text: 'Sign in' }),
     );
     me.hidden = false;
@@ -171,7 +171,7 @@
   if (s.active && s.plan !== 'gift') {
     const when = s.cancels ? `It stops on ${date(s.cancels)}.` : s.until ? `It renews on ${date(s.until)}.` : '';
     me.append(make('div', { class: 'me-row' }, badge, make('div', {},
-      make('p', {}, make('strong', { text: "You're supporting Rainlit. Thank you!" })),
+      make('p', {}, make('strong', { text: 'You have Glow. Thank you!' })),
       make('p', { text: `${LEVELS[s.level] || 'Drizzle'}, ${length(s.months)} so far, ${s.plan === 'year' ? 'yearly' : 'monthly'}. ${when}` }),
       who)));
     const manage = make('button', { class: 'go quiet', type: 'button', text: 'Manage, or stop' });
@@ -179,12 +179,12 @@
     me.append(manage, tipForm());
   } else if (s.active) {
     me.append(make('div', { class: 'me-row' }, badge, make('div', {},
-      make('p', {}, make('strong', { text: "You're supporting Rainlit, as a gift." })),
+      make('p', {}, make('strong', { text: 'You have Glow, as a gift.' })),
       make('p', { text: `${LEVELS[s.level] || 'Drizzle'}, ${length(s.months)} so far, until ${date(s.until)}. To keep going after that:` }),
       who)), plans(false), tipForm());
   } else if (s.first) {
     me.append(make('div', { class: 'me-row' }, badge, make('div', {},
-      make('p', {}, make('strong', { text: `You supported Rainlit for ${length(s.months)}.` })),
+      make('p', {}, make('strong', { text: `You had Glow for ${length(s.months)}.` })),
       make('p', { text: `Your badge is at ${LEVELS[s.level] || 'Drizzle'}${s.next ? `, ${s.next.inDays} days from ${s.next.name}` : ''}. Come back, and it picks up where it left off.` }),
       who)), plans(true), tipForm());
   } else {

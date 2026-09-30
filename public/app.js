@@ -6543,9 +6543,19 @@ const THEMES = [
   { id: 'fireflies', name: 'Fireflies', extra: true, weather: 'fireflies', about: 'a summer night in the woods, with fireflies' },
 ];
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
-// What supporters get is marked with this, on a tag (see .perk-box): the plan's name, when it has
-// one of its own (like Discord's "Nitro").
-const PERK_NAME = 'Supporters';
+// What supporters get is marked with this, on a tag (see .perk-box): the supporter plan's name
+// (like Discord's "Nitro").
+const PERK_NAME = 'Glow';
+// A line with "Glow" in it, the name in bold and its colours (.glow-word).
+function withGlow(node, text) {
+  node.replaceChildren(...text.split(/(Glow)/).filter(Boolean).map((part) => {
+    if (part !== 'Glow') return document.createTextNode(part);
+    const word = document.createElement('span');
+    word.className = 'glow-word';
+    word.textContent = part;
+    return word;
+  }));
+}
 const supporting = () => Boolean(S.me && S.me.supporter && S.me.supporter.active);
 const lightDevice = matchMedia('(prefers-color-scheme: light)');
 
@@ -6648,7 +6658,7 @@ function renderThemes() {
     b.className = `theme-card${t.extra ? ' extra' : ''}${locked ? ' locked' : ''}`;
     b.dataset.theme = t.id;
     b.setAttribute('aria-pressed', String(on === t.id));
-    b.title = `${t.name}: ${t.about}${locked ? '. For people supporting Rainlit (try it on)' : ''}`;
+    b.title = `${t.name}: ${t.about}${locked ? '. Comes with Glow (try it on)' : ''}`;
     b.append(shot, name);
     b.addEventListener('click', () => pickTheme(t.id));
     return b;
@@ -6658,10 +6668,10 @@ function renderThemes() {
   const extras = THEMES.filter((t) => t.extra && (supporting() || offered));
   el.themeExtras.replaceChildren(...extras.map(card));
   el.themeExtrasBox.hidden = !extras.length;
-  el.themeExtrasTitle.textContent = supporting() ? 'Yours for supporting Rainlit, each with weather of its own' : 'Each with weather of its own: try one on';
+  withGlow(el.themeExtrasTitle, supporting() ? 'Yours with Glow, each with weather of its own' : 'Each with weather of its own: try one on');
   const trying = S.themeTry ? themeById(S.themeTry) : null;
   el.themeTry.hidden = !trying;
-  if (trying) el.themeTryText.textContent = `${trying.name}: ${trying.about}. It's one of the themes for people supporting Rainlit; yours comes back when you close Settings.`;
+  if (trying) withGlow(el.themeTryText, `${trying.name}: ${trying.about}. It's one of Glow's themes; yours comes back when you close Settings.`);
   el.themeTryBtn.hidden = !offered;
 }
 
@@ -11104,7 +11114,7 @@ function nameActivityGame(li, p) {
 // keeps its level.
 const BADGES = {
   alpha: { name: 'First Leaf', about: 'Here since the Rainlit alpha', when: 'Joined' },
-  supporter: { name: 'Supporter', about: 'Supports Rainlit', when: 'Since' },
+  supporter: { name: 'Glow', about: 'Supports Rainlit, with Glow', when: 'Since' },
 };
 const SUPPORT_LEVELS = { drizzle: 'Drizzle', shower: 'Shower', downpour: 'Downpour', storm: 'Storm', monsoon: 'Monsoon', lamplight: 'Lamplight' };
 
@@ -11121,9 +11131,9 @@ function badgeInfo(b) {
   if (b.id !== 'supporter') return { ...BADGES[b.id], src: `/badges/${b.id}.svg` };
   const level = SUPPORT_LEVELS[b.level] ? b.level : 'drizzle';
   return {
-    name: `${SUPPORT_LEVELS[level]} supporter`,
-    about: b.lit ? `Supporting Rainlit, for ${monthsText(b.months)} so far` : `Supported Rainlit for ${monthsText(b.months)}`,
-    when: b.lit ? 'Since' : 'First supported', src: `/badges/supporter-${level}.svg`, lit: Boolean(b.lit), dim: !b.lit,
+    name: `Glow · ${SUPPORT_LEVELS[level]}`,
+    about: b.lit ? `Supporting Rainlit with Glow, for ${monthsText(b.months)} so far` : `Supported Rainlit with Glow for ${monthsText(b.months)}`,
+    when: b.lit ? 'Since' : 'First had Glow', src: `/badges/supporter-${level}.svg`, lit: Boolean(b.lit), dim: !b.lit,
   };
 }
 
@@ -11531,19 +11541,19 @@ function renderSupportCard() {
   el.supportCard.classList.toggle('lit', s.active);
   el.supportCard.classList.toggle('dim', !s.active);
   if (s.active) {
-    el.supportTitle.textContent = `Supporting Rainlit · ${level}`;
+    withGlow(el.supportTitle, `Glow · ${level}`);
     const when = s.plan === 'gift' ? `A gift, until ${shortDate(s.until)}.`
       : s.cancels ? `It stops on ${shortDate(s.cancels)}.` : s.until ? `It renews on ${shortDate(s.until)}.` : '';
-    el.supportNote.textContent = `${monthsText(s.months)} so far. Thank you! ${when}`;
+    el.supportNote.textContent = `${monthsText(s.months)} so far. Thank you for keeping Rainlit free! ${when}`;
   } else if (s.first) {
-    el.supportTitle.textContent = `Supported Rainlit · ${level}`;
+    withGlow(el.supportTitle, `You had Glow · ${level}`);
     el.supportNote.textContent = `For ${monthsText(s.months)}. Your badge keeps its level${offered ? ", and picks up where it left off if you come back" : ''}.`;
   } else {
-    el.supportTitle.textContent = 'Support Rainlit';
-    el.supportNote.textContent = "It's free, and paid for by one person. Supporters keep it that way, and get bigger files, more room, sharper streams and a badge that grows.";
+    withGlow(el.supportTitle, 'Rainlit Glow');
+    el.supportNote.textContent = "Rainlit's free, and paid for by one person. Glow keeps it that way, and gets you bigger files, more room, sharper streams, themes with weather of their own and a badge that grows.";
   }
   el.supportBtn.hidden = !offered;
-  el.supportBtn.textContent = s.active && s.plan !== 'gift' ? 'Manage' : s.first && !s.active ? 'Support again' : 'See the plan';
+  el.supportBtn.textContent = s.active && s.plan !== 'gift' ? 'Manage' : s.first && !s.active ? 'Get Glow again' : 'Get Glow';
 }
 
 // Settings' link to the support page.
@@ -12043,7 +12053,7 @@ async function renderAdmin() {
     if (sup) {
       const tag = document.createElement('small');
       tag.className = 'user-support';
-      tag.textContent = `Supporting · ${SUPPORT_LEVELS[sup.level] || 'Drizzle'}${sup.plan === 'gift' ? ` (a gift, until ${shortDate(sup.until)})` : ''}`;
+      tag.textContent = `Glow · ${SUPPORT_LEVELS[sup.level] || 'Drizzle'}${sup.plan === 'gift' ? ` (a gift, until ${shortDate(sup.until)})` : ''}`;
       line.append(tag);
     }
     const words = document.createElement('span');
@@ -12056,7 +12066,7 @@ async function renderAdmin() {
       gift.type = 'button';
       gift.className = 'text-btn';
       gift.textContent = sup ? 'End gift' : 'Gift';
-      gift.title = sup ? 'End their gift of supporting Rainlit' : 'Give them some months of supporting Rainlit';
+      gift.title = sup ? 'End their gift of Glow' : 'Give them some months of Glow';
       gift.addEventListener('click', () => (sup ? endGift(u) : askGift(li, u)));
       li.append(gift);
     }
@@ -12139,11 +12149,11 @@ async function renderSupportAdmin(state) {
   }
   if (document.activeElement !== el.supportCosts) el.supportCosts.value = String(Math.round(state.costs / 100));
   const money = (cents) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
-  const people = `${state.supporters} ${state.supporters === 1 ? 'person supports' : 'people support'} Rainlit`;
+  const people = `${state.supporters} ${state.supporters === 1 ? 'person has' : 'people have'} Glow`;
   el.supportState.textContent = (state.enabled
     ? `${people}${state.tips ? `, and ${state.tips} ${state.tips === 1 ? 'tip' : 'tips'} came in this month` : ''}: about ${money(state.covered)} a month after fees${state.costs ? `, of ${money(state.costs)}` : ''}.`
     : "Payments aren't set up on this server (STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET: see SELF-HOSTING.md), so nobody can support it yet. You can still gift supporting, below.")
-    + (state.voice ? ` Voice this month: about ${fmtBytes(state.voice.total)} sent by Cloudflare (1,000 GB a month is free; sharper streams pause for everyone past ${state.voice.budgetGb} GB)${state.voice.sharp ? `, ${fmtBytes(state.voice.sharp)} of it supporters' sharper screen shares` : ''}.` : '');
+    + (state.voice ? ` Voice this month: about ${fmtBytes(state.voice.total)} sent by Cloudflare (1,000 GB a month is free; sharper streams pause for everyone past ${state.voice.budgetGb} GB)${state.voice.sharp ? `, ${fmtBytes(state.voice.sharp)} of it Glow's sharper screen shares` : ''}.` : '');
 }
 
 async function saveSupportCosts() {
@@ -12171,7 +12181,7 @@ function askGift(li, u) {
   yes.addEventListener('click', async () => {
     try {
       await api('POST', `/admin/users/${u.id}/supporter`, { months: Number(months.value) });
-      toast(`@${u.username} is supporting Rainlit, as a gift from you.`);
+      toast(`@${u.username} has Glow, as a gift from you.`);
       renderAdmin();
     } catch (err) {
       toast(err.message);
@@ -12188,7 +12198,7 @@ function askGift(li, u) {
 }
 
 async function endGift(u) {
-  if (!confirm(`End @${u.username}'s gift of supporting Rainlit now? Their badge keeps its level.`)) return;
+  if (!confirm(`End @${u.username}'s gift of Glow now? Their badge keeps its level.`)) return;
   try {
     await api('DELETE', `/admin/users/${u.id}/supporter`);
     renderAdmin();

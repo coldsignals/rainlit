@@ -619,7 +619,7 @@ api.patch('/me', needUser, (req, res) => {
   if ('theme' in b) {
     const theme = String(b.theme || '');
     if (!themes.known(theme)) return fail(res, 400, "That isn't one of Rainlit's themes.");
-    if (!themes.allowed(req.user, theme)) return fail(res, 403, 'That theme is for people supporting Rainlit.');
+    if (!themes.allowed(req.user, theme)) return fail(res, 403, 'That theme comes with Glow.');
     set.theme = theme;
   }
   const cols = Object.keys(set);
@@ -730,7 +730,7 @@ api.delete('/me', needUser, async (req, res) => {
   const userId = req.user.id;
   // (Supporting Rainlit stops with it: nobody would be left to support as.)
   if (!(await supporters.forget(req.user))) {
-    return fail(res, 502, "Your support for Rainlit couldn't be stopped just now, so your account wasn't deleted (you'd keep paying). Try again in a few minutes.");
+    return fail(res, 502, "Your Glow couldn't be stopped just now, so your account wasn't deleted (you'd keep paying). Try again in a few minutes.");
   }
   realtime.forgetUser(userId); // (out of any call, and signed out everywhere)
   const done = accounts.deleteAccount(userId);
@@ -2401,7 +2401,7 @@ api.post('/admin/users/:id/supporter', needAdmin, (req, res) => {
   res.json({ ok: true });
 });
 api.delete('/admin/users/:id/supporter', needAdmin, (req, res) => {
-  if (!supporters.endGift(req.params.id)) return fail(res, 404, "They don't have a gift of supporting to end.");
+  if (!supporters.endGift(req.params.id)) return fail(res, 404, "They don't have a gift of Glow to end.");
   res.json({ ok: true });
 });
 

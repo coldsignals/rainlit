@@ -46,6 +46,7 @@
   --tint-mix: 100%;      /* names in their roles' colours (darker on a light theme: tint in app.js) */
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9b4c8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --perk-stroke: linear-gradient(115deg, #5aa9ff, #b77bff 50%, #f5b94a); /* what supporters get (.perk-box) */
+  --perk-ink: linear-gradient(115deg, #7dbbff, #c49bff 50%, #ffcf6b); /* "Glow", said in a line (.glow-word) */
 }
 /* Dark: plain greys, like most apps' dark mode. */
 :root[data-theme="dark"], [data-theme-preview="dark"] {
@@ -68,6 +69,7 @@
   --online: #1f9e57; --away: #de9612; --offline: #8b93a3;
   --rail: #e3e6ed; --panel: #fff; --pop: #fff; --scrim: rgba(26, 31, 45, 0.4);
   --rain: 64, 86, 122; --rain-blend: multiply; --tint-mix: 62%;
+  --perk-ink: linear-gradient(115deg, #2f6fc4, #7d45cf 50%, #a86400);
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23586173' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 :root[data-theme="light"] { color-scheme: light; }
@@ -2170,6 +2172,8 @@ button.person.open { background: var(--dusk-hi); }
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
+/* "Glow" in a short line (withGlow, in app.js): bold, in its colours. */
+.glow-word { font-weight: 800; background: var(--perk-ink); -webkit-background-clip: text; background-clip: text; color: transparent; }
 /* (Inside the box, a theme needs no raindrop of its own.) */
 .perk-box .theme-card.extra .theme-name::after { display: none; }
 .theme-try {
