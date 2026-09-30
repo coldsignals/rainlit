@@ -529,9 +529,66 @@ function checkScreenEncoder(out) {
   tuneVideoSender();
 }
 
+// A game shared smoothly over a slow connection. A browser keeps a shared screen's size, so when
+// the connection can't carry that many pixels 60 times a second, it sends a few blocky frames a
+// second instead. Smooth makes the picture smaller to fit what the connection carries: a step
+// down once it hasn't carried this size for a few seconds, and back up only once it has carried
+// the next size up with room to spare for a while, so the picture doesn't keep flipping. (Not in
+// a share's first seconds, while the connection is still being measured. Sharp keeps its size,
+// since text has to stay readable.)
+const SCREEN_STEPS = [
+  { height: 0, kbps: 2500, fps: 60 }, // (as it's captured)
+  { height: 720, kbps: 1300, fps: 60 },
+  { height: 540, kbps: 750, fps: 60 },
+  { height: 360, kbps: 380, fps: 30 },
+  { height: 270, kbps: 0, fps: 30 },
+];
+
+// The step the screen being sent is at (conn.fit: for that one share).
+function screenFitStep(conn) {
+  const track = conn && conn.senders.video && conn.senders.video.track;
+  const fit = conn && conn.fit;
+  return fit && track && fit.track === track && S.shareQuality === 'smooth' ? SCREEN_STEPS[fit.step] : SCREEN_STEPS[0];
+}
+
+// (From the stats, every couple of seconds: pair.availableOutgoingBitrate, what the connection
+// carries now.)
+function fitScreenToConnection(conn, pair) {
+  const track = conn.senders.video && conn.senders.video.track;
+  if (!track || track !== S.local.screen || S.shareQuality !== 'smooth') {
+    conn.fit = null;
+    return;
+  }
+  if (!conn.fit || conn.fit.track !== track) conn.fit = { track, step: 0, down: 0, up: 0, since: Date.now() };
+  const fit = conn.fit;
+  const kbps = pair && pair.availableOutgoingBitrate ? pair.availableOutgoingBitrate / 1000 : 0;
+  if (!kbps || Date.now() - fit.since < 8000) return;
+  let next = fit.step;
+  if (kbps < SCREEN_STEPS[fit.step].kbps * 0.85) {
+    fit.up = 0;
+    if (++fit.down >= 2) {
+      next = SCREEN_STEPS.findIndex((step, i) => i > fit.step && step.kbps <= kbps);
+      fit.down = 0;
+    }
+  } else if (fit.step > 0 && kbps >= SCREEN_STEPS[fit.step - 1].kbps * 1.25) {
+    fit.down = 0;
+    if (++fit.up >= 5) {
+      next = fit.step - 1;
+      fit.up = 0;
+    }
+  } else {
+    fit.down = 0;
+    fit.up = 0;
+  }
+  if (next < 0 || next === fit.step) return;
+  fit.step = next;
+  trace('screen-fit', { height: SCREEN_STEPS[next].height || 'as captured', kbps: Math.round(kbps) });
+  tuneVideoSender();
+}
+
 // How much the video being sent may use, what to give up first when the connection is slow,
-// and (a screen) the encoder. A camera goes back to the browser's own choices. (One change at a
-// time: a browser turns down a change made from parameters that another change has replaced.)
+// and (a screen) its size and encoder. A camera goes back to the browser's own choices. (One
+// change at a time: a browser turns down a change made from parameters another has replaced.)
 function tuneVideoSender() {
   S.tuning = (S.tuning || Promise.resolve()).then(tuneVideoSenderNow, tuneVideoSenderNow);
   return S.tuning;
@@ -543,6 +600,7 @@ async function tuneVideoSenderNow() {
   const params = sender.getParameters();
   if (!params.encodings || !params.encodings.length) return; // not connected yet; done when it is
   const q = S.local.screen && sender.track && sender.track === S.local.screen ? shareQuality() : null;
+  const step = screenFitStep(S.conn);
   const codec = q && !S.screenAsVp8 ? screenCodec(params) : null;
   // (Back from H.264: VP8, said outright, since a browser otherwise keeps the last codec, and
   // lists the one it's using first.)
@@ -550,10 +608,13 @@ async function tuneVideoSenderNow() {
   for (const enc of params.encodings) {
     if (q) {
       enc.maxBitrate = q.bitrate;
-      enc.maxFramerate = q.fps;
+      enc.maxFramerate = Math.min(q.fps, step.fps);
+      const height = sender.track.getSettings().height || 0;
+      enc.scaleResolutionDownBy = step.height && height > step.height ? height / step.height : 1;
     } else {
       delete enc.maxBitrate;
       delete enc.maxFramerate;
+      enc.scaleResolutionDownBy = 1;
     }
     if (codec) enc.codec = codec;
     else if (enc.codec && usual) enc.codec = usual;
@@ -581,6 +642,9 @@ async function tuneVideoSenderNow() {
 const sharePorts = new Map(); // share id -> its port (it can come before the chooser answers)
 const shareWaits = new Map(); // share id -> waiting for its port
 const mostOf = (c) => (typeof c === 'number' ? c : (c && (c.max || c.ideal || c.exact)) || 0);
+// (A picture's size: what's ideal, as a browser's own screen sharing takes it. A 2560x1440 game
+// window went out at full size otherwise, far more than most connections carry.)
+const idealOf = (c) => (typeof c === 'number' ? c : (c && (c.ideal || c.exact || c.max)) || 0);
 
 function initWindowSharing() {
   const md = navigator.mediaDevices;
@@ -599,7 +663,7 @@ function initWindowSharing() {
   const usual = md.getDisplayMedia.bind(md);
   md.getDisplayMedia = async (constraints = {}) => {
     const v = constraints.video && typeof constraints.video === 'object' ? constraints.video : {};
-    const choice = await DESKTOP.pickShare({ audio: Boolean(constraints.audio), maxWidth: mostOf(v.width), maxHeight: mostOf(v.height), fps: mostOf(v.frameRate) });
+    const choice = await DESKTOP.pickShare({ audio: Boolean(constraints.audio), maxWidth: idealOf(v.width), maxHeight: idealOf(v.height), fps: mostOf(v.frameRate) });
     if (!choice) throw new DOMException('Nothing was picked to share.', 'NotAllowedError');
     if (choice.kind !== 'window') return usual(constraints);
     const port = sharePorts.get(choice.share) || await new Promise((resolve) => {
@@ -690,7 +754,7 @@ function windowShareStream(port, choice, fps) {
   video.getSettings = () => ({ ...settings(), width: size.width, height: size.height, frameRate: fps, displaySurface: 'window' });
   video.applyConstraints = async (c = {}) => {
     fps = mostOf(c.frameRate) || fps;
-    if (!over) port.postMessage({ t: 'tune', maxWidth: mostOf(c.width) || 1920, maxHeight: mostOf(c.height) || 1080, fps });
+    if (!over) port.postMessage({ t: 'tune', maxWidth: idealOf(c.width) || 1920, maxHeight: idealOf(c.height) || 1080, fps });
   };
   return new MediaStream(audio ? [video, audio] : [video]);
 }
@@ -1901,6 +1965,7 @@ function startStats(conn) {
       renderStreamStats(conn, video, stats, pair, route, ping);
       traceVideo(conn, video);
       checkScreenEncoder(video.out);
+      fitScreenToConnection(conn, pair);
     } catch {}
   };
   update();
@@ -1957,7 +2022,7 @@ function renderStreamStats(conn, video, stats, pair, route, ping) {
     const lost = remoteIn && remoteIn.fractionLost != null ? `, ${(remoteIn.fractionLost * 100).toFixed(1)}% lost` : '';
     const captured = video.captured != null ? ` (captured at ${video.captured})` : '';
     lines.push(`Sending   ${out.frameWidth}×${out.frameHeight}, ${Math.round(out.framesPerSecond || 0)} fps${captured}, ${mbps(out.bytesSent, prev.outBytes, out.timestamp, prev.outAt)} Mb/s${lost}`);
-    lines.push(`          ${codec(out)}${out.encoderImplementation ? ` (${out.encoderImplementation})` : ''}${video.encodeMs != null ? `, ${video.encodeMs} ms a frame` : ''}${video.held ? `, held back by ${LIMITED_BY[video.held] || video.held}` : ''}`);
+    lines.push(`          ${codec(out)}${out.encoderImplementation ? ` (${out.encoderImplementation})` : ''}${video.encodeMs != null ? `, ${video.encodeMs} ms a frame` : ''}${video.held ? `, held back by ${LIMITED_BY[video.held] || video.held}` : ''}${screenFitStep(conn).height ? ', made smaller for the connection' : ''}`);
   }
   if (inb) {
     now.inBytes = inb.bytesReceived;
@@ -11850,6 +11915,7 @@ function traceVideo(conn, video) {
     held: video.held,
     encoder: out ? out.encoderImplementation : undefined,
     quality: out && S.local.screen ? S.shareQuality : undefined,
+    fit: out && screenFitStep(conn).height ? screenFitStep(conn).height : undefined,
     in: inb ? size(inb) : undefined,
     focus: document.hasFocus() ? undefined : 'elsewhere',
   });
