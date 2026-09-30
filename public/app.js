@@ -504,8 +504,8 @@ function shareConstraints(q = shareQuality()) {
 // usual), so a game went out at a few frames a second. Most graphics cards have an H.264 encoder
 // of their own that takes a few milliseconds: a screen goes as that when the browser has one
 // (browsers offer H.264's High profile only then) and the other end can take it. Once it's
-// going, the browser says whose encoder it is: if it isn't the graphics card's after all,
-// screens go as VP8 again (screenAsVp8).
+// going, the browser says whose encoder it is: if it isn't the graphics card's after all, that
+// share goes as VP8 again (screenAsVp8: the share it's given up on; the next one tries again).
 const isH264High = (c) => /^video\/h264$/i.test(c.mimeType) && /profile-level-id=64/i.test(c.sdpFmtpLine || '');
 
 function screenCodec(params) {
@@ -517,13 +517,19 @@ function screenCodec(params) {
   return (params.codecs || []).find(isH264High) || null;
 }
 
-// (From the stats, every couple of seconds.)
-function checkScreenEncoder(out) {
-  if (!out || out.powerEfficientEncoder !== false || S.screenAsVp8 || !S.local.screen) return;
-  const sender = S.conn && S.conn.senders.video;
-  const codec = sender && sender.getParameters().encodings[0].codec;
-  if (!codec || !isH264High(codec)) return;
-  S.screenAsVp8 = true;
+// (From the stats, every couple of seconds.) Only H.264 that's really being sent counts, and only
+// twice running: as a share starts, and as it changes size, the stats can still be the last
+// encoder's (VP8's, in software) for a moment.
+function checkScreenEncoder(conn, out, stats) {
+  const sender = conn.senders.video;
+  const track = sender && sender.track;
+  const codec = track && track === S.local.screen && S.screenAsVp8 !== track && sender.getParameters().encodings[0].codec;
+  const sent = out && out.codecId && stats.get(out.codecId);
+  const software = Boolean(codec && isH264High(codec) && sent && /^video\/h264$/i.test(sent.mimeType) && out.powerEfficientEncoder === false);
+  conn.softwareSeen = software ? (conn.softwareSeen || 0) + 1 : 0;
+  if (conn.softwareSeen < 2) return;
+  conn.softwareSeen = 0;
+  S.screenAsVp8 = track;
   console.warn('[video] H.264 is encoded in software here: screens go as VP8.');
   trace('screen-codec', { now: 'VP8', why: out.encoderImplementation || 'software' });
   tuneVideoSender();
@@ -602,7 +608,7 @@ async function tuneVideoSenderNow() {
   if (!params.encodings || !params.encodings.length) return; // not connected yet; done when it is
   const q = S.local.screen && sender.track && sender.track === S.local.screen ? shareQuality() : null;
   const step = screenFitStep(S.conn);
-  const codec = q && !S.screenAsVp8 ? screenCodec(params) : null;
+  const codec = q && S.screenAsVp8 !== sender.track ? screenCodec(params) : null;
   // (Back from H.264: VP8, said outright, since a browser otherwise keeps the last codec, and
   // lists the one it's using first.)
   const usual = (params.codecs || []).find((c) => /^video\/vp8$/i.test(c.mimeType));
@@ -627,7 +633,7 @@ async function tuneVideoSenderNow() {
     console.warn("[video] Couldn't set the quality:", err.message);
     // (The browser wouldn't send the screen as H.264: VP8, then. Unless the call's just ended.)
     if (codec && S.conn && S.conn.senders.video === sender && S.conn.pc.connectionState !== 'closed') {
-      S.screenAsVp8 = true;
+      S.screenAsVp8 = sender.track;
       await tuneVideoSenderNow();
     }
   }
@@ -1965,7 +1971,7 @@ function startStats(conn) {
       const video = videoFigures(conn, stats);
       renderStreamStats(conn, video, stats, pair, route, ping);
       traceVideo(conn, video);
-      checkScreenEncoder(video.out);
+      checkScreenEncoder(conn, video.out, stats);
       fitScreenToConnection(conn, pair);
     } catch {}
   };
@@ -2016,7 +2022,7 @@ function renderStreamStats(conn, video, stats, pair, route, ping) {
   };
   const mbps = (bytes, before, at, beforeAt) => (before != null && at > beforeAt ? ((bytes - before) * 8 / ((at - beforeAt) / 1000) / 1e6).toFixed(1) : '…');
   const lines = [`${route}${ping != null ? `, ${ping} ms round trip` : ''}`];
-  if (pair.availableOutgoingBitrate) lines.push(`Your upload can carry about ${(pair.availableOutgoingBitrate / 1e6).toFixed(1)} Mb/s`);
+  if (pair.availableOutgoingBitrate) lines.push(`The connection between you carries about ${(pair.availableOutgoingBitrate / 1e6).toFixed(1)} Mb/s`);
   if (out) {
     now.outBytes = out.bytesSent;
     now.outAt = out.timestamp;
