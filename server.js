@@ -40,6 +40,7 @@ supporters.whenChanged((userId) => {
   const u = people.userById(userId);
   if (u) realtime.sendToUser(userId, { type: 'me', user: people.selfUser(u) });
 });
+const themes = require('./lib/themes');
 const images = require('./lib/images');
 const { imageKind } = images;
 const embeds = require('./lib/embeds');
@@ -577,9 +578,21 @@ api.patch('/me', needUser, (req, res) => {
     if (!['auto', 'away', 'invisible'].includes(b.presence)) return fail(res, 400, 'Pick online, away or appear offline.');
     set.presence = b.presence;
   }
+  if ('theme' in b) {
+    const theme = String(b.theme || '');
+    if (!themes.known(theme)) return fail(res, 400, "That isn't one of Rainlit's themes.");
+    if (!themes.allowed(req.user, theme)) return fail(res, 403, 'That theme is for people supporting Rainlit.');
+    set.theme = theme;
+  }
   const cols = Object.keys(set);
   if (cols.length) {
     db.prepare(`UPDATE users SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`).run(...cols.map((c) => set[c]), req.user.id);
+  }
+  // (Just your theme: no one else sees it, so only your other devices hear.)
+  if (cols.length === 1 && cols[0] === 'theme') {
+    const me = people.selfUser(people.userById(req.user.id));
+    realtime.sendToUser(req.user.id, { type: 'me', user: me });
+    return res.json({ user: me });
   }
   res.json({ user: people.selfUser(profileChanged(req.user.id)) });
 });

@@ -36,6 +36,8 @@ const ANDROID = (() => {
       download: method('download'),
       saveData: method('saveData'),
       openExternal: method('openExternal'),
+      // (Capacitor's own: the clock and battery at the top, dark or light to suit the theme.)
+      systemBars: (style) => cap.nativePromise('SystemBars', 'setStyle', { style }),
       addListener: (event, fn) => cap.addListener('Rainlit', event, fn),
     };
   } catch {
@@ -108,7 +110,8 @@ for (const id of [
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-away', 'peer-away-time', 'offline-banner',
   'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
-  'mic-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input',
+  'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
+  'theme-list', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
   'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
@@ -196,6 +199,7 @@ const S = {
   localStream: new MediaStream(),
   local: { mic: null, cam: null, screen: null, screenAudio: null },
   micOn: true, // false when you've muted yourself
+  deafened: false, // in a call: you hear nothing from it, and your mic's quiet too (toggleDeafen)
   ptt: store.get('ptt', 'off') === 'on', // push to talk: silent unless the talk key or mic button is held
   pttKey: store.get('pttKey', 'Backquote'), // KeyboardEvent.code, so it's the same physical key on any layout
   pttKeyName: store.get('pttKeyName', '`'),
@@ -241,6 +245,8 @@ const S = {
   // Off to start with for anyone whose system asks for less motion.
   rain: store.get('rain', matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : 'on') !== 'off',
   rainFrame: 0,
+  theme: store.get('theme', 'rainlit'), // Settings > Theme (see THEMES)
+  themeTry: '', // a supporter's theme, tried on while Settings is open
   lastChime: 0,
 
   transfers: new Map(), // file id -> transfer, both directions, for this call
@@ -833,6 +839,12 @@ async function onShareQualityChange() {
 }
 
 async function toggleMic() {
+  // (Deafened, the mic button unmutes you, and undeafens you too: like Discord.)
+  if (S.deafened) {
+    S.deafened = false;
+    applyVolume();
+    if (S.local.mic) S.micOn = false; // (turned on just below)
+  }
   if (!S.local.mic) {
     try {
       S.micOn = true;
@@ -853,7 +865,19 @@ async function toggleMic() {
 
 // Whether your friend can hear you right now.
 function micLive() {
-  return Boolean(S.local.mic && S.micOn && (!S.ptt || S.pttHeld) && !S.onPhone);
+  return Boolean(S.local.mic && S.micOn && (!S.ptt || S.pttHeld) && !S.onPhone && !S.deafened);
+}
+
+// Deafen: you hear nothing from the call (your friend, or their screen's sound), and your mic goes
+// quiet too, like Discord's. Your friend sees it. Undeafening brings your mic back as it was.
+function toggleDeafen() {
+  if (!S.inCall) return;
+  S.deafened = !S.deafened;
+  playControlSound(S.deafened ? 'deafen' : 'undeafen');
+  applyMic();
+  applyVolume();
+  renderControls();
+  sendState();
 }
 
 function applyMic() {
@@ -1144,7 +1168,7 @@ function wsSend(msg) {
 }
 
 function myState() {
-  return { mic: Boolean(S.micOn && S.local.mic && !S.onPhone), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone) };
+  return { mic: Boolean(S.micOn && S.local.mic && !S.onPhone && !S.deafened), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone), deaf: S.deafened };
 }
 
 function sendState() {
@@ -1478,12 +1502,14 @@ function handleServerMessage(msg) {
       if (S.peer && msg.from === S.peer.id) {
         const wasSharing = Boolean(S.peer.state && S.peer.state.screen);
         const wasOnPhone = Boolean(S.peer.state && S.peer.state.phone);
+        const wasDeaf = Boolean(S.peer.state && S.peer.state.deaf);
         S.peer.state = msg.state;
         renderPeer();
         const onPhone = Boolean(msg.state && msg.state.phone);
         const who = S.peer.name || 'Your friend';
         if (onPhone && !wasOnPhone) toast(`${who} is on a phone call. You're on hold until they're back.`, 20_000);
         if (!onPhone && wasOnPhone) toast(`${who} is back from their phone call.`);
+        if (msg.state && msg.state.deaf && !wasDeaf && !onPhone) toast(`${who} deafened: they can't hear you right now.`);
         const sharing = Boolean(msg.state && msg.state.screen);
         if (sharing !== wasSharing) playShareSound(sharing); // your friend started or stopped sharing
       }
@@ -2192,6 +2218,11 @@ function renderPeer() {
   el.videoLabel.hidden = !showVideo;
   el.videoName.textContent = p.state.screen ? `${p.name}'s screen` : p.name;
   el.videoMuted.hidden = Boolean(p.state.mic);
+  // (Deafened: headphones crossed out, rather than a mic.)
+  for (const badge of [el.peerMuted, el.videoMuted]) {
+    badge.querySelector('use').setAttribute('href', p.state.deaf ? '#i-headphones-off' : '#i-mic-off');
+    badge.title = p.state.deaf ? "Deafened: can't hear you" : 'Muted';
+  }
   el.peerInitial.textContent = initial(p.name);
   const photo = (S.friends.get(p.id) || {}).avatar;
   el.peerPhoto.hidden = !photo;
@@ -2345,7 +2376,7 @@ function toggleSelfBig(big = !el.stage.classList.contains('self-big')) {
 
 function renderControls() {
   const micLabel = el.micBtn.querySelector('.ctl-label');
-  const micReady = Boolean(S.micOn && S.local.mic);
+  const micReady = Boolean(S.micOn && S.local.mic && !S.deafened);
   el.micBtn.classList.toggle('ptt', S.ptt);
   el.micBtn.classList.toggle('off', !micReady);
   setIcon(el.micBtn, micReady ? 'i-mic' : 'i-mic-off');
@@ -2361,6 +2392,11 @@ function renderControls() {
     el.micBtn.title = 'Ctrl+Shift+M';
     micLabel.textContent = micReady ? 'Mute' : 'Unmute';
   }
+
+  el.deafenBtn.classList.toggle('off', S.deafened);
+  el.deafenBtn.setAttribute('aria-pressed', String(S.deafened));
+  setIcon(el.deafenBtn, S.deafened ? 'i-headphones-off' : 'i-headphones');
+  el.deafenBtn.querySelector('.ctl-label').textContent = S.deafened ? 'Undeafen' : 'Deafen';
 
   const camOn = Boolean(S.local.cam);
   el.camBtn.classList.toggle('lit', camOn);
@@ -4612,7 +4648,7 @@ function renderMessage(m) {
   if (channel) {
     if (!mine && mentionsMe(m)) li.classList.add('mentioned');
     const head = li.querySelector(':scope > .msg-name');
-    if (head) head.style.color = memberColor(S.spaces.get(channel.spaceId), m.author);
+    if (head) head.style.color = tint(memberColor(S.spaces.get(channel.spaceId), m.author));
   }
   if (['text', 'file', 'gif'].includes(m.kind)) {
     li.dataset.author = m.author;
@@ -5330,17 +5366,37 @@ window.rainlitBack = () => {
   return false;
 };
 
-// ================= Rain =================
-// Light rain falling over the app, drawn on one canvas. Near drops are longer, faster
-// and brighter than far ones. It stops while you're in a call (and whenever the tab
-// is hidden, since the browser stops drawing it).
+// ================= Weather =================
+// Light rain falling over the app, drawn on one canvas; or the weather of a supporter's theme
+// instead: a monsoon's downpour, cherry blossom petals, snow under the aurora, fireflies. Near
+// drops are longer, faster and brighter than far ones (near petals and snowflakes, bigger and
+// faster). It stops while you're in a call (and whenever the tab is hidden, since the browser
+// stops drawing it).
 
-const RAIN_SLANT = 0.16; // how far sideways a drop moves for each step down
 const RAIN_LAYERS = [ // far to near
   { alpha: 0.06, width: 1, length: [9, 14], speed: [360, 460] },
   { alpha: 0.1, width: 1, length: [13, 19], speed: [480, 600] },
   { alpha: 0.15, width: 1.3, length: [18, 26], speed: [640, 780] },
 ];
+// (A downpour: heavier, faster and more slanted, and more of it.)
+const DOWNPOUR_LAYERS = [
+  { alpha: 0.08, width: 1, length: [16, 24], speed: [700, 840] },
+  { alpha: 0.13, width: 1.2, length: [24, 34], speed: [880, 1040] },
+  { alpha: 0.2, width: 1.6, length: [34, 48], speed: [1080, 1280] },
+];
+// Each kind: what Settings calls it, and how many there are (one for so many square pixels, and
+// no fewer or more than min and max). slant: how far sideways a drop moves for each step down.
+const WEATHER = {
+  rain: { name: 'Gentle rain', per: 20000, min: 30, max: 110, layers: RAIN_LAYERS, slant: 0.16 },
+  downpour: { name: 'Monsoon rain', per: 8000, min: 70, max: 260, layers: DOWNPOUR_LAYERS, slant: 0.24 },
+  petals: { name: 'Falling petals', per: 32000, min: 16, max: 56 },
+  snow: { name: 'Snow', per: 14000, min: 40, max: 140 },
+  fireflies: { name: 'Fireflies', per: 40000, min: 12, max: 42 },
+};
+const between = (a, b) => a + Math.random() * (b - a);
+let weather = 'rain';
+let rainColor = '183, 196, 217'; // (the theme's --rain)
+let rainDpr = 1;
 let rainDrops = [];
 let rainLast = 0;
 let rainStopAt = 0;
@@ -5357,28 +5413,62 @@ function updateRain() {
   if (!want) rainStopAt = performance.now() + 900;
 }
 
+// The theme's weather, and its rain's colour (showTheme).
+function setWeather(kind) {
+  const next = WEATHER[kind] ? kind : 'rain';
+  rainColor = getComputedStyle(document.documentElement).getPropertyValue('--rain').trim() || '183, 196, 217';
+  el.weatherName.textContent = WEATHER[next].name;
+  if (next === weather) return;
+  weather = next;
+  if (S.rainFrame) sizeRain();
+}
+
 function sizeRain() {
   const dpr = Math.min(devicePixelRatio || 1, 1.5);
   const w = innerWidth;
   const h = innerHeight;
+  rainDpr = dpr;
   el.rain.width = Math.round(w * dpr);
   el.rain.height = Math.round(h * dpr);
   el.rain.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
-  const count = Math.max(30, Math.min(110, Math.round((w * h) / 20000)));
+  const W = WEATHER[weather];
+  const count = Math.max(W.min, Math.min(W.max, Math.round((w * h) / W.per)));
   rainDrops = Array.from({ length: count }, () => newDrop(w, h, true));
 }
 
 function newDrop(w, h, anywhere) {
-  const layer = Math.random() < 0.45 ? 0 : Math.random() < 0.65 ? 1 : 2;
-  const L = RAIN_LAYERS[layer];
-  const between = ([a, b]) => a + Math.random() * (b - a);
+  const W = WEATHER[weather];
+  if (W.layers) {
+    const layer = Math.random() < 0.45 ? 0 : Math.random() < 0.65 ? 1 : 2;
+    const L = W.layers[layer];
+    const length = between(...L.length);
+    return {
+      layer,
+      // Drops drift left as they fall, so some start past the right edge.
+      x: Math.random() * (w + h * W.slant),
+      y: anywhere ? Math.random() * h : -length - Math.random() * 80,
+      length,
+      speed: between(...L.speed),
+    };
+  }
+  // Petals and snow drift down, swaying (petals turn over as they go).
+  if (weather !== 'fireflies') {
+    const near = Math.random();
+    const petal = weather === 'petals';
+    return {
+      x: Math.random() * w, y: anywhere ? Math.random() * h : -14, near,
+      size: petal ? 4 + near * 5 : 0.7 + near * 1.9,
+      fall: petal ? 24 + near * 40 : 14 + near * 38,
+      sway: petal ? between(14, 36) : between(6, 18), swayRate: between(0.4, 1.1), phase: Math.random() * Math.PI * 2,
+      turn: Math.random() * Math.PI * 2, spin: between(-1.6, 1.6), flip: between(1.2, 2.6),
+      tone: Math.floor(Math.random() * PETAL_TONES.length),
+    };
+  }
+  // Fireflies wander, and light up every few seconds.
   return {
-    layer,
-    // Drops drift left as they fall, so some start past the right edge.
-    x: Math.random() * (w + h * RAIN_SLANT),
-    y: anywhere ? Math.random() * h : -between(L.length) - Math.random() * 80,
-    length: between(L.length),
-    speed: between(L.speed),
+    x: Math.random() * w, y: Math.random() * h,
+    heading: Math.random() * Math.PI * 2, speed: between(8, 22),
+    r: between(9, 16), period: between(3, 6.5), phase: Math.random() * 6.5,
   };
 }
 
@@ -5395,21 +5485,108 @@ function rainStep(now) {
   const h = innerHeight;
   const ctx = el.rain.getContext('2d');
   ctx.clearRect(0, 0, w, h);
+  if (WEATHER[weather].layers) drawRain(ctx, dt, w, h);
+  else if (weather === 'fireflies') drawFireflies(ctx, dt, w, h, now / 1000);
+  else drawDrifting(ctx, dt, w, h, now / 1000);
+}
+
+function drawRain(ctx, dt, w, h) {
+  const W = WEATHER[weather];
   ctx.lineCap = 'round';
-  RAIN_LAYERS.forEach((L, i) => {
+  W.layers.forEach((L, i) => {
     ctx.beginPath();
     for (const d of rainDrops) {
       if (d.layer !== i) continue;
       d.y += d.speed * dt;
-      d.x -= d.speed * dt * RAIN_SLANT;
+      d.x -= d.speed * dt * W.slant;
       if (d.y - d.length > h || d.x < -40) Object.assign(d, newDrop(w, h, false));
       ctx.moveTo(d.x, d.y);
-      ctx.lineTo(d.x + d.length * RAIN_SLANT, d.y - d.length);
+      ctx.lineTo(d.x + d.length * W.slant, d.y - d.length);
     }
-    ctx.strokeStyle = `rgba(183, 196, 217, ${L.alpha})`;
+    ctx.strokeStyle = `rgba(${rainColor}, ${L.alpha})`;
     ctx.lineWidth = L.width;
     ctx.stroke();
   });
+}
+
+// A cherry blossom petal, with the little notch at its tip (2 across and 2 tall), in three pinks.
+const PETAL = typeof Path2D === 'function' ? new Path2D('M0 1C-.95 .45-.8-.75-.18-1L0-.74.18-1C.8-.75.95 .45 0 1Z') : null;
+const PETAL_TONES = ['255, 183, 213', '255, 206, 227', '247, 158, 196'];
+
+function drawDrifting(ctx, dt, w, h, t) {
+  const petals = weather === 'petals';
+  const flakes = [[], [], []]; // (snow: far, middle and near, each lot drawn at once)
+  for (const d of rainDrops) {
+    d.y += d.fall * dt;
+    if (d.y - 14 > h) {
+      Object.assign(d, newDrop(w, h, false));
+      continue;
+    }
+    let x = d.x + Math.sin(t * d.swayRate + d.phase) * d.sway;
+    if (x < -20 || x > w + 20) {
+      d.x += x < 0 ? w + 40 : -(w + 40);
+      x = d.x + Math.sin(t * d.swayRate + d.phase) * d.sway;
+    }
+    if (!petals) {
+      flakes[Math.min(2, Math.floor(d.near * 3))].push(x, d.y, d.size);
+      continue;
+    }
+    if (!PETAL) continue;
+    // Turning as it falls, and tumbling: narrower as it tips away.
+    const a = d.turn + t * d.spin;
+    const k = d.size * rainDpr;
+    const tip = 0.35 + 0.65 * Math.abs(Math.cos(t * d.flip + d.phase));
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    ctx.setTransform(cos * k * 0.72, sin * k * 0.72, -sin * k * tip, cos * k * tip, x * rainDpr, d.y * rainDpr);
+    ctx.fillStyle = `rgba(${PETAL_TONES[d.tone]}, ${0.45 + d.near * 0.45})`;
+    ctx.fill(PETAL);
+  }
+  ctx.setTransform(rainDpr, 0, 0, rainDpr, 0, 0);
+  if (petals) return;
+  flakes.forEach((list, i) => {
+    ctx.beginPath();
+    for (let j = 0; j < list.length; j += 3) {
+      ctx.moveTo(list[j] + list[j + 2], list[j + 1]);
+      ctx.arc(list[j], list[j + 1], list[j + 2], 0, Math.PI * 2);
+    }
+    ctx.fillStyle = `rgba(${rainColor}, ${[0.35, 0.55, 0.8][i]})`;
+    ctx.fill();
+  });
+}
+
+// A firefly's glow, drawn once and then stamped where each one is.
+let fireflyGlow = null;
+function drawFireflies(ctx, dt, w, h, t) {
+  if (!fireflyGlow) {
+    fireflyGlow = document.createElement('canvas');
+    fireflyGlow.width = fireflyGlow.height = 64;
+    const g = fireflyGlow.getContext('2d');
+    const light = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    light.addColorStop(0, 'rgba(250, 255, 210, 1)');
+    light.addColorStop(0.16, 'rgba(236, 255, 140, 0.95)');
+    light.addColorStop(0.42, 'rgba(206, 244, 80, 0.3)');
+    light.addColorStop(1, 'rgba(190, 236, 60, 0)');
+    g.fillStyle = light;
+    g.fillRect(0, 0, 64, 64);
+  }
+  for (const f of rainDrops) {
+    // A slow, wandering flight...
+    f.heading += between(-1.3, 1.3) * dt;
+    f.x += Math.cos(f.heading) * f.speed * dt;
+    f.y += Math.sin(f.heading) * f.speed * dt;
+    if (f.x < -20) f.x = w + 20;
+    else if (f.x > w + 20) f.x = -20;
+    if (f.y < -20) f.y = h + 20;
+    else if (f.y > h + 20) f.y = -20;
+    // ...lighting up for a moment every few seconds, with a faint glow in between.
+    const p = (t + f.phase) % f.period;
+    const glow = p < 1.1 ? 0.12 + 0.88 * Math.sin((p / 1.1) * Math.PI) : 0.12;
+    const r = f.r * (0.7 + glow * 0.5);
+    ctx.globalAlpha = glow;
+    ctx.drawImage(fireflyGlow, f.x - r, f.y - r, r * 2, r * 2);
+  }
+  ctx.globalAlpha = 1;
 }
 
 // A quick two-note "boop": rising when someone joins (or comes back to) the call,
@@ -6310,6 +6487,121 @@ function renderTransfer(t) {
 
 // ---------------- Settings ----------------
 
+// ----- Theme -----
+// Settings > Theme: Rainlit's own, Dark, Midnight (black, for OLED screens), Light, or Auto (Light
+// or Rainlit, as the device is set); and four for people supporting Rainlit, each with weather of
+// its own, which anyone else can try on while Settings is open. Yours is kept with your account,
+// so it's the same everywhere (lib/themes.js), and on this device for the next start (boot.js puts
+// it on before anything's drawn). Their colours are in style.css.
+
+const THEMES = [
+  { id: 'rainlit', name: 'Rainlit', about: 'the night, lit by a lamp' },
+  { id: 'dark', name: 'Dark', about: 'plain greys' },
+  { id: 'midnight', name: 'Midnight', about: 'black, for OLED screens' },
+  { id: 'light', name: 'Light', about: 'daytime' },
+  { id: 'auto', name: 'Auto', about: 'Light or Rainlit, as your device is set' },
+  { id: 'sakura', name: 'Sakura', extra: true, weather: 'petals', about: 'cherry blossoms at night, and falling petals' },
+  { id: 'monsoon', name: 'Monsoon', extra: true, weather: 'downpour', about: 'deep green, and the rains' },
+  { id: 'aurora', name: 'Aurora', extra: true, weather: 'snow', about: 'the northern lights, and snow' },
+  { id: 'fireflies', name: 'Fireflies', extra: true, weather: 'fireflies', about: 'a summer night in the woods, with fireflies' },
+];
+const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
+const supporting = () => Boolean(S.me && S.me.supporter && S.me.supporter.active);
+const lightDevice = matchMedia('(prefers-color-scheme: light)');
+
+// The theme on screen: yours, or one being tried on (Auto: as the device is set).
+function shownTheme() {
+  const id = S.themeTry || S.theme;
+  if (id === 'auto') return lightDevice.matches ? 'light' : 'rainlit';
+  return themeById(id).id;
+}
+
+function showTheme() {
+  const id = shownTheme();
+  const root = document.documentElement;
+  if (id === 'rainlit') delete root.dataset.theme;
+  else root.dataset.theme = id;
+  // (The browser's bar on a phone, and the Android app's clock and battery: dark on Light.)
+  const night = getComputedStyle(root).getPropertyValue('--night').trim();
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta && night) meta.content = night;
+  if (ANDROID) ANDROID.systemBars(id === 'light' ? 'LIGHT' : 'DARK').catch(() => {});
+  setWeather(themeById(id).weather || 'rain');
+}
+
+function setTheme(id) {
+  S.theme = themeById(id).id;
+  store.set('theme', S.theme);
+  showTheme();
+  if (el.settings.open) renderThemes();
+}
+
+// Picking one. A supporter's, for anyone else: tried on until Settings closes (or picked again).
+function pickTheme(id) {
+  const t = themeById(id);
+  if (t.extra && !supporting()) {
+    S.themeTry = S.themeTry === t.id ? '' : t.id;
+    showTheme();
+    renderThemes();
+    return;
+  }
+  S.themeTry = '';
+  setTheme(t.id);
+  if (S.me) api('PATCH', '/me', { theme: t.id }).then(({ user }) => setMe(user)).catch((err) => toast(err.message));
+}
+
+// Your account's theme (from another device, say). One that's never had one picked gets this
+// device's; one that's stopped supporting, Rainlit's own again (the server says: lib/themes.js).
+function takeAccountTheme(user) {
+  if (user.theme) {
+    if (user.theme !== S.theme) setTheme(user.theme);
+  } else if (themeById(S.theme).extra && !supporting()) {
+    setTheme('rainlit');
+  } else if (S.theme !== 'rainlit') {
+    api('PATCH', '/me', { theme: S.theme }).catch(() => {});
+  }
+}
+
+// Each one in miniature (Auto: Rainlit, with Light across a corner of it).
+function renderThemes() {
+  const offered = offersSupport();
+  const on = S.themeTry || S.theme;
+  const card = (t) => {
+    const locked = t.extra && !supporting();
+    const shot = document.createElement('span');
+    shot.className = 'theme-shot';
+    for (const id of t.id === 'auto' ? ['rainlit', 'light'] : [t.id]) {
+      const mini = document.createElement('span');
+      mini.className = 'theme-mini';
+      mini.dataset.themePreview = id;
+      mini.innerHTML = '<i class="tm-rail"></i><i class="tm-side"></i><i class="tm-main"></i>';
+      shot.append(mini);
+    }
+    const name = document.createElement('span');
+    name.className = 'theme-name';
+    name.textContent = t.name;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `theme-card${t.extra ? ' extra' : ''}${locked ? ' locked' : ''}`;
+    b.dataset.theme = t.id;
+    b.setAttribute('aria-pressed', String(on === t.id));
+    b.title = `${t.name}: ${t.about}${locked ? '. For people supporting Rainlit (try it on)' : ''}`;
+    b.append(shot, name);
+    b.addEventListener('click', () => pickTheme(t.id));
+    return b;
+  };
+  el.themeList.replaceChildren(...THEMES.filter((t) => !t.extra).map(card));
+  // (Supporters' themes, for anyone else to try on: not in an app that can't mention supporting.)
+  const extras = THEMES.filter((t) => t.extra && (supporting() || offered));
+  el.themeExtras.replaceChildren(...extras.map(card));
+  el.themeExtras.hidden = el.themeExtrasTitle.hidden = !extras.length;
+  el.themeExtrasTitle.textContent = supporting() ? 'Yours for supporting Rainlit, each with weather of its own' : 'For people supporting Rainlit, each with weather of its own';
+  const trying = S.themeTry ? themeById(S.themeTry) : null;
+  el.themeTry.hidden = !trying;
+  if (trying) el.themeTryText.textContent = `${trying.name}: ${trying.about}. It's one of the themes for people supporting Rainlit; yours comes back when you close Settings.`;
+  el.themeTryBtn.hidden = !offered;
+}
+
 // ----- Size -----
 // Settings > Size zooms all of Rainlit, on this device (boot.js puts it on before anything's
 // drawn). A spot on the screen is then fewer of the page's own px from the corner, so menus
@@ -6368,6 +6660,7 @@ async function fillDeviceLists() {
   el.statsInput.checked = S.showStats;
   el.traceInput.checked = S.trace;
   el.rainInput.checked = S.rain;
+  renderThemes();
   const size = store.get('uiScale', '1');
   el.uiScale.value = [...el.uiScale.options].some((o) => o.value === size) ? size : '1';
   el.pttInput.checked = S.ptt;
@@ -6452,7 +6745,7 @@ function applyVolume() {
   for (const [id, audio] of S.remoteAudio) {
     // Their voice, or the sound of their screen share (which has its own volume and mute).
     let level = audio.dataset.kind === 'stream' ? (S.streamMuted ? 0 : S.streamVolume) : S.volume;
-    level = S.onPhone ? 0 : Math.min(level, max); // (silent while you're on a phone call)
+    level = S.onPhone || S.deafened ? 0 : Math.min(level, max); // (silent while you're on a phone call, or deafened)
     const boost = level > 1;
     audio.volume = Math.min(1, level);
     let b = S.boosts.get(id);
@@ -6910,6 +7203,7 @@ function setMe(user) {
   const nowAdult = Boolean(S.me && !S.me.adult && user.adult);
   const supportChanged = Boolean(S.me && S.me.supporter && user.supporter && S.me.supporter.active !== user.supporter.active);
   S.me = user;
+  takeAccountTheme(user);
   if (nowAdult) refreshSpaces(); // (said so on another device: 18+ channels open up here too)
   if (supportChanged) refreshFriends(); // (a supporter's bigger files and room, or everyone's again)
   S.clientId = user.id;
@@ -7149,6 +7443,9 @@ const canOpenSettings = (space) => Boolean(space) && settingsTabsFor(space).leng
 const untilText = (ts) => (new Date(ts).toDateString() === new Date().toDateString() ? fmtTime(ts) : fmtWhen(ts));
 
 // Someone's color in a space: their highest role that has one.
+// A name in its role's colour: a little darker on a light theme, to read on white (--tint-mix).
+const tint = (color) => (color ? `color-mix(in oklab, ${color} var(--tint-mix), #000)` : '');
+
 function memberColor(space, userId) {
   const m = space && space.byId && space.byId.get(userId);
   const role = m && space.roles.find((r) => r.color && m.roles.includes(r.id));
@@ -7162,7 +7459,7 @@ function paintNames(spaceId) {
   for (const c of space.channels) {
     const dm = S.dms.get(`ch:${c.id}`);
     if (!dm) continue;
-    for (const head of dm.log.querySelectorAll('li[data-author] > .msg-name')) head.style.color = memberColor(space, head.parentElement.dataset.author);
+    for (const head of dm.log.querySelectorAll('li[data-author] > .msg-name')) head.style.color = tint(memberColor(space, head.parentElement.dataset.author));
     for (const body of dm.log.querySelectorAll('.msg-text')) {
       if (!body._text || !body._text.includes('@')) continue;
       const edited = body.querySelector(':scope > .msg-edited');
@@ -7785,7 +8082,7 @@ function memberRow(space, m) {
   const name = document.createElement('span');
   name.className = 'member-name';
   name.textContent = m.id === S.clientId ? `${m.displayName} (you)` : m.displayName;
-  name.style.color = memberColor(space, m.id);
+  name.style.color = tint(memberColor(space, m.id));
   if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
   const user = document.createElement('span');
   user.className = 'member-user';
@@ -8357,7 +8654,7 @@ function memberPanelRow(space, m, dim) {
   const name = document.createElement('span');
   name.className = 'panel-member-name';
   name.textContent = m.displayName;
-  name.style.color = memberColor(space, m.id);
+  name.style.color = tint(memberColor(space, m.id));
   if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
   text.append(name);
   const doing = !dim && S.doing.get(m.id);
@@ -8715,7 +9012,7 @@ function renderRoleEditor(space, role) {
   const title = document.createElement('h3');
   title.className = 'side-title';
   title.textContent = everyone ? '@everyone' : role.name;
-  if (role && role.color) title.style.color = role.color;
+  if (role && role.color) title.style.color = tint(role.color);
   top.append(back, title);
   parts.push(top);
   const note = document.createElement('small');
@@ -12190,6 +12487,7 @@ function teardown({ sendLeave, keepActive = false }) {
   }
   S.inCall = false;
   S.onPhone = false;
+  S.deafened = false;
   setStageFull(false);
   S.mediaDropped = false;
   updateTitle(); // (and the corner glow)
@@ -12651,6 +12949,7 @@ async function init() {
     el.micBtn.addEventListener(type, () => setPttHeld(false));
   }
   el.micBtn.addEventListener('contextmenu', (e) => { if (S.ptt) e.preventDefault(); }); // long press on a phone
+  el.deafenBtn.addEventListener('click', toggleDeafen);
   el.camBtn.addEventListener('click', toggleCam);
   el.screenBtn.addEventListener('click', () => {
     if (!S.callSounds) playClick(); // (its own sound is a call sound; without those, the plain click)
@@ -12856,6 +13155,13 @@ async function init() {
     stopPickingKey();
   }, true);
   el.settings.addEventListener('close', () => { if (pickingKey) stopPickingKey(); });
+  el.settings.addEventListener('close', () => {
+    if (!S.themeTry) return;
+    S.themeTry = '';
+    showTheme();
+  });
+  el.themeTryBtn.addEventListener('click', openSupportPage);
+  lightDevice.addEventListener('change', () => { if ((S.themeTry || S.theme) === 'auto') showTheme(); });
 
   el.rainInput.addEventListener('change', () => {
     S.rain = el.rainInput.checked;
@@ -12933,11 +13239,18 @@ async function init() {
     if (S.sounds) playChime(); // so you know what it sounds like
   });
 
-  // Ctrl+Shift+M toggles your microphone, like Discord.
+  // Ctrl+Shift+M mutes you and Ctrl+Shift+D deafens you, like Discord (in a call, or a voice channel).
   document.addEventListener('keydown', (e) => {
-    if (S.inCall && !S.ptt && e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'm') {
+    if (!e.ctrlKey || !e.shiftKey || e.altKey || !(S.inCall || S.voice)) return;
+    const key = e.key.toLowerCase();
+    if (key === 'm' && !S.ptt) {
       e.preventDefault();
-      toggleMic();
+      if (S.inCall) toggleMic();
+      else onVoiceControl('mute');
+    } else if (key === 'd') {
+      e.preventDefault();
+      if (S.inCall) toggleDeafen();
+      else onVoiceControl('deafen');
     }
   });
 
@@ -13014,6 +13327,7 @@ async function init() {
   if (navigator.connection) navigator.connection.addEventListener('change', () => trace('network', { net: netInfo() }));
 
   renderControls();
+  showTheme();
   updateRain();
   addEventListener('resize', () => { if (S.rainFrame) sizeRain(); });
   // The desktop app hears the talk key while you're in another app, and tells us.

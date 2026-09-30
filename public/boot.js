@@ -72,6 +72,19 @@
   }
 })();
 
+// Your theme (Settings > Theme), from last time on this device, goes on before anything is drawn,
+// so it doesn't start as Rainlit's own and change ("auto": Light or Rainlit, as the device is set).
+try {
+  let theme = localStorage.getItem('rainlit.theme') || '';
+  if (theme === 'auto') theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : '';
+  if (/^[a-z]+$/.test(theme) && theme !== 'rainlit') {
+    document.documentElement.dataset.theme = theme;
+    const night = getComputedStyle(document.documentElement).getPropertyValue('--night').trim();
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (night && meta) meta.content = night;
+  }
+} catch {}
+
 // Your Size (Settings > Size) goes on before anything is drawn, so nothing jumps.
 try {
   const size = Number(localStorage.getItem('rainlit.uiScale'));

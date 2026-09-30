@@ -153,6 +153,17 @@ and released is in [desktop/README.md](desktop/README.md).
   profile** and **Remove friend**. Clicking their name at the top of your
   conversation shows their profile too.
 
+## Themes
+
+Settings > **Theme**: Rainlit's own (the night, lit by a lamp), **Dark** (plain
+greys), **Midnight** (black, for OLED screens), **Light**, or **Auto** (Light
+or Rainlit, as your device is set). People supporting Rainlit also get
+**Sakura** (cherry blossoms at night, with falling petals), **Monsoon** (deep
+green, and the rains), **Aurora** (the northern lights, and snow) and
+**Fireflies** (a summer night in the woods), each with its own weather in
+place of the rain; anyone else can try them on while Settings is open. Your
+theme is kept with your account, so it's the same on all your devices.
+
 ## Homepages
 
 Everyone has a homepage: a whole page of their own, like the personal pages of
@@ -205,7 +216,8 @@ for $5 a month or $50 a year (and tips), at `rainlit.app/support` (Your
 profile, **Supporting Rainlit**). They get more of what costs money: files up
 to 100 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
 channels (1080p at up to 60 fps, while it fits in what Cloudflare sends for
-free), no slower start for a new account, homepage extras, and a badge, a
+free), no slower start for a new account, homepage extras, four themes with
+weather of their own (Sakura, Monsoon, Aurora and Fireflies), and a badge, a
 raindrop that gathers light the longer they support (Drizzle, then Shower,
 Downpour, Storm, Monsoon and Lamplight). If they stop, it dims, and keeps its
 level. Stripe takes the payments (as the seller, through Link), so Rainlit
@@ -332,6 +344,11 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
 - **Mute:** the microphone button, or **Ctrl+Shift+M** on a computer. Your
   friend sees a red mic badge on your picture (or next to your name on video)
   while you're muted.
+- **Deafen:** the headphones button, or **Ctrl+Shift+D**. You hear nothing
+  from the call (your friend, or their screen's sound) and your mic goes quiet
+  too; your friend sees crossed-out headphones instead of the mic badge.
+  Undeafening brings your mic back as it was, and pressing the mic button
+  undeafens you too.
 - **Push to talk:** turn it on in settings. Your mic stays silent until you hold
   the talk key (`` ` `` to start with; click it in settings to pick another) or
   hold the mic button. In a browser the key only works while Rainlit is the
