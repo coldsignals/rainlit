@@ -2291,6 +2291,24 @@ async function vouchForPeer() {
 // Full screen for the call. On computers it's the browser's own. The Android app's WebView
 // doesn't do that properly (it could leave an invisible layer over the app that ate every
 // tap), and the app fills the screen anyway, so there the stage just covers everything.
+// The stream's own controls (its sound) show while the pointer moves over the call, and go once
+// it's been still for a moment: in full screen the pointer's always over the video, so they'd
+// never go otherwise (and nor would the pointer, over the picture).
+function watchStagePointer() {
+  let still = 0;
+  const wake = () => {
+    el.stage.classList.add('pointer-active');
+    clearTimeout(still);
+    still = setTimeout(() => el.stage.classList.remove('pointer-active'), 2500);
+  };
+  el.stage.addEventListener('pointermove', wake);
+  el.stage.addEventListener('pointerdown', wake);
+  el.stage.addEventListener('pointerleave', () => {
+    clearTimeout(still);
+    el.stage.classList.remove('pointer-active');
+  });
+}
+
 function stageFull() {
   return Boolean(document.fullscreenElement) || el.stage.classList.contains('full');
 }
@@ -12640,6 +12658,7 @@ async function init() {
   });
   el.leaveBtn.addEventListener('click', onLeaveClick);
   el.fullscreenBtn.addEventListener('click', () => setStageFull(!stageFull()));
+  watchStagePointer();
   el.flipBtn.addEventListener('click', flipCam);
   el.popoutBtn.addEventListener('click', () => popOut('call', callVideoTitle, callVideoTracks));
   el.pinBtn.addEventListener('click', () => pinVideo(el.remoteVideo));

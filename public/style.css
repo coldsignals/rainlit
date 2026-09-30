@@ -1440,16 +1440,19 @@ body:not(.compact-chat) .chat-log li.mentioned[data-author] { padding-left: 64px
 .toggle-note { color: var(--mist); font-size: 13px; }
 #duck-status:not([hidden]) { display: block; margin-top: 3px; color: var(--text); }
 
-/* The sound of your friend's screen share: mute it or set its volume (not their voice). */
+/* The sound of your friend's screen share: mute it or set its volume (not their voice). Above
+   their name, not over it; showing while the pointer moves over the stream (pointer-active: see
+   watchStagePointer), so in full screen, where the pointer's always over it, it goes when still. */
 .stream-audio {
-  position: absolute; left: 12px; bottom: 12px; z-index: 4;
+  position: absolute; left: 12px; bottom: 56px; z-index: 4;
   display: flex; align-items: center; gap: 6px;
   padding: 4px 12px 4px 4px;
   background: rgba(14, 18, 28, 0.72);
   border-radius: 999px;
   opacity: 0; transition: opacity 0.15s;
 }
-.stage:hover .stream-audio, .stream-audio:focus-within, .stream-audio.muted { opacity: 1; }
+.stage.pointer-active .stream-audio, .stream-audio:focus-within, .stream-audio.muted { opacity: 1; }
+.stage:fullscreen:not(.pointer-active) { cursor: none; }
 @media (hover: none) { .stream-audio { opacity: 1; } }
 .stream-audio .icon-btn { width: 34px; height: 34px; }
 .stream-audio .icon { width: 18px; height: 18px; }
