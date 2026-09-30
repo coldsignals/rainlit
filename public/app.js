@@ -587,6 +587,25 @@ const SCREEN_STEPS = [
   { height: 270, kbps: 0, fps: 30 },
 ];
 
+// How much to shrink a w x h picture to about `target` lines: a height near it that divides the
+// picture into a whole, even width and height (a graphics card's H.264 takes only even sizes: a
+// 1920x1050 game window shrunk to 720 lines would be 1317 wide, and go to the processor). If
+// nothing near fits exactly, a scale whose sizes, rounded down, are both even.
+function evenScale(w, h, target) {
+  if (!w || !h) return h / target;
+  for (let d = 0; d <= target * 0.15; d++) {
+    for (const oh of [target - d, target + d]) {
+      if (oh < 2 || oh >= h || oh % 2) continue;
+      const ow = (w * oh) / h;
+      if (Number.isInteger(ow) && ow % 2 === 0) return (h / oh) * (1 - 1e-9); // (a hair under: exact, rounded either way)
+    }
+  }
+  for (let sc = h / target; sc < (h / target) * 1.2; sc += 0.0005) {
+    if (Math.floor(w / sc) % 2 === 0 && Math.floor(h / sc) % 2 === 0) return sc;
+  }
+  return h / target;
+}
+
 // The step the screen being sent is at (conn.fit: for that one share).
 function screenFitStep(conn) {
   const track = conn && conn.senders.video && conn.senders.video.track;
@@ -652,8 +671,8 @@ async function tuneVideoSenderNow() {
     if (q) {
       enc.maxBitrate = q.bitrate;
       enc.maxFramerate = Math.min(q.fps, step.fps);
-      const height = sender.track.getSettings().height || 0;
-      enc.scaleResolutionDownBy = step.height && height > step.height ? height / step.height : 1;
+      const { width = 0, height = 0 } = sender.track.getSettings();
+      enc.scaleResolutionDownBy = step.height && height > step.height ? evenScale(width, height, step.height) : 1;
     } else {
       delete enc.maxBitrate;
       delete enc.maxFramerate;
