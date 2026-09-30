@@ -485,6 +485,8 @@ async function setOutgoingVideo(track) {
 // hard to read. These give it far more room, and say what matters more: sharpness or motion.
 // Both keep the size steady when the connection struggles (dropping frames instead), since a
 // picture that keeps flipping between sharp and blocky is worse to watch than a few lost frames.
+// (Letting the size go instead, a browser starts a share at 480x270 while it finds out how fast
+// the connection is, and can still be there 20 seconds later.)
 const SHARE_QUALITY = {
   sharp: { width: 1920, height: 1080, fps: 30, bitrate: 6_000_000, hint: 'detail', prefer: 'maintain-resolution' },
   smooth: { width: 1920, height: 1080, fps: 60, bitrate: 6_000_000, hint: 'motion', prefer: 'maintain-resolution' },
@@ -497,14 +499,54 @@ function shareConstraints(q = shareQuality()) {
   return { width: { ideal: q.width, max: 2560 }, height: { ideal: q.height, max: 1440 }, frameRate: { ideal: q.fps, max: q.fps } };
 }
 
-// How much the video being sent may use, and what to give up first when the connection is
-// slow. A camera goes back to the browser's own choices.
-async function tuneVideoSender() {
+// A shared screen is a lot to encode. A game's busy picture, 1080p at 60 frames a second, takes
+// the computer's own processor longer than a sixtieth of a second a frame as VP8 (a browser's
+// usual), so a game went out at a few frames a second. Most graphics cards have an H.264 encoder
+// of their own that takes a few milliseconds: a screen goes as that when the browser has one
+// (browsers offer H.264's High profile only then) and the other end can take it. Once it's
+// going, the browser says whose encoder it is: if it isn't the graphics card's after all,
+// screens go as VP8 again (screenAsVp8).
+const isH264High = (c) => /^video\/h264$/i.test(c.mimeType) && /profile-level-id=64/i.test(c.sdpFmtpLine || '');
+
+function screenCodec(params) {
+  try {
+    if (!RTCRtpSender.getCapabilities('video').codecs.some(isH264High)) return null;
+  } catch {
+    return null;
+  }
+  return (params.codecs || []).find(isH264High) || null;
+}
+
+// (From the stats, every couple of seconds.)
+function checkScreenEncoder(out) {
+  if (!out || out.powerEfficientEncoder !== false || S.screenAsVp8 || !S.local.screen) return;
+  const sender = S.conn && S.conn.senders.video;
+  const codec = sender && sender.getParameters().encodings[0].codec;
+  if (!codec || !isH264High(codec)) return;
+  S.screenAsVp8 = true;
+  console.warn('[video] H.264 is encoded in software here: screens go as VP8.');
+  trace('screen-codec', { now: 'VP8', why: out.encoderImplementation || 'software' });
+  tuneVideoSender();
+}
+
+// How much the video being sent may use, what to give up first when the connection is slow,
+// and (a screen) the encoder. A camera goes back to the browser's own choices. (One change at a
+// time: a browser turns down a change made from parameters that another change has replaced.)
+function tuneVideoSender() {
+  S.tuning = (S.tuning || Promise.resolve()).then(tuneVideoSenderNow, tuneVideoSenderNow);
+  return S.tuning;
+}
+
+async function tuneVideoSenderNow() {
   const sender = S.conn && S.conn.senders.video;
   if (!sender) return;
   const params = sender.getParameters();
   if (!params.encodings || !params.encodings.length) return; // not connected yet; done when it is
   const q = S.local.screen && sender.track && sender.track === S.local.screen ? shareQuality() : null;
+  const codec = q && !S.screenAsVp8 ? screenCodec(params) : null;
+  // (Back from H.264: VP8, said outright, since a browser otherwise keeps the last codec, and
+  // lists the one it's using first.)
+  const usual = (params.codecs || []).find((c) => /^video\/vp8$/i.test(c.mimeType));
   for (const enc of params.encodings) {
     if (q) {
       enc.maxBitrate = q.bitrate;
@@ -513,12 +555,19 @@ async function tuneVideoSender() {
       delete enc.maxBitrate;
       delete enc.maxFramerate;
     }
+    if (codec) enc.codec = codec;
+    else if (enc.codec && usual) enc.codec = usual;
   }
   params.degradationPreference = q ? q.prefer : 'balanced';
   try {
     await sender.setParameters(params);
   } catch (err) {
     console.warn("[video] Couldn't set the quality:", err.message);
+    // (The browser wouldn't send the screen as H.264: VP8, then. Unless the call's just ended.)
+    if (codec && S.conn && S.conn.senders.video === sender && S.conn.pc.connectionState !== 'closed') {
+      S.screenAsVp8 = true;
+      await tuneVideoSenderNow();
+    }
   }
 }
 
@@ -1431,6 +1480,10 @@ function createPeer() {
   pc.onicecandidate = ({ candidate }) => {
     if (S.conn === conn && candidate) sendSignal(conn, { candidate });
   };
+  // (Settled: the codecs the two ends agreed on are known now, for the video's encoder.)
+  pc.onsignalingstatechange = () => {
+    if (S.conn === conn && pc.signalingState === 'stable' && conn.senders.video) tuneVideoSender();
+  };
   pc.ontrack = ({ track }) => {
     if (S.conn === conn) onRemoteTrack(track);
   };
@@ -1844,11 +1897,40 @@ function startStats(conn) {
       const route = relayed ? 'Via relay' : 'Direct';
       if (conn.pc.connectionState === 'connected') setStatus('Connected', ping != null ? `${route}, ${ping} ms` : route);
       el.connInfo.textContent = `${relayed ? 'Connected through a relay server' : 'Connected directly'}${ping != null ? `, ${ping} ms round trip` : ''}.`;
-      renderStreamStats(conn, stats, pair, route, ping);
+      const video = videoFigures(conn, stats);
+      renderStreamStats(conn, video, stats, pair, route, ping);
+      traceVideo(conn, video);
+      checkScreenEncoder(video.out);
     } catch {}
   };
   update();
   conn.statsTimer = setInterval(update, 2000);
+}
+
+// The video a call's sending and receiving, from its stats. For what's sent, what the browser
+// says of it too: the frames a second the picture itself came at (a game hogging the computer
+// can slow the capture, before the video's even made), how long each frame took to encode
+// (over the last couple of seconds), and what's holding it back.
+function videoFigures(conn, stats) {
+  const v = { out: null, inb: null, remoteIn: null, captured: null, encodeMs: null, held: '' };
+  stats.forEach((r) => {
+    if (r.kind !== 'video') return;
+    if (r.type === 'outbound-rtp' && r.frameWidth) v.out = r;
+    if (r.type === 'inbound-rtp' && r.frameWidth) v.inb = r;
+    if (r.type === 'remote-inbound-rtp') v.remoteIn = r;
+  });
+  if (!(conn.senders.video && conn.senders.video.track)) v.out = null; // (stopped: its figures stay behind)
+  const out = v.out;
+  const prev = conn.videoPrev || {};
+  conn.videoPrev = {};
+  if (!out) return v;
+  const source = out.mediaSourceId && stats.get(out.mediaSourceId);
+  if (source && source.framesPerSecond != null) v.captured = Math.round(source.framesPerSecond);
+  const frames = out.framesEncoded - prev.frames;
+  if (frames > 0 && out.totalEncodeTime >= prev.time) v.encodeMs = Math.round(((out.totalEncodeTime - prev.time) / frames) * 1000);
+  if (out.qualityLimitationReason && out.qualityLimitationReason !== 'none') v.held = out.qualityLimitationReason;
+  conn.videoPrev = { frames: out.framesEncoded, time: out.totalEncodeTime };
+  return v;
 }
 
 // For Settings > Show stream stats: the video you're sending and receiving, measured over
@@ -1856,20 +1938,12 @@ function startStats(conn) {
 // "held back by" is what the sender's browser says is stopping it going sharper.
 const LIMITED_BY = { bandwidth: 'the connection', cpu: 'the computer (CPU)', other: 'something else' };
 
-function renderStreamStats(conn, stats, pair, route, ping) {
+function renderStreamStats(conn, video, stats, pair, route, ping) {
   el.streamStats.hidden = !S.showStats;
   if (!S.showStats) return;
   const prev = conn.lastStats || {};
   const now = {};
-  let out = null;
-  let inb = null;
-  let remoteIn = null;
-  stats.forEach((r) => {
-    if (r.kind !== 'video') return;
-    if (r.type === 'outbound-rtp' && r.frameWidth) out = r;
-    if (r.type === 'inbound-rtp' && r.frameWidth) inb = r;
-    if (r.type === 'remote-inbound-rtp') remoteIn = r;
-  });
+  const { out, inb, remoteIn } = video;
   const codec = (r) => {
     const c = r && r.codecId && stats.get(r.codecId);
     return c ? c.mimeType.replace('video/', '') : '?';
@@ -1881,8 +1955,9 @@ function renderStreamStats(conn, stats, pair, route, ping) {
     now.outBytes = out.bytesSent;
     now.outAt = out.timestamp;
     const lost = remoteIn && remoteIn.fractionLost != null ? `, ${(remoteIn.fractionLost * 100).toFixed(1)}% lost` : '';
-    lines.push(`Sending   ${out.frameWidth}×${out.frameHeight}, ${Math.round(out.framesPerSecond || 0)} fps, ${mbps(out.bytesSent, prev.outBytes, out.timestamp, prev.outAt)} Mb/s${lost}`);
-    lines.push(`          ${codec(out)}${out.encoderImplementation ? ` (${out.encoderImplementation})` : ''}${out.qualityLimitationReason && out.qualityLimitationReason !== 'none' ? `, held back by ${LIMITED_BY[out.qualityLimitationReason] || out.qualityLimitationReason}` : ''}`);
+    const captured = video.captured != null ? ` (captured at ${video.captured})` : '';
+    lines.push(`Sending   ${out.frameWidth}×${out.frameHeight}, ${Math.round(out.framesPerSecond || 0)} fps${captured}, ${mbps(out.bytesSent, prev.outBytes, out.timestamp, prev.outAt)} Mb/s${lost}`);
+    lines.push(`          ${codec(out)}${out.encoderImplementation ? ` (${out.encoderImplementation})` : ''}${video.encodeMs != null ? `, ${video.encodeMs} ms a frame` : ''}${video.held ? `, held back by ${LIMITED_BY[video.held] || video.held}` : ''}`);
   }
   if (inb) {
     now.inBytes = inb.bytesReceived;
@@ -1909,7 +1984,7 @@ function closePeer() {
   clearTimeout(conn.connectTimer);
   clearInterval(conn.statsTimer);
   const pc = conn.pc;
-  pc.onnegotiationneeded = pc.onicecandidate = pc.ontrack = pc.onconnectionstatechange = pc.oniceconnectionstatechange = null;
+  pc.onnegotiationneeded = pc.onicecandidate = pc.onsignalingstatechange = pc.ontrack = pc.onconnectionstatechange = pc.oniceconnectionstatechange = null;
   if (conn.files) conn.files.onopen = conn.files.onmessage = conn.files.onclose = null;
   pc.close();
   fileChannelLost();
@@ -11758,6 +11833,26 @@ function traceRoute(conn, stats, pair, local) {
   if (route === conn.traceRoute) return;
   conn.traceRoute = route;
   trace('route', { route });
+}
+
+// The video, every 10 seconds while there's any either way (videoFigures): its size and frames
+// a second, the picture's own frames a second, how long a frame takes to encode and what's
+// holding it back, and whether Rainlit's window has the focus (a game in front, say).
+function traceVideo(conn, video) {
+  const { out, inb } = video;
+  if (!S.trace || (!out && !inb) || Date.now() - (conn.traceVideoAt || 0) < 10_000) return;
+  conn.traceVideoAt = Date.now();
+  const size = (r) => `${r.frameWidth}x${r.frameHeight} ${Math.round(r.framesPerSecond || 0)}fps`;
+  trace('video', {
+    out: out ? size(out) : undefined,
+    captured: video.captured,
+    encodeMs: video.encodeMs,
+    held: video.held,
+    encoder: out ? out.encoderImplementation : undefined,
+    quality: out && S.local.screen ? S.shareQuality : undefined,
+    in: inb ? size(inb) : undefined,
+    focus: document.hasFocus() ? undefined : 'elsewhere',
+  });
 }
 
 // Call debug logs in the admin box: one download per pair of people, both of their sides of
