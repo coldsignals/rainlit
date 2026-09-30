@@ -531,16 +531,17 @@ function checkScreenEncoder(out) {
 
 // A game shared smoothly over a slow connection. A browser keeps a shared screen's size, so when
 // the connection can't carry that many pixels 60 times a second, it sends a few blocky frames a
-// second instead. Smooth makes the picture smaller to fit what the connection carries: a step
-// down once it hasn't carried this size for a few seconds, and back up only once it has carried
-// the next size up with room to spare for a while, so the picture doesn't keep flipping. (Not in
-// a share's first seconds, while the connection is still being measured. Sharp keeps its size,
-// since text has to stay readable.)
+// second instead. Smooth makes the picture smaller to fit what the connection carries: one step
+// down once it hasn't carried this size for about six seconds (not for a moment's dip, as when a
+// game comes back to the front and its whole picture changes at once), and back up once it has
+// carried the next size up with room to spare for about eight, so the picture doesn't keep
+// flipping. (Not in a share's first seconds, while the connection is still being measured. Sharp
+// keeps its size, since text has to stay readable.)
 const SCREEN_STEPS = [
-  { height: 0, kbps: 2500, fps: 60 }, // (as it's captured)
-  { height: 720, kbps: 1300, fps: 60 },
-  { height: 540, kbps: 750, fps: 60 },
-  { height: 360, kbps: 380, fps: 30 },
+  { height: 0, kbps: 3500, fps: 60 }, // (as it's captured)
+  { height: 720, kbps: 1900, fps: 60 },
+  { height: 540, kbps: 1100, fps: 30 },
+  { height: 360, kbps: 550, fps: 30 },
   { height: 270, kbps: 0, fps: 30 },
 ];
 
@@ -566,13 +567,13 @@ function fitScreenToConnection(conn, pair) {
   let next = fit.step;
   if (kbps < SCREEN_STEPS[fit.step].kbps * 0.85) {
     fit.up = 0;
-    if (++fit.down >= 2) {
-      next = SCREEN_STEPS.findIndex((step, i) => i > fit.step && step.kbps <= kbps);
+    if (++fit.down >= 3) {
+      next = Math.min(fit.step + 1, SCREEN_STEPS.length - 1);
       fit.down = 0;
     }
   } else if (fit.step > 0 && kbps >= SCREEN_STEPS[fit.step - 1].kbps * 1.25) {
     fit.down = 0;
-    if (++fit.up >= 5) {
+    if (++fit.up >= 4) {
       next = fit.step - 1;
       fit.up = 0;
     }
