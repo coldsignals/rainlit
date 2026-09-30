@@ -209,6 +209,17 @@ from your own (**Your homepage**, then **Edit**).
   pictures come from Rainlit itself. A page can be reported like a message.
   Pictures can be up to 5 MB each, songs 10 MB, and 40 MB in all.
 
+## Feedback
+
+Settings > **Feedback** sends a bug, an idea or anything else straight to
+whoever runs the server (on rainlit.app, the people making Rainlit). With a
+bug, a tick box sends diagnostics too: which app and browser, the screen,
+the theme and call settings, whether you were in a call, and Rainlit's own
+recent errors (never messages); you can read them before sending. The admin
+sees it all in the Admin panel (the key button gets a dot for new feedback),
+and can reply, which shows under what you sent, or mark it done. Up to 10 a
+day each.
+
 ## Supporting Rainlit
 
 rainlit.app is free, and paid for by one person. Supporters keep it that way,

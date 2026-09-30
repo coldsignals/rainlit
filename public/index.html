@@ -1003,6 +1003,11 @@
         <ol id="report-list" class="report-list"></ol>
       </section>
       <section class="admin-section wide">
+        <h3>Feedback</h3>
+        <p class="hint">Bugs, ideas and anything else people sent from Settings, the newest first. A reply shows under what they sent, in their Settings.</p>
+        <ol id="feedback-admin-list" class="feedback-list"></ol>
+      </section>
+      <section class="admin-section wide">
         <h3>Flagged accounts</h3>
         <p class="hint">Accounts that look like they're filling up the free tier (bots, mostly), with what was noticed.
           Until you say it's fine, a flagged account can send up to 250 MB of files a day, like a new one. Nobody's
@@ -1178,6 +1183,11 @@
               <span>Show link previews <small class="toggle-note">(an X post, a video, or a page's title and picture, under links in messages. Rainlit's server fetches them, so the sites don't see you)</small></span>
             </label>
           </section>
+          <section class="settings-sec set-feedback" aria-labelledby="set-feedback">
+            <h3 id="set-feedback">Feedback</h3>
+            <p id="feedback-note" class="hint">Found a bug, or have an idea? Send it straight to whoever runs this Rainlit server.</p>
+            <button id="feedback-btn" class="small-btn feedback-open" type="button">Send feedback</button>
+          </section>
           <section id="activity-field" class="settings-sec activity-field" aria-labelledby="set-activity" hidden>
             <h3 id="set-activity">Activity</h3>
             <label class="toggle">
@@ -1286,6 +1296,42 @@
         <p id="conn-info" class="conn-info"></p>
         <p class="conn-info">Rainlit is free software (GNU AGPL). <a id="source-link" href="https://github.com/coldsignals/rainlit" target="_blank" rel="noopener">Source code</a></p>
         <p class="conn-info"><a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms of service</a> · <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="legal-link" href="/switching" target="_blank" rel="noopener">Switching from Discord</a><span></span><a id="support-link" href="/support" hidden>Support Rainlit</a></p>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ============ Feedback (Settings > Feedback) ============ -->
+  <dialog id="feedback" class="settings feedback-dialog" aria-labelledby="feedback-title">
+    <form id="feedback-form" class="settings-inner" novalidate>
+      <div class="settings-head">
+        <h2 id="feedback-title">Send feedback</h2>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="feedback-kinds" role="radiogroup" aria-label="What it is">
+        <label class="feedback-kind"><input type="radio" name="feedback-kind" value="bug" checked /><span>A bug</span></label>
+        <label class="feedback-kind"><input type="radio" name="feedback-kind" value="idea" /><span>An idea</span></label>
+        <label class="feedback-kind"><input type="radio" name="feedback-kind" value="other" /><span>Something else</span></label>
+      </div>
+      <label class="field">
+        <span id="feedback-what">What happened?</span>
+        <textarea id="feedback-text" maxlength="2000" rows="5"></textarea>
+      </label>
+      <div id="feedback-diag-field" class="feedback-diag">
+        <label class="toggle">
+          <input id="feedback-diag" type="checkbox" />
+          <span>Send diagnostics <small class="toggle-note">(which app and browser, your screen, your Rainlit settings and Rainlit's own recent errors, to help find the bug; never your messages)</small></span>
+        </label>
+        <details id="feedback-diag-what" class="feedback-details">
+          <summary>What's sent</summary>
+          <pre id="feedback-diag-text" class="feedback-pre"></pre>
+        </details>
+      </div>
+      <p id="feedback-error" class="form-error" role="alert" hidden></p>
+      <p id="feedback-sent" class="feedback-sent" role="status" hidden>Thank you! It's on its way.</p>
+      <button id="feedback-send" class="primary-btn" type="submit">Send</button>
+      <div id="feedback-mine-wrap" class="feedback-mine" hidden>
+        <h3>What you've sent</h3>
+        <ol id="feedback-mine" class="feedback-list"></ol>
       </div>
     </form>
   </dialog>

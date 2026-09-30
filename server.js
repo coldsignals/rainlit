@@ -41,6 +41,7 @@ supporters.whenChanged((userId) => {
   if (u) realtime.sendToUser(userId, { type: 'me', user: people.selfUser(u) });
 });
 const themes = require('./lib/themes');
+const feedback = require('./lib/feedback');
 const images = require('./lib/images');
 const { imageKind } = images;
 const embeds = require('./lib/embeds');
@@ -361,6 +362,43 @@ api.post('/admin/announcements', needAdmin, (req, res) => {
 });
 api.delete('/admin/announcements/:id', needAdmin, (req, res) => {
   if (!announcements.remove(req.params.id)) return fail(res, 404, "That announcement isn't there any more.");
+  res.json({ ok: true });
+});
+
+// ----- Feedback (lib/feedback.js) -----
+// A bug, an idea or anything else, from Settings straight to this server's admins, who hear at
+// once; a reply, or its being done, reaches whoever sent it.
+
+const feedbackRoute = (fn) => (req, res) => {
+  try {
+    res.json(fn(req));
+  } catch (err) {
+    if (err instanceof feedback.FeedbackError) return fail(res, err.status, err.message);
+    throw err;
+  }
+};
+api.get('/feedback', needUser, (req, res) => res.json({ feedback: feedback.mine(req.user.id) }));
+api.post('/feedback', needUser, feedbackRoute((req) => {
+  const made = feedback.send(req.user.id, req.body || {});
+  for (const r of db.prepare('SELECT id FROM users WHERE is_admin = 1').all()) {
+    realtime.sendToUser(r.id, { type: 'feedback-new', kind: made.kind, from: req.user.display_name });
+  }
+  return { feedback: made };
+}));
+api.get('/admin/feedback', needAdmin, (_req, res) => res.json({ feedback: feedback.all() }));
+api.post('/admin/feedback/:id/done', needAdmin, feedbackRoute((req) => {
+  const done = Boolean((req.body || {}).done);
+  const { item, userId } = feedback.setDone(req.params.id, done);
+  realtime.sendToUser(userId, { type: 'feedback-update', feedback: item, what: done ? 'done' : 'reopened' });
+  return { feedback: item };
+}));
+api.post('/admin/feedback/:id/reply', needAdmin, feedbackRoute((req) => {
+  const { item, userId } = feedback.reply(req.params.id, (req.body || {}).text, req.user.id);
+  realtime.sendToUser(userId, { type: 'feedback-update', feedback: item, what: item.reply ? 'reply' : 'unreplied', by: req.user.display_name });
+  return { feedback: item };
+}));
+api.delete('/admin/feedback/:id', needAdmin, (req, res) => {
+  if (!feedback.remove(req.params.id)) return fail(res, 404, "That feedback isn't there any more.");
   res.json({ ok: true });
 });
 
@@ -855,7 +893,7 @@ api.get('/friends', needUser, (req, res) => {
     blocked: safety.blockedBy(req.user.id).map((id) => people.userById(id)).filter(Boolean).map(people.publicUser),
     voice: voice.enabled,
     mail: mail.enabled,
-    ...(req.user.is_admin ? { openReports: safety.openReportCount(), openFlags: abuse.openCount() } : {}),
+    ...(req.user.is_admin ? { openReports: safety.openReportCount(), openFlags: abuse.openCount(), newFeedback: feedback.unseenCount() } : {}),
   };
   const convos = dms.summariesFor(req.user.id);
   for (const c of people.connectionsOf(req.user.id)) {

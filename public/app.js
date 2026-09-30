@@ -45,6 +45,28 @@ const ANDROID = (() => {
   }
 })();
 
+// Rainlit's own recent errors, for a bug's diagnostics (Settings > Feedback): the last 20, and
+// where in its scripts they happened. Only its own mistakes: never anything anyone wrote.
+const recentErrors = [];
+function noteError(what, where = '') {
+  what = String(what).slice(0, 300);
+  const last = recentErrors[recentErrors.length - 1];
+  if (last && last.what === what && last.where === where) {
+    last.n++;
+    last.at = Date.now();
+    return;
+  }
+  recentErrors.push({ at: Date.now(), what, where, n: 1 });
+  if (recentErrors.length > 20) recentErrors.shift();
+}
+addEventListener('error', (e) => {
+  if (!(e instanceof ErrorEvent)) return; // (not a picture that didn't load)
+  const at = e.filename ? `${e.filename.split('/').pop().split('?')[0]}:${e.lineno}:${e.colno}` : '';
+  const stack = e.error && e.error.stack ? String(e.error.stack).split('\n').slice(1, 4).map((l) => l.trim()).join(' < ') : '';
+  noteError(e.message || 'Error', [at, stack].filter(Boolean).join(' | ').slice(0, 400));
+});
+addEventListener('unhandledrejection', (e) => noteError(`Unhandled: ${(e.reason && (e.reason.message || e.reason.name)) || String(e.reason)}`));
+
 // In the apps, a call or message shows as a notification while you're not looking at Rainlit.
 // On Android in the background, the phone makes the sound (the page is kept quiet there), and
 // with push set up the server's push note covers it instead.
@@ -116,6 +138,8 @@ for (const id of [
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
+  'feedback', 'feedback-form', 'feedback-btn', 'feedback-note', 'feedback-what', 'feedback-text', 'feedback-diag-field', 'feedback-diag',
+  'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -1284,9 +1308,22 @@ function handleServerMessage(msg) {
     case 'flag-new':
       // (For the admin: an account that looks like it's filling up the free tier.)
       S.openFlags = (S.openFlags || 0) + 1;
-      el.adminBtn.classList.add('has-reports');
+      renderAdminDot();
       if (el.admin.open) renderFlags();
       else toast('An account was flagged for a look. See Flagged accounts, in the admin panel.', 6000);
+      return;
+    case 'feedback-new':
+      // (For the admin: someone sent feedback from their Settings.)
+      S.newFeedback = (S.newFeedback || 0) + 1;
+      renderAdminDot();
+      if (el.admin.open) renderFeedbackAdmin();
+      else toast(`${msg.from} sent ${msg.kind === 'bug' ? 'a bug report' : msg.kind === 'idea' ? 'an idea' : 'some feedback'}. It's in the admin panel.`, 6000);
+      return;
+    case 'feedback-update':
+      // (Feedback you sent, replied to or done.)
+      if (el.feedback.open) loadMyFeedback();
+      if (msg.what === 'reply') toast(`${msg.by || 'Whoever runs Rainlit'} replied to your feedback. It's in Settings > Feedback.`, 8000);
+      else if (msg.what === 'done') toast(`Your ${msg.feedback.kind === 'bug' ? 'bug report' : msg.feedback.kind === 'idea' ? 'idea' : 'feedback'} was marked done. Thank you!`, 6000);
       return;
     case 'announcement':
       // (Not the one you just sent yourself.)
@@ -4005,7 +4042,7 @@ async function renderFlags() {
     return;
   }
   S.openFlags = data.flags.length;
-  el.adminBtn.classList.toggle('has-reports', (S.openReports || 0) + S.openFlags > 0);
+  renderAdminDot();
   if (!data.flags.length) {
     const li = document.createElement('li');
     li.className = 'muted';
@@ -10059,8 +10096,9 @@ async function refreshFriends() {
     S.blocked = new Set(S.blockedUsers.map((u) => u.id));
     S.openReports = data.openReports || 0;
     S.openFlags = data.openFlags || 0;
+    S.newFeedback = data.newFeedback || 0;
     applyBlocks();
-    el.adminBtn.classList.toggle('has-reports', S.openReports + S.openFlags > 0);
+    renderAdminDot();
     if (el.profile.open) renderBlockedList();
     if (el.miniProfile.open) renderMiniProfile();
     for (const f of data.friends) {
@@ -11500,6 +11538,237 @@ async function openSupportPage() {
   }
 }
 
+// ---------------- Feedback ----------------
+// Settings > Feedback: a bug, an idea or anything else, straight to whoever runs this Rainlit
+// (lib/feedback.js). With a bug, its diagnostics can go too, if you tick the box (what's sent is
+// there to read first). What you've sent is under it, with any reply. The admin sees it all in
+// Admin > Feedback, and can reply or mark it done.
+
+const FEEDBACK = {
+  bug: { name: 'Bug', what: 'What happened?', hint: 'What you did, what happened, and what you expected. The steps to make it happen again help a lot.' },
+  idea: { name: 'Idea', what: 'Your idea', hint: 'What would you like Rainlit to do?' },
+  other: { name: 'Feedback', what: "What's on your mind?", hint: 'Anything you want the people running Rainlit to know.' },
+};
+const feedbackKind = () => (el.feedbackForm.querySelector('input[name="feedback-kind"]:checked') || {}).value || 'bug';
+
+function openFeedback() {
+  el.feedbackError.hidden = true;
+  el.feedbackSent.hidden = true;
+  renderFeedbackKind();
+  el.feedback.showModal();
+  el.feedbackText.focus();
+  loadMyFeedback();
+}
+
+function renderFeedbackKind() {
+  const kind = feedbackKind();
+  el.feedbackWhat.textContent = FEEDBACK[kind].what;
+  el.feedbackText.placeholder = FEEDBACK[kind].hint;
+  el.feedbackDiagField.hidden = kind !== 'bug';
+  if (kind === 'bug') showDiagnostics();
+}
+
+// A bug's diagnostics, as they are right now: which app and browser, the screen, Rainlit's
+// settings for calls, whether you're in one, and its own recent errors.
+async function feedbackDiagnostics() {
+  let devices = [];
+  try { devices = await navigator.mediaDevices.enumerateDevices(); } catch {}
+  const count = (kind) => devices.filter((d) => d.kind === kind).length;
+  const build = document.querySelector('meta[name="rainlit-build"]');
+  return {
+    device: traceDevice(),
+    browser: navigator.userAgent,
+    build: build ? build.content : '',
+    screen: `${innerWidth}x${innerHeight} at ${Math.round(devicePixelRatio * 100) / 100}x`,
+    size: `${Math.round(uiZoom() * 100)}%`,
+    theme: shownTheme(),
+    language: navigator.language,
+    network: navigator.onLine ? netInfo() || 'online' : 'offline',
+    server: wsOpen() ? 'connected' : 'not connected',
+    call: S.inCall ? `a call, ${S.conn ? S.conn.pc.connectionState : 'starting'}` : S.voice ? `a voice channel, ${S.voice.state}` : 'none',
+    devices: `${count('audioinput')} mics, ${count('videoinput')} cameras, ${count('audiooutput')} speakers`,
+    settings: {
+      pushToTalk: S.ptt, noiseSuppression: S.micFx.noiseSuppression, echoCancellation: S.micFx.echoCancellation,
+      autoMicVolume: S.micFx.autoGainControl, screenShare: S.shareQuality, weather: S.rain, callDebugLog: S.trace,
+    },
+    errors: recentErrors.map((e) => `${new Date(e.at).toISOString().slice(0, 19)}Z ${e.what}${e.where ? ` (${e.where})` : ''}${e.n > 1 ? ` x${e.n}` : ''}`),
+  };
+}
+
+async function showDiagnostics() {
+  el.feedbackDiagText.textContent = JSON.stringify(await feedbackDiagnostics(), null, 2);
+}
+
+function showFeedbackError(text) {
+  el.feedbackError.textContent = text;
+  el.feedbackError.hidden = !text;
+}
+
+async function onFeedbackSubmit(e) {
+  e.preventDefault();
+  const kind = feedbackKind();
+  const text = el.feedbackText.value.trim();
+  el.feedbackSent.hidden = true;
+  if (!text) return showFeedbackError("Say what it's about first.");
+  el.feedbackSend.disabled = true;
+  try {
+    const diagnostics = kind === 'bug' && el.feedbackDiag.checked ? await feedbackDiagnostics() : undefined;
+    await api('POST', '/feedback', { kind, text, diagnostics });
+    el.feedbackText.value = '';
+    el.feedbackDiag.checked = false;
+    el.feedbackDiagWhat.open = false;
+    showFeedbackError('');
+    el.feedbackSent.hidden = false;
+    loadMyFeedback();
+  } catch (err) {
+    showFeedbackError(err.message);
+  } finally {
+    el.feedbackSend.disabled = false;
+  }
+}
+
+async function loadMyFeedback() {
+  let list;
+  try {
+    ({ feedback: list } = await api('GET', '/feedback'));
+  } catch {
+    return;
+  }
+  el.feedbackMineWrap.hidden = !list.length;
+  el.feedbackMine.replaceChildren(...list.map((f) => feedbackItem(f)));
+}
+
+// One piece of feedback: what it is, when, its words and any reply (and for the admin, who sent
+// it, and its diagnostics).
+function feedbackItem(f, admin = false) {
+  const li = document.createElement('li');
+  li.className = `feedback-item${f.done ? ' done' : ''}${f.isNew ? ' new' : ''}`;
+  const head = document.createElement('div');
+  head.className = 'feedback-head';
+  if (admin) {
+    const who = document.createElement('strong');
+    who.textContent = `${f.user.displayName} (@${f.user.username})`;
+    head.append(makeFace(f.user, null), who);
+  }
+  const tag = document.createElement('span');
+  tag.className = `feedback-tag ${f.kind}`;
+  tag.textContent = (FEEDBACK[f.kind] || FEEDBACK.other).name;
+  const when = document.createElement('time');
+  when.textContent = fmtWhen(f.at);
+  head.append(tag, when);
+  const state = f.isNew ? 'New' : f.done ? 'Done' : f.reply ? 'Replied' : admin ? '' : 'Sent';
+  if (state) {
+    const b = document.createElement('span');
+    b.className = 'feedback-state';
+    b.textContent = state;
+    head.append(b);
+  }
+  const words = document.createElement('p');
+  words.className = 'feedback-words';
+  words.textContent = f.text;
+  li.append(head, words);
+  if (admin && f.details) {
+    const d = document.createElement('details');
+    d.className = 'feedback-details';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Diagnostics';
+    const pre = document.createElement('pre');
+    pre.className = 'feedback-pre';
+    pre.textContent = JSON.stringify(f.details, null, 2);
+    d.append(summary, pre);
+    li.append(d);
+  }
+  if (f.reply) {
+    const r = document.createElement('p');
+    r.className = 'feedback-reply';
+    const label = document.createElement('strong');
+    label.textContent = admin ? 'Your reply' : 'Reply';
+    r.append(label, document.createTextNode(f.reply));
+    li.append(r);
+  }
+  return li;
+}
+
+// Admin > Feedback: everything sent, with a reply, done (or not after all), and deleting.
+async function renderFeedbackAdmin() {
+  let list;
+  try {
+    ({ feedback: list } = await api('GET', '/admin/feedback'));
+  } catch {
+    return;
+  }
+  S.newFeedback = 0; // (seen now)
+  renderAdminDot();
+  if (!list.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'Nothing sent yet.';
+    el.feedbackAdminList.replaceChildren(li);
+    return;
+  }
+  const act = async (method, path, body) => {
+    try {
+      await api(method, path, body);
+      renderFeedbackAdmin();
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+  const button = (label, onClick, cls = 'text-btn') => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = cls;
+    b.textContent = label;
+    b.addEventListener('click', onClick);
+    return b;
+  };
+  el.feedbackAdminList.replaceChildren(...list.map((f) => {
+    const li = feedbackItem(f, true);
+    const form = document.createElement('form');
+    form.className = 'feedback-reply-form';
+    form.hidden = true;
+    const input = document.createElement('textarea');
+    input.rows = 2;
+    input.maxLength = 1000;
+    input.value = f.reply || '';
+    input.placeholder = `A reply ${f.user.displayName} sees under what they sent`;
+    const send = document.createElement('button');
+    send.type = 'submit';
+    send.className = 'small-btn';
+    send.textContent = f.reply ? 'Save reply' : 'Send reply';
+    form.append(input, send);
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      act('POST', `/admin/feedback/${f.id}/reply`, { text: input.value });
+    });
+    const tools = document.createElement('div');
+    tools.className = 'feedback-actions';
+    const del = button('Delete', () => {
+      // (Asks once to be sure.)
+      if (!del.dataset.sure) {
+        del.dataset.sure = '1';
+        del.textContent = 'Delete it?';
+        setTimeout(() => { delete del.dataset.sure; del.textContent = 'Delete'; }, 3000);
+        return;
+      }
+      act('DELETE', `/admin/feedback/${f.id}`);
+    }, 'text-btn danger');
+    tools.append(
+      button(f.reply ? 'Change reply' : 'Reply', () => { form.hidden = !form.hidden; if (!form.hidden) input.focus(); }),
+      button(f.done ? 'Not done' : 'Done', () => act('POST', `/admin/feedback/${f.id}/done`, { done: !f.done })),
+      del,
+    );
+    li.append(tools, form);
+    return li;
+  }));
+}
+
+// The admin's key button has a dot while something's waiting: a report, a flagged account, or
+// new feedback.
+function renderAdminDot() {
+  el.adminBtn.classList.toggle('has-reports', (S.openReports || 0) + (S.openFlags || 0) + (S.newFeedback || 0) > 0);
+}
+
 async function onProfileSave(e) {
   e.preventDefault();
   showProfileError('');
@@ -11668,6 +11937,7 @@ async function renderAdmin() {
   renderSupportAdmin();
   renderAnnouncements();
   renderFlags();
+  renderFeedbackAdmin();
   if (!reports.length) {
     const li = document.createElement('li');
     li.className = 'muted';
@@ -12913,7 +13183,7 @@ async function init() {
   el.deleteDetails.addEventListener('toggle', () => { if (el.deleteDetails.open) renderDeletion(); });
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 
@@ -13161,6 +13431,13 @@ async function init() {
     showTheme();
   });
   el.themeTryBtn.addEventListener('click', openSupportPage);
+  // Feedback: to the people making Rainlit (on rainlit.app), or whoever runs this server.
+  el.feedbackNote.textContent = OFFICIAL ? 'Found a bug, or have an idea? Send it straight to the people making Rainlit.'
+    : 'Found a bug, or have an idea? Send it straight to whoever runs this Rainlit server.';
+  el.feedbackBtn.addEventListener('click', openFeedback);
+  el.feedbackForm.addEventListener('submit', onFeedbackSubmit);
+  el.feedbackForm.addEventListener('change', (e) => { if (e.target.name === 'feedback-kind') renderFeedbackKind(); });
+  el.feedbackDiagWhat.addEventListener('toggle', () => { if (el.feedbackDiagWhat.open) showDiagnostics(); });
   lightDevice.addEventListener('change', () => { if ((S.themeTry || S.theme) === 'auto') showTheme(); });
 
   el.rainInput.addEventListener('change', () => {
