@@ -504,8 +504,10 @@ function shareConstraints(q = shareQuality()) {
 // usual), so a game went out at a few frames a second. Most graphics cards have an H.264 encoder
 // of their own that takes a few milliseconds: a screen goes as that when the browser has one
 // (browsers offer H.264's High profile only then) and the other end can take it. Once it's
-// going, the browser says whose encoder it is: if it isn't the graphics card's after all, that
-// share goes as VP8 again (screenAsVp8: the share it's given up on; the next one tries again).
+// going, the browser says whose encoder it is: if it isn't the graphics card's after all (it can
+// fail to start for a moment, as a call's connection is made again with a game loading the card),
+// a fresh encoder is tried, a few times, before that share goes as VP8 (screenAsVp8: the share
+// it's given up on; the next one tries again).
 const isH264High = (c) => /^video\/h264$/i.test(c.mimeType) && /profile-level-id=64/i.test(c.sdpFmtpLine || '');
 
 function screenCodec(params) {
@@ -523,16 +525,50 @@ function screenCodec(params) {
 function checkScreenEncoder(conn, out, stats) {
   const sender = conn.senders.video;
   const track = sender && sender.track;
-  const codec = track && track === S.local.screen && S.screenAsVp8 !== track && sender.getParameters().encodings[0].codec;
+  const codec = track && track === S.local.screen && S.screenAsVp8 !== track && !reseating(track) && sender.getParameters().encodings[0].codec;
   const sent = out && out.codecId && stats.get(out.codecId);
   const software = Boolean(codec && isH264High(codec) && sent && /^video\/h264$/i.test(sent.mimeType) && out.powerEfficientEncoder === false);
   conn.softwareSeen = software ? (conn.softwareSeen || 0) + 1 : 0;
   if (conn.softwareSeen < 2) return;
   conn.softwareSeen = 0;
+  const why = out.encoderImplementation || 'software';
+  // A fresh encoder: VP8 for a moment, then H.264 again (a codec change makes a new one).
+  const tries = S.reseats && S.reseats.track === track ? S.reseats : (S.reseats = { track, n: 0 });
+  if (tries.n < RESEATS) {
+    tries.n++;
+    S.reseat = { track, until: Date.now() + 3000 };
+    console.warn(`[video] H.264 fell back to software (${why}): trying the graphics card again (${tries.n} of ${RESEATS}).`);
+    trace('screen-codec', { now: 'fresh encoder', why, n: tries.n });
+    tuneVideoSender();
+    setTimeout(() => tuneVideoSender(), 3100);
+    return;
+  }
   S.screenAsVp8 = track;
   console.warn('[video] H.264 is encoded in software here: screens go as VP8.');
-  trace('screen-codec', { now: 'VP8', why: out.encoderImplementation || 'software' });
+  trace('screen-codec', { now: 'VP8', why });
   tuneVideoSender();
+}
+
+const RESEATS = 3;
+// (A fresh encoder on its way: VP8 until then.)
+const reseating = (track) => Boolean(S.reseat && S.reseat.track === track && Date.now() < S.reseat.until);
+
+// Why a screen's going as VP8, when it could have been H.264 on the graphics card: for the stream
+// stats, and the call debug log. ('' when it isn't, or couldn't have been.)
+function screenVp8Why(conn, out, stats) {
+  const sender = conn.senders.video;
+  const track = sender && sender.track;
+  const sent = out && out.codecId && stats.get(out.codecId);
+  if (!track || track !== S.local.screen || !sent || !/^video\/vp8$/i.test(sent.mimeType)) return '';
+  try {
+    if (!RTCRtpSender.getCapabilities('video').codecs.some(isH264High)) return '';
+  } catch {
+    return '';
+  }
+  if (S.screenAsVp8 === track) return "the graphics card's H.264 stopped";
+  if (reseating(track)) return 'starting the graphics card again';
+  if (!(sender.getParameters().codecs || []).some(isH264High)) return "their app can't take H.264";
+  return '';
 }
 
 // A game shared smoothly over a slow connection. A browser keeps a shared screen's size, so when
@@ -608,7 +644,7 @@ async function tuneVideoSenderNow() {
   if (!params.encodings || !params.encodings.length) return; // not connected yet; done when it is
   const q = S.local.screen && sender.track && sender.track === S.local.screen ? shareQuality() : null;
   const step = screenFitStep(S.conn);
-  const codec = q && S.screenAsVp8 !== sender.track ? screenCodec(params) : null;
+  const codec = q && S.screenAsVp8 !== sender.track && !reseating(sender.track) ? screenCodec(params) : null;
   // (Back from H.264: VP8, said outright, since a browser otherwise keeps the last codec, and
   // lists the one it's using first.)
   const usual = (params.codecs || []).find((c) => /^video\/vp8$/i.test(c.mimeType));
@@ -631,6 +667,7 @@ async function tuneVideoSenderNow() {
     await sender.setParameters(params);
   } catch (err) {
     console.warn("[video] Couldn't set the quality:", err.message);
+    if (codec) trace('screen-codec', { now: 'VP8', why: String(err.message).slice(0, 120) });
     // (The browser wouldn't send the screen as H.264: VP8, then. Unless the call's just ended.)
     if (codec && S.conn && S.conn.senders.video === sender && S.conn.pc.connectionState !== 'closed') {
       S.screenAsVp8 = sender.track;
@@ -1969,6 +2006,7 @@ function startStats(conn) {
       if (conn.pc.connectionState === 'connected') setStatus('Connected', ping != null ? `${route}, ${ping} ms` : route);
       el.connInfo.textContent = `${relayed ? 'Connected through a relay server' : 'Connected directly'}${ping != null ? `, ${ping} ms round trip` : ''}.`;
       const video = videoFigures(conn, stats);
+      video.vp8Why = screenVp8Why(conn, video.out, stats);
       renderStreamStats(conn, video, stats, pair, route, ping);
       traceVideo(conn, video);
       checkScreenEncoder(conn, video.out, stats);
@@ -2029,7 +2067,7 @@ function renderStreamStats(conn, video, stats, pair, route, ping) {
     const lost = remoteIn && remoteIn.fractionLost != null ? `, ${(remoteIn.fractionLost * 100).toFixed(1)}% lost` : '';
     const captured = video.captured != null ? ` (captured at ${video.captured})` : '';
     lines.push(`Sending   ${out.frameWidth}×${out.frameHeight}, ${Math.round(out.framesPerSecond || 0)} fps${captured}, ${mbps(out.bytesSent, prev.outBytes, out.timestamp, prev.outAt)} Mb/s${lost}`);
-    lines.push(`          ${codec(out)}${out.encoderImplementation ? ` (${out.encoderImplementation})` : ''}${video.encodeMs != null ? `, ${video.encodeMs} ms a frame` : ''}${video.held ? `, held back by ${LIMITED_BY[video.held] || video.held}` : ''}${screenFitStep(conn).height ? ', made smaller for the connection' : ''}`);
+    lines.push(`          ${codec(out)}${out.encoderImplementation ? ` (${out.encoderImplementation})` : ''}${video.encodeMs != null ? `, ${video.encodeMs} ms a frame` : ''}${video.held ? `, held back by ${LIMITED_BY[video.held] || video.held}` : ''}${screenFitStep(conn).height ? ', made smaller for the connection' : ''}${video.vp8Why ? ` (VP8: ${video.vp8Why})` : ''}`);
   }
   if (inb) {
     now.inBytes = inb.bytesReceived;
@@ -11940,6 +11978,7 @@ function traceVideo(conn, video) {
     encoder: out ? out.encoderImplementation : undefined,
     quality: out && S.local.screen ? S.shareQuality : undefined,
     fit: out && screenFitStep(conn).height ? screenFitStep(conn).height : undefined,
+    vp8: video.vp8Why || undefined,
     in: inb ? size(inb) : undefined,
     focus: document.hasFocus() ? undefined : 'elsewhere',
   });
