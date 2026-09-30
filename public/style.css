@@ -832,6 +832,8 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 }
 .face[data-presence="online"]::after { background: var(--online); }
 .face[data-presence="away"]::after { background: var(--away); }
+/* (Do not disturb: red, with a bar across it, like Discord's.) */
+.face[data-presence="dnd"]::after { background: linear-gradient(#fff, #fff) center / 56% 24% no-repeat, var(--danger); }
 .face.big { width: 48px; height: 48px; font-size: 20px; }
 .face.xl { width: 84px; height: 84px; font-size: 34px; }
 .face.xl[data-presence]::after { width: 20px; height: 20px; border-width: 4px; right: 0; bottom: 0; border-color: var(--panel); }
@@ -949,6 +951,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .mp-presence::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--offline); }
 .mp-presence[data-presence="online"]::before { background: var(--online); }
 .mp-presence[data-presence="away"]::before { background: var(--away); }
+.mp-presence[data-presence="dnd"]::before { background: linear-gradient(#fff, #fff) center / 56% 20% no-repeat, var(--danger); }
 .mp-status {
   margin: 0;
   padding: 10px 12px;

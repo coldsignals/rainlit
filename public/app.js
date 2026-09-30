@@ -67,10 +67,15 @@ addEventListener('error', (e) => {
 });
 addEventListener('unhandledrejection', (e) => noteError(`Unhandled: ${(e.reason && (e.reason.message || e.reason.name)) || String(e.reason)}`));
 
+// Do not disturb (Your profile > Show me as): no notifications, no chimes, and calls coming in don't
+// ring (they still show). Your friends see it, red.
+const dnd = () => Boolean(S.me && S.me.presence === 'dnd');
+
 // In the apps, a call or message shows as a notification while you're not looking at Rainlit.
 // On Android in the background, the phone makes the sound (the page is kept quiet there), and
 // with push set up the server's push note covers it instead.
 function appNotify(n) {
+  if (dnd()) return;
   if (DESKTOP) DESKTOP.notify(n);
   else if (ANDROID && !(appAsleep() && S.pushSent)) ANDROID.notify({ ...n, sound: appAsleep() }).catch(() => {});
 }
@@ -5174,9 +5179,9 @@ function soundReady() {
   return Boolean(S.soundCtx && S.soundCtx.state === 'running') && !appAsleep();
 }
 
-// A soft two-note doorbell for new messages.
-function playChime() {
-  if (!soundReady() || performance.now() - S.lastChime < 1500) return; // not twice in a row
+// A soft two-note doorbell for new messages (not on do not disturb, unless it's to hear it).
+function playChime(anyway = false) {
+  if ((dnd() && !anyway) || !soundReady() || performance.now() - S.lastChime < 1500) return; // not twice in a row
   S.lastChime = performance.now();
   const start = S.soundCtx.currentTime + 0.02;
   bellNote(S.soundCtx, 659.25, start); // E5
@@ -5187,6 +5192,8 @@ function playChime() {
 // call; you hear it (a little quieter) while you wait for them to pick up.
 const RING_TUNE = [[523.25, 0], [659.25, 0.2], [783.99, 0.4], [659.25, 0.72]];
 const RING_EVERY_MS = 3000;
+// (A call coming in rings, unless you're on do not disturb: it still shows.)
+const ringIn = () => { if (!dnd()) playRingtone(); };
 
 function playRingtone(loudness = 1) {
   if (!soundReady()) return;
@@ -7279,7 +7286,7 @@ async function checkSignedIn() {
 
 // ---------------- You ----------------
 
-const PRESENCE_LABEL = { online: 'Online', away: 'Away', offline: 'Offline' };
+const PRESENCE_LABEL = { online: 'Online', away: 'Away', dnd: 'Do not disturb', offline: 'Offline' };
 
 function setMe(user) {
   const nowAdult = Boolean(S.me && !S.me.adult && user.adult);
@@ -7302,6 +7309,7 @@ function setMe(user) {
 // What your friends see you as.
 function myPresence() {
   if (!S.me || S.me.presence === 'invisible') return 'offline';
+  if (S.me.presence === 'dnd') return 'dnd';
   return S.me.presence === 'away' || S.idle ? 'away' : 'online';
 }
 
@@ -7309,7 +7317,7 @@ function renderMe() {
   if (!S.me) return;
   renderFace(el.meFace, S.me, myPresence());
   el.meName.textContent = S.me.displayName;
-  el.meStatus.textContent = S.me.statusText || (S.me.presence === 'invisible' ? 'Appearing offline' : `@${S.me.username}`);
+  el.meStatus.textContent = S.me.statusText || (S.me.presence === 'invisible' ? 'Appearing offline' : S.me.presence === 'dnd' ? 'Do not disturb' : `@${S.me.username}`);
   el.adminBtn.hidden = !S.me.isAdmin;
   el.homeTitle.textContent = `Hi, ${S.me.displayName}`;
 }
@@ -10247,7 +10255,7 @@ function onProfile(user) {
   }
 }
 
-const PRESENCE_ORDER = { online: 0, away: 1, offline: 2 };
+const PRESENCE_ORDER = { online: 0, dnd: 0, away: 1, offline: 2 };
 
 // ---------------- Group chats ----------------
 // A few friends with a chat and a call of their own (on the server, a small space of kind
@@ -10532,8 +10540,8 @@ function onGroupRing({ space: spaceId, channel, from }) {
   document.title = `${caller} is calling`;
   appNotify({ title: `${caller} is calling ${whom}`, body: `${ANDROID ? 'Tap' : 'Click'} to open Rainlit and join.`, call: true });
   clearInterval(S.ringTimer);
-  playRingtone();
-  S.ringTimer = setInterval(playRingtone, RING_EVERY_MS);
+  ringIn();
+  S.ringTimer = setInterval(ringIn, RING_EVERY_MS);
 }
 
 function stopGroupRinging(channel = null) {
@@ -12403,8 +12411,8 @@ function startRinging(from) {
   document.title = `${S.ringing.displayName} is calling`;
   appNotify({ title: `${S.ringing.displayName || 'A friend'} is calling`, body: `${ANDROID ? 'Tap' : 'Click'} to open Rainlit and answer.`, call: true });
   clearInterval(S.ringTimer);
-  playRingtone();
-  S.ringTimer = setInterval(playRingtone, RING_EVERY_MS);
+  ringIn();
+  S.ringTimer = setInterval(ringIn, RING_EVERY_MS);
 }
 
 function stopRinging(fromId) {
@@ -13622,7 +13630,7 @@ async function init() {
   el.soundsInput.addEventListener('change', () => {
     S.sounds = el.soundsInput.checked;
     store.set('sounds', S.sounds ? 'on' : 'off');
-    if (S.sounds) playChime(); // so you know what it sounds like
+    if (S.sounds) playChime(true); // so you know what it sounds like
   });
 
   // Ctrl+Shift+M mutes you and Ctrl+Shift+D deafens you, like Discord (in a call, or a voice channel).

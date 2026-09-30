@@ -125,7 +125,10 @@ and released is in [desktop/README.md](desktop/README.md).
   straight away.
 - **Online, away, offline:** the dot on each picture. You show as away after
   10 minutes without touching Rainlit (except during a call). You can also
-  pick **Away** or **Appear offline** yourself.
+  pick **Away**, **Do not disturb** or **Appear offline** yourself (Your
+  profile, **Show me as**). Do not disturb shows red, and mutes you: no
+  message sounds, no notifications on your computer or phone, and calls
+  coming in don't ring (they still show in Rainlit).
 - **Your profile:** click your name at the bottom left. Change your picture
   (PNG, JPG, WebP or GIF, up to 8 MB, and GIFs move; a big one's made 512 pixels
   across, losslessly, so it's never blurred or blocky), display name and a status

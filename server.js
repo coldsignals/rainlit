@@ -613,7 +613,7 @@ api.patch('/me', needUser, (req, res) => {
   }
   if ('statusText' in b) set.status_text = people.oneLine(b.statusText, people.STATUS_MAX);
   if ('presence' in b) {
-    if (!['auto', 'away', 'invisible'].includes(b.presence)) return fail(res, 400, 'Pick online, away or appear offline.');
+    if (!['auto', 'away', 'dnd', 'invisible'].includes(b.presence)) return fail(res, 400, 'Pick online, away, do not disturb or appear offline.');
     set.presence = b.presence;
   }
   if ('theme' in b) {
