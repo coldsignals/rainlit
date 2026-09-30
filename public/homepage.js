@@ -1018,9 +1018,11 @@
     stage.append(canvas);
     room.append(sky, stage);
     page.append(room);
-    // Pieces can reach past the page's 800px (and above or below it). On a screen wide enough,
-    // the page is centered as it was made, with those showing around it. On a narrower one,
-    // everything is shown: all of it, scaled down to fit. (Times the zoom, from pinching.)
+    // Pieces can reach past the page's 800px, and below it. On a screen wide enough, the page is
+    // centered as it was made, with those showing around it. On a narrower one, everything is
+    // shown: all of it, scaled down to fit. (Times the zoom, from pinching.) The top is the
+    // page's edge: anything above it is cut off (a lamp hanging from the ceiling, say), and
+    // putting something higher never moves the rest of the page down.
     const reach = () => {
       const b = { left: 0, right: WIDTH, top: 0, bottom: doc.height };
       for (const node of canvas.children) {
@@ -1031,7 +1033,6 @@
         const cx = node.offsetLeft + w / 2, cy = node.offsetTop + h / 2;
         b.left = Math.min(b.left, cx - hw);
         b.right = Math.max(b.right, cx + hw);
-        b.top = Math.min(b.top, cy - hh);
         b.bottom = Math.max(b.bottom, cy + hh);
       }
       return b;
