@@ -5980,12 +5980,29 @@ function showPreview(card, f, url) {
     if (log && log.scrollHeight - log.scrollTop - log.clientHeight - shown.clientHeight < 120) scrollChat(log);
   });
   // Not something this browser can show after all: it can still be saved, from the card. (If
-  // it was the smaller copy that didn't come, the original's tried first.)
+  // it was the smaller copy that didn't come, the original's tried first.) A video or song
+  // that's just been sent moves on to R2 while it plays, and a browser won't take the rest of
+  // one from another site: it's asked for again, once, from where it had got to.
   let small = kind === 'image' && f.preview;
+  let again = kind !== 'image';
+  let playing = false;
+  media.addEventListener('play', () => (playing = true));
+  media.addEventListener('pause', () => (playing = false));
   media.onerror = () => {
     if (small) {
       small = null;
       media.src = url;
+      return;
+    }
+    if (again) {
+      again = false;
+      const at = media.currentTime || 0;
+      const resume = playing;
+      media.addEventListener('loadedmetadata', () => {
+        if (at) media.currentTime = at;
+        if (resume) media.play().catch(() => {});
+      }, { once: true });
+      media.src = `${url}${url.includes('?') ? '&' : '?'}again=1`;
       return;
     }
     shown.remove();
