@@ -772,10 +772,12 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   padding: calc(4px / var(--hp-scale, 1)) calc(10px / var(--hp-scale, 1));
   border-radius: calc(4px / var(--hp-scale, 1)); background: rgba(22, 16, 32, 0.86); color: #fff;
   box-shadow: 0 0 0 calc(2px / var(--hp-scale, 1)) rgba(255, 255, 255, 0.18);
-  font: 400 calc(11px / var(--hp-scale, 1))/1.2 "Pixelify Sans", "Bricolage Grotesque", sans-serif; white-space: nowrap;
+  font: 400 calc(11px / var(--hp-scale, 1))/1.25 Silkscreen, "Bricolage Grotesque", sans-serif; letter-spacing: 0.02em; white-space: nowrap;
   transform: translateX(-50%); opacity: 0; transition: opacity 0.15s; pointer-events: none;
 }
-.hp-pet-tag b { font-size: calc(13px / var(--hp-scale, 1)); }
+/* (Silkscreen, not Pixelify Sans: small, Pixelify's c looks like an o and its 5 like an S. And
+   not Silkscreen's bold, whose M looks like an H.) */
+.hp-pet-tag b { font-size: calc(13px / var(--hp-scale, 1)); font-weight: 400; }
 .hp-pet-live:hover .hp-pet-tag, .hp-pet-live.tagged .hp-pet-tag { opacity: 1; }
 .hp-editing .hp-pet-tag { display: none; }
 /* Thinking of food (it's hungry). */
@@ -853,7 +855,7 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   font: 400 14px/1.3 "Bricolage Grotesque", system-ui, sans-serif;
 }
 .hp-pet-care[hidden] { display: none; }
-.hp-pet-care strong { padding-right: 24px; font: 700 17px/1.15 "Pixelify Sans", "Bricolage Grotesque", sans-serif; overflow-wrap: anywhere; }
+.hp-pet-care strong { padding-right: 24px; font: 400 15px/1.15 Silkscreen, "Bricolage Grotesque", sans-serif; letter-spacing: 0.02em; overflow-wrap: anywhere; }
 .hp-pet-x { position: absolute; top: 4px; right: 6px; padding: 2px 6px; border: 0; background: none; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
 .hp-pet-meters { display: grid; gap: 6px; }
 .hp-pet-meter { display: grid; grid-template-columns: 44px minmax(0, 1fr) 76px; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
@@ -868,7 +870,7 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   flex: 1; min-width: 0; padding: 8px 10px;
   border: 2px solid #3b2f25; border-radius: 10px;
   background: #ffd23f; color: #3b2f25;
-  font: 700 14px/1.1 "Pixelify Sans", "Bricolage Grotesque", sans-serif; cursor: pointer;
+  font: 400 13px/1.1 Silkscreen, "Bricolage Grotesque", sans-serif; letter-spacing: 0.02em; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   box-shadow: 0 3px 0 #3b2f25;
 }
@@ -1154,7 +1156,7 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 /* Your pet, in the Pet tab: as it is, with whether it's on your page. */
 .hp-pet-here { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
 .hp-pet-here .hp-pet { width: 88px; height: 72px; --pw: 88px; }
-.hp-pet-here strong { display: block; margin-bottom: 2px; font: 700 15px/1.2 "Pixelify Sans", sans-serif; color: #3b2f25; }
+.hp-pet-here strong { display: block; margin-bottom: 2px; font: 400 14px/1.2 Silkscreen, sans-serif; letter-spacing: 0.02em; color: #3b2f25; }
 .hp-pet-here .hp-row { margin: 6px 0 0; }
 /* Picking a pet: each one there to see, as it is, standing about. */
 .hp-pet-picks { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -2337,7 +2337,7 @@ button.person.open { background: var(--dusk-hi); }
 .pet-tab[hidden], [data-pet-pane][hidden] { display: none; }
 .pet-care { display: grid; gap: 8px; }
 .pet-care-head { display: flex; align-items: baseline; gap: 10px; }
-.pet-care-head strong { font: 700 18px/1.2 "Pixelify Sans", var(--font, sans-serif); overflow-wrap: anywhere; }
+.pet-care-head strong { font: 400 16px/1.2 Silkscreen, var(--font, sans-serif); letter-spacing: 0.02em; overflow-wrap: anywhere; }
 .pet-since, .pet-note { color: var(--mist); font-size: 13px; }
 .pet-note { margin: 0; }
 .pet-meters { max-width: 420px; }
@@ -2346,7 +2346,7 @@ button.person.open { background: var(--dusk-hi); }
 .pet-meters .bar { border-radius: 0; background: var(--deep); box-shadow: inset 0 0 0 2px var(--line); }
 .pet-meters .bar i { border-radius: 0; box-shadow: none; }
 .pet-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.pet-dialog .pet-actions button { border-radius: 0; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35); font-family: "Pixelify Sans", var(--font, sans-serif); }
+.pet-dialog .pet-actions button { border-radius: 0; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35); font: 400 13px/1.1 Silkscreen, var(--font, sans-serif); letter-spacing: 0.02em; }
 .pet-dialog .pet-actions button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35); }
 .pet-msg { margin: 0; color: var(--danger); font-size: 13.5px; font-weight: 600; }
 .pet-msg[hidden] { display: none; }

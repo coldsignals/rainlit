@@ -1552,7 +1552,9 @@
         const { P, W, H } = size();
         const w = 22 * P;
         const h = w * PET_H;
-        const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, P * (WALL_ROWS + 1));
+        // (Its feet on the open floor, in front of the furniture, which stands 13 rows up from the
+        // bottom: never up on the skirting or a desk. A pet that floats can go anywhere.)
+        const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, P * (ROOM_ROWS - 11));
         return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + P, x1: Math.max(w / 2 + P, W - w / 2 - P), y0, y1: Math.max(y0, H - P * 2) };
       },
       nap() {
@@ -1684,9 +1686,10 @@
       if (K.joy) bit(K.joy);
     };
 
-    function walkTo(x, y, how = 'walk') {
-      me.tx = clampTo(x, me.v.x0, me.v.x1);
-      me.ty = clampTo(y, me.v.y0, me.v.y1);
+    // (`free`: somewhere past where it can walk about, like up in its bed.)
+    function walkTo(x, y, how = 'walk', free = false) {
+      me.tx = free ? x : clampTo(x, me.v.x0, me.v.x1);
+      me.ty = free ? y : clampTo(y, me.v.y0, me.v.y1);
       mode(how);
     }
 
@@ -1742,11 +1745,15 @@
       }
       if (r < 0.12 * lazy) return mode('rest', rand(3, 8));
       if (r < 0.18 * lazy && me.t - me.born > 15) {
-        // (It naps in its bed, if it has one.)
+        // (It naps in its bed, if it has one: along the floor to it, then up into it. Otherwise
+        // wherever it is on the floor. Awake, it hops back down.)
         const bed = me.where.nap && me.where.nap();
         if (!bed) return mode('sleep', rand(8, 16));
-        walkTo(bed.x, bed.y);
-        me.arrive = () => mode('sleep', rand(10, 18));
+        walkTo(bed.x, me.y);
+        me.arrive = () => {
+          walkTo(bed.x, bed.y, 'walk', true);
+          me.arrive = () => mode('sleep', rand(10, 18));
+        };
         return;
       }
       if (glad() && r > 0.9) return walkTo(me.x + rand(-1, 1) * 360, me.y + rand(-1, 1) * 160, 'run');
