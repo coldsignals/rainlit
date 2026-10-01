@@ -124,9 +124,12 @@ for (const id of [
   'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
   'groups', 'group-list', 'groups-empty', 'new-group-btn', 'group-pick', 'group-pick-form', 'group-pick-title', 'group-pick-name-field', 'group-pick-name', 'group-pick-hint', 'group-pick-list', 'group-pick-error', 'group-pick-go',
   'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
+  'card-dialog', 'card-preview', 'card-preview-face', 'card-preview-name', 'card-preview-username', 'card-preview-status', 'card-c1', 'card-c2',
+  'card-patterns', 'card-glow-patterns-box', 'card-glow-patterns', 'card-fonts', 'card-skies', 'card-glow-skies-box', 'card-glow-skies',
+  'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
-  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
+  'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
   'support-card', 'support-badge', 'support-title', 'support-note', 'support-btn', 'support-link', 'support-admin', 'support-state', 'support-costs',
   'mp-doing', 'activity-field', 'activity-playing', 'activity-listening', 'activity-others', 'activity-now', 'activity-game-list', 'activity-add', 'activity-pick',
@@ -11284,6 +11287,8 @@ function renderMiniProfile() {
   const p = profileOf(id);
   if (!p) return el.miniProfile.close(); // not friends, or in a space together, any more
   const presence = self ? myPresence() : f ? f.presence : null;
+  const blocked = !self && S.blocked && S.blocked.has(id);
+  dressCard(el.miniProfile, blocked ? null : p.card, el.mpName);
   renderFace(el.mpFace, p, presence);
   el.mpName.textContent = p.displayName;
   el.mpUsername.textContent = `@${p.username}`;
@@ -11295,7 +11300,6 @@ function renderMiniProfile() {
   }
   el.mpStatus.textContent = p.statusText || '';
   renderMpDoing(id);
-  const blocked = !self && S.blocked && S.blocked.has(id);
   el.mpBlocked.hidden = !blocked;
   el.mpSafety.hidden = self;
   el.mpBlock.textContent = blocked ? 'Unblock' : el.mpBlock.dataset.confirm ? `Yes, block ${p.displayName}` : 'Block';
@@ -11317,6 +11321,260 @@ function renderMiniProfile() {
     el.mpAdd.textContent = sent ? 'Request sent' : theyAsked ? 'Accept friend request' : 'Add friend';
     el.mpAdd.disabled = sent;
   }
+}
+
+// ----- Cards (lib/cards.js) -----
+// How someone's profile looks to everyone who opens it: two colours (from one at the top to the
+// other), a pattern along its top in them, a font for their name, and weather over it (homepage.js
+// draws those). No card: plain, as profiles have always been.
+
+// (Light or dark: on average, for the words on a card.)
+function shade(h) {
+  const n = parseInt(String(h).slice(1), 16) || 0;
+  return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
+}
+// (A colour some of the way to another.)
+function mixColor(a, b, t) {
+  const x = parseInt(a.slice(1), 16);
+  const y = parseInt(b.slice(1), 16);
+  const ch = (shift) => Math.round(((x >> shift) & 255) + ((((y >> shift) & 255) - ((x >> shift) & 255)) * t));
+  return `#${[16, 8, 0].map((k) => ch(k).toString(16).padStart(2, '0')).join('')}`;
+}
+// (The pattern along a card's top is in its bottom colour, on its top one; if they're too alike to
+// tell apart, lighter, or darker on a light card.)
+const bannerInk = (c1, c2) => (Math.abs(shade(c2) - shade(c1)) >= 45 ? c2 : mixColor(c2, shade(c1) > 140 ? '#000000' : '#ffffff', 0.35));
+
+// A card on a profile (or its preview): `node` gets its colours (and everything on it, words that
+// read on them), the pattern along its top, and its weather; `name` gets its font.
+function dressCard(node, card, name, size = 22) {
+  const H = window.Homepage;
+  const c = card && H ? card : null;
+  node.classList.toggle('carded', Boolean(c));
+  for (const old of node.querySelectorAll(':scope > .card-banner, :scope > .card-sky')) old.remove();
+  if (name) {
+    const f = c && c.font !== 'rainlit' && H.FONTS[c.font];
+    name.style.fontFamily = f ? f.css : '';
+    name.style.fontSize = f && f.scale ? `${Math.round(size * f.scale)}px` : '';
+  }
+  if (!c) {
+    node.style.removeProperty('--card-c1');
+    node.style.removeProperty('--card-c2');
+    delete node.dataset.ink;
+    return;
+  }
+  node.style.setProperty('--card-c1', c.c1);
+  node.style.setProperty('--card-c2', c.c2);
+  node.dataset.ink = (shade(c.c1) + shade(c.c2)) / 2 > 150 ? 'dark' : 'light';
+  if (c.sky && c.sky !== 'none') {
+    const sky = document.createElement('div');
+    sky.className = 'card-sky';
+    sky.setAttribute('aria-hidden', 'true');
+    const weather = document.createElement('span');
+    weather.className = `hp-sky hp-sky-${c.sky}`;
+    sky.append(weather);
+    node.prepend(sky);
+  }
+  if (c.pattern && c.pattern !== 'none') {
+    const banner = document.createElement('div');
+    banner.className = 'card-banner';
+    banner.setAttribute('aria-hidden', 'true');
+    const bg = { kind: 'pattern', pattern: c.pattern, c1: c.c1, c2: bannerInk(c.c1, c.c2) };
+    Object.assign(banner.style, H.backgroundStyle(bg));
+    const layer = H.patternLayer(bg);
+    if (layer) {
+      banner.style.backgroundImage = 'none';
+      banner.append(layer);
+    }
+    node.prepend(banner);
+  }
+}
+
+// ----- Your card -----
+// Its own box, from your profile: you, on your card, to see, and what it can have. Every change is
+// kept (a moment after, while a colour's being dragged about). Glow's moving patterns and weather,
+// for anyone without Glow, are there to try on (on your card here; never kept).
+
+const CARD_COLORS = ['#1d2133', '#2b2233', '#3a4157', '#4b5563', '#1f2c4a', '#2f4a3a', '#6b2737', '#5b3a29', '#7a7590', '#4c8dff', '#8ae4ff', '#6ad07a', '#9be3c1', '#ffd23f', '#ff9f43', '#ef4d5e', '#ff8cc6', '#c9b3ff', '#a57bff', '#ffffff', '#000000'];
+const CARD_START = { c1: '#3a4157', c2: '#1d2133', pattern: 'none', font: 'rainlit', sky: 'none' };
+let cardSaveTimer = 0;
+
+// (Your card as it's being made: yours, changed, with anything of Glow's being tried on.)
+const cardMade = () => ({ ...CARD_START, ...(S.cardDraft || {}) });
+const cardShown = () => (S.cardDraft || S.cardTry ? { ...cardMade(), ...(S.cardTry || {}) } : null);
+const cardGlow = (field, key) => Boolean(window.Homepage && Homepage.PERKS[field === 'pattern' ? 'pattern' : 'sky'].includes(key));
+
+function openCard() {
+  S.cardTry = null;
+  S.cardDraft = S.me.card ? { ...S.me.card } : null;
+  el.cardMsg.hidden = true;
+  if (!el.cardDialog.open) el.cardDialog.showModal();
+  renderCardColors();
+  renderCard();
+}
+
+function renderCard() {
+  if (!S.me || !window.Homepage) return;
+  renderFace(el.cardPreviewFace, S.me, myPresence());
+  el.cardPreviewName.textContent = S.me.displayName;
+  el.cardPreviewUsername.textContent = `@${S.me.username}`;
+  el.cardPreviewStatus.textContent = S.me.statusText || '';
+  dressCard(el.cardPreview, cardShown(), el.cardPreviewName);
+  renderCardPatterns();
+  renderCardFonts();
+  renderCardSkies();
+  markCardColors();
+  const tried = S.cardTry ? Object.entries(S.cardTry)[0] : null;
+  el.cardTry.hidden = !tried;
+  if (tried) withGlow(el.cardTryText, `${cardLabel(...tried)}: one of Glow's. It's on your card here to see, but not saved.`);
+  el.cardTryBtn.hidden = !glowShown();
+  el.cardPlain.disabled = !S.cardDraft;
+}
+
+const cardLabel = (field, key) => (field === 'pattern' ? Homepage.PATTERNS[key] : Homepage.SKIES[key]) || key;
+
+// Its colours: a row each for the top and the bottom (and any colour at all, at the end).
+function renderCardColors() {
+  for (const [box, field] of [[el.cardC1, 'c1'], [el.cardC2, 'c2']]) {
+    const swatches = CARD_COLORS.map((color) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'card-swatch';
+      b.dataset.color = color;
+      b.style.background = color;
+      b.title = color;
+      b.setAttribute('aria-label', `${field === 'c1' ? 'Top' : 'Bottom'}: ${color}`);
+      b.addEventListener('click', () => pickCard(field, color));
+      return b;
+    });
+    const any = document.createElement('label');
+    any.className = 'card-swatch any';
+    any.title = 'Any colour';
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.setAttribute('aria-label', `${field === 'c1' ? 'Top' : 'Bottom'}: any colour`);
+    input.addEventListener('input', () => pickCard(field, input.value.toLowerCase(), true));
+    any.append(input);
+    box.replaceChildren(...swatches, any);
+  }
+}
+function markCardColors() {
+  const c = cardMade();
+  for (const [box, field] of [[el.cardC1, 'c1'], [el.cardC2, 'c2']]) {
+    for (const b of box.querySelectorAll('.card-swatch[data-color]')) b.setAttribute('aria-pressed', String(Boolean(S.cardDraft) && b.dataset.color === c[field]));
+    const input = box.querySelector('input');
+    if (input && document.activeElement !== input) input.value = c[field];
+    const custom = Boolean(S.cardDraft) && !CARD_COLORS.includes(c[field]);
+    input.parentElement.classList.toggle('on', custom);
+    input.parentElement.style.background = custom ? c[field] : '';
+  }
+}
+
+// Along the top: none, one of everyone's patterns, or one of Glow's (they move); each in your
+// card's colours.
+function renderCardPatterns() {
+  const c = { ...cardMade(), ...(S.cardTry || {}) };
+  const option = (key) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `card-pattern${cardGlow('pattern', key) ? ' glow' : ''}${S.cardTry && S.cardTry.pattern === key ? ' trying' : ''}`;
+    b.setAttribute('aria-pressed', String(Boolean(S.cardDraft || S.cardTry) && c.pattern === key));
+    b.title = key === 'none' ? 'None' : cardLabel('pattern', key);
+    b.setAttribute('aria-label', b.title);
+    if (key === 'none') {
+      const plain = document.createElement('span');
+      plain.className = 'card-pattern-none';
+      plain.style.backgroundColor = c.c1;
+      b.append(plain);
+    } else {
+      b.append(Homepage.patternSwatch(key, c.c1, bannerInk(c.c1, c.c2)));
+    }
+    b.addEventListener('click', () => pickCard('pattern', key));
+    return b;
+  };
+  const all = Object.keys(Homepage.PATTERNS);
+  el.cardPatterns.replaceChildren(option('none'), ...all.filter((k) => !cardGlow('pattern', k)).map(option));
+  const glow = all.filter((k) => cardGlow('pattern', k) && (supporting() || glowShown() || (S.me.card && S.me.card.pattern === k)));
+  el.cardGlowPatterns.replaceChildren(...glow.map(option));
+  el.cardGlowPatternsBox.hidden = !glow.length;
+}
+
+// Your name: in any of the homepages' fonts (each shown in itself).
+function renderCardFonts() {
+  const c = cardMade();
+  el.cardFonts.replaceChildren(...Object.entries(Homepage.FONTS).map(([key, f]) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'card-chip';
+    b.setAttribute('aria-pressed', String(Boolean(S.cardDraft) && c.font === key));
+    b.textContent = f.label;
+    b.style.fontFamily = f.css;
+    b.addEventListener('click', () => pickCard('font', key));
+    return b;
+  }));
+}
+
+// Weather over it: none, everyone's, or Glow's.
+function renderCardSkies() {
+  const c = { ...cardMade(), ...(S.cardTry || {}) };
+  const chip = (key) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `card-chip${S.cardTry && S.cardTry.sky === key ? ' trying' : ''}`;
+    b.setAttribute('aria-pressed', String(Boolean(S.cardDraft || S.cardTry) && c.sky === key));
+    b.textContent = Homepage.SKIES[key];
+    b.addEventListener('click', () => pickCard('sky', key));
+    return b;
+  };
+  const all = Object.keys(Homepage.SKIES);
+  el.cardSkies.replaceChildren(...all.filter((k) => !cardGlow('sky', k)).map(chip));
+  const glow = all.filter((k) => cardGlow('sky', k) && (supporting() || glowShown() || (S.me.card && S.me.card.sky === k)));
+  el.cardGlowSkies.replaceChildren(...glow.map(chip));
+  el.cardGlowSkiesBox.hidden = !glow.length;
+}
+
+// Picking something for it: kept (a moment later, while a colour's being dragged); or, one of
+// Glow's for someone without it, tried on (again: taken off). Glow's box shows the first time.
+function pickCard(field, value, dragging = false) {
+  if (cardGlow(field, value) && !supporting() && !(S.me.card && S.me.card[field] === value)) {
+    const tries = { ...(S.cardTry || {}) };
+    if (tries[field] === value) delete tries[field];
+    else tries[field] = value;
+    S.cardTry = Object.keys(tries).length ? tries : null;
+    renderCard();
+    if (tries[field] && !S.cardGlowTold && glowShown()) {
+      S.cardGlowTold = true;
+      openGlow({ because: `${cardLabel(field, value)}: one of Glow's. It's on your card here to see, but not saved.` });
+    }
+    return;
+  }
+  if (S.cardTry) {
+    delete S.cardTry[field];
+    if (!Object.keys(S.cardTry).length) S.cardTry = null;
+  }
+  S.cardDraft = { ...cardMade(), [field]: value };
+  renderCard();
+  clearTimeout(cardSaveTimer);
+  cardSaveTimer = setTimeout(saveCard, dragging ? 500 : 0);
+}
+
+async function saveCard() {
+  clearTimeout(cardSaveTimer);
+  cardSaveTimer = 0;
+  el.cardMsg.hidden = true;
+  try {
+    setMe((await api('PATCH', '/me', { card: S.cardDraft })).user);
+  } catch (err) {
+    el.cardMsg.textContent = err.message;
+    el.cardMsg.hidden = false;
+  }
+}
+
+// Plain again, as profiles have always been.
+async function plainCard() {
+  S.cardDraft = null;
+  S.cardTry = null;
+  renderCard();
+  await saveCard();
 }
 
 // Blocking asks first; unblocking doesn't.
@@ -13673,9 +13931,18 @@ async function init() {
   el.deleteDetails.addEventListener('toggle', () => { if (el.deleteDetails.open) renderDeletion(); });
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
+
+  // ----- Your card -----
+  el.profileCardBtn.addEventListener('click', openCard);
+  el.cardTryBtn.addEventListener('click', () => openGlow());
+  el.cardPlain.addEventListener('click', plainCard);
+  el.cardDialog.addEventListener('close', () => {
+    if (cardSaveTimer) saveCard(); // (a colour still being kept)
+    S.cardTry = null;
+  });
 
   // ----- Your pet -----
   el.petBtn.addEventListener('click', openPet);

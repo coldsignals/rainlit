@@ -1011,6 +1011,54 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .homepage-btn:hover { background-position: 100% 0; transform: translateY(-1px); filter: none; }
 .homepage-btn-icon { flex: none; width: 18px; height: 18px; image-rendering: pixelated; filter: drop-shadow(0 1px 0 rgba(40, 10, 60, 0.45)); }
 .mini-profile .homepage-btn { width: 100%; margin-top: -4px; }
+
+/* ----- Cards (app.js: dressCard) -----
+   Someone's profile in their colours (top to bottom), with everything on it in words that read on
+   them; a pattern along its top, fading into the card; and weather over it. */
+.carded {
+  --card-ink: #f4f2fa; --card-mist: rgba(244, 242, 250, 0.74); --card-box: rgba(0, 0, 0, 0.26); --card-line: rgba(255, 255, 255, 0.16); --card-raise: rgba(255, 255, 255, 0.14);
+  --text: var(--card-ink); --mist: var(--card-mist); --deep: var(--card-box); --line: var(--card-line); --dusk-hi: var(--card-raise);
+  isolation: isolate; color: var(--text);
+}
+.carded[data-ink="dark"] {
+  --card-ink: #1d1a24; --card-mist: rgba(29, 26, 36, 0.72); --card-box: rgba(255, 255, 255, 0.42); --card-line: rgba(29, 26, 36, 0.16); --card-raise: rgba(255, 255, 255, 0.5);
+  --danger-text: #a3261e;
+}
+.settings.carded, .card-preview.carded { background: linear-gradient(180deg, var(--card-c1), var(--card-c2)); }
+.carded > .settings-inner { position: relative; z-index: 1; }
+.card-banner {
+  position: absolute; top: 0; left: 0; right: 0; height: 96px; overflow: hidden; pointer-events: none;
+  -webkit-mask: linear-gradient(#000 50%, transparent); mask: linear-gradient(#000 50%, transparent);
+}
+.card-banner .hp-backdrop { position: absolute; inset: 0; }
+.card-sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit; }
+.card-sky .hp-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* Your card's own box: you on it, then its colours, a pattern, a font for your name, and weather. */
+.settings.card-dialog { width: min(480px, calc(100vw / var(--zoom) - 24px)); }
+.card-preview { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); }
+.card-preview > .settings-inner { gap: 10px; padding: 18px 20px 20px; }
+.card-part { display: grid; gap: 8px; }
+.card-part-title { margin: 0; color: var(--mist); font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.card-color-row { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 8px; }
+.card-color-row > span { color: var(--mist); font-size: 13px; font-weight: 650; }
+.card-swatches { display: flex; flex-wrap: wrap; gap: 5px; }
+.card-swatch { position: relative; width: 24px; height: 24px; padding: 0; border: 2px solid var(--line); border-radius: 50%; cursor: pointer; }
+.card-swatch[aria-pressed="true"], .card-swatch.any.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--lamp); }
+.card-swatch.any { overflow: hidden; background: conic-gradient(#ef4d5e, #ffd23f, #6ad07a, #4c8dff, #a57bff, #ef4d5e); }
+.card-swatch.any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.card-patterns { display: flex; flex-wrap: wrap; gap: 6px; }
+.card-pattern { width: 54px; height: 36px; padding: 3px; border: 2px solid var(--line); border-radius: 9px; background: var(--deep); cursor: pointer; }
+.card-pattern[aria-pressed="true"] { border-color: var(--lamp); }
+.card-pattern.trying { outline: 2px dashed #b77bff; outline-offset: 2px; }
+.card-pattern .hp-pattern-swatch { border-radius: 5px; }
+.card-pattern-none { display: block; width: 100%; height: 100%; border-radius: 5px; background-image: linear-gradient(135deg, transparent 45%, var(--mist) 45% 55%, transparent 55%); }
+.card-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.card-chip { padding: 6px 11px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--deep); color: var(--text); font-size: 14px; cursor: pointer; }
+.card-chip:hover { border-color: var(--mist); }
+.card-chip[aria-pressed="true"] { border-color: var(--lamp); background: color-mix(in srgb, var(--lamp) 16%, var(--deep)); }
+.card-chip.trying { border-style: dashed; border-color: #b77bff; }
+.card-plain { justify-self: start; }
+.card-plain:disabled { opacity: 0.45; cursor: default; }
 .menu .menu-homepage { display: flex; align-items: center; gap: 8px; }
 .menu-homepage .homepage-btn-icon { width: 16px; height: 16px; }
 .menu-homepage span { background: linear-gradient(115deg, #ff9ccb, #c49bff, #7dbbff); -webkit-background-clip: text; background-clip: text; color: transparent; }

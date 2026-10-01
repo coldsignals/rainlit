@@ -42,6 +42,7 @@ supporters.whenChanged((userId) => {
   if (u) realtime.sendToUser(userId, { type: 'me', user: people.selfUser(u) });
 });
 const themes = require('./lib/themes');
+const cards = require('./lib/cards');
 const feedback = require('./lib/feedback');
 const images = require('./lib/images');
 const { imageKind } = images;
@@ -608,6 +609,16 @@ function profileChanged(userId) {
 api.patch('/me', needUser, (req, res) => {
   const b = req.body || {};
   const set = {};
+  // (Your card: lib/cards.js. Checked before anything's changed.)
+  let card;
+  if ('card' in b) {
+    try {
+      card = cards.clean(req.user, b.card);
+    } catch (err) {
+      if (err instanceof cards.CardError) return fail(res, err.status, err.message);
+      throw err;
+    }
+  }
   if ('displayName' in b) {
     set.display_name = people.oneLine(b.displayName, people.NAME_MAX);
     if (!set.display_name) return fail(res, 400, "Your display name can't be empty.");
@@ -627,8 +638,9 @@ api.patch('/me', needUser, (req, res) => {
   if (cols.length) {
     db.prepare(`UPDATE users SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`).run(...cols.map((c) => set[c]), req.user.id);
   }
+  if ('card' in b) cards.save(req.user.id, card);
   // (Just your theme: no one else sees it, so only your other devices hear.)
-  if (cols.length === 1 && cols[0] === 'theme') {
+  if (cols.length === 1 && cols[0] === 'theme' && !('card' in b)) {
     const me = people.selfUser(people.userById(req.user.id));
     realtime.sendToUser(req.user.id, { type: 'me', user: me });
     return res.json({ user: me });

@@ -137,6 +137,13 @@ and released is in [desktop/README.md](desktop/README.md).
   across, losslessly, so it's never blurred or blocky), display name and a status
   of up to 120 characters. Your password, your email and sign out are there too,
   and **Your files**: everything you've sent, biggest first, to make room.
+- **Your card:** how your profile looks to everyone who opens it (Your profile,
+  **Customize**): two colours it goes between, a pattern along its top (any of
+  the homepages', in those colours), a font for your name (any of theirs), and
+  weather over it (rain, snow, sparkles, floating hearts, autumn leaves). Glow
+  adds the moving patterns and its weather (fireflies, an aurora, a
+  thunderstorm, cherry blossoms, embers), to try on there first. **Make it plain
+  again** puts it back as it was.
 - **Your email:** new accounts get a link to confirm their email address (your
   profile says whether it's confirmed, and sends another). Forgot your password?
   **Forgot your password?** on the sign-in screen emails a link, good for an

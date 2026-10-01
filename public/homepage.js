@@ -2893,7 +2893,7 @@
   window.Homepage = {
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
     COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS,
-    pixelSrc, pixelRatio, backgroundStyle, patternSwatch, pieceEl, starter, mount, setSky, light, hush,
+    pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
     petEl, petRoom, petMeters, fullWords, happyWords,
     ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)

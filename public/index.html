@@ -700,6 +700,13 @@
         </div>
         <button id="profile-homepage-btn" class="primary-btn small homepage-btn" type="button"><img class="homepage-btn-icon" alt="" /><span>Open</span></button>
       </div>
+      <div class="profile-homepage profile-card-row">
+        <div class="profile-homepage-words">
+          <strong>Your card</strong>
+          <small>How your profile looks to everyone: its colours, a pattern, your name's font, and weather</small>
+        </div>
+        <button id="profile-card-btn" class="primary-btn small ghost-btn" type="button">Customize</button>
+      </div>
       <label class="field">
         <span>Display name</span>
         <input id="profile-name" maxlength="32" autocomplete="nickname" />
@@ -793,6 +800,59 @@
       </details>
       <button id="signout-btn" class="text-btn danger signout" type="button">Sign out</button>
     </form>
+  </dialog>
+
+  <!-- ============ Your card ============ -->
+  <!-- (How your profile looks to everyone who opens it (lib/cards.js), with you on it to see. Glow's
+       patterns and weather are there to try on.) -->
+  <dialog id="card-dialog" class="settings card-dialog" aria-labelledby="card-title">
+    <div class="settings-inner">
+      <div class="settings-head">
+        <h2 id="card-title">Your card</h2>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <div id="card-preview" class="card-preview" aria-label="Your card, as everyone sees it">
+        <div class="settings-inner">
+          <span id="card-preview-face" class="face xl"></span>
+          <div>
+            <h3 id="card-preview-name" class="mp-name"></h3>
+            <p id="card-preview-username" class="mp-username"></p>
+          </div>
+          <p id="card-preview-status" class="mp-status"></p>
+        </div>
+      </div>
+      <section class="card-part" aria-labelledby="card-colors-title">
+        <h3 id="card-colors-title" class="card-part-title">Colours</h3>
+        <div class="card-color-row"><span>Top</span><div id="card-c1" class="card-swatches"></div></div>
+        <div class="card-color-row"><span>Bottom</span><div id="card-c2" class="card-swatches"></div></div>
+      </section>
+      <section class="card-part" aria-labelledby="card-pattern-title">
+        <h3 id="card-pattern-title" class="card-part-title">Along the top</h3>
+        <div id="card-patterns" class="card-patterns"></div>
+        <div id="card-glow-patterns-box" class="perk-box" hidden>
+          <button class="perk-tag" type="button" data-perk-name data-glow-open title="What's Glow?">Glow</button>
+          <div id="card-glow-patterns" class="card-patterns"></div>
+        </div>
+      </section>
+      <section class="card-part" aria-labelledby="card-font-title">
+        <h3 id="card-font-title" class="card-part-title">Your name</h3>
+        <div id="card-fonts" class="card-chips"></div>
+      </section>
+      <section class="card-part" aria-labelledby="card-sky-title">
+        <h3 id="card-sky-title" class="card-part-title">Weather</h3>
+        <div id="card-skies" class="card-chips"></div>
+        <div id="card-glow-skies-box" class="perk-box" hidden>
+          <button class="perk-tag" type="button" data-perk-name data-glow-open title="What's Glow?">Glow</button>
+          <div id="card-glow-skies" class="card-chips"></div>
+        </div>
+      </section>
+      <div id="card-try" class="theme-try" hidden>
+        <span id="card-try-text"></span>
+        <button id="card-try-btn" class="primary-btn small" type="button">See Glow</button>
+      </div>
+      <p id="card-msg" class="form-error" role="alert" hidden></p>
+      <button id="card-plain" class="text-btn card-plain" type="button">Make it plain again</button>
+    </div>
   </dialog>
 
   <!-- ============ Spaces: making, joining, inviting, members, settings ============ -->
@@ -1461,7 +1521,7 @@
           </span>
         </div>
         <h3>Homepage extras</h3>
-        <p>Backgrounds that move, sparkles, hearts or pixels behind your visitors' pointers and confetti or fireworks when they click (try it here), a fortune ball, Shimmer and Lamplight words, Gilded and Neon frames, and fireflies, an aurora, a thunderstorm, cherry blossoms or embers for your page's weather, with room for <span data-glow="homepage">200 MB and 500 pieces</span>.</p>
+        <p>Backgrounds that move, sparkles, hearts or pixels behind your visitors' pointers and confetti or fireworks when they click (try it here), a fortune ball, Shimmer and Lamplight words, Gilded and Neon frames, and fireflies, an aurora, a thunderstorm, cherry blossoms or embers for your page's weather (and the moving backgrounds and weather for your profile card too), with room for <span data-glow="homepage">200 MB and 500 pieces</span>.</p>
       </section>
       <section class="glow-perk"><strong class="glow-big" data-glow="fileMb">100 MB</strong><h3>Bigger files</h3><p>Everyone: <span data-free="fileMb">25 MB</span></p></section>
       <section class="glow-perk"><strong class="glow-big" data-glow="roomMb">50 GB</strong><h3>Room for your files</h3><p>Everyone: <span data-free="roomMb">1.5 GB</span></p></section>
