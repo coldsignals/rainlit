@@ -27,6 +27,10 @@ reinstall. On top of the website it adds:
 - **Tray icon.** Closing the window keeps Rainlit running by the clock, so calls
   and messages still reach you. Right-click the tray icon to quit, or to start
   Rainlit with Windows.
+- **Away when you're away.** You show as away after 10 minutes away from your
+  computer (no key or mouse in any program), not just from Rainlit's window: the
+  page asks the app how long it's been (Electron's `powerMonitor`). Only whether
+  you're away leaves the computer.
 - **Notifications.** A Windows notification and a flashing taskbar button when
   someone calls or messages while you're in another window, plus a dot on the
   taskbar button while there are unread messages.

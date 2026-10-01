@@ -124,7 +124,10 @@ and released is in [desktop/README.md](desktop/README.md).
   They get a request to accept. If they'd already asked you, you're friends
   straight away.
 - **Online, away, offline:** the dot on each picture. You show as away after
-  10 minutes without touching Rainlit (except during a call). You can also
+  10 minutes away: in Rainlit for Windows, from your computer (no key or mouse
+  in any program); in a browser or the phone app, from Rainlit. In a call too,
+  so whoever's in it with you sees "Away" on your picture there (talking counts
+  as being there). You can also
   pick **Away**, **Do not disturb** or **Appear offline** yourself (Your
   profile, **Show me as**). Do not disturb shows red, and mutes you: no
   message sounds, no notifications on your computer or phone, and calls

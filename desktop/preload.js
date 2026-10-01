@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld('rainlitDesktop', {
   // work inside the window.
   setPushToTalk: (on, code) => ipcRenderer.invoke('desktop:ptt', { on: Boolean(on), code: String(code || '') }),
   canUseKeyAnywhere: (code) => ipcRenderer.invoke('desktop:ptt-check', String(code || '')),
+  // Seconds since you last touched your computer (a key or the mouse, in any program): you show
+  // as away after a while away from it, not just from Rainlit.
+  idleTime: () => ipcRenderer.invoke('desktop:idle'),
   onPushToTalk: (fn) => {
     ipcRenderer.removeAllListeners('ptt');
     ipcRenderer.on('ptt', (_e, held) => fn(Boolean(held)));

@@ -134,8 +134,8 @@ for (const id of [
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-resize', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
-  'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-away', 'peer-away-time', 'offline-banner',
-  'video-label', 'video-muted', 'video-name', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
+  'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-idle', 'peer-away', 'peer-away-time', 'offline-banner',
+  'video-label', 'video-muted', 'video-name', 'video-idle', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
@@ -1174,6 +1174,7 @@ function makeMeter(track, ctx = S.audioCtx) {
 
 function tickMeters() {
   const meSpeaking = micLive() && S.localMeter && S.localMeter.read() > SPEAKING_LEVEL;
+  if (meSpeaking) noteActivity(); // (talking: you're here)
   el.micBtn.classList.toggle('speaking', Boolean(meSpeaking));
   renderTrayIcon(Boolean(meSpeaking) || (S.ptt && micLive()));
   const peerSpeaking = S.peer && S.peer.state.mic && S.remoteMeter && S.remoteMeter.read() > SPEAKING_LEVEL;
@@ -2276,6 +2277,10 @@ function renderPeer() {
   if (photo && el.peerPhoto.getAttribute('src') !== photo) el.peerPhoto.src = photo;
   el.peerName.textContent = p.name;
   el.peerMuted.hidden = Boolean(p.state.mic) || awayView;
+  // (Still in the call, but stepped away: away from their computer a while, or said so.)
+  const stepped = !awayView && (S.friends.get(p.id) || {}).presence === 'away';
+  el.peerIdle.hidden = !stepped;
+  el.videoIdle.hidden = !stepped;
   renderStreamAudio();
   updateTitle();
 }
@@ -7343,7 +7348,9 @@ function renderMe() {
   el.homeTitle.textContent = `Hi, ${S.me.displayName}`;
 }
 
-// You count as away after 10 minutes without touching Rainlit (unless you're in a call).
+// You count as away after 10 minutes without doing anything: in the desktop app, anywhere on your
+// computer (it asks the computer); elsewhere, in Rainlit. In a call too, so whoever's in it with
+// you can see you've stepped away (though talking counts as being there).
 const IDLE_MS = 10 * 60_000;
 
 function noteActivity() {
@@ -7355,6 +7362,17 @@ function setIdle(idle) {
   S.idle = idle;
   wsSend({ type: 'activity', idle });
   renderMe();
+}
+
+// (Every half a minute; in the desktop app, every few seconds, to see at once that you're back.)
+async function checkIdle() {
+  if (!S.me) return;
+  if (DESKTOP && DESKTOP.idleTime) {
+    const secs = await DESKTOP.idleTime().catch(() => null);
+    if (Number.isFinite(secs)) S.lastActive = Math.max(S.lastActive, Date.now() - secs * 1000);
+  }
+  const idle = Date.now() - S.lastActive > IDLE_MS;
+  if (idle !== S.idle) setIdle(idle);
 }
 
 // ---------------- Faces ----------------
@@ -9616,6 +9634,7 @@ function tickVoice(v) {
     }
   }
   if (changed) renderVoiceSpeaking();
+  if (v.speaking.has(S.clientId)) noteActivity(); // (talking: you're here)
   renderTrayIcon(v.speaking.has(S.clientId));
 }
 
@@ -9986,6 +10005,8 @@ function renderVoiceView() {
     }
     renderTileSound(tile, p, source);
     if (source !== 'screen' && muted) label.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Muted"><use href="#i-mic-off"/></svg>');
+    // (Here, but stepped away.)
+    if (source !== 'screen' && person.id !== S.clientId && person.presence === 'away') label.insertAdjacentHTML('beforeend', '<span class="tile-away">Away</span>');
     // (Their camera counts from when they say it's on, before its video arrives.)
     const showing = source === 'screen' || Boolean(track) || Boolean(states.get(p.identity) && states.get(p.identity).video);
     if (!S.voiceVideoOnly || showing) shown.push(key);
@@ -10248,13 +10269,16 @@ async function resumeAfterRestart() {
 
 function onPresence(id, presence, doing) {
   if (doing !== undefined) setDoingFor(id, doing);
-  if (S.openDm === id) renderDmHead();
   const p = S.people.get(id);
   if (p) p.presence = presence;
-  if (!el.memberPanel.hidden) renderMemberPanel();
   const f = S.friends.get(id);
+  if (f) f.presence = presence;
+  if (S.openDm === id) renderDmHead();
+  if (!el.memberPanel.hidden) renderMemberPanel();
+  // (In a call or a voice channel with them: whether they've stepped away.)
+  if (S.inCall && S.peer && S.peer.id === id) renderPeer();
+  if (S.voice && S.voice.room && [...S.voice.room.remoteParticipants.values()].some((m) => m.identity === id)) renderVoiceView();
   if (!f) return;
-  f.presence = presence;
   renderFriends();
   if (el.miniProfile.open) renderMiniProfile();
 }
@@ -13687,13 +13711,11 @@ async function init() {
   // Sounds can only start after a click or key press, so get them ready on the first one.
   for (const type of ['pointerdown', 'keydown']) document.addEventListener(type, unlockSounds, { once: true, capture: true });
   if (DESKTOP || ANDROID) unlockSounds(); // the apps are allowed to make sound straight away
-  // Friends see you as away after a while without any activity here.
+  // Friends see you as away after a while without any activity (checkIdle).
   for (const type of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) {
     document.addEventListener(type, noteActivity, { passive: true });
   }
-  setInterval(() => {
-    if (S.me && !S.idle && !S.inCall && Date.now() - S.lastActive > IDLE_MS) setIdle(true);
-  }, 30_000);
+  setInterval(checkIdle, DESKTOP && DESKTOP.idleTime ? 5_000 : 30_000);
 
   el.micBtn.addEventListener('click', () => { if (!S.ptt) toggleMic(); });
   // In push to talk, hold the mic button to talk (handy on a phone).

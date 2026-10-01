@@ -7,10 +7,11 @@
 //   (only if you've said so in Settings; only its name leaves the computer).
 // - A tray icon, so calls and messages still reach you with the window closed.
 // - Notifications and a taskbar flash when someone calls or messages.
+// - Away when you're away from your computer (not just from Rainlit's window).
 
 const {
   app, BrowserWindow, Tray, Menu, Notification, desktopCapturer, ipcMain, nativeImage, screen, session, shell,
-  utilityProcess, MessageChannelMain,
+  utilityProcess, MessageChannelMain, powerMonitor,
 } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -590,6 +591,9 @@ const fromPage = (e) => fromApp(e.senderFrame ? e.senderFrame.url : '');
 
 ipcMain.handle('desktop:ptt', (e, { on, code } = {}) => (fromPage(e) ? setPushToTalk(Boolean(on), String(code || '')) : false));
 ipcMain.handle('desktop:ptt-check', (e, code) => fromPage(e) && hookKeycode(String(code || '')) !== null);
+// How long since you last touched your computer (a key or the mouse, in any program), in seconds:
+// after a while, the page shows you as away.
+ipcMain.handle('desktop:idle', (e) => (fromPage(e) ? powerMonitor.getSystemIdleTime() : null));
 
 ipcMain.on('desktop:notify', (e, { title, body, call } = {}) => {
   if (!fromPage(e) || !Notification.isSupported()) return;

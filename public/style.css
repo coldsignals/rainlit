@@ -1210,6 +1210,12 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .mute-badge .icon { width: 19px; height: 19px; stroke-width: 2.2; }
 .label-muted { display: grid; color: var(--danger); }
 .label-muted .icon { width: 16px; height: 16px; stroke-width: 2.2; }
+/* Still in the call, but stepped away: "Away", with an away dot. */
+.peer-idle, .label-idle, .tile-away { display: inline-flex; align-items: center; gap: 6px; color: var(--away); font-weight: 650; }
+.peer-idle::before, .label-idle::before, .tile-away::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--away); }
+.peer-idle { margin: -4px 0 0; padding: 4px 11px; border-radius: 999px; background: color-mix(in srgb, var(--away) 14%, transparent); font-size: 13.5px; }
+.label-idle, .tile-away { font-size: 12.5px; }
+.peer-idle[hidden], .label-idle[hidden] { display: none; }
 
 .video-label {
   position: absolute; left: 14px; bottom: 14px;
@@ -1277,6 +1283,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .stage.self-big .peer-card .mute-badge .icon { width: 13px; height: 13px; }
 .stage.self-big .peer-name { font-size: 14px; }
 .stage.self-big .peer-away, .stage.self-big .video-label { display: none; }
+.stage.self-big .peer-idle { margin: 0; padding: 2px 8px; font-size: 12px; }
 .self-label {
   position: absolute; left: 8px; bottom: 6px;
   font-size: 12px; font-weight: 600;
@@ -1361,6 +1368,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   .dm .stage .mute-badge .icon { width: 11px; height: 11px; }
   .dm .peer-name { font-size: 16px; }
   .dm .peer-away { display: none; }
+  .dm .peer-idle { margin: 0; }
   .dm .waiting { padding: 8px 16px; }
   .dm .waiting img, .dm .waiting p { display: none; }
   .dm .waiting h2 { font-size: 17px; margin: 0; }
