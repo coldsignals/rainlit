@@ -1349,8 +1349,9 @@
   </dialog>
 
   <!-- ============ Your pet (lib/pets.js; homepage.js draws it) ============ -->
-  <!-- (Its room, where it wanders about and you look after it; which pet it is, its name and
-       colours; and whether it lives on your homepage too. Glow's pets are there to try on.) -->
+  <!-- (Its room, in pixels, where it wanders about; then tabs: looking after it, doing up its room,
+       and which pet it is, its name and colours, and whether it lives on your homepage too. Glow's
+       pets and things are there to try on.) -->
   <dialog id="pet" class="settings pet-dialog" aria-labelledby="pet-title">
     <div class="settings-inner">
       <div class="settings-head">
@@ -1360,7 +1361,12 @@
       <div id="pet-room" class="pet-room" aria-label="Your pet's room">
         <p id="pet-room-empty" class="pet-room-empty">Pick a pet, and it moves in here.</p>
       </div>
-      <section id="pet-care" class="pet-care" aria-label="Looking after it" hidden>
+      <nav class="pet-tabs" role="tablist" aria-label="Your pet">
+        <button class="pet-tab" type="button" role="tab" data-pet-tab="care">Care</button>
+        <button class="pet-tab" type="button" role="tab" data-pet-tab="decor">Decorate</button>
+        <button class="pet-tab" type="button" role="tab" data-pet-tab="pet">Pet</button>
+      </nav>
+      <section id="pet-care" class="pet-care" aria-label="Looking after it" data-pet-pane="care">
         <div class="pet-care-head"><strong id="pet-name"></strong><span id="pet-since" class="pet-since"></span></div>
         <div id="pet-meters" class="hp-pet-meters pet-meters"></div>
         <p id="pet-petted" class="pet-note"></p>
@@ -1370,7 +1376,14 @@
         </div>
         <p id="pet-msg" class="pet-msg" role="status" hidden></p>
       </section>
-      <section class="pet-pick" aria-labelledby="pet-pick-title">
+      <section id="pet-decor" class="pet-decor" aria-label="Doing up its room" data-pet-pane="decor">
+        <div id="pet-decor-rows" class="pet-decor"></div>
+        <div id="pet-decor-try" class="theme-try" hidden>
+          <span id="pet-decor-try-text"></span>
+          <button id="pet-decor-try-btn" class="primary-btn small" type="button">See Glow</button>
+        </div>
+      </section>
+      <section class="pet-pick" aria-labelledby="pet-pick-title" data-pet-pane="pet">
         <h3 id="pet-pick-title" class="pet-pick-title">Pick a pet</h3>
         <div id="pet-kinds" class="pet-kinds"></div>
         <div id="pet-glow-box" class="perk-box pet-perks" hidden>
@@ -1382,7 +1395,7 @@
           <button id="pet-try-btn" class="primary-btn small" type="button">See Glow</button>
         </div>
       </section>
-      <section id="pet-about" class="pet-about" aria-label="About it" hidden>
+      <section id="pet-about" class="pet-about" aria-label="About it" data-pet-pane="pet">
         <label class="field"><span>Its name</span><input id="pet-name-input" maxlength="24" autocomplete="off" spellcheck="false" /></label>
         <div class="field"><span>Its colours</span><div id="pet-coats" class="pet-coats"></div></div>
         <label class="toggle">
@@ -1424,7 +1437,7 @@
       <section class="glow-perk wide">
         <div class="glow-show glow-pets" aria-hidden="true" data-glow-pets></div>
         <h3>Pets with a little magic</h3>
-        <p>Everyone can have a pixel pet (a cat, a dog or a fish) to look after, living on their homepage too. Glow brings three more: a cloudlet that makes rainbows when it's petted, a dragon that puffs flames, and a spirit fox with a glowing tail.</p>
+        <p>Everyone can have a pixel pet (a cat, a dog or a fish) to look after, with a room to do up, and living on their homepage too. Glow brings three more: a cloudlet that makes rainbows when it's petted, a dragon that puffs flames, and a spirit fox with a glowing tail. And things for their rooms that glow: fairy lights, a neon heart, an aquarium, a lava lamp, starry walls and more.</p>
       </section>
       <section class="glow-perk wide">
         <div class="glow-show glow-homepage" aria-hidden="true">

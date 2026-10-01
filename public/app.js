@@ -148,6 +148,7 @@ for (const id of [
   'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
+  'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -7268,6 +7269,7 @@ function signedOut(message = '') {
   stopRinging();
   S.me = null;
   S.pet = null;
+  S.room = null;
   S.friends.clear();
   S.incoming = [];
   S.outgoing = [];
@@ -11560,9 +11562,10 @@ function renderProfileBadges() {
 }
 
 // ----- Your pet (lib/pets.js; homepage.js draws it) -----
-// Your pet's room: where it wanders about and you look after it (feed it, play with it, pet it),
-// and where you pick which pet it is, its name and colours, and whether it lives on your homepage
-// too. Glow's pets, for anyone without Glow, are there to try on (in the room; never kept). The
+// Your pet's room (in pixels): where it wanders about and you look after it (feed it, play with it,
+// pet it), do its room up, and pick which pet it is, its name and colours, and whether it lives on
+// your homepage too. Glow's pets and things for its room, for anyone without Glow, are there to try
+// on (in the room; never kept). The
 // button for it, by your profile, shows your pet, with a dot when it's hungry: it's never a trip
 // to your homepage to feed it.
 
@@ -11575,7 +11578,9 @@ let petTimer = 0;
 async function loadPet() {
   if (!window.Homepage || !Homepage.petSheet) return;
   try {
-    S.pet = (await api('GET', '/pet')).pet;
+    const d = await api('GET', '/pet');
+    S.pet = d.pet;
+    S.room = d.room || null;
   } catch {
     return;
   }
@@ -11600,15 +11605,19 @@ function renderPetButton() {
 
 function openPet() {
   S.petTry = '';
+  S.roomTry = null;
+  S.petTab = S.pet ? 'care' : 'pet';
   el.petMsg.hidden = true;
   if (!el.pet.open) el.pet.showModal();
   renderPet();
   loadPet().then(() => { if (el.pet.open) renderPet(); });
 }
 
-// Your pet, or one of Glow's you're trying on, in the room; and the rest of the box.
+// Its room (with whatever of Glow's you're trying on), your pet (or one of Glow's you're trying
+// on) in it, and the rest of the box.
 function renderPet() {
   const p = S.pet;
+  furnishPetRoom();
   const shown = S.petTry ? { kind: S.petTry, name: '', full: 0.9, happy: 0.9, pets: 0 } : p;
   if (shown) {
     S.petLife = Homepage.petRoom(el.petRoom, shown, {
@@ -11627,13 +11636,98 @@ function renderPet() {
   }
   el.petRoomEmpty.hidden = Boolean(shown);
   renderPetCare();
+  renderPetDecor();
   renderPetKinds();
   renderPetAbout();
+  renderPetTabs();
+}
+
+// Its box's tabs: Care (once you've a pet), Decorate, and Pet. (Your pet's care and details are
+// put away while you try another pet on.)
+function renderPetTabs() {
+  const p = S.pet;
+  if (!p && S.petTab === 'care') S.petTab = 'pet';
+  for (const b of el.pet.querySelectorAll('[data-pet-tab]')) {
+    b.hidden = b.dataset.petTab === 'care' && !p;
+    b.setAttribute('aria-selected', String(S.petTab === b.dataset.petTab));
+  }
+  for (const pane of el.pet.querySelectorAll('[data-pet-pane]')) pane.hidden = pane.dataset.petPane !== S.petTab;
+  if (S.petTab === 'care') el.petCare.hidden = !p || Boolean(S.petTry);
+  if (S.petTab === 'pet') el.petAbout.hidden = !p || Boolean(S.petTry);
+}
+
+// Doing up its room: a row for each place in it. Glow's things, for anyone without Glow, are
+// there to try on (in the room, never saved), wherever Glow's shown.
+const DECOR_ROWS = [['wall', 'Wallpaper'], ['floor', 'Floor'], ['rug', 'Rug'], ['hang', 'On the wall'], ['left', 'Left corner'], ['right', 'Right corner']];
+const furnishPetRoom = () => Homepage.furnish(el.petRoom, { ...(S.room || {}), ...(S.roomTry || {}) });
+
+function renderPetDecor() {
+  const room = { ...Homepage.ROOM_DEFAULT, ...(S.room || {}), ...(S.roomTry || {}) };
+  const theirs = (slot, key) => Boolean(S.room && S.room[slot] === key);
+  el.petDecorRows.replaceChildren(...DECOR_ROWS.map(([slot, label]) => {
+    const list = Homepage.ROOM_SLOTS[slot];
+    const things = Homepage.ROOM[list];
+    const opts = Object.keys(things).filter((key) => !things[key].perk || supporting() || glowShown() || theirs(slot, key)).map((key) => {
+      const t = things[key];
+      const locked = t.perk && !supporting() && !theirs(slot, key);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `pet-decor-opt${t.perk ? ' glow' : ''}${S.roomTry && S.roomTry[slot] === key ? ' trying' : ''}`;
+      b.dataset.decor = `${slot}:${key}`;
+      b.setAttribute('aria-pressed', String(room[slot] === key));
+      b.title = locked ? `${t.label} (comes with Glow: try it on)` : t.label;
+      b.setAttribute('aria-label', b.title);
+      b.append(Homepage.roomSwatch(list, key));
+      b.addEventListener('click', () => pickDecor(slot, key));
+      return b;
+    });
+    const row = document.createElement('div');
+    row.className = 'pet-decor-row';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const box = document.createElement('div');
+    box.className = 'pet-decor-opts';
+    box.append(...opts);
+    row.append(name, box);
+    return row;
+  }));
+  const tried = S.roomTry ? Object.entries(S.roomTry)[0] : null;
+  el.petDecorTry.hidden = !tried;
+  if (tried) withGlow(el.petDecorTryText, `${Homepage.ROOM[Homepage.ROOM_SLOTS[tried[0]]][tried[1]].label}: one of Glow's. It's in your pet's room to see, but not saved.`);
+  el.petDecorTryBtn.hidden = !glowShown();
+}
+
+async function pickDecor(slot, key) {
+  const t = Homepage.ROOM[Homepage.ROOM_SLOTS[slot]][key];
+  if (t.perk && !supporting() && !(S.room && S.room[slot] === key)) {
+    const tries = { ...(S.roomTry || {}) };
+    if (tries[slot] === key) delete tries[slot];
+    else tries[slot] = key;
+    S.roomTry = Object.keys(tries).length ? tries : null;
+    furnishPetRoom();
+    renderPetDecor();
+    if (tries[slot] && !S.decorGlowTold && glowShown()) {
+      S.decorGlowTold = true;
+      openGlow({ because: `${t.label}: one of Glow's. It's in your pet's room to see, but not saved.` });
+    }
+    return;
+  }
+  if (S.roomTry) {
+    delete S.roomTry[slot];
+    if (!Object.keys(S.roomTry).length) S.roomTry = null;
+  }
+  try {
+    S.room = (await api('PUT', '/pet/room', { [slot]: key })).room;
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  furnishPetRoom();
+  renderPetDecor();
 }
 
 function renderPetCare() {
   const p = S.pet;
-  el.petCare.hidden = !p || Boolean(S.petTry);
   if (!p) return;
   el.petName.textContent = petName(p);
   const days = Math.max(1, Math.ceil((Date.now() - p.since) / 86_400_000));
@@ -11677,7 +11771,6 @@ function renderPetKinds() {
 // Its name, its colours, whether it's on your homepage, and letting it go.
 function renderPetAbout() {
   const p = S.pet;
-  el.petAbout.hidden = !p || Boolean(S.petTry);
   if (!p) return;
   if (document.activeElement !== el.petNameInput) el.petNameInput.value = p.name || '';
   el.petNameInput.placeholder = Homepage.PETS[p.kind] ? Homepage.PETS[p.kind].name : '';
@@ -13568,8 +13661,16 @@ async function init() {
   el.petHome.addEventListener('change', () => savePet({ home: el.petHome.checked }));
   el.petRelease.addEventListener('click', releasePet);
   el.petTryBtn.addEventListener('click', () => openGlow({ because: S.petTry ? `The ${Homepage.PETS[S.petTry].label.toLowerCase()} comes with Glow.` : '' }));
+  el.petDecorTryBtn.addEventListener('click', () => openGlow());
+  for (const b of el.pet.querySelectorAll('[data-pet-tab]')) {
+    b.addEventListener('click', () => {
+      S.petTab = b.dataset.petTab;
+      renderPetTabs();
+    });
+  }
   el.pet.addEventListener('close', () => {
     S.petTry = '';
+    S.roomTry = null;
     if (el.petRoom.hpPet) el.petRoom.hpPet.stop();
   });
 

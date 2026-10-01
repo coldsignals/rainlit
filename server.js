@@ -1291,7 +1291,8 @@ api.post('/homepages/:who/pet', (req, res) => {
 
 // ----- Your pet -----
 // (lib/pets.js) Adopting one (or changing its kind, name, colours, and whether it's on your
-// homepage), letting it go, and looking after it: feeding it, playing with it, petting it.
+// homepage), letting it go, and looking after it: feeding it, playing with it, petting it. And
+// doing up its room.
 
 const petRoute = (fn) => (req, res) => {
   try {
@@ -1301,7 +1302,15 @@ const petRoute = (fn) => (req, res) => {
     throw err;
   }
 };
-api.get('/pet', needUser, petRoute((req) => pets.get(req.user.id)));
+api.get('/pet', needUser, (req, res) => res.json({ pet: pets.get(req.user.id), room: pets.roomOf(req.user.id) }));
+api.put('/pet/room', needUser, (req, res) => {
+  try {
+    res.json({ room: pets.setRoom(req.user, req.body || {}) });
+  } catch (err) {
+    if (err instanceof pets.PetError) return fail(res, err.status, err.message);
+    throw err;
+  }
+});
 api.put('/pet', needUser, petRoute((req) => pets.set(req.user, req.body || {})));
 api.delete('/pet', needUser, petRoute((req) => {
   pets.release(req.user.id);

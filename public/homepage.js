@@ -1505,17 +1505,29 @@
       },
     };
   }
-  // In its room (the app's): the room's floor (a pet that floats can go anywhere in it).
+  // In its room (the app's): the room's floor (a pet that floats can go anywhere in it), in pixels
+  // the size of the room's own. nap(): where its bed is, if it has one.
   function inRoom(room, kind) {
+    const size = () => {
+      const P = roomPx(room);
+      return { P, W: room.clientWidth || 480, H: room.clientHeight || P * ROOM_ROWS };
+    };
     return {
       box: room, watch: room, card: null, scrolls: false,
       view() {
-        const W = room.clientWidth || 480;
-        const H = room.clientHeight || 260;
-        const w = Math.round(clampTo(W * 0.24, 88, 132) / 22) * 22;
+        const { P, W, H } = size();
+        const w = 22 * P;
         const h = w * PET_H;
-        const y0 = PETS[kind] && PETS[kind].floats ? h + 10 : Math.max(h + 6, H * 0.62);
-        return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + 8, x1: Math.max(w / 2 + 8, W - w / 2 - 8), y0, y1: Math.max(y0, H - 10) };
+        const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, P * (WALL_ROWS + 1));
+        return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + P, x1: Math.max(w / 2 + P, W - w / 2 - P), y0, y1: Math.max(y0, H - P * 2) };
+      },
+      nap() {
+        const r = room.prRoom;
+        const side = r && (r.left === 'bed' ? 'left' : r.right === 'bed' ? 'right' : null);
+        if (!side) return null;
+        const { P, W, H } = size();
+        const half = (thingOf('stand', 'bed').w * P) / 2;
+        return { x: side === 'left' ? P * 3 + half : W - P * 3 - half, y: H - P * 15 };
       },
       at(e) {
         const r = room.getBoundingClientRect();
@@ -1643,8 +1655,8 @@
       mode(how);
     }
 
-    // What next: whatever it's been asked to (plan), or back into view, or something of its own.
-    function decide() {
+    // (Its size, where it is.)
+    function fit() {
       const v = (me.v = me.where.view());
       if (v.w !== me.w) {
         me.w = v.w;
@@ -1652,6 +1664,22 @@
         node.style.height = `${v.h}px`;
         node.style.setProperty('--pw', `${v.w}px`);
       }
+      return v;
+    }
+    // (Its room's changed size: it's the right size for it at once, and in it.)
+    function refit() {
+      if (!me.where || Number.isNaN(me.x)) return;
+      const v = fit();
+      me.x = clampTo(me.x, v.x0, v.x1);
+      me.y = clampTo(me.y, v.y0, v.y1);
+      me.tx = clampTo(me.tx, v.x0, v.x1);
+      me.ty = clampTo(me.ty, v.y0, v.y1);
+      render();
+    }
+
+    // What next: whatever it's been asked to (plan), or back into view, or something of its own.
+    function decide() {
+      const v = fit();
       const next = me.plan.shift();
       if (next) return next();
       if (Number.isNaN(me.x)) {
@@ -1678,7 +1706,14 @@
         return;
       }
       if (r < 0.12 * lazy) return mode('rest', rand(3, 8));
-      if (r < 0.18 * lazy && me.t - me.born > 15) return mode('sleep', rand(8, 16));
+      if (r < 0.18 * lazy && me.t - me.born > 15) {
+        // (It naps in its bed, if it has one.)
+        const bed = me.where.nap && me.where.nap();
+        if (!bed) return mode('sleep', rand(8, 16));
+        walkTo(bed.x, bed.y);
+        me.arrive = () => mode('sleep', rand(10, 18));
+        return;
+      }
       if (glad() && r > 0.9) return walkTo(me.x + rand(-1, 1) * 360, me.y + rand(-1, 1) * 160, 'run');
       walkTo(me.x + rand(-1, 1) * 240, me.y + rand(-1, 1) * 140);
     }
@@ -1952,8 +1987,326 @@
       me.t = 0;
       closeCare();
     }
-    const life = { key, node, attach, stop, saw, did, closeCare, tend, info: () => me.info };
+    const life = { key, node, attach, stop, saw, did, refit, closeCare, tend, info: () => me.info };
     return life;
+  }
+
+  // ---------- A pet's room ----------
+  // Where someone's pet lives in the app, in pixels like it: a wallpaper and a floor, a window with
+  // the rain outside, a rug, something on the wall, and something in each corner (a pet bed is
+  // where it naps). A few of each, and some of Glow's. Its owner picks them (lib/pets.js keeps
+  // them). It's all measured in the room's own pixels (--px: the same size as its pet's), 42 of
+  // them tall: 26 of wall and 16 of floor.
+
+  const ROOM_ROWS = 42;
+  const WALL_ROWS = 26;
+  const ROOM_DEFAULT = { wall: 'stripes', floor: 'wood', rug: 'round', hang: 'none', left: 'plant', right: 'bed' };
+
+  // (Pixels made to a shape: a flat oval in rings, from the middle out.)
+  function oval(w, h, rings) {
+    const rows = [];
+    for (let y = 0; y < h; y++) {
+      let row = '';
+      for (let x = 0; x < w; x++) {
+        const d = Math.hypot((x + 0.5 - w / 2) / (w / 2), (y + 0.5 - h / 2) / (h / 2));
+        row += d > 1 ? '.' : rings[Math.min(rings.length - 1, Math.floor(d * rings.length))];
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+  // (A mat: a border, stripes, and a fringe at each end.)
+  function mat(w, h) {
+    const rows = [];
+    for (let y = 0; y < h; y++) {
+      let row = '';
+      for (let x = 0; x < w; x++) {
+        if (x === 0 || x === w - 1) row += y % 2 ? 'w' : '.';
+        else row += y === 0 || y === h - 1 || x === 1 || x === w - 2 ? 'a' : y % 3 === 1 ? 'c' : 'b';
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+  // (Fairy lights on a wire in two swoops, every other one dimmed or not.)
+  function fairyLights(dim) {
+    const W = 36;
+    const g = Array.from({ length: 6 }, () => Array(W).fill('.'));
+    const sag = (x) => Math.round(3 * Math.sin((Math.PI * (x % 18)) / 17));
+    for (let x = 0; x < W; x++) g[sag(x)][x] = 'm';
+    for (let i = 0, x = 2; x < W - 1; x += 4, i++) {
+      const t = 'ypcg'[i % 4];
+      const lit = dim ? i % 2 === 0 : true;
+      g[sag(x) + 1][x] = lit ? t : t.toUpperCase();
+      g[sag(x) + 2][x] = lit ? t : t.toUpperCase();
+    }
+    return g.map((r) => r.join(''));
+  }
+  // (A bookshelf: three shelves of books, all sorts.)
+  function bookshelf() {
+    const W = 14;
+    const books = [[2, 4, 'r'], [1, 3, 'u'], [2, 4, 'g'], [1, 4, 'y'], [2, 3, 'p'], [1, 4, 'r'], [2, 4, 'u'], [1, 2, 'g'], [2, 4, 'y']];
+    const rows = ['B'.repeat(W)];
+    for (let shelf = 0, i = 0; shelf < 3; shelf++) {
+      const band = Array.from({ length: 4 }, () => ['B', ...Array(W - 2).fill('d'), 'B']);
+      for (let x = 1; x < W - 1;) {
+        const [bw, bh, c] = books[i++ % books.length];
+        for (let n = 0; n < bw && x < W - 1; n++, x++) for (let y = 4 - bh; y < 4; y++) band[y][x] = c;
+      }
+      rows.push(...band.map((r) => r.join('')), 'B'.repeat(W));
+    }
+    return rows;
+  }
+  // (A lava lamp, its blobs where they are: [x, y, how big].)
+  function lavaLamp(blobs) {
+    const widths = { 2: 3, 3: 5, 4: 5, 5: 5, 6: 5 };
+    const rows = ['..mmm..', '..mmm..'];
+    for (let y = 2; y <= 12; y++) {
+      const w = widths[y] || 7;
+      let row = '';
+      for (let x = 0; x < 7; x++) {
+        if (Math.abs(x - 3) > (w - 1) / 2) row += '.';
+        else row += blobs.some(([bx, by, r]) => Math.hypot(x - bx, y - by) <= r) ? 'o' : 'l';
+      }
+      rows.push(row);
+    }
+    return [...rows, '.mmmmm.', 'mmmmmmm', 'mmmmmmm'];
+  }
+  // (The northern lights, in bands that wave.)
+  function auroraTile() {
+    const rows = [];
+    for (let y = 0; y < WALL_ROWS; y++) {
+      let row = '';
+      for (let x = 0; x < 12; x++) {
+        const wave = 6 + Math.round(2 * Math.sin((2 * Math.PI * x) / 12));
+        const d = y - wave;
+        row += d >= 0 && d < 2 ? 'g' : d >= 2 && d < 4 ? 't' : d >= 5 && d < 7 ? 'p' : y > 18 ? 'b' : 'a';
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  // Wallpapers and floors: a tile each, repeated (and for some of Glow's, some of it twinkling).
+  // (`perk`: one of Glow's.)
+  const WALLS = {
+    stripes: { label: 'Stripes', tile: ['aaabbb'], colors: { a: '#4b3f73', b: '#554880' } },
+    dots: { label: 'Dots', tile: ['aaaaaaaa', 'abbaaaaa', 'abbaaaaa', 'aaaaaaaa', 'aaaaaaaa', 'aaaaabba', 'aaaaabba', 'aaaaaaaa'], colors: { a: '#2f5d62', b: '#3f7a7f' } },
+    checks: { label: 'Checks', tile: ['aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa'], colors: { a: '#7a4a55', b: '#86525e' } },
+    bricks: { label: 'Bricks', tile: ['aaaaaaabaaaaaaab', 'aaaaaaabaaaaaaab', 'aaaaaaabaaaaaaab', 'bbbbbbbbbbbbbbbb', 'aaabaaaaaaabaaaa', 'aaabaaaaaaabaaaa', 'aaabaaaaaaabaaaa', 'bbbbbbbbbbbbbbbb'], colors: { a: '#8c4a3a', b: '#6e3a2e' } },
+    hearts: {
+      label: 'Hearts',
+      tile: ['aaaaaaaaaaaa', 'abbabbaaaaaa', 'abbbbbaaaaaa', 'aabbbaaaaaaa', 'aaabaaaaaaaa', 'aaaaaaaaaaaa', 'aaaaaaaaaaaa', 'aaaaaaabbabb', 'aaaaaaabbbbb', 'aaaaaaaabbba', 'aaaaaaaaabaa', 'aaaaaaaaaaaa'],
+      colors: { a: '#e9a3bd', b: '#d9779c' },
+    },
+    starlit: {
+      label: 'Starlit', perk: true, twinkle: 'b',
+      tile: ['aaaaaaaaaaaaaaaa', 'aaaaaaaaaaacaaaa', 'aabaaaaaaaaaaaaa', 'abbbaaaaaaaaaaaa', 'aabaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa', 'aaaaaaacaaaaaaaa', 'aaaaaaaaaaaaabaa',
+        'aaaaaaaaaaaaaaaa', 'aaacaaaaaaaaaaaa', 'aaaaaaaaaabaaaaa', 'aaaaaaaaabbbaaaa', 'aaaaaaaaaabaaaaa', 'aaaaaaaaaaaaaaaa', 'aaaaaacaaaaaaaca', 'aaaaaaaaaaaaaaaa'],
+      colors: { a: '#141a3a', b: '#fff4c2', c: '#8f96c9' },
+    },
+    aurora: { label: 'Aurora', perk: true, twinkle: 'g', tile: auroraTile(), colors: { a: '#0f1a33', b: '#0b1328', g: '#5ff0b0', t: '#2a9f96', p: '#7a5cd6' } },
+  };
+  const FLOORS = {
+    wood: { label: 'Wood', tile: ['aaaaaaaaaaaaaaab', 'acaaaaaaaaaaaaab', 'aaaaaaaaaaaaaaab', 'bbbbbbbbbbbbbbbb', 'aaaaaaabaaaaaaaa', 'aaaaaaabaaaaacaa', 'aaaaaaabaaaaaaaa', 'bbbbbbbbbbbbbbbb'], colors: { a: '#a8744c', b: '#8a5c3a', c: '#b8845a' } },
+    tiles: { label: 'Tiles', tile: ['aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa'], colors: { a: '#e9e4d8', b: '#c9c0ae' } },
+    carpet: { label: 'Carpet', tile: ['abac', 'baca', 'acab', 'caba'], colors: { a: '#5b4a8a', b: '#6a58a0', c: '#4f4079' } },
+    grass: { label: 'Grass', tile: ['aaaaaaaa', 'abaaaaba', 'aaaacaaa', 'aaaaaaaa', 'aaabaaaa', 'baaaaaab', 'aaaaadaa', 'aaaaaaaa'], colors: { a: '#5fa84f', b: '#4f9442', c: '#ffd84d', d: '#ffffff' } },
+    clouds: {
+      label: 'Clouds', perk: true,
+      tile: ['aaaaaaaaaaaaaaaa', 'aabbbaaaaaaaaaaa', 'abbbbbaaaaabbaaa', 'abbbbbbaaabbbbaa', 'aabbbbaaaabbbbba', 'aaaccaaaaaabbbaa', 'aaaaaaaaaaacccaa', 'aaaaaaaaaaaaaaaa'],
+      colors: { a: '#cfe9ff', b: '#ffffff', c: '#b3dcf7' },
+    },
+    crystal: { label: 'Crystal', perk: true, twinkle: 'c', tile: ['aaabbaaa', 'aabbbbaa', 'abbcbbba', 'bbcbbbbb', 'abbbbbba', 'aabbbbaa', 'aaabbaaa', 'aaaaaaaa'], colors: { a: '#5a3fa0', b: '#8a6fd6', c: '#e2d4ff' } },
+  };
+  // Rugs, things on the wall, and things for the corners: a picture each (or two, taking turns),
+  // with a line round it unless it glows (`bare`).
+  const RUGS = {
+    none: { label: 'None' },
+    round: { label: 'Round', rows: oval(36, 10, 'bbababa'), colors: { a: '#e8799f', b: '#f3a9c4' } },
+    rect: { label: 'Striped', rows: mat(34, 9), colors: { a: '#3f6fc0', b: '#9fc3f5', c: '#f2f6ff', w: '#f2f6ff' } },
+    magic: { label: 'Magic circle', perk: true, glow: '#9ae8ff', bare: true, rows: oval(38, 10, '...c.b.a').map((r, y) => (y === 4 || y === 5 ? r.replace(/c/g, 'w') : r)), colors: { a: '#7efaff', b: '#b58cff', c: '#b58cff', w: '#ffffff' } },
+  };
+  const HANGS = {
+    none: { label: 'None' },
+    picture: {
+      label: 'Picture',
+      rows: ['ffffffffffffff', 'fuuuuuuuuuuyyf', 'fuuuuuuuuuyyyf', 'fuuuuuuuuuuyuf', 'fuuuuuuuuuuuuf', 'fuuugguuuuuuuf', 'fuuggggguuuguf', 'fugggggggggggf', 'fGgggGggggggGf', 'fGGGGGGGGGGGGf', 'ffffffffffffff'],
+      colors: { f: '#c89a5a', u: '#8fd3ff', y: '#ffd84d', g: '#6ad07a', G: '#3f9e57' },
+    },
+    clock: {
+      label: 'Clock',
+      rows: ['...aaaaa...', '.aaawwwaaa.', '.awwwkwwwa.', 'aawwwkwwwaa', 'awwwwkwwwwa', 'awwwwkkkwwa', 'awwwwwwwwwa', 'aawwwwwwwaa', '.awwwwwwwa.', '.aaawwwaaa.', '...aaaaa...'],
+      colors: { a: '#ef4d5e', w: '#fff8ec' },
+    },
+    shelf: {
+      label: 'Shelf',
+      rows: ['...g................', '..ggg.......r.......', '.gGgGg....yyru.pp...', '..gGg.....yyruupp...', '..ooo.....yyruupp...', '..ooo.....yyruupp...', 'bbbbbbbbbbbbbbbbbbbb', 'BBBBBBBBBBBBBBBBBBBB', '..B..............B..'],
+      colors: { g: '#6ad07a', G: '#3f9e57', o: '#e07a4a', b: '#b8845a', B: '#8a5c3a', y: '#ffd84d', r: '#ef4d5e', u: '#4c8dff', p: '#a57bff' },
+    },
+    lights: {
+      label: 'Fairy lights', perk: true, glow: '#fff1a8', bare: true, frames: [fairyLights(false), fairyLights(true)],
+      colors: { m: '#7a7a92', y: '#ffd84d', Y: '#8a7a3a', p: '#ff6fb5', P: '#7a3a5c', c: '#7fe3ff', C: '#3a6a7a', g: '#8dff7a', G: '#3f6a3a' },
+    },
+    neon: {
+      label: 'Neon heart', perk: true, glow: '#ff5fc8', bare: true, flicker: true,
+      rows: ['..ppp...ppp..', '.p...p.p...p.', 'p.....p.....p', 'p...........p', 'p...........p', '.p.........p.', '..p.......p..', '...p.....p...', '....p...p....', '.....p.p.....', '......p......'],
+      colors: { p: '#ff7ad6' },
+    },
+  };
+  const STANDS = {
+    none: { label: 'None' },
+    plant: {
+      label: 'Plant',
+      rows: ['....g.....', '..g.gg..g.', '.gg.gGg.gg', '.gGggGggGg', '..gGgGgGg.', 'g..gGGGg..', 'gg.ggGgg.g', '.gggGGgggg', '..ggGGgGg.', '...gGGgg..', '..OOOOOO..', '..oooooo..', '...oooo...', '...oooo...', '...oooo...', '...OOOO...'],
+      colors: { g: '#6ad07a', G: '#3f9e57', o: '#e07a4a', O: '#b85a33' },
+    },
+    lamp: {
+      label: 'Lamp', glow: '#ffd27a',
+      rows: ['..yyyyy..', '.yyyyyyy.', '.yyyyyyy.', 'yyyyyyyyy', 'yyyyyyyyy', 'YYYYYYYYY', ...Array(15).fill('....m....'), '...mmm...', '..mmmmm..', '.mmmmmmm.'],
+      colors: { y: '#ffd27a', Y: '#e0a84a', m: '#6a6f80' },
+    },
+    bed: {
+      label: 'Pet bed', nap: true,
+      rows: ['.....pppppppppppp.....', '...ppbbbbbbbbbbbbpp...', '..pbbbbbbbbbbbbbbbbp..', '.pbbbbbbbbbbbbbbbbbbp.', 'ppbbbbbbbbbbbbbbbbbbpp', 'pppbbbbbbbbbbbbbbbbppp', 'PpppppbbbbbbbbbbpppppP', '.PPPppppppppppppppPPP.', '...PPPPPPPPPPPPPPPP...'],
+      colors: { p: '#e8799f', b: '#ffc2d6', P: '#c95c80' },
+    },
+    books: { label: 'Bookshelf', rows: bookshelf(), colors: { B: '#8a5c3a', d: '#4a2f22', r: '#ef4d5e', u: '#4c8dff', g: '#6ad07a', y: '#ffd84d', p: '#a57bff' } },
+    aquarium: {
+      label: 'Aquarium', perk: true, glow: '#8fd8ff',
+      frames: [
+        ['mmmmmmmmmmmmmmmmmm', 'caaaaaaaaaaaaaaaac', 'caaaaaaaaaaawaaaac', 'caaaaaaaaaaaaaaaac', 'caaaooaaaaaaaawaac', 'caaoooooaaaaaaaaac', 'caaaooaaaaaaaaaaac', 'caaaaaaaaaaaaagaac', 'cagaaaaaaaaaaggaac', 'caggaaaaaaaaaagaac', 'cyyyyyyyyyyyyyyyyc', 'mmmmmmmmmmmmmmmmmm', '.bbbbbbbbbbbbbbbb.', '.b..............b.', '.b..............b.', '.bb............bb.'],
+        ['mmmmmmmmmmmmmmmmmm', 'caaaaaaaaaaaaawaac', 'caaaaaaaaaaaaaaaac', 'caaaaaaaaaaaawaaac', 'caaaaaaooaaaaaaaac', 'caaaaaoooooaaaaaac', 'caaaaaaooaaaaaaaac', 'caaaaaaaaaaaaagaac', 'cagaaaaaaaaaaggaac', 'caggaaaaaaaaaagaac', 'cyyyyyyyyyyyyyyyyc', 'mmmmmmmmmmmmmmmmmm', '.bbbbbbbbbbbbbbbb.', '.b..............b.', '.b..............b.', '.bb............bb.'],
+      ],
+      colors: { m: '#8a8fa3', c: '#cdeeff', a: '#5fb4e8', o: '#ff9a3d', w: '#e6f7ff', g: '#4fbf6a', y: '#e3c27a', b: '#8a5c3a' },
+    },
+    lava: {
+      label: 'Lava lamp', perk: true, glow: '#c08aff',
+      frames: [lavaLamp([[2, 4, 1.1], [4, 10, 1.5]]), lavaLamp([[3, 6, 1.2], [3, 9, 1.4]])],
+      colors: { m: '#9aa0b5', l: '#8a5cff', o: '#ff9a3d' },
+    },
+  };
+  const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS };
+  // (Which list each place in the room picks from.)
+  const ROOM_SLOTS = { wall: 'wall', floor: 'floor', rug: 'rug', hang: 'hang', left: 'stand', right: 'stand' };
+
+  // The window, and the rain outside it.
+  const WINDOW = pixelsSrc(outlined(['aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbb', '.cccccccccccccccccc.']), { k: '#2a1f33', a: '#8a5a3c', b: '#b07a52', c: '#5e3f2c' });
+  const RAIN = pixelsSrc(['nnnnnnnn', 'nrnnnnnn', 'nrnnnnnn', 'nnnnnnnn', 'nnnnnrnn', 'nnnnnrnn', 'nnnnnnnn', 'nnnnnnnn'], { n: '#1a2350', r: '#8fb8ff' });
+  const BASEBOARD = pixelsSrc(['aaaaaaaa', 'bbbbbbbb', 'cccccccc'], { a: '#c89a6a', b: '#8a5c3a', c: '#5e3f2c' });
+
+  const thingSrc = new Map();
+  // A thing's picture (its frames side by side), and how big it is, in the room's pixels.
+  function thingOf(list, key) {
+    const id = `${list}:${key}`;
+    if (!thingSrc.has(id)) {
+      const t = ROOM[list][key];
+      if (!t || (!t.rows && !t.frames && !t.tile)) {
+        thingSrc.set(id, null);
+      } else if (t.tile) {
+        const twinkle = t.twinkle ? t.tile.map((r) => r.replace(new RegExp(`[^${t.twinkle}]`, 'g'), '.')) : null;
+        thingSrc.set(id, { src: pixelsSrc(t.tile, t.colors), twinkle: twinkle && pixelsSrc(twinkle, t.colors), w: t.tile[0].length, h: t.tile.length });
+      } else {
+        const frames = (t.frames || [t.rows]).map((f) => (t.bare ? f : outlined(f)));
+        const colors = { k: '#2a1f33', ...t.colors };
+        const fw = frames[0][0].length;
+        const rects = frames.map((f, i) => rectsOf(f, colors, i * fw)).join('');
+        const src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fw * frames.length} ${frames[0].length}" shape-rendering="crispEdges">${rects}</svg>`)}`;
+        const still = frames.length > 1 ? pixelsSrc(frames[0], colors) : src;
+        thingSrc.set(id, { src, still, w: fw, h: frames[0].length, frames: frames.length });
+      }
+    }
+    return thingSrc.get(id);
+  }
+
+  // A room's pixel: as big as its pet's (a pet is 22 of them across).
+  const roomPx = (el) => Math.round(clampTo((el.clientWidth || 480) * 0.24, 88, 132) / 22);
+  const roomOf = (room) => {
+    const r = { ...ROOM_DEFAULT };
+    for (const [slot, list] of Object.entries(ROOM_SLOTS)) if (room && ROOM[list][room[slot]]) r[slot] = room[slot];
+    return r;
+  };
+
+  // Furnishing a room (`room`: what's in it; anything not in it is as it was to begin with).
+  function furnish(el, room) {
+    const r = roomOf(room);
+    el.prRoom = r;
+    el.classList.add('pr-room');
+    const px = roomPx(el);
+    el.style.setProperty('--px', `${px}px`);
+    if (!el.prSized) {
+      el.prSized = true;
+      new ResizeObserver(() => {
+        el.style.setProperty('--px', `${roomPx(el)}px`);
+        if (el.hpPet) el.hpPet.refit();
+      }).observe(el);
+    }
+    let scene = el.querySelector('.pr-scene');
+    if (!scene) {
+      scene = document.createElement('div');
+      scene.className = 'pr-scene';
+      scene.setAttribute('aria-hidden', 'true');
+      el.prepend(scene);
+    }
+    const layer = (cls, t, fill) => {
+      const n = document.createElement('i');
+      n.className = cls;
+      if (!t) return n;
+      n.style.backgroundImage = `url("${t.src}")`;
+      if (fill) {
+        n.style.backgroundSize = `calc(var(--px) * ${t.w}) calc(var(--px) * ${t.h})`;
+        if (t.twinkle) {
+          const tw = document.createElement('i');
+          tw.className = 'pr-twinkle';
+          tw.style.backgroundImage = `url("${t.twinkle}")`;
+          tw.style.backgroundSize = n.style.backgroundSize;
+          n.append(tw);
+        }
+      } else {
+        n.style.width = `calc(var(--px) * ${t.w})`;
+        n.style.height = `calc(var(--px) * ${t.h})`;
+        if (t.frames > 1) n.classList.add('pr-frames');
+      }
+      return n;
+    };
+    const thing = (slot) => {
+      const list = ROOM_SLOTS[slot];
+      const key = r[slot];
+      const info = ROOM[list][key];
+      const n = layer(`pr-thing pr-${slot} pr-${key}`, thingOf(list, key));
+      if (info && info.glow) {
+        n.classList.add('pr-glow');
+        n.style.setProperty('--glow', info.glow);
+      }
+      if (info && info.flicker) n.classList.add('pr-flicker');
+      return n;
+    };
+    const win = document.createElement('i');
+    win.className = 'pr-window';
+    win.style.setProperty('--frame', `url("${WINDOW}")`);
+    win.style.setProperty('--rain', `url("${RAIN}")`);
+    const base = layer('pr-base', null);
+    base.style.backgroundImage = `url("${BASEBOARD}")`;
+    scene.replaceChildren(layer('pr-wall', thingOf('wall', r.wall), true), layer('pr-floor', thingOf('floor', r.floor), true), base, win,
+      thing('rug'), thing('hang'), thing('left'), thing('right'));
+  }
+
+  // One of a room's things (or a wallpaper or floor), small: to pick it.
+  function roomSwatch(list, key) {
+    const n = document.createElement('i');
+    n.className = `pr-swatch pr-swatch-${list}`;
+    const t = thingOf(list, key);
+    if (!t) {
+      n.classList.add('pr-none');
+      return n;
+    }
+    if (list === 'wall' || list === 'floor') {
+      n.style.backgroundImage = `url("${t.src}")`;
+      n.style.backgroundSize = `${t.w * 4}px ${t.h * 4}px`;
+    } else {
+      n.style.backgroundImage = `url("${t.still}")`;
+    }
+    return n;
   }
 
   // ---------- Effects for visitors (Glow's) ----------
@@ -2379,6 +2732,7 @@
     COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, pieceEl, starter, mount, setSky, light, hush,
     petEl, petRoom, petMeters, fullWords, happyWords,
+    ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
     petDid: (page, what, info) => { if (page.hpPet) page.hpPet.did(what, info); },
     // (the sheet of a pet's frames, to look at them)

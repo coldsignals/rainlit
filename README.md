@@ -236,12 +236,17 @@ hungry over three days and glum over two, but never ill, and never runs away;
 hungry, it just mopes about, thinking of food, until it's fed. Petting it cheers
 it up: click it. It lives on your homepage too (unless you'd rather it didn't),
 where anyone who can see your page can pet it, and it counts how many times it's
-been petted. Glow brings three more: a cloudlet that makes rainbows when it's
-petted, a dragon that puffs flames, and a spirit fox with a glowing tail (anyone
-can try them on in the room). It's all just for fun: nothing nags you, and if
-you'd rather not see the pet button at all, Settings > Look hides it. Letting
-your pet go (at the bottom of its room, once you've said you're sure) deletes
-it, and everything about it.
+been petted. Its room is pixel too, and yours to do up (its **Decorate** tab):
+a wallpaper and a floor, a rug, something on the wall, and something in each
+corner (a plant, a lamp, a bookshelf, or its bed, where it naps). Glow brings
+three more pets: a cloudlet that makes rainbows when it's petted, a dragon that
+puffs flames, and a spirit fox with a glowing tail; and things for the room that
+glow: starlit and aurora wallpapers, cloud and crystal floors, a magic circle,
+fairy lights, a neon heart, an aquarium and a lava lamp (anyone can try them all
+on in the room). It's all just for fun: nothing nags you, and if you'd rather
+not see the pet button at all, Settings > Look hides it. Letting your pet go
+(its room's **Pet** tab, once you've said you're sure) deletes it, and
+everything about it; its room stays as you did it up, for the next one.
 
 ## Feedback
 
@@ -262,7 +267,8 @@ it and keep it that way, for $5 a month or $50 a year (and tips), at
 marked with a Glow tag wherever it is, and it's more of what costs money: files up
 to 100 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
 channels (1080p at up to 60 fps, while it fits in what Cloudflare sends for
-free), no slower start for a new account, three more pets, homepage extras
+free), no slower start for a new account, three more pets (and things for their
+rooms), homepage extras
 (moving backgrounds, effects for visitors, a fortune ball...), five themes with
 weather of their own (Sakura, Monsoon, Fireflies, Maple and Aurora), and a badge, a
 raindrop that gathers light the longer they support (Drizzle, then Shower,
