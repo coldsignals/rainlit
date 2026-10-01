@@ -1553,8 +1553,8 @@
         const w = 22 * P;
         const h = w * PET_H;
         // (Its feet on the open floor, in front of the furniture, which stands 13 rows up from the
-        // bottom: never up on the skirting or a desk. A pet that floats can go anywhere.)
-        const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, P * (ROOM_ROWS - 11));
+        // bottom (a bed, 10): never up on the skirting or a desk. A pet that floats can go anywhere.)
+        const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, P * (ROOM_ROWS - 10));
         return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + P, x1: Math.max(w / 2 + P, W - w / 2 - P), y0, y1: Math.max(y0, H - P * 2) };
       },
       nap() {
@@ -1564,7 +1564,7 @@
         if (!side) return null;
         const { P, W, H } = size();
         const half = (thingOf('stand', r[side]).w * P) / 2;
-        return { x: side === 'left' ? P * 3 + half : W - P * 3 - half, y: H - P * 15 };
+        return { x: side === 'left' ? P * 3 + half : W - P * 3 - half, y: H - P * (15 - (STANDS[r[side]].out || 0)) };
       },
       at(e) {
         const r = room.getBoundingClientRect();
@@ -2304,8 +2304,10 @@
       rows: ['..yyyyy..', '.yyyyyyy.', '.yyyyyyy.', 'yyyyyyyyy', 'yyyyyyyyy', 'YYYYYYYYY', ...Array(15).fill('....m....'), '...mmm...', '..mmmmm..', '.mmmmmmm.'],
       colors: { y: '#ffd27a', Y: '#e0a84a', m: '#6a6f80' },
     },
-    bed: { label: 'Pet bed', nap: true, rows: BED_ROWS, colors: { p: '#e8799f', b: '#ffc2d6', P: '#c95c80' } },
-    bedgrey: { label: 'Grey pet bed', nap: true, rows: BED_ROWS, colors: { p: '#5b6372', b: '#c3c8d2', P: '#454b57' } },
+    // (`out`: rows out from the wall, on the floor. A bed's low: back against the skirting, it
+    // looks like it's up on the trim.)
+    bed: { label: 'Pet bed', nap: true, out: 3, rows: BED_ROWS, colors: { p: '#e8799f', b: '#ffc2d6', P: '#c95c80' } },
+    bedgrey: { label: 'Grey pet bed', nap: true, out: 3, rows: BED_ROWS, colors: { p: '#5b6372', b: '#c3c8d2', P: '#454b57' } },
     books: { label: 'Bookshelf', rows: bookshelf(), colors: { B: '#8a5c3a', d: '#4a2f22', r: '#ef4d5e', u: '#4c8dff', g: '#6ad07a', y: '#ffd84d', p: '#a57bff' } },
     desk: {
       label: 'Desk',
@@ -2432,6 +2434,7 @@
         n.style.setProperty('--glow', info.glow);
       }
       if (info && info.flicker) n.classList.add('pr-flicker');
+      if (info && info.out) n.style.bottom = `calc(var(--px) * ${13 - info.out})`; // (13: style.css .pr-left)
       return n;
     };
     const win = document.createElement('i');
