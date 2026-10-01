@@ -2109,7 +2109,8 @@
   };
   const FLOORS = {
     wood: { label: 'Wood', tile: ['aaaaaaaaaaaaaaab', 'acaaaaaaaaaaaaab', 'aaaaaaaaaaaaaaab', 'bbbbbbbbbbbbbbbb', 'aaaaaaabaaaaaaaa', 'aaaaaaabaaaaacaa', 'aaaaaaabaaaaaaaa', 'bbbbbbbbbbbbbbbb'], colors: { a: '#a8744c', b: '#8a5c3a', c: '#b8845a' } },
-    tiles: { label: 'Tiles', tile: ['aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa'], colors: { a: '#e9e4d8', b: '#c9c0ae' } },
+    // (Cream tiles with grout between them, each lit at its top and left edges.)
+    tiles: { label: 'Tiles', tile: ['gggggggg', 'ghhhhhha', 'ghaaaaas', 'ghaaaaas', 'ghaaaaas', 'ghaaaaas', 'ghaaaaas', 'gassssss'], colors: { g: '#b3a48c', h: '#fbf6ec', a: '#ece3d1', s: '#d6cab3' } },
     carpet: { label: 'Carpet', tile: ['abac', 'baca', 'acab', 'caba'], colors: { a: '#5b4a8a', b: '#6a58a0', c: '#4f4079' } },
     grass: { label: 'Grass', tile: ['aaaaaaaa', 'abaaaaba', 'aaaacaaa', 'aaaaaaaa', 'aaabaaaa', 'baaaaaab', 'aaaaadaa', 'aaaaaaaa'], colors: { a: '#5fa84f', b: '#4f9442', c: '#ffd84d', d: '#ffffff' } },
     clouds: {
