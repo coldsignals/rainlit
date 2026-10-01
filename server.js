@@ -2422,6 +2422,9 @@ api.get('/admin/users', needAdmin, (_req, res) => {
 // the disk. And one person's own amount (more, or less, than everyone's; null goes back).
 api.get('/admin/storage', needAdmin, (_req, res) => res.json({ ...storage.overview(), r2: blobs.status(), usage: abuse.usage() }));
 
+// What people put on their homepages, all of them together (counts only), to see what gets used.
+api.get('/admin/homepages', needAdmin, (_req, res) => res.json(homepages.stats()));
+
 // Flagged accounts (lib/abuse.js): what was noticed, and the admin saying it's fine.
 api.get('/admin/flags', needAdmin, (_req, res) => res.json({ flags: abuse.openFlags(), dailyMb: abuse.DAILY_MB }));
 api.post('/admin/flags/:id/clear', needAdmin, (req, res) => {

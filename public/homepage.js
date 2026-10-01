@@ -39,6 +39,11 @@
   const MUSICS = { tunebox: 'Tunebox', cassette: 'Cassette', plain: 'Plain' };
   const SHELVES = { wood: 'Wood', glass: 'Glass', pixel: 'Pixel', white: 'White' };
   const BUTTONS = { bevel: 'Classic', shiny: 'Shiny', stripes: 'Stripes', dark: 'Dark' };
+  // What each kind of piece is called (in the editor, and Admin's count of what pages use).
+  const PIECE_NAMES = {
+    text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter',
+    guestbook: 'Guestbook', music: 'Music player', shelf: 'Shelf', button: 'Friend button', ask: 'Ask me anything', fortune: 'Fortune ball',
+  };
   const PATTERNS = {
     dots: 'Polka dots', stripes: 'Stripes', checks: 'Checks', gingham: 'Gingham', grid: 'Grid', hearts: 'Hearts', stars: 'Stars', flowers: 'Flowers', zigzag: 'Zigzag', clouds: 'Clouds',
     plaid: 'Plaid', camo: 'Camo', hexes: 'Hexagons', circuit: 'Circuit board',
@@ -1011,13 +1016,17 @@
     node.append(inside(row, plank));
   }
 
-  // An 88x31 button, the little badges old sites linked to each other with.
+  // A friend button: an 88x31, the little badges old sites linked to each other with. It's made
+  // from a friend (their name, and their card's colours and font), to take visitors to their page.
+  // (About how wide each font's letters are, in em: the widest ones. The rest are about 0.6.)
+  const LETTER_WIDTH = { tiny: 0.85, neon: 0.95, bubble: 0.72, terminal: 0.48, hand: 0.45 };
   function buttonPiece(node, p) {
     node.classList.add(`hp-button-${BUTTONS[p.style] ? p.style : 'bevel'}`);
     node.style.setProperty('--b1', hex(p.c1, '#000080'));
     node.style.setProperty('--b2', hex(p.c2, '#ffffff'));
     const kids = [];
-    if (p.icon && PIXEL[p.icon]) {
+    const icon = p.icon && PIXEL[p.icon];
+    if (icon) {
       const img = document.createElement('img');
       img.className = 'hp-pixel';
       img.src = pixelSrc(p.icon);
@@ -1028,8 +1037,14 @@
     const text = String(p.text || '');
     if (text.trim()) {
       const words = document.createElement('span');
-      words.className = `hp-button-words${text.includes('\n') ? ' two' : ''}`;
+      const two = text.includes('\n');
+      words.className = `hp-button-words${two ? ' two' : ''}`;
       words.style.fontFamily = (FONTS[p.font] || FONTS.tiny).css;
+      // (Long words get smaller to fit beside the sticker, rather than being cut off: the room
+      // there, over about how wide this font's letters are.)
+      const longest = Math.max(...text.split('\n').map((line) => [...line].length));
+      const room = icon ? `86cqw - ${(64 / pixelRatio(p.icon)).toFixed(1)}cqh` : '90cqw';
+      words.style.fontSize = `min(${two ? 27 : 34}cqh, calc((${room}) / ${(longest * (LETTER_WIDTH[p.font] || 0.6)).toFixed(2)}))`;
       words.textContent = text;
       kids.push(words);
     }
@@ -2903,7 +2918,7 @@
 
   window.Homepage = {
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
-    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS,
+    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
     petEl, petRoom, petMeters, fullWords, happyWords,
     ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch,

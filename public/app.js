@@ -132,6 +132,7 @@ for (const id of [
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
   'support-card', 'support-badge', 'support-title', 'support-note', 'support-btn', 'support-link', 'support-admin', 'support-state', 'support-costs',
+  'homepage-stats',
   'mp-doing', 'activity-field', 'activity-playing', 'activity-listening', 'activity-others', 'activity-now', 'activity-game-list', 'activity-add', 'activity-pick',
   'activity-ask', 'activity-ask-mark', 'activity-ask-title', 'activity-ask-text',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
@@ -12707,6 +12708,7 @@ async function renderAdmin() {
   renderSignups();
   renderStorage();
   renderSupportAdmin();
+  renderHomepageStats();
   renderAnnouncements();
   renderFlags();
   renderFeedbackAdmin();
@@ -12898,6 +12900,86 @@ async function saveSupportCosts() {
   } catch (err) {
     toast(err.message);
   }
+}
+
+// What people put on their homepages (lib/homepages.js stats()): each kind of piece, how many
+// pages have it and in which styles, the most used first and the ones nobody's used last; then
+// backgrounds, weather, Glow's effects, where friend buttons go, pixel stickers and pets.
+async function renderHomepageStats() {
+  let s;
+  try {
+    s = await api('GET', '/admin/homepages');
+  } catch {
+    return;
+  }
+  const H = Homepage;
+  const count = (k, one, many) => `${k} ${k === 1 ? one : many}`;
+  // (A tally in words, the biggest first: "Stars 4, Gingham 2, 3 more".)
+  const tally = (counts, names, max = 6) => {
+    const all = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const words = all.slice(0, max).map(([k, v]) => `${names[k] || k} ${v}`);
+    if (all.length > max) words.push(`${all.length - max} more`);
+    return words.join(', ');
+  };
+  const labels = (map) => Object.fromEntries(Object.entries(map).map(([k, v]) => [k, typeof v === 'string' ? v : v.label]));
+  const STYLES = {
+    text: labels(H.FONTS), image: H.FRAMES, sticker: { pixel: 'Pixel', emoji: 'Emoji', custom: "Spaces' emoji" }, me: H.ME_STYLES,
+    counter: H.COUNTERS, guestbook: H.GUESTBOOKS, ask: H.ASKS, music: H.MUSICS, shelf: H.SHELVES, button: H.BUTTONS, tape: H.TAPES, paper: H.PAPERS,
+  };
+  const p = (text, className = 'hint') => {
+    const node = document.createElement('p');
+    node.className = className;
+    node.textContent = text;
+    return node;
+  };
+  if (!s.pages) return el.homepageStats.replaceChildren(p('Nobody has made a homepage yet.'));
+  const share = (k) => Math.round((k / s.pages) * 100);
+  const intro = p(`${count(s.pages, 'page', 'pages')}, ${s.recent} changed in the last 30 days. Who can see them: `
+    + `${tally(s.visibility, { everyone: 'anyone', spaces: 'friends and spaces', friends: 'friends' })}.`
+    + (s.starter ? ` ${s.starter} still ${s.starter === 1 ? 'has' : 'have'} some of the "under construction" page everyone starts with: its pieces show as kept, apart from what people added.` : ''));
+  const list = document.createElement('ol');
+  list.className = 'admin-list hp-use';
+  list.replaceChildren(...Object.entries(s.pieces).sort((a, b) => b[1].pages - a[1].pages || b[1].count - a[1].count).map(([t, piece]) => {
+    const li = document.createElement('li');
+    if (!piece.pages && !piece.kept) li.className = 'muted';
+    const name = document.createElement('strong');
+    name.textContent = H.PIECE_NAMES[t] || t;
+    const bar = document.createElement('span');
+    bar.className = 'hp-use-bar';
+    const fill = document.createElement('i');
+    fill.style.width = `${share(piece.pages)}%`;
+    bar.append(fill);
+    const num = document.createElement('span');
+    num.className = 'hp-use-num';
+    num.textContent = (piece.pages ? `${count(piece.pages, 'page', 'pages')} (${share(piece.pages)}%), ${piece.count} in all` : piece.kept ? 'none added' : 'on no pages yet')
+      + (piece.kept ? `; kept from the start on ${count(piece.kept, 'page', 'pages')}` : '');
+    const styles = document.createElement('small');
+    styles.className = 'hp-use-styles';
+    styles.textContent = tally(piece.styles, STYLES[t] || {});
+    li.append(name, bar, num, styles);
+    return li;
+  }));
+  const more = [
+    `Backgrounds: ${tally(s.backgrounds, { pattern: 'a pattern', image: 'a picture', color: 'one colour' })}`
+      + (Object.keys(s.patterns).length ? ` (patterns: ${tally(s.patterns, H.PATTERNS)})` : '') + '.',
+    `Weather: ${tally(s.skies, H.SKIES) || 'none'} (new pages start with rain).`,
+    `Glow's effects for visitors: trails ${tally(s.trails, H.TRAILS) || 'none'}; clicks ${tally(s.clicks, H.CLICKS) || 'none'}.`,
+  ];
+  const b = s.buttons;
+  if (b.friend + b.other + b.none) more.push(`Friend buttons: ${b.friend} to someone's page, ${b.other} somewhere else, ${b.none} with no link.`);
+  if (Object.keys(s.stickers).length) more.push(`Pixel stickers people added: ${tally(s.stickers, H.PIXEL_NAMES, 10)}.`);
+  if (s.pets.total) {
+    const kinds = Object.fromEntries(Object.entries(H.PETS).map(([k, v]) => [k, v.label]));
+    more.push(`Pets: ${s.pets.total} (${tally(s.pets.kinds, kinds)}), ${s.pets.home} of them out on their owner's homepage.`);
+  }
+  const ul = document.createElement('ul');
+  ul.className = 'hp-use-more';
+  ul.replaceChildren(...more.map((text) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    return li;
+  }));
+  el.homepageStats.replaceChildren(intro, list, ul);
 }
 
 // Gifting someone some months of supporting (they count for their badge too), in the row itself.
@@ -13713,6 +13795,9 @@ async function init() {
     pickEmoji: (fn) => openEmojiPicker(null, fn),
     spaceEmoji: myEmoji,
     me: () => S.me,
+    // (your friends, for a friend button: whose page it goes to)
+    friends: () => [...S.friends.values()],
+    face: (u) => makeFace(u, null),
     offersSupport,
     glowShown,
     openGlow,

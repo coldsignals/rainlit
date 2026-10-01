@@ -1110,6 +1110,19 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .admin-list code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 15px; letter-spacing: 0.04em; }
 .admin-list .icon-btn { width: 32px; height: 32px; flex: none; }
 .admin-list .icon { width: 16px; height: 16px; }
+/* (What homepages use: each piece, a bar for how many pages have it, and its styles under it.) */
+.hp-use li {
+  display: grid; grid-template-columns: minmax(110px, 170px) 90px minmax(0, 1fr);
+  grid-template-areas: "name bar num" "styles styles styles";
+  align-items: center; gap: 4px 12px;
+}
+.hp-use strong { grid-area: name; font-weight: 600; }
+.hp-use-bar { grid-area: bar; height: 6px; border-radius: 999px; background: var(--dusk-hi); overflow: hidden; }
+.hp-use-bar i { display: block; height: 100%; border-radius: inherit; background: var(--lamp); }
+.hp-use-num { grid-area: num; }
+.hp-use-styles { grid-area: styles; color: var(--mist); }
+.hp-use-styles:empty { display: none; }
+.hp-use-more { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 13.5px; color: var(--mist); }
 .reset-link { display: grid; gap: 6px; padding: 10px 12px; margin: 4px 0 8px; background: var(--deep); border-radius: var(--radius); font-size: 13px; overflow-wrap: anywhere; }
 
 /* ================= Call layout ================= */

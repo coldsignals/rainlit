@@ -467,7 +467,7 @@ a.hp-shelf-item:hover .hp-cover img { transform: translateY(-3px); transition: t
 .hp-shelf-pixel .hp-cover img { image-rendering: auto; border-radius: 0; }
 .hp-shelf-white .hp-plank { background: #fbfbfb; border-radius: 2px; box-shadow: 0 1px 0 #ddd, 0 10px 14px -8px rgba(0, 0, 0, 0.35); }
 
-/* ----- 88x31 buttons ----- */
+/* ----- Friend buttons (88x31s) ----- */
 .hp-button .hp-in {
   align-items: center; justify-content: center; gap: 4cqw;
   padding: 0 5cqw;
@@ -1027,6 +1027,18 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-write-item { max-width: 180px; overflow: hidden; white-space: nowrap; }
 .hp-swatch { width: 64px; height: 30px; padding: 0; min-width: 0; border-radius: 4px; }
 .hp-paper-item { width: 60px; height: 48px; padding: 0; border-radius: 3px; }
+/* (A friend button: whose page it goes to.) */
+.hp-friends { display: flex; flex-wrap: wrap; gap: 6px; max-height: 236px; overflow-y: auto; margin-bottom: 10px; }
+.hp-friend {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 4px;
+  background: #fff; color: #3b2f25;
+  border: 1px solid #ddcdae; border-radius: 999px;
+  font-size: 14px; line-height: 1.2;
+}
+.hp-friend:hover { border-color: #b99b6b; }
+.hp-friend .face { width: 28px; height: 28px; font-size: 12px; }
+.hp-friend > span:not(.face) { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .hp-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .hp-row > label, .hp-field > span { font-size: 13px; font-weight: 700; color: #6b5840; }

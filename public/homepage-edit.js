@@ -734,6 +734,7 @@
       class: 'hp-tab', type: 'button', role: 'tab', 'aria-selected': String(!state.picked && state.tab === key), text: label,
       onclick: () => {
         state.tab = key;
+        state.friendPicker = false;
         if (state.picked) pick(null);
         else renderTray();
       },
@@ -851,14 +852,68 @@
           onclick: () => add({ t: 'shelf', style: 'wood', items: [], labels: true, w: 520, h: 210 }),
         }),
         el('button', {
-          class: 'hp-item wide', type: 'button', text: '88x31 button',
-          onclick: () => add({ t: 'button', text: 'my page', icon: 'flame', style: 'bevel', c1: '#1b2a8f', c2: '#ffffff', font: 'tiny', href: '', w: 132, h: 46.5 }),
+          class: 'hp-item wide', type: 'button', text: 'Friend button…', 'aria-expanded': String(Boolean(state.friendPicker)),
+          onclick: () => {
+            state.friendPicker = !state.friendPicker;
+            renderTray();
+          },
         })),
+      ...(state.friendPicker ? friendPicker() : []),
       ...(supporter() || glowOffered() ? [el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, glowItem('fortune', 'Fortune ball', 'The fortune ball', {
         t: 'fortune', color: '#b98bff', label: 'ask me something, then click me', answers: [], w: 200, h: 250,
       })), tryingNow('piece:')))] : []),
-      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers; an 88x31 button can link to a friend\'s page. A fortune ball answers whatever visitors ask it.' }),
+      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers. A friend button (like the old web\'s little 88x31 badges) takes visitors to a friend\'s page. A fortune ball answers whatever visitors ask it.' }),
     ];
+  }
+
+  // A friend button: pick whose page it goes to, and it's made from them (their name, their card's
+  // colours and font if they've made one, and a sticker), ready to change. Or one of your own, to
+  // link anywhere.
+  function friendPicker() {
+    const friends = (app.friends ? app.friends() : []).slice().sort((a, b) => a.displayName.localeCompare(b.displayName));
+    return [
+      h3('Whose page?'),
+      friends.length
+        ? el('div', { class: 'hp-friends' }, ...friends.map((f) => el('button', {
+          class: 'hp-friend', type: 'button', title: `A button to ${f.displayName}'s page`, onclick: () => addFriendButton(f),
+        }, app.face(f), el('span', { text: f.displayName }))))
+        : el('p', { class: 'hp-note-small', text: 'Once you have friends on Rainlit, a button can take visitors to their pages.' }),
+      ...(friends.length ? [el('p', { class: 'hp-note-small', text: 'It opens their page for whoever they let see it.' })] : []),
+      el('div', { class: 'hp-grid' }, el('button', {
+        class: 'hp-item wide', type: 'button', text: 'Your own (link it anywhere)',
+        onclick: () => {
+          state.friendPicker = false;
+          add({ t: 'button', text: 'my page', icon: 'flame', style: 'bevel', c1: '#1b2a8f', c2: '#ffffff', font: 'tiny', href: '', w: 132, h: 46.5 });
+        },
+      })),
+    ];
+  }
+
+  // (Stickers about as wide as they're tall, so the name has room beside them.)
+  const BUTTON_STICKERS = ['heart', 'star', 'sparkle', 'moon', 'flame', 'raindrop', 'leaf', 'mushroom', 'music', 'bolt', 'coffee', 'rocket', 'headphones', 'smiley', 'ghost', 'umbrella', 'floppy', 'cherry'];
+  const BUTTON_COLORS = ['#1b2a8f', '#11706b', '#5b2a86', '#7a1f3d', '#245c2f', '#3a4157', '#8a3b12', '#111111'];
+
+  function addFriendButton(f) {
+    state.friendPicker = false;
+    // (The same sticker and colour each time for the same friend, unless their card has colours.)
+    const n = [...f.username].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+    const card = f.card;
+    const c1 = card ? card.c1 : BUTTON_COLORS[n % BUTTON_COLORS.length];
+    add({
+      t: 'button', text: buttonWords(f.displayName), icon: BUTTON_STICKERS[n % BUTTON_STICKERS.length], style: 'bevel',
+      c1, c2: H.light(c1) ? '#1d1a24' : '#ffffff', font: card && card.font !== 'rainlit' && H.FONTS[card.font] ? card.font : 'tiny',
+      href: `${location.origin}/@${f.username}`, w: 132, h: 46.5,
+    });
+  }
+
+  // A name on a button: one line if it's short, otherwise two (split at the space nearest the middle).
+  function buttonWords(name) {
+    const s = name.trim().slice(0, 40);
+    if (s.length <= 8 || !s.includes(' ')) return s;
+    const mid = s.length / 2;
+    let at = -1;
+    for (let i = s.indexOf(' '); i >= 0; i = s.indexOf(' ', i + 1)) if (at < 0 || Math.abs(i - mid) < Math.abs(at - mid)) at = i;
+    return `${s.slice(0, at)}\n${s.slice(at + 1)}`;
   }
 
   // ---------- Glow's ----------
@@ -1056,7 +1111,6 @@
   // The picked piece's settings.
   function pickedPanel(p) {
     const set = (fields) => change(() => Object.assign(p, fields));
-    const names = { text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter', guestbook: 'Guestbook', music: 'Music player', shelf: 'Shelf', button: '88x31 button', ask: 'Ask me anything', fortune: 'Fortune ball' };
     const words = (label, key, max, placeholder) => {
       const input = el('input', { type: 'text', maxlength: String(max), value: p[key] || '', placeholder });
       input.addEventListener('change', () => set({ [key]: input.value.trim() }));
@@ -1064,7 +1118,7 @@
     };
     const fonts = (key) => chips(Object.fromEntries(Object.entries(H.FONTS).map(([k, f]) => [k, f.label])), p[key], (font) => set({ [key]: font }), (k) => ({ fontFamily: H.FONTS[k].css }));
     const head = el('div', { class: 'hp-picked-head' },
-      el('strong', { text: names[p.t] || 'Piece' }),
+      el('strong', { text: H.PIECE_NAMES[p.t] || 'Piece' }),
       el('button', { class: 'hp-tool', type: 'button', text: 'To front', title: 'On top of everything', onclick: () => restack(1) }),
       el('button', { class: 'hp-tool', type: 'button', text: 'To back', title: 'Behind everything', onclick: () => restack(-1) }),
       el('button', { class: 'hp-tool', type: 'button', text: 'Copy', title: 'Another one (Ctrl+D)', onclick: duplicate }),

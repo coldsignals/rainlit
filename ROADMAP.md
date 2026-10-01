@@ -124,7 +124,8 @@ profile card. The card stays, as the quick look, with a way into the homepage.
       it, and anything placed anywhere on it: pictures and GIFs (in frames: photos, stamps,
       old windows), pixel stickers and emoji, text in fun fonts, tape and paper. Drag, resize,
       turn and layer them
-- [x] 88x31 buttons, to make and to link to friends' pages
+- [x] Friend buttons (88x31s): pick a friend, and a button to their page is made from them
+- [x] Admin: what homepages use (each piece, its styles, backgrounds, weather, pets), to see what earns its place
 - [x] Old-web touches: a music player (your song, when a visitor presses play), a guestbook
       visitors sign, a visitor counter
 - [x] An "ask me anything" box that can be anonymous
