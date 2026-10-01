@@ -44,6 +44,23 @@
     return sdp.replace(re, (line, params) => (/usedtx=/.test(params) ? line : `a=fmtp:${m[1]} ${params};usedtx=1`));
   }
 
+  // A screen's sound goes in stereo, at music's quality: up to 128 kb/s. (Sent like a voice, it's
+  // mono and thinner, which makes a game's sound quieter too.) Opus does that when the receiving
+  // end's description asks for it: each of their lines (by mid), said so, sending and receiving.
+  function withStereo(sdp, mids) {
+    if (!sdp || !mids.length) return sdp;
+    return sdp.split(/(?=\r\nm=)/).map((part) => {
+      const mid = /\r\na=mid:([^\r\n]+)/.exec(part);
+      if (!mid || !mids.includes(mid[1]) || !/\bm=audio /.test(part)) return part;
+      const opus = /a=rtpmap:(\d+) opus\/48000/i.exec(part);
+      if (!opus) return part;
+      return part.replace(new RegExp(`a=fmtp:${opus[1]} ([^\\r\\n]*)`), (line, params) => {
+        const keep = params.split(';').map((p) => p.trim()).filter((p) => p && !/^(stereo|sprop-stereo|maxaveragebitrate|usedtx)=/.test(p));
+        return `a=fmtp:${opus[1]} ${[...keep, 'stereo=1', 'sprop-stereo=1', 'maxaveragebitrate=128000'].join(';')}`;
+      });
+    }).join('');
+  }
+
   // Video goes as VP8 (the encryption leaves its first few bytes readable, which is VP8's layout).
   function preferVp8(transceiver) {
     try {
@@ -293,10 +310,13 @@
         const tr = pc.addTransceiver(mst, { direction: 'sendonly', ...(video ? { sendEncodings: [this.encodingFor(kind, smooth)] } : {}) });
         if (video) preferVp8(tr);
         this.protect(tr.sender, mst.kind, 'encrypt');
-        added.push({ kind, tr });
+        added.push({ kind, tr, mst });
       }
       const offer = await pc.createOffer();
-      await pc.setLocalDescription({ type: 'offer', sdp: withDtx(offer.sdp) });
+      // (Which line a screen's sound is on: the one with its track's id.)
+      const midOf = (mst) => (/\r\na=mid:([^\r\n]+)/.exec(offer.sdp.split(/(?=\r\nm=)/).find((part) => part.includes(` ${mst.id}\r\n`)) || '') || [])[1];
+      const stereo = added.filter(({ kind }) => kind === 'screenAudio').map(({ mst }) => midOf(mst)).filter(Boolean);
+      await pc.setLocalDescription({ type: 'offer', sdp: withStereo(withDtx(offer.sdp), stereo) });
       let r;
       try {
         r = await this.api('POST', `/channels/${this.channelId}/voice/publish`, { sdp: pc.localDescription.sdp, tracks: added.map(({ kind, tr }) => ({ kind, mid: tr.mid })) });
@@ -307,7 +327,7 @@
         }
         throw err;
       }
-      await pc.setRemoteDescription({ type: 'answer', sdp: withDtx(r.sdp) });
+      await pc.setRemoteDescription({ type: 'answer', sdp: withStereo(withDtx(r.sdp), stereo) });
       for (const { kind, tr } of added) this.local.set(kind, tr);
       Object.assign(this.names, r.tracks || {});
       this.watch(pc);
@@ -714,7 +734,8 @@
       if (r.sdp) {
         await this.subPc.setRemoteDescription({ type: 'offer', sdp: r.sdp });
         const answer = await this.subPc.createAnswer();
-        await this.subPc.setLocalDescription(answer);
+        const stereo = [...this.byMid.values()].filter((x) => x.kind === 'screenAudio').map((x) => x.mid);
+        await this.subPc.setLocalDescription({ type: 'answer', sdp: withStereo(answer.sdp, stereo) });
         this.watch(this.subPc);
         try {
           await this.api('POST', `/channels/${this.channelId}/voice/answer`, { sdp: this.subPc.localDescription.sdp });

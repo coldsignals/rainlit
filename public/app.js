@@ -1673,7 +1673,9 @@ function createPeer() {
     if (S.conn !== conn) return;
     try {
       conn.makingOffer = true;
-      await pc.setLocalDescription();
+      const offer = await pc.createOffer();
+      if (pc.signalingState !== 'stable') return; // (theirs came meanwhile: it's answered instead)
+      await pc.setLocalDescription({ type: 'offer', sdp: stereoStreams(offer.sdp) });
       if (S.conn === conn) sendSignal(conn, { description: pc.localDescription });
     } catch (err) {
       console.warn('[negotiation]', err);
@@ -1701,6 +1703,23 @@ function createPeer() {
   };
 
   setStatus(`Connecting to ${S.peer.name}`);
+}
+
+// The sound of a screen being shared goes in stereo, at music's quality: up to 128 kb/s. (Sent like
+// a voice, it's mono and thinner, which makes a game's sound quieter too.) Opus does that when the
+// end receiving it says it would like stereo, so each end says so on its own descriptions: for
+// every sound but the first (a call's first is always its microphone: onRemoteTrack).
+function stereoStreams(sdp) {
+  let sounds = 0;
+  return String(sdp || '').split(/(?=\r\nm=)/).map((part) => {
+    if (!/\bm=audio /.test(part) || sounds++ === 0) return part;
+    const opus = /a=rtpmap:(\d+) opus\/48000/i.exec(part);
+    if (!opus) return part;
+    return part.replace(new RegExp(`a=fmtp:${opus[1]} ([^\\r\\n]*)`), (line, params) => {
+      const keep = params.split(';').map((p) => p.trim()).filter((p) => p && !/^(stereo|sprop-stereo|maxaveragebitrate)=/.test(p));
+      return `a=fmtp:${opus[1]} ${[...keep, 'stereo=1', 'sprop-stereo=1', 'maxaveragebitrate=128000'].join(';')}`;
+    });
+  }).join('');
 }
 
 function addLocalTracks(conn) {
@@ -1759,7 +1778,8 @@ async function handleSignal({ pcId, description, candidate }) {
     }
 
     if (description.type === 'offer') {
-      await pc.setLocalDescription();
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription({ type: 'answer', sdp: stereoStreams(answer.sdp) });
       if (S.conn === conn) sendSignal(conn, { description: pc.localDescription });
     }
   } else if (candidate) {
@@ -6888,7 +6908,7 @@ function renderVolumeCap() {
   const capped = volumeCap() === 1;
   el.volumeInput.max = capped ? '100' : '300';
   el.volumeInput.value = String(Math.round(S.volume * 100));
-  el.streamVolume.max = capped ? '100' : '200';
+  el.streamVolume.max = capped ? '100' : '300';
   el.volumeHint.textContent = capped
     ? "On this phone, echo cancelling can't cover sound above 100%, so use your volume buttons to go louder."
     : 'Above 100% makes a quiet friend louder. It works best with headphones.';
@@ -9809,10 +9829,12 @@ async function onVoiceControl(act) {
       if (!v.speak) return toast("You can't share your screen in this channel.");
       if (ANDROID) return toast("Screen sharing from Android isn't here yet.");
       const smooth = el.shareQuality.value !== 'sharp';
+      // (Its sound in stereo, at music's quality: LiveKit's own options for it. Rainlit's own
+      // library, for Cloudflare, does that itself.)
       await me.setScreenShareEnabled(!me.isScreenShareEnabled, {
         audio: true, contentHint: smooth ? 'motion' : 'detail', saver: el.shareQuality.value === 'saver',
         resolution: { width: 1920, height: 1080, frameRate: smooth ? 60 : 30 },
-      });
+      }, { audioPreset: { maxBitrate: 128_000 }, forceStereo: true, dtx: false, red: false });
       playShareSound(me.isScreenShareEnabled);
     }
   } catch (err) {
