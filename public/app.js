@@ -11341,8 +11341,8 @@ function mixColor(a, b, t) {
   return `#${[16, 8, 0].map((k) => ch(k).toString(16).padStart(2, '0')).join('')}`;
 }
 // (The pattern along a card's top is in its bottom colour, on its top one; if they're too alike to
-// tell apart, lighter, or darker on a light card.)
-const bannerInk = (c1, c2) => (Math.abs(shade(c2) - shade(c1)) >= 45 ? c2 : mixColor(c2, shade(c1) > 140 ? '#000000' : '#ffffff', 0.35));
+// tell apart, in the top one, a little lighter (or darker, on a light card).)
+const bannerInk = (c1, c2) => (Math.abs(shade(c2) - shade(c1)) >= 45 ? c2 : mixColor(c1, shade(c1) > 140 ? '#000000' : '#ffffff', 0.25));
 
 // A card on a profile (or its preview): `node` gets its colours (and everything on it, words that
 // read on them), the pattern along its top, and its weather; `name` gets its font.
