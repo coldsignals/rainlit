@@ -205,18 +205,20 @@ from your own (**Your homepage**, then **Edit**).
   for you. 88x31 buttons, the little badges old sites linked each other with,
   are made right on the page: a few words, a pixel sticker, a style, and a
   link (a link to someone's homepage opens it right in Rainlit).
-- **The page:** a pattern, a color or your own picture behind it, weather
-  over it (rain, snow, sparkles, floating hearts), and a name for it.
+- **The page:** a pattern (polka dots and flowers to plaid, camo, hexagons
+  or a circuit board), a color or your own picture behind it, weather over it
+  (rain, snow, sparkles, floating hearts, autumn leaves), and a name for it.
 - **Your pet:** it lives on your page too (unless you'd rather it didn't: the
   **Pet** tab), wandering around the part of the page that's showing (and
   following along as it's scrolled), and anyone who can see your page can pet
   it (see "Pets" below).
 - **Glow's extras:** people with Glow also get backgrounds that move (a starfield, bokeh lights,
   holographic foil and waves, in the page's colours), effects for visitors (a
-  trail of sparkles, hearts, stars, bubbles or raindrops behind their pointer,
-  and confetti, hearts, stars or ripples where they click), a fortune ball
-  visitors ask things (with its forecasts, or answers you write), fireflies, an
-  aurora, a thunderstorm and cherry blossoms for weather, Shimmer and
+  trail of sparkles, hearts, stars, bubbles, raindrops or pixels behind their
+  pointer, and confetti, hearts, stars, ripples or fireworks where they click),
+  a fortune ball visitors ask things (with its forecasts, or answers you write),
+  fireflies, an aurora, a thunderstorm, cherry blossoms and embers for weather,
+  Shimmer and
   Lamplight words, and Gilded and Neon frames, and room for 200 MB and 500
   pieces. Anyone can try them on in the editor (nothing's saved). If Glow ends,
   what's on the page stays, until it's switched off.
@@ -240,13 +242,15 @@ hungry, it just mopes about, thinking of food, until it's fed. Petting it cheers
 it up: click it. It lives on your homepage too (unless you'd rather it didn't),
 where anyone who can see your page can pet it, and it counts how many times it's
 been petted. Its room is pixel too, and yours to do up (its **Decorate** tab):
-a wallpaper and a floor, a rug, something on the wall, and something in each
-corner (a plant, a lamp, a bookshelf, or its bed, where it naps). Glow brings
-three more pets: a cloudlet that makes rainbows when it's petted, a dragon that
-puffs flames, and a spirit fox with a glowing tail; and things for the room that
-glow: starlit and aurora wallpapers, cloud and crystal floors, a magic circle,
-fairy lights, a neon heart, an aquarium and a lava lamp (anyone can try them all
-on in the room). It's all just for fun: nothing nags you, and if you'd rather
+a wallpaper (stripes, hearts, slate, wood panels, plaid...) and a floor, a rug,
+something on the wall (a picture, a clock, a guitar, a dartboard...), and
+something in each corner (a plant, a lamp, a bookshelf, a desk, an armchair, or
+its bed, where it naps). Glow brings three more pets: a cloudlet that makes
+rainbows when it's petted, a dragon that puffs flames, and a spirit fox with a
+glowing tail; and things for the room that glow: starlit, aurora and city
+wallpapers, cloud and crystal floors, a magic circle, fairy lights, a neon heart
+and a neon bolt, an aquarium, a lava lamp and an arcade machine (anyone can try
+them all on in the room). It's all just for fun: nothing nags you, and if you'd rather
 not see the pet button at all, Settings > Look hides it. Letting your pet go
 (its room's **Pet** tab, once you've said you're sure) deletes it, and
 everything about it; its room stays as you did it up, for the next one.

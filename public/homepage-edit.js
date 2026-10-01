@@ -29,7 +29,7 @@
     typing: false, // (the text box's changes make one step of Undo)
   };
 
-  const PALETTE = ['#ffffff', '#fff59d', '#ffd23f', '#ff9f43', '#ef4d5e', '#ff8cc6', '#ffd0e6', '#c9b3ff', '#a57bff', '#8ae4ff', '#4c8dff', '#9be3c1', '#6ad07a', '#a86a3d', '#7a7590', '#2b2233', '#000000'];
+  const PALETTE = ['#ffffff', '#fff59d', '#ffd23f', '#ff9f43', '#ef4d5e', '#6b2737', '#ff8cc6', '#ffd0e6', '#c9b3ff', '#a57bff', '#8ae4ff', '#4c8dff', '#1f2c4a', '#9be3c1', '#6ad07a', '#2f4a3a', '#a86a3d', '#7a7590', '#4b5563', '#2b2233', '#000000'];
   const TAPE_COLORS = ['#f4a9c8', '#8fd3ff', '#9be3c1', '#ffe28a', '#c9b3ff', '#ff9f8a'];
   const WRITE = [
     { label: 'Title', p: { font: 'script', size: 48, color: '#ffffff', c3: '#ff7eb6', fx: 'glow', text: 'my corner of the web', w: 460, align: 'center' } },

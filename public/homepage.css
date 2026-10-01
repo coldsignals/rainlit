@@ -524,6 +524,13 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   animation: hp-rise 12s linear infinite;
 }
 .hp-sky-hearts::after { opacity: 0.6; background-position: 90px 60px; animation-duration: 17s; }
+/* Autumn leaves tumble down. */
+.hp-sky-leaves::before, .hp-sky-leaves::after {
+  top: -240px; left: -48px; right: -48px; height: calc(100% + 240px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cg opacity='.92'%3E%3Cpath fill='%23d9662b' transform='translate(30 30) rotate(25)' d='M0 0c5-7 15-7 18 0-3 7-13 7-18 0z'/%3E%3Cpath fill='%23e8a33d' transform='translate(150 70) rotate(-40)' d='M0 0c4-6 12-6 15 0-3 6-11 6-15 0z'/%3E%3Cpath fill='%23b5482a' transform='translate(205 160) rotate(70)' d='M0 0c5-7 15-7 18 0-3 7-13 7-18 0z'/%3E%3Cpath fill='%23c9862e' transform='translate(80 140) rotate(-15)' d='M0 0c4-6 12-6 15 0-3 6-11 6-15 0z'/%3E%3Cpath fill='%23d9662b' transform='translate(115 215) rotate(110)' d='M0 0c4-5 11-5 13 0-2 5-9 5-13 0z'/%3E%3C/g%3E%3C/svg%3E");
+  animation: hp-petals 13s linear infinite;
+}
+.hp-sky-leaves::after { opacity: 0.75; background-position: 110px 90px; animation-duration: 18s; }
 /* Supporters' extras. Fireflies drift and glow; */
 .hp-sky-fireflies::before, .hp-sky-fireflies::after {
   inset: -48px;
@@ -567,13 +574,20 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 }
 .hp-sky-storm::after { inset: 0; background: rgba(225, 235, 255, 0.9); opacity: 0; animation: hp-flash 9s linear infinite; }
 @keyframes hp-flash { 0%, 80%, 86%, 100% { opacity: 0; } 81% { opacity: 0.38; } 82% { opacity: 0.06; } 83.5% { opacity: 0.28; } }
-/* and cherry blossom petals drift down. */
+/* cherry blossom petals drift down; */
 .hp-sky-blossoms::before, .hp-sky-blossoms::after {
   top: -240px; left: -48px; right: -48px; height: calc(100% + 240px);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cg opacity='.9'%3E%3Cpath fill='%23ffc4dc' d='M30 30c4-5 11-4 13 0-2 4-9 5-13 0z'/%3E%3Cpath fill='%23ffb0cf' d='M150 70c3-4 9-3 11 0-2 3-8 4-11 0z'/%3E%3Cpath fill='%23ffd6e6' d='M205 160c4-5 12-4 14 0-2 4-10 5-14 0z'/%3E%3Cpath fill='%23ff9fc4' d='M80 140c3-4 8-3 10 0-2 3-7 4-10 0z'/%3E%3Cpath fill='%23ffc4dc' d='M115 215c4-4 10-4 12 0-2 4-8 4-12 0z'/%3E%3C/g%3E%3C/svg%3E");
   animation: hp-petals 11s linear infinite;
 }
 .hp-sky-blossoms::after { opacity: 0.7; background-position: 100px 120px; animation-duration: 16s; }
+/* (And embers drift up, glowing.) */
+.hp-sky-embers::before, .hp-sky-embers::after {
+  top: 0; left: -40px; right: -40px; height: calc(100% + 240px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cdefs%3E%3CradialGradient id='e'%3E%3Cstop offset='0' stop-color='%23fff1b0'/%3E%3Cstop offset='.35' stop-color='%23ffa23a' stop-opacity='.85'/%3E%3Cstop offset='1' stop-color='%23ff5a1f' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg fill='url(%23e)'%3E%3Ccircle cx='30' cy='200' r='4'/%3E%3Ccircle cx='120' cy='150' r='3'/%3E%3Ccircle cx='200' cy='60' r='4.5'/%3E%3Ccircle cx='70' cy='40' r='3'/%3E%3Ccircle cx='170' cy='210' r='3.5'/%3E%3Ccircle cx='95' cy='100' r='2.5'/%3E%3C/g%3E%3C/svg%3E");
+  animation: hp-rise 9s linear infinite;
+}
+.hp-sky-embers::after { opacity: 0.7; background-position: 120px 80px; animation-duration: 13s; }
 @keyframes hp-petals {
   0% { transform: translate(0, 0); }
   50% { transform: translate(24px, 120px); }

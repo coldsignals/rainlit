@@ -41,16 +41,17 @@
   const BUTTONS = { bevel: 'Classic', shiny: 'Shiny', stripes: 'Stripes', dark: 'Dark' };
   const PATTERNS = {
     dots: 'Polka dots', stripes: 'Stripes', checks: 'Checks', gingham: 'Gingham', grid: 'Grid', hearts: 'Hearts', stars: 'Stars', flowers: 'Flowers', zigzag: 'Zigzag', clouds: 'Clouds',
+    plaid: 'Plaid', camo: 'Camo', hexes: 'Hexagons', circuit: 'Circuit board',
     starfield: 'Starfield', bokeh: 'Bokeh', holo: 'Holo', waves: 'Waves',
   };
-  const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms' };
-  const TRAILS = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', stars: 'Stars', bubbles: 'Bubbles', raindrops: 'Raindrops' };
-  const CLICKS = { none: 'Nothing', confetti: 'Confetti', hearts: 'Hearts', stars: 'Stars', ripples: 'Ripples' };
+  const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', leaves: 'Autumn leaves', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms', embers: 'Embers' };
+  const TRAILS = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', stars: 'Stars', bubbles: 'Bubbles', raindrops: 'Raindrops', pixels: 'Pixels' };
+  const CLICKS = { none: 'Nothing', confetti: 'Confetti', hearts: 'Hearts', stars: 'Stars', ripples: 'Ripples', fireworks: 'Fireworks' };
   // Glow's extras (lib/homepages.js): anyone can see them on a page, people with Glow can use them.
   const PERKS = {
-    fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms'],
-    pattern: ['starfield', 'bokeh', 'holo', 'waves'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops'],
-    click: ['confetti', 'hearts', 'stars', 'ripples'], pet: ['cloud', 'dragon', 'fox'], piece: ['fortune'],
+    fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms', 'embers'],
+    pattern: ['starfield', 'bokeh', 'holo', 'waves'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels'],
+    click: ['confetti', 'hearts', 'stars', 'ripples', 'fireworks'], pet: ['cloud', 'dragon', 'fox'], piece: ['fortune'],
   };
 
   // ---------- Pixel stickers ----------
@@ -86,12 +87,22 @@
     'music': ["....kkkkkkk", "....kkkkkkk", "....k.....k", "....k.....k", "....k.....k", "....k.....k", "....k.....k", "....k.....k", ".kkkk..kkkk", "kkkkk.kkkkk", "kkkk..kkkk."],
     'cursor': ["k..........", "kk.........", "kwk........", "kwwk.......", "kwwwk......", "kwwwwk.....", "kwwwwwk....", "kwwwwwwk...", "kwwwwwwwk..", "kwwwwwwwwk.", "kwwwwwkkkkk", "kwwkwwk....", "kwk.kwwk...", "kk..kwwk...", "k....kwwk..", ".....kwwk..", "......kk..."],
     'floppy': [".kkkkkkkkkkkk..", "kbbbbbbbbbbbbk.", "kbbbssssssbbbbk", "kbbbssssSsbbbbk", "kbbbssssSsbbbbk", "kbbbssssssbbbbk", "kbbbbbbbbbbbbbk", "kbbwwwwwwwwwbbk", "kbbwwkkkkkwwbbk", "kbbwwwwwwwwwbbk", "kbbwwkkkkwwwbbk", "kbbwwwwwwwwwbbk", "kbbwwwwwwwwwbbk", ".kkkkkkkkkkkkk."],
+    'controller': ["...kkkkkkkkkk...", "..kssssssssssk..", ".kSSSSSSSSSSSSk.", "kSSSwSSSSSSySSSk", "kSSwwwSSSSbSrSSk", "kSSSwSSkkSSgSSSk", "kSSSSSSSSSSSSSSk", "kSSSSSkkkkSSSSSk", ".kSSSk....kSSSk.", "..kkk......kkk.."],
+    'headphones': [".....kkkkkk.....", "...kkSSSSSSkk...", "..kSSssssssSSk..", ".kSSskkkkkksSSk.", ".kSsk......ksSk.", "kSSk........kSSk", "kSSk........kSSk", "kSSSk......kSSSk", "krrSSk....kSSrrk", "krrSSk....kSSrrk", "krrSSk....kSSrrk", "krRSSk....kSSRrk", ".kRSSk....kSSRk.", "..kkk......kkk.."],
+    'skull': ["....kkkkkk....", "..kkwwwwwwkk..", ".kwwwwwwwwwwk.", "kwwwwwwwwwwwWk", "kwwwwwwwwwwwWk", "kwkkkwwwwkkkWk", "kwkkkkwwkkkkWk", "kwwkkwwwwkkwWk", ".kwwwwkkwwwWk.", "..kwwwwwwwWk..", "..kwkwkwkwWk..", "...kwwwwWWk...", "....kkkkkk...."],
+    'sword': ["....k....", "...kwk...", "..kwsSk..", "..kwsSk..", "..kwsSk..", "..kwsSk..", "..kwsSk..", "..kwsSk..", "..kwsSk..", ".kkwsSkk.", "kOyyyyyOk", ".kkknkkk.", "...kNk...", "...knk...", "..kyYyk..", "...kkk..."],
+    'rocket': ["....kk....", "...krrk...", "..krrrrk..", "..kwwwWk..", ".kwwbbwWk.", ".kwbccbWk.", ".kwbccbWk.", ".kwwbbwWk.", ".kwwwwwWk.", "krwwwwwWrk", "krrwwwWrrk", "krrkSSkrrk", ".kkoyyokk.", "...kook...", "....kk...."],
+    'planet': [".......kkkk.......", ".....kkooOOkk.....", "....kooooooOOk....", ".kkkoooooooooOkkk.", "kYYkooooooooOOkYYk", "kYYYYYYYYYYYYYYYYk", ".kyyyyyyyyyyyyyyk.", "..kkoooooooooOkk..", "....kooooooOOk....", ".....kkooOOkk.....", ".......kkkk......."],
+    'basketball': [".....kkkkk.....", "....kookook....", "...koookoook...", "..kkoookoookk..", ".kokoookoookok.", "koookookookoook", "koookookookoook", "kkkkkkkkkkkkkkk", "koookookookoOOk", "koookookookOOOk", ".kokoookooOkOk.", "..kkoookoOOkk..", "...koookOOOk...", "....kookOOk....", ".....kkkkk....."],
+    'coffee': ["...k..k.....", "..kWkkWk....", "...kWkkWk...", ".kkWkkWkk...", "kwwwwwwwwkk.", "kwNNNNNNwwwk", "kwwwwwwwWkwk", "krrrrrrrRkwk", "kwwwwwwwWwwk", "kwwwwwwwWkk.", ".kwwwwwwWk..", "..kWWWWWk...", "...kkkkk...."],
   };
   const PIXEL_NAMES = {
     heart: 'Heart', 'heart-pink': 'Pink heart', star: 'Star', sparkle: 'Sparkle', moon: 'Moon', flame: 'Little flame',
     raindrop: 'Raindrop', cloud: 'Cloud', umbrella: 'Umbrella', flower: 'Flower', leaf: 'Leaf', mushroom: 'Mushroom',
     cherry: 'Cherries', ghost: 'Ghost', crown: 'Crown', bolt: 'Lightning', gem: 'Gem', rainbow: 'Rainbow', eye: 'Eye',
     smiley: 'Smiley', bow: 'Bow', music: 'Music', cursor: 'Cursor', floppy: 'Floppy disk',
+    controller: 'Controller', headphones: 'Headphones', skull: 'Skull', sword: 'Sword', rocket: 'Rocket', planet: 'Planet',
+    basketball: 'Basketball', coffee: 'Coffee',
   };
 
   const uri = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
@@ -141,6 +152,14 @@
     stars: (a, b) => `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="${a}"/><g fill="${b}"><path d="M24 14l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/><path d="M84 70l1.5 4.5 4.5 1.5-4.5 1.5L84 82l-1.5-4.5L78 76l4.5-1.5z"/><circle cx="60" cy="30" r="1.6"/><circle cx="100" cy="18" r="1.1"/><circle cx="14" cy="80" r="1.4"/><circle cx="46" cy="100" r="1"/><circle cx="108" cy="104" r="1.6"/><circle cx="70" cy="52" r="0.9"/><circle cx="36" cy="58" r="1.1" opacity=".7"/><circle cx="94" cy="44" r="0.8" opacity=".7"/></g></svg>`,
     flowers: (a, b) => `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="${a}"/><g fill="${b}">${[[16, 16], [48, 48]].map(([x, y]) => [0, 72, 144, 216, 288].map((d) => `<circle cx="${x + 5 * Math.cos((d * Math.PI) / 180)}" cy="${y + 5 * Math.sin((d * Math.PI) / 180)}" r="3.6"/>`).join('')).join('')}</g><g fill="${a}" opacity=".85"><circle cx="16" cy="16" r="2.2"/><circle cx="48" cy="48" r="2.2"/></g></svg>`,
     clouds: (a, b) => `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="110"><rect width="160" height="110" fill="${a}"/><g fill="${b}"><path d="M20 40a10 10 0 0 1 9-10 13 13 0 0 1 24-3 9 9 0 0 1 13 8 8 8 0 0 1-1 16H28a9 9 0 0 1-8-11z"/><path d="M96 92a8 8 0 0 1 7-8 10 10 0 0 1 19-2 7 7 0 0 1 10 6 6 6 0 0 1-1 12h-29a7 7 0 0 1-6-8z"/></g></svg>`,
+    // (Tartan: wide bands each way, darker where they cross, and thin lines.)
+    plaid: (a, b) => `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="${a}"/><g fill="${b}" opacity=".32"><rect y="8" width="64" height="16"/><rect x="8" width="16" height="64"/></g><g fill="${b}" opacity=".7"><rect y="44" width="64" height="3"/><rect x="44" width="3" height="64"/></g><g fill="#ffffff" opacity=".12"><rect y="36" width="64" height="1.5"/><rect x="36" width="1.5" height="64"/></g></svg>`,
+    // (Blotches in three shades, carrying on from one tile to the next.)
+    camo: (a, b) => `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><defs><g id="c"><g fill="${b}" opacity=".55"><path d="M10 40C30 12 70 20 84 36s36 10 44 26-16 30-36 22-32 8-52 2-26-24-20-46Z"/><path d="M100 120c18-16 50-10 68 4s8 36-14 36-26 16-46 10-24-34-8-50Z"/></g><g fill="${b}"><path d="M60 100c14-12 32-4 34 10s-12 22-24 30-30 4-32-10 10-20 22-30Z"/><path d="M130 10c16-10 38-4 42 12s-14 22-26 32-30 4-30-12 2-24 14-32Z"/><path d="M20 130c10-6 20 0 18 10s-16 16-24 10-4-14 6-20Z"/></g><g fill="#000000" opacity=".25"><path d="M90 50c10-6 22 0 20 10s-16 12-22 4-4-10 2-14Z"/><path d="M150 80c10-6 22 2 18 12s-18 8-22 2-2-10 4-14Z"/><path d="M40 10c8-6 20-2 18 8s-14 10-20 4-4-8 2-12Z"/></g></g></defs><rect width="160" height="160" fill="${a}"/><use href="#c"/><use href="#c" x="-160"/><use href="#c" y="-160"/><use href="#c" x="-160" y="-160"/></svg>`,
+    // (A honeycomb, in lines.)
+    hexes: (a, b) => `<svg xmlns="http://www.w3.org/2000/svg" width="45" height="26"><rect width="45" height="26" fill="${a}"/><path d="M0 13 7.5 0h15L30 13l-7.5 13h-15ZM30 13h15" fill="none" stroke="${b}" stroke-width="1.6"/></svg>`,
+    // (Traces and pads, carrying on from one tile to the next.)
+    circuit: (a, b) => `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="${a}"/><g fill="none" stroke="${b}" stroke-width="2" opacity=".85"><path d="M0 24h30l12 12v24h54M60 24h36M0 60h18M72 0v14M72 82v14M24 96V78l12-12h10M24 0v8"/></g><g fill="${b}"><circle cx="60" cy="24" r="3.5"/><circle cx="18" cy="60" r="3.5"/><circle cx="72" cy="14" r="3.5"/><circle cx="72" cy="82" r="3.5"/><circle cx="46" cy="66" r="3.5"/><circle cx="24" cy="8" r="3.5"/></g><g fill="${a}"><circle cx="60" cy="24" r="1.4"/><circle cx="18" cy="60" r="1.4"/><circle cx="72" cy="14" r="1.4"/><circle cx="72" cy="82" r="1.4"/><circle cx="46" cy="66" r="1.4"/><circle cx="24" cy="8" r="1.4"/></g></svg>`,
   };
 
   // Glow's patterns move, in the page's two colours: stars drifting past (the brightest
@@ -1523,10 +1542,11 @@
       },
       nap() {
         const r = room.prRoom;
-        const side = r && (r.left === 'bed' ? 'left' : r.right === 'bed' ? 'right' : null);
+        const bed = (key) => Boolean(STANDS[key] && STANDS[key].nap);
+        const side = r && (bed(r.left) ? 'left' : bed(r.right) ? 'right' : null);
         if (!side) return null;
         const { P, W, H } = size();
-        const half = (thingOf('stand', 'bed').w * P) / 2;
+        const half = (thingOf('stand', r[side]).w * P) / 2;
         return { x: side === 'left' ? P * 3 + half : W - P * 3 - half, y: H - P * 15 };
       },
       at(e) {
@@ -2087,6 +2107,86 @@
     return rows;
   }
 
+  // (A woven rug: a border, a row of diamonds, and a fringe at each end.)
+  function woven(w, h) {
+    const rows = [];
+    for (let y = 0; y < h; y++) {
+      let row = '';
+      for (let x = 0; x < w; x++) {
+        if (x === 0 || x === w - 1) row += y % 2 ? 'w' : '.';
+        else if (y === 0 || y === h - 1 || x === 1 || x === w - 2) row += 'c';
+        else {
+          const d = Math.abs(((x - 2) % 8) - 3.5) + Math.abs(y - (h - 1) / 2);
+          row += d <= 1.5 ? 'c' : d <= 2.5 ? 'b' : 'a';
+        }
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+  // (A dartboard: black and cream wedges, a red ring and a green one, the bull, and a dart in it.)
+  function dartboard() {
+    const n = 15;
+    const g = [];
+    for (let y = 0; y < n; y++) {
+      const row = [];
+      for (let x = 0; x < n; x++) {
+        const dx = x + 0.5 - n / 2;
+        const dy = y + 0.5 - n / 2;
+        const d = Math.hypot(dx, dy);
+        const seg = Math.floor(((Math.atan2(dy, dx) + Math.PI) / (Math.PI * 2)) * 8) % 2;
+        row.push(d > 7.3 ? '.' : d > 6.4 ? 'K' : d > 5.5 ? 'r' : d > 3.6 ? (seg ? 'c' : 'K') : d > 2.7 ? 'g' : d > 1.3 ? (seg ? 'c' : 'K') : 'r');
+      }
+      g.push(row);
+    }
+    for (const [x, y, c] of [[8, 6, 's'], [9, 5, 's'], [10, 4, 's'], [11, 3, 'y'], [12, 2, 'y'], [11, 2, 'y'], [12, 3, 'y']]) g[y][x] = c;
+    return g.map((r) => r.join(''));
+  }
+  // (A lightning bolt as a neon tube: just its edge.)
+  function neonBolt() {
+    const pts = [[6, 0], [12, 0], [8, 6.5], [12, 6.5], [3, 17], [5.5, 9], [1, 9]];
+    const inside = (px, py) => {
+      let hit = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const [xi, yi] = pts[i];
+        const [xj, yj] = pts[j];
+        if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) hit = !hit;
+      }
+      return hit;
+    };
+    const m = Array.from({ length: 17 }, (_, y) => Array.from({ length: 13 }, (_, x) => inside(x + 0.5, y + 0.5)));
+    const at = (x, y) => Boolean(m[y] && m[y][x]);
+    return m.map((row, y) => row.map((v, x) => (v && !(at(x - 1, y) && at(x + 1, y) && at(x, y - 1) && at(x, y + 1)) ? 'c' : '.')).join(''));
+  }
+  // (Tartan: wide bands each way, darker where they cross, and a thin red line.)
+  function plaidTile() {
+    const rows = [];
+    for (let y = 0; y < 16; y++) {
+      let row = '';
+      for (let x = 0; x < 16; x++) {
+        const bx = x >= 4 && x < 8;
+        const by = y >= 4 && y < 8;
+        row += x === 12 || y === 12 ? 'r' : bx && by ? 'd' : bx || by ? 'n' : x === 0 || y === 0 ? 'l' : 'g';
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+  // (A city at night: buildings against the sky, their windows lit, and a few stars.)
+  function cityTile() {
+    const W = 32;
+    const tops = [[0, 4, 13], [4, 6, 9], [10, 5, 15], [15, 3, 11], [18, 7, 7], [25, 5, 12], [30, 2, 16]]; // ([x, width, how tall])
+    const g = Array.from({ length: WALL_ROWS }, (_, y) => Array(W).fill(y < 10 ? 'a' : 'b'));
+    for (const [x, y] of [[3, 2], [13, 5], [22, 1], [28, 4], [8, 8]]) g[y][x] = 's';
+    for (const [x0, w, tall] of tops) {
+      for (let x = x0; x < Math.min(W, x0 + w); x++) for (let y = WALL_ROWS - tall; y < WALL_ROWS; y++) g[y][x] = 'h';
+      for (let x = x0 + 1; x < Math.min(W, x0 + w) - 1; x += 2) for (let y = WALL_ROWS - tall + 2; y < WALL_ROWS - 1; y += 2) g[y][x] = (x * 7 + y * 3) % 5 === 0 ? 'h' : 'y';
+    }
+    return g.map((r) => r.join(''));
+  }
+  // (A pet bed: there are two.)
+  const BED_ROWS = ['.....pppppppppppp.....', '...ppbbbbbbbbbbbbpp...', '..pbbbbbbbbbbbbbbbbp..', '.pbbbbbbbbbbbbbbbbbbp.', 'ppbbbbbbbbbbbbbbbbbbpp', 'pppbbbbbbbbbbbbbbbbppp', 'PpppppbbbbbbbbbbpppppP', '.PPPppppppppppppppPPP.', '...PPPPPPPPPPPPPPPP...'];
+
   // Wallpapers and floors: a tile each, repeated (and for some of Glow's, some of it twinkling).
   // (`perk`: one of Glow's.)
   const WALLS = {
@@ -2099,6 +2199,9 @@
       tile: ['aaaaaaaaaaaa', 'abbabbaaaaaa', 'abbbbbaaaaaa', 'aabbbaaaaaaa', 'aaabaaaaaaaa', 'aaaaaaaaaaaa', 'aaaaaaaaaaaa', 'aaaaaaabbabb', 'aaaaaaabbbbb', 'aaaaaaaabbba', 'aaaaaaaaabaa', 'aaaaaaaaaaaa'],
       colors: { a: '#e9a3bd', b: '#d9779c' },
     },
+    slate: { label: 'Slate', tile: ['baaaaaaaaaac', 'baaaaaaaaaac', 'baaaaadaaaac', 'baaaaaaaaaac', 'baaaaaaaaaac', 'baadaaaaaaac', 'baaaaaaaaaac', 'baaaaaaaaaac'], colors: { a: '#4b5563', b: '#56606e', c: '#3e4652', d: '#525c6a' } },
+    panels: { label: 'Wood panels', tile: ['baaaacbaaaac', 'baadacbaaaac', 'baadacbaaaac', 'baaaacbadaac', 'baaaacbadaac', 'baaaacbaaaac', 'badaacbaaaac', 'badaacbaaadc', 'baaaacbaaadc', 'baaaacbaaaac'], colors: { a: '#6b4a32', b: '#7a5638', c: '#4f3523', d: '#5e412c' } },
+    plaid: { label: 'Plaid', tile: plaidTile(), colors: { g: '#2f4a3a', l: '#3a5746', n: '#283a55', d: '#1f2c3f', r: '#9a3a3a' } },
     starlit: {
       label: 'Starlit', perk: true, twinkle: 'b',
       tile: ['aaaaaaaaaaaaaaaa', 'aaaaaaaaaaacaaaa', 'aabaaaaaaaaaaaaa', 'abbbaaaaaaaaaaaa', 'aabaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa', 'aaaaaaacaaaaaaaa', 'aaaaaaaaaaaaabaa',
@@ -2106,6 +2209,7 @@
       colors: { a: '#141a3a', b: '#fff4c2', c: '#8f96c9' },
     },
     aurora: { label: 'Aurora', perk: true, twinkle: 'g', tile: auroraTile(), colors: { a: '#0f1a33', b: '#0b1328', g: '#5ff0b0', t: '#2a9f96', p: '#7a5cd6' } },
+    city: { label: 'City at night', perk: true, twinkle: 'y', tile: cityTile(), colors: { a: '#0f1530', b: '#1a2246', s: '#cfd8ff', h: '#0a0d1c', y: '#ffd76a' } },
   };
   const FLOORS = {
     wood: { label: 'Wood', tile: ['aaaaaaaaaaaaaaab', 'acaaaaaaaaaaaaab', 'aaaaaaaaaaaaaaab', 'bbbbbbbbbbbbbbbb', 'aaaaaaabaaaaaaaa', 'aaaaaaabaaaaacaa', 'aaaaaaabaaaaaaaa', 'bbbbbbbbbbbbbbbb'], colors: { a: '#a8744c', b: '#8a5c3a', c: '#b8845a' } },
@@ -2113,6 +2217,8 @@
     tiles: { label: 'Tiles', tile: ['gggggggg', 'ghhhhhha', 'ghaaaaas', 'ghaaaaas', 'ghaaaaas', 'ghaaaaas', 'ghaaaaas', 'gassssss'], colors: { g: '#b3a48c', h: '#fbf6ec', a: '#ece3d1', s: '#d6cab3' } },
     carpet: { label: 'Carpet', tile: ['abac', 'baca', 'acab', 'caba'], colors: { a: '#5b4a8a', b: '#6a58a0', c: '#4f4079' } },
     grass: { label: 'Grass', tile: ['aaaaaaaa', 'abaaaaba', 'aaaacaaa', 'aaaaaaaa', 'aaabaaaa', 'baaaaaab', 'aaaaadaa', 'aaaaaaaa'], colors: { a: '#5fa84f', b: '#4f9442', c: '#ffd84d', d: '#ffffff' } },
+    walnut: { label: 'Dark wood', tile: ['aaaaaaaaaaaaaaab', 'acaaaaaaaaaaaaab', 'aaaaaaaaaaaaaaab', 'bbbbbbbbbbbbbbbb', 'aaaaaaaaaaabaaaa', 'aaaaacaaaaabaaaa', 'aaaaaaaaaaabaaaa', 'bbbbbbbbbbbbbbbb'], colors: { a: '#5e3d27', b: '#46291a', c: '#6e4a30' } },
+    stone: { label: 'Stone', tile: ['aaaaaaambbbbbbbm', 'aacaaaambbbbbcbm', 'aaaaaaambbbbbbbm', 'mmmmmmmmmmmmmmmm', 'bbbmaaaaaaambbbb', 'bbbmaaacaaambbbb', 'bbbmaaaaaaambbbb', 'mmmmmmmmmmmmmmmm'], colors: { a: '#7d8088', b: '#6f727a', c: '#8a8d95', m: '#55575e' } },
     clouds: {
       label: 'Clouds', perk: true,
       tile: ['aaaaaaaaaaaaaaaa', 'aabbbaaaaaaaaaaa', 'abbbbbaaaaabbaaa', 'abbbbbbaaabbbbaa', 'aabbbbaaaabbbbba', 'aaaccaaaaaabbbaa', 'aaaaaaaaaaacccaa', 'aaaaaaaaaaaaaaaa'],
@@ -2126,6 +2232,8 @@
     none: { label: 'None' },
     round: { label: 'Round', rows: oval(36, 10, 'bbababa'), colors: { a: '#e8799f', b: '#f3a9c4' } },
     rect: { label: 'Striped', rows: mat(34, 9), colors: { a: '#3f6fc0', b: '#9fc3f5', c: '#f2f6ff', w: '#f2f6ff' } },
+    woven: { label: 'Woven', rows: woven(34, 9), colors: { a: '#a8502f', b: '#e8d8b8', c: '#2f3f5f', w: '#e8d8b8' } },
+    charcoal: { label: 'Charcoal', rows: oval(36, 10, 'bbababa'), colors: { a: '#4a4e57', b: '#5d626c' } },
     magic: { label: 'Magic circle', perk: true, glow: '#9ae8ff', bare: true, rows: oval(38, 10, '...c.b.a').map((r, y) => (y === 4 || y === 5 ? r.replace(/c/g, 'w') : r)), colors: { a: '#7efaff', b: '#b58cff', c: '#b58cff', w: '#ffffff' } },
   };
   const HANGS = {
@@ -2145,6 +2253,12 @@
       rows: ['...g................', '..ggg.......r.......', '.gGgGg....yyru.pp...', '..gGg.....yyruupp...', '..ooo.....yyruupp...', '..ooo.....yyruupp...', 'bbbbbbbbbbbbbbbbbbbb', 'BBBBBBBBBBBBBBBBBBBB', '..B..............B..'],
       colors: { g: '#6ad07a', G: '#3f9e57', o: '#e07a4a', b: '#b8845a', B: '#8a5c3a', y: '#ffd84d', r: '#ef4d5e', u: '#4c8dff', p: '#a57bff' },
     },
+    guitar: {
+      label: 'Guitar',
+      rows: ['...NNN...', '..tNNNt..', '..tNNNt..', '....n....', '....n....', '....n....', '....n....', '....n....', '..bbnbb..', '.bbbnbbB.', '.bbbbbbB.', '..bbbbB..', '.bbbbbbB.', 'bbbhhhbbB', 'bbbhhhbbB', 'bbbbbbbbB', 'bbbNNNbBB', '.bbbbbbB.', '..BBBBB..'],
+      colors: { N: '#4a2f22', n: '#7a4a2a', t: '#d8d8d8', b: '#d9893f', B: '#b06a2a', h: '#3a2a22' },
+    },
+    darts: { label: 'Dartboard', rows: dartboard(), colors: { K: '#26262b', c: '#efe6cf', r: '#d64545', g: '#3f9e57', s: '#cfd3dc', y: '#ffd84d' } },
     lights: {
       label: 'Fairy lights', perk: true, glow: '#fff1a8', bare: true, frames: [fairyLights(false), fairyLights(true)],
       colors: { m: '#7a7a92', y: '#ffd84d', Y: '#8a7a3a', p: '#ff6fb5', P: '#7a3a5c', c: '#7fe3ff', C: '#3a6a7a', g: '#8dff7a', G: '#3f6a3a' },
@@ -2154,6 +2268,7 @@
       rows: ['..ppp...ppp..', '.p...p.p...p.', 'p.....p.....p', 'p...........p', 'p...........p', '.p.........p.', '..p.......p..', '...p.....p...', '....p...p....', '.....p.p.....', '......p......'],
       colors: { p: '#ff7ad6' },
     },
+    bolt: { label: 'Neon bolt', perk: true, glow: '#4fe0ff', bare: true, flicker: true, rows: neonBolt(), colors: { c: '#7ff6ff' } },
   };
   const STANDS = {
     none: { label: 'None' },
@@ -2167,12 +2282,19 @@
       rows: ['..yyyyy..', '.yyyyyyy.', '.yyyyyyy.', 'yyyyyyyyy', 'yyyyyyyyy', 'YYYYYYYYY', ...Array(15).fill('....m....'), '...mmm...', '..mmmmm..', '.mmmmmmm.'],
       colors: { y: '#ffd27a', Y: '#e0a84a', m: '#6a6f80' },
     },
-    bed: {
-      label: 'Pet bed', nap: true,
-      rows: ['.....pppppppppppp.....', '...ppbbbbbbbbbbbbpp...', '..pbbbbbbbbbbbbbbbbp..', '.pbbbbbbbbbbbbbbbbbbp.', 'ppbbbbbbbbbbbbbbbbbbpp', 'pppbbbbbbbbbbbbbbbbppp', 'PpppppbbbbbbbbbbpppppP', '.PPPppppppppppppppPPP.', '...PPPPPPPPPPPPPPPP...'],
-      colors: { p: '#e8799f', b: '#ffc2d6', P: '#c95c80' },
-    },
+    bed: { label: 'Pet bed', nap: true, rows: BED_ROWS, colors: { p: '#e8799f', b: '#ffc2d6', P: '#c95c80' } },
+    bedgrey: { label: 'Grey pet bed', nap: true, rows: BED_ROWS, colors: { p: '#5b6372', b: '#c3c8d2', P: '#454b57' } },
     books: { label: 'Bookshelf', rows: bookshelf(), colors: { B: '#8a5c3a', d: '#4a2f22', r: '#ef4d5e', u: '#4c8dff', g: '#6ad07a', y: '#ffd84d', p: '#a57bff' } },
+    desk: {
+      label: 'Desk',
+      rows: ['..mmmmmmmmmmm.......', '..mbbbbbbbbbm.......', '..mbccbbbbbbm.......', '..mbcbbbbbbbm.......', '..mbbbbbbbbbm.......', '..mmmmmmmmmmm.......', '.......m.......ww...', '.....mmmmm.KK..wwW..', 'tttttttttttttttttttt', 'TTTTTTTTTTTTTTTTTTTT', 'T..........DDDDDDDDT', 'T..........DddddddDT', 'T..........DDDDDDDDT', 'T..........DddddddDT', 'T..........DDDDDDDDT'],
+      colors: { m: '#3a3f4b', b: '#3d6fd6', c: '#9fd0ff', w: '#f2f2f2', W: '#cfcfcf', K: '#262a33', t: '#9a6b45', T: '#7a5234', D: '#6b4a32', d: '#8a5f3d' },
+    },
+    armchair: {
+      label: 'Armchair',
+      rows: ['...bbbbbbbbbb...', '..baaaaaaaaaac..', '..baaaaaaaaaac..', '..baaaaaaaaaac..', 'bbbaaaaaaaaaacbb', 'baacaaaaaaaacaac', 'baacbbbbbbbbcaac', 'baacaaaaaaaacaac', 'baaccccccccccaac', 'baaaaaaaaaaaaaac', 'cccccccccccccccc', '.l............l.'],
+      colors: { a: '#6b7280', b: '#7d8492', c: '#565c68', l: '#4a3424' },
+    },
     aquarium: {
       label: 'Aquarium', perk: true, glow: '#8fd8ff',
       frames: [
@@ -2185,6 +2307,14 @@
       label: 'Lava lamp', perk: true, glow: '#c08aff',
       frames: [lavaLamp([[2, 4, 1.1], [4, 10, 1.5]]), lavaLamp([[3, 6, 1.2], [3, 9, 1.4]])],
       colors: { m: '#9aa0b5', l: '#8a5cff', o: '#ff9a3d' },
+    },
+    arcade: {
+      label: 'Arcade machine', perk: true, glow: '#7fd8ff',
+      frames: [
+        ['aaaaaaaaaaaa', 'ammmmmmmmmma', 'amMmmMmmMmma', 'aaaaaaaaaaaa', 'aAssssssssAa', 'aAssgsssssAa', 'aAsgggssssAa', 'aAssgsssysAa', 'aAssssssssAa', 'aAssssssssAa', 'aaaaaaaaaaaa', 'cccccccccccc', 'ccrccccbyccc', 'aaaaaaaaaaaa', 'aAAAAAAAAAAa', 'aAAAyyyyAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aaaaaaaaaaaa'],
+        ['aaaaaaaaaaaa', 'aMmmMmmMmmma', 'ammmmmmmmmma', 'aaaaaaaaaaaa', 'aAssssssssAa', 'aAssssgsssAa', 'aAsssgggssAa', 'aAssssgsssAa', 'aAssyyssssAa', 'aAssssssssAa', 'aaaaaaaaaaaa', 'cccccccccccc', 'ccrccccbyccc', 'aaaaaaaaaaaa', 'aAAAAAAAAAAa', 'aAAAyyyyAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aaaaaaaaaaaa'],
+      ],
+      colors: { a: '#2b2f3d', A: '#363b4d', m: '#ff5fa8', M: '#ffd0e6', s: '#13233f', g: '#7dff8a', y: '#ffd84d', c: '#4a5068', r: '#ef4d5e', b: '#4c8dff' },
     },
   };
   const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS };
@@ -2319,6 +2449,7 @@
     sparkles: ['#fff6c9', '#ffffff', '#ffe08a', '#dccbff'], hearts: ['#ff6b9d', '#ff8fc6', '#ff4d6d', '#ffc2d9'],
     stars: ['#ffd84d', '#ffe98a', '#ffb347', '#fff3b0'], raindrops: ['#8ad7ff', '#6ec3f2', '#b5e6ff'],
     confetti: ['#ff5f8f', '#ffa24c', '#ffe14d', '#6be07e', '#57c7ff', '#a57bff'],
+    pixels: ['#7dff8a', '#57c7ff', '#ff5f8f', '#ffd84d', '#ffffff'], fireworks: ['#ffd84d', '#ff6b6b', '#7ff6ff', '#9dff7a', '#c99bff', '#ffa24c'],
   };
   function starPath(n, big, small) {
     let d = '';
@@ -2367,7 +2498,7 @@
       cv.height = Math.round(h * dpr);
     };
     const add = (p) => {
-      if (!g || parts.length >= 200 || (!FX_SHAPES && !['ring', 'bubble', 'bit'].includes(p.shape))) return;
+      if (!g || parts.length >= 200 || (!FX_SHAPES && !['ring', 'bubble', 'bit', 'square', 'spark'].includes(p.shape))) return;
       parts.push({ t: 0, rot: Math.random() * 6.3, spin: 0, drag: 0, ...p });
       if (!raf) {
         at = performance.now();
@@ -2380,6 +2511,7 @@
       stars: (x, y) => add({ shape: 'stars', x, y, vx: rand(-34, 34), vy: rand(-30, 10), g: 110, size: rand(5, 9), life: 0.9, spin: rand(-5, 5) }),
       bubbles: (x, y) => add({ shape: 'bubble', x, y, vx: rand(-8, 8), vy: rand(-44, -22), g: -12, size: rand(4, 10), life: 1.3, wob: rand(0, 6) }),
       raindrops: (x, y) => add({ shape: 'raindrops', x: x + rand(-5, 5), y, vx: 0, vy: rand(20, 50), g: 420, size: rand(4, 6.5), life: 0.6, rot: 0 }),
+      pixels: (x, y) => add({ shape: 'square', x: x + rand(-5, 5), y: y + rand(-5, 5), vx: rand(-12, 12), vy: rand(-6, 30), g: 70, size: rand(3, 6), life: 0.8, color: anyOf(FX_COLORS.pixels) }),
     };
     const BURST = {
       confetti: (x, y) => {
@@ -2405,6 +2537,16 @@
       },
       ripples: (x, y) => {
         for (let i = 0; i < 3; i++) add({ shape: 'ring', x, y, vx: 0, vy: 0, g: 0, size: 4, grow: 110, delay: i * 0.16, life: 0.9 + i * 0.16 });
+      },
+      // (A shell going off: streaks out every way, in a colour, and some in another.)
+      fireworks: (x, y) => {
+        const c1 = anyOf(FX_COLORS.fireworks);
+        const c2 = anyOf(FX_COLORS.fireworks);
+        for (let i = 0; i < 36; i++) {
+          const a = (i / 36) * Math.PI * 2 + rand(-0.06, 0.06);
+          const v = rand(170, 250) * (i % 3 ? 1 : 0.6);
+          add({ shape: 'spark', x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 150, size: 2, life: rand(0.9, 1.25), color: i % 3 ? c1 : c2, drag: 1.7 });
+        }
       },
     };
     function tick(now) {
@@ -2461,6 +2603,26 @@
         g.beginPath();
         g.arc(x - p.size * 0.35, p.y - p.size * 0.35, p.size * 0.22, 0, Math.PI * 2);
         g.fill();
+        return;
+      }
+      if (p.shape === 'spark') {
+        // (A streak, along the way it's going.)
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.strokeStyle = p.color;
+        g.lineWidth = p.size;
+        g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(p.x, p.y);
+        g.lineTo(p.x - p.vx * 0.04, p.y - p.vy * 0.04);
+        g.stroke();
+        return;
+      }
+      if (p.shape === 'square') {
+        // (A pixel: square on, on whole pixels.)
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+        g.fillStyle = p.color;
+        const q = Math.round(p.size);
+        g.fillRect(Math.round(p.x - q / 2), Math.round(p.y - q / 2), q, q);
         return;
       }
       const s = p.size * (p.shape === 'sparkles' ? 0.75 + 0.25 * Math.sin(p.t * 18) : 1) * dpr;
