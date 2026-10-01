@@ -11341,8 +11341,11 @@ function mixColor(a, b, t) {
   return `#${[16, 8, 0].map((k) => ch(k).toString(16).padStart(2, '0')).join('')}`;
 }
 // (The pattern along a card's top is in its bottom colour, on its top one; if they're too alike to
-// tell apart, in the top one, a little lighter (or darker, on a light card).)
+// tell apart, in the top one, a little lighter (or darker, on a light card). Glow's moving ones are
+// lights: much lighter (or darker), unless the bottom colour stands right out.)
 const bannerInk = (c1, c2) => (Math.abs(shade(c2) - shade(c1)) >= 45 ? c2 : mixColor(c1, shade(c1) > 140 ? '#000000' : '#ffffff', 0.25));
+const glowInk = (c1, c2) => (Math.abs(shade(c2) - shade(c1)) >= 90 ? c2 : mixColor(c1, shade(c1) > 140 ? '#000000' : '#ffffff', 0.65));
+const cardInk = (c) => (Homepage.PERKS.pattern.includes(c.pattern) ? glowInk : bannerInk)(c.c1, c.c2);
 
 // A card on a profile (or its preview): `node` gets its colours (and everything on it, words that
 // read on them), the pattern along its top, and its weather; `name` gets its font.
@@ -11350,7 +11353,6 @@ function dressCard(node, card, name, size = 22) {
   const H = window.Homepage;
   const c = card && H ? card : null;
   node.classList.toggle('carded', Boolean(c));
-  for (const old of node.querySelectorAll(':scope > .card-banner, :scope > .card-sky')) old.remove();
   if (name) {
     const f = c && c.font !== 'rainlit' && H.FONTS[c.font];
     name.style.fontFamily = f ? f.css : '';
@@ -11360,17 +11362,25 @@ function dressCard(node, card, name, size = 22) {
     node.style.removeProperty('--card-c1');
     node.style.removeProperty('--card-c2');
     delete node.dataset.ink;
+    for (const old of node.querySelectorAll(':scope > .card-banner, :scope > .card-sky')) old.remove();
+    node.cardLook = '';
     return;
   }
   node.style.setProperty('--card-c1', c.c1);
   node.style.setProperty('--card-c2', c.c2);
   node.dataset.ink = (shade(c.c1) + shade(c.c2)) / 2 > 150 ? 'dark' : 'light';
+  // (Its pattern and weather are only drawn again when they've changed, so they carry on as the
+  // profile around them is redrawn.)
+  const look = [c.c1, c.c2, c.pattern, c.sky].join('|');
+  if (node.cardLook === look) return;
+  node.cardLook = look;
+  for (const old of node.querySelectorAll(':scope > .card-banner, :scope > .card-sky')) old.remove();
   if (c.sky && c.sky !== 'none') {
     const sky = document.createElement('div');
     sky.className = 'card-sky';
     sky.setAttribute('aria-hidden', 'true');
     const weather = document.createElement('span');
-    weather.className = `hp-sky hp-sky-${c.sky}`;
+    H.setSky(weather, c.sky);
     sky.append(weather);
     node.prepend(sky);
   }
@@ -11378,7 +11388,7 @@ function dressCard(node, card, name, size = 22) {
     const banner = document.createElement('div');
     banner.className = 'card-banner';
     banner.setAttribute('aria-hidden', 'true');
-    const bg = { kind: 'pattern', pattern: c.pattern, c1: c.c1, c2: bannerInk(c.c1, c.c2) };
+    const bg = { kind: 'pattern', pattern: c.pattern, c1: c.c1, c2: cardInk(c) };
     Object.assign(banner.style, H.backgroundStyle(bg));
     const layer = H.patternLayer(bg);
     if (layer) {
@@ -11486,7 +11496,7 @@ function renderCardPatterns() {
       plain.style.backgroundColor = c.c1;
       b.append(plain);
     } else {
-      b.append(Homepage.patternSwatch(key, c.c1, bannerInk(c.c1, c.c2)));
+      b.append(Homepage.patternSwatch(key, c.c1, cardInk({ ...c, pattern: key })));
     }
     b.addEventListener('click', () => pickCard('pattern', key));
     return b;
@@ -12201,6 +12211,11 @@ function showGlowExtras() {
     patterns.append(item);
   }
   Homepage.effectsOver(el.glow.querySelector('.glow-homepage'), { trail: 'sparkles', click: 'confetti' });
+  // (Its weather as on a page: a thunderstorm's clouds and lightning too.)
+  for (const sky of el.glow.querySelectorAll('.glow-sky .hp-sky')) {
+    const kind = [...sky.classList].map((c) => /^hp-sky-(.+)$/.exec(c)).find(Boolean);
+    if (kind) Homepage.setSky(sky, kind[1]);
+  }
 }
 
 function renderGlowInfo() {

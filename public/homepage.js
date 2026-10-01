@@ -2885,9 +2885,20 @@
     page.addEventListener('touchcancel', () => { pinch = null; });
   }
 
-  // The weather on a page (behind its pieces).
+  // The weather on a page (behind its pieces), or on someone's card. (A thunderstorm has more to it:
+  // clouds drifting along the top, and lightning. Only drawn again when it's changed, so it carries
+  // on as the page or card around it is.)
+  const SKY_PARTS = { storm: ['hp-storm-clouds far', 'hp-storm-clouds', 'hp-storm-bolt far', 'hp-storm-bolt'] };
   function setSky(sky, kind) {
-    sky.className = `hp-sky hp-sky-${SKIES[kind] ? kind : 'none'}`;
+    const k = SKIES[kind] ? kind : 'none';
+    if (sky.dataset.sky === k) return;
+    sky.dataset.sky = k;
+    sky.className = `hp-sky hp-sky-${k}`;
+    sky.replaceChildren(...(SKY_PARTS[k] || []).map((cls) => {
+      const part = document.createElement('i');
+      part.className = cls;
+      return part;
+    }));
   }
 
   window.Homepage = {

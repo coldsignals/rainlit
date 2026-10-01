@@ -505,14 +505,20 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='200'%3E%3Cg stroke='%23cfe3ff' stroke-width='1.4' stroke-linecap='round' opacity='.55'%3E%3Cpath d='M20 10l-3 18M70 60l-3 18M130 30l-3 18M160 120l-3 18M40 140l-3 18M100 170l-3 18M110 95l-3 18'/%3E%3C/g%3E%3C/svg%3E");
   animation: hp-fall 0.8s linear infinite;
 }
-.hp-sky-rain::after { opacity: 0.55; background-size: 120px 133px; animation-duration: 1.25s; }
+.hp-sky-rain::after { opacity: 0.55; background-size: 90px 100px; animation-duration: 1.25s; } /* (a tile that falls whole: 200 a loop) */
 .hp-sky-snow::before, .hp-sky-snow::after {
   top: -200px; height: calc(100% + 200px);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cg fill='%23ffffff' opacity='.85'%3E%3Ccircle cx='20' cy='30' r='3'/%3E%3Ccircle cx='90' cy='80' r='2'/%3E%3Ccircle cx='160' cy='20' r='2.5'/%3E%3Ccircle cx='130' cy='150' r='3'/%3E%3Ccircle cx='50' cy='170' r='2'/%3E%3Ccircle cx='190' cy='110' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
   animation: hp-fall 9s linear infinite;
 }
-.hp-sky-snow::after { opacity: 0.6; background-size: 130px 130px; animation-duration: 14s; }
+.hp-sky-snow::after { opacity: 0.6; background-size: 100px 100px; animation-duration: 14s; }
 .hp-sky-sparkles::before, .hp-sky-sparkles::after {
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='270'%3E%3Cpath fill='%23fff6c9' transform='translate(28 34) scale(1)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffffff' transform='translate(146 20) scale(0.6)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23fff6c9' transform='translate(238 70) scale(1.1)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffe08a' transform='translate(88 122) scale(0.75)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffffff' transform='translate(200 158) scale(0.55)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23fff6c9' transform='translate(40 214) scale(0.9)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffe08a' transform='translate(156 236) scale(1.2)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffffff' transform='translate(272 212) scale(0.65)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23fff6c9' transform='translate(118 74) scale(0.45)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3C/svg%3E");
+  animation: hp-twinkle 2.4s ease-in-out infinite;
+}
+/* (Another lot, scattered differently, so they never line up.) */
+.hp-sky-sparkles::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='370' height='330'%3E%3Cpath fill='%23ffffff' transform='translate(62 58) scale(0.7)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffe08a' transform='translate(300 30) scale(0.9)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23fff6c9' transform='translate(190 112) scale(1.15)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23fff6c9' transform='translate(18 170) scale(0.5)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffffff' transform='translate(336 196) scale(0.8)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23fff6c9' transform='translate(110 258) scale(0.95)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffe08a' transform='translate(244 290) scale(0.6)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath fill='%23ffffff' transform='translate(232 202) scale(0.4)' d='M0 -8l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3C/svg%3E"); animation-delay: -1.2s; }
   inset: 0;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='220'%3E%3Cg fill='%23fff6c9'%3E%3Cpath d='M30 20l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3Cpath d='M170 90l1.6 4.4 4.4 1.6-4.4 1.6-1.6 4.4-1.6-4.4-4.4-1.6 4.4-1.6z'/%3E%3Cpath d='M90 170l2 6 6 2-6 2-2 6-2-6-6-2 6-2z'/%3E%3C/g%3E%3C/svg%3E");
   animation: hp-twinkle 2.4s ease-in-out infinite;
@@ -564,16 +570,36 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   from { transform: translateX(-7%) skewX(-10deg) scaleY(0.95); opacity: 0.75; }
   to { transform: translateX(7%) skewX(10deg) scaleY(1.15); opacity: 1; }
 }
-/* a thunderstorm: heavy rain under a darker sky, and lightning now and then (never more than
-   twice in a second, and not at all for anyone who asks for less motion); */
-.hp-sky-storm { background: rgba(8, 12, 28, 0.28); }
-.hp-sky-storm::before {
+/* a thunderstorm: dark clouds drifting along the top, heavy rain in two layers, and lightning
+   striking now and then, here and there (the near bolt lights the sky: never more than twice in a
+   second; and no lightning at all for anyone who asks for less motion); */
+.hp-sky-storm { background: rgba(8, 12, 28, 0.3); }
+.hp-sky-storm::before, .hp-sky-storm::after {
   top: -200px; height: calc(100% + 200px);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='200'%3E%3Cg stroke='%23b9c8e6' stroke-width='1.3' stroke-linecap='round' opacity='.6'%3E%3Cpath d='M20 10l-5 22M60 70l-5 22M110 20l-5 22M140 120l-5 22M35 130l-5 22M90 160l-5 22M80 95l-5 22M130 60l-5 22'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='200'%3E%3Cg stroke='%23b9c8e6' stroke-width='1.3' stroke-linecap='round' opacity='.62'%3E%3Cpath d='M20 10l-5 22M60 70l-5 22M110 20l-5 22M140 120l-5 22M35 130l-5 22M90 160l-5 22M80 95l-5 22M130 60l-5 22M8 70l-5 22M150 175l-5 22'/%3E%3C/g%3E%3C/svg%3E");
   animation: hp-fall 0.5s linear infinite;
 }
-.hp-sky-storm::after { inset: 0; background: rgba(225, 235, 255, 0.9); opacity: 0; animation: hp-flash 9s linear infinite; }
-@keyframes hp-flash { 0%, 80%, 86%, 100% { opacity: 0; } 81% { opacity: 0.38; } 82% { opacity: 0.06; } 83.5% { opacity: 0.28; } }
+.hp-sky-storm::after { opacity: 0.5; background-size: 80px 100px; animation-duration: 0.85s; }
+.hp-storm-clouds {
+  position: absolute; top: -10px; left: 0; width: calc(100% + 600px); height: min(30%, 170px);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 160' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='s' x='-5%' y='-20%' width='110%' height='140%'%3E%3CfeGaussianBlur stdDeviation='2'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23s)'%3E%3Cg fill='%23323c57'%3E%3Crect x='-20' y='-10' width='640' height='94'/%3E%3Ccircle cx='-4' cy='88' r='34'/%3E%3Ccircle cx='596' cy='88' r='34'/%3E%3Ccircle cx='28' cy='99' r='29'/%3E%3Ccircle cx='628' cy='99' r='29'/%3E%3Ccircle cx='65' cy='98' r='23'/%3E%3Ccircle cx='111' cy='86' r='24'/%3E%3Ccircle cx='148' cy='107' r='24'/%3E%3Ccircle cx='181' cy='102' r='39'/%3E%3Ccircle cx='227' cy='95' r='40'/%3E%3Ccircle cx='252' cy='108' r='27'/%3E%3Ccircle cx='292' cy='87' r='28'/%3E%3Ccircle cx='345' cy='89' r='32'/%3E%3Ccircle cx='378' cy='94' r='32'/%3E%3Ccircle cx='403' cy='86' r='26'/%3E%3Ccircle cx='454' cy='96' r='28'/%3E%3Ccircle cx='489' cy='97' r='27'/%3E%3Ccircle cx='532' cy='104' r='26'/%3E%3Ccircle cx='-36' cy='99' r='38'/%3E%3Ccircle cx='564' cy='99' r='38'/%3E%3C/g%3E%3Cg fill='%231a2032'%3E%3Crect x='-20' y='-10' width='640' height='64'/%3E%3Ccircle cx='5' cy='60' r='36'/%3E%3Ccircle cx='605' cy='60' r='36'/%3E%3Ccircle cx='26' cy='64' r='32'/%3E%3Ccircle cx='626' cy='64' r='32'/%3E%3Ccircle cx='60' cy='66' r='19'/%3E%3Ccircle cx='103' cy='73' r='28'/%3E%3Ccircle cx='141' cy='61' r='31'/%3E%3Ccircle cx='169' cy='68' r='26'/%3E%3Ccircle cx='207' cy='78' r='27'/%3E%3Ccircle cx='237' cy='54' r='31'/%3E%3Ccircle cx='270' cy='80' r='33'/%3E%3Ccircle cx='296' cy='63' r='30'/%3E%3Ccircle cx='324' cy='65' r='21'/%3E%3Ccircle cx='359' cy='54' r='32'/%3E%3Ccircle cx='393' cy='59' r='25'/%3E%3Ccircle cx='441' cy='54' r='26'/%3E%3Ccircle cx='468' cy='77' r='33'/%3E%3Ccircle cx='507' cy='60' r='25'/%3E%3Ccircle cx='531' cy='77' r='35'/%3E%3Ccircle cx='560' cy='57' r='22'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") 0 0 / 600px 100% repeat-x;
+  animation: hp-drift 70s linear infinite;
+}
+/* (Another bank behind, lower and fainter, drifting slower: depth.) */
+.hp-storm-clouds.far { top: 6px; width: calc(100% + 760px); opacity: 0.45; background-size: 760px 100%; --drift: -760px; animation-duration: 115s; }
+@keyframes hp-drift { to { transform: translateX(var(--drift, -600px)); } }
+.hp-storm-bolt { position: absolute; inset: 0; opacity: 0; animation: hp-strike 9s linear infinite; }
+.hp-storm-bolt::before {
+  content: ''; position: absolute; top: 6%; left: 26%; width: min(16%, 90px); height: 60%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 200' preserveAspectRatio='none'%3E%3Cpath d='M32 0L24 46 36 50 18 104 30 108 14 160 26 164 20 200M24 46 10 72M18 104 40 128' fill='none' stroke='%23f4f8ff' stroke-width='3.2' stroke-linejoin='miter' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  filter: drop-shadow(0 0 3px #e8f0ff) drop-shadow(0 0 12px #9fc3ff);
+}
+.hp-storm-bolt::after { content: ''; position: absolute; inset: 0; background: rgba(225, 235, 255, 0.85); opacity: 0.42; }
+/* (A farther one, smaller, now and then elsewhere: it doesn't light the sky.) */
+.hp-storm-bolt.far { animation-duration: 13s; animation-delay: -6s; }
+.hp-storm-bolt.far::before { left: 64%; width: min(11%, 60px); height: 40%; opacity: 0.75; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 140' preserveAspectRatio='none'%3E%3Cpath d='M28 0L36 40 22 44 38 92 26 96 34 140M36 40 48 62' fill='none' stroke='%23f4f8ff' stroke-width='2.6' stroke-linejoin='miter' stroke-linecap='round'/%3E%3C/svg%3E"); }
+.hp-storm-bolt.far::after { display: none; }
+@keyframes hp-strike { 0%, 80%, 85%, 100% { opacity: 0; } 81% { opacity: 1; } 82% { opacity: 0.1; } 83.5% { opacity: 0.8; } }
 /* cherry blossom petals drift down; */
 .hp-sky-blossoms::before, .hp-sky-blossoms::after {
   top: -240px; left: -48px; right: -48px; height: calc(100% + 240px);
@@ -853,7 +879,7 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 @media (prefers-reduced-motion: reduce) {
   .hp-fx-rainbow .hp-ink, .hp-fx-blink .hp-ink, .hp-fx-marquee .hp-ink, .hp-fx-wave .hp-ink span,
   .hp-fx-shimmer .hp-ink, .hp-fx-lamplight .hp-ink, .hp-frame-neon,
-  .hp-sky::before, .hp-sky::after, .hp-backdrop i, .hp-ball-mist, .hp-asking .hp-ball,
+  .hp-sky::before, .hp-sky::after, .hp-sky i, .hp-backdrop i, .hp-ball-mist, .hp-asking .hp-ball,
   .hp-pet *, .hp-pet-bit,
   .hp-playing .hp-bars i, .hp-playing .hp-reels i, .hp-playing .hp-song span { animation: none !important; }
   .hp-fx-marquee .hp-ink { padding-left: 0; }
