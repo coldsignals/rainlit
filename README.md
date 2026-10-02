@@ -319,6 +319,9 @@ at the top closes it (on a phone, the back arrow).
   Everyone in the space can use them anywhere they chat, in a DM too (on Discord
   that takes Nitro): type `:` and a name, or pick one from the emoji button,
   and react with them. A message that's only emoji shows them big.
+- **A space's picture:** its owner and admins (and roles with "Manage space")
+  give it one under **General** in its settings. Everyone sees it in their
+  list of spaces down the side, and on its invites, instead of its initials.
 - **18+ channels:** a space can mark a channel 18+ (in its settings, under
   **Who**), for things like horror, gory films and games, or crude jokes. Nothing in one reaches
   anyone until they've said they're 18 or older, which they're asked once, the

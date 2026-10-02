@@ -908,6 +908,17 @@
         <button type="button" role="tab" data-tab="moderation">Moderation</button>
       </div>
       <section id="space-general" class="tab-panel" data-tab="general">
+        <div class="avatar-row">
+          <span id="space-pic" class="space-icon xl" aria-hidden="true"></span>
+          <div class="avatar-actions">
+            <span class="avatar-buttons">
+              <button id="space-pic-btn" class="primary-btn small" type="button">Change picture</button>
+              <button id="space-pic-remove" class="text-btn" type="button">Remove</button>
+            </span>
+            <small class="hint">Everyone sees it instead of the initials. PNG, JPG, GIF or WebP, up to 8 MB.</small>
+          </div>
+          <input id="space-pic-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden />
+        </div>
         <form id="space-rename-form" class="space-row" novalidate>
           <label class="field"><span>Name</span><input id="space-rename-input" maxlength="40" autocomplete="off" /></label>
           <button class="primary-btn small" type="submit">Save</button>

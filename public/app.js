@@ -143,7 +143,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -7573,6 +7573,23 @@ const spaceInitials = (name) => {
   return letters.join('').toUpperCase();
 };
 
+// A space's picture (on the rail, on its invites, in its settings): the one it was given, or
+// its initials on its color.
+function paintSpaceIcon(node, space) {
+  node.style.setProperty('--face-bg', faceColor(space.id));
+  node.classList.toggle('has-icon', Boolean(space.icon));
+  const initials = spaceInitials(space.name);
+  if (!space.icon) {
+    node.textContent = initials;
+    return;
+  }
+  const img = document.createElement('img');
+  img.alt = '';
+  img.src = space.icon;
+  img.onerror = () => { node.classList.remove('has-icon'); img.replaceWith(initials); };
+  node.replaceChildren(img);
+}
+
 // What you can do in a space: the permissions your roles give you there (lib/spaces.js).
 const canIn = (space, perm) => Boolean(space && space.perms && space.perms.includes(perm));
 // Your highest role's place in the order; the owner is above all of them.
@@ -7653,8 +7670,7 @@ function renderRail() {
     b.className = `rail-btn rail-space${S.view === space.id ? ' open' : ''}${unread ? ' unread' : ''}`;
     b.title = space.name;
     b.setAttribute('aria-label', `${space.name}${mentions ? ` (${mentions} mention${mentions === 1 ? '' : 's'})` : unread ? ' (unread)' : ''}`);
-    b.style.setProperty('--face-bg', faceColor(space.id));
-    b.textContent = spaceInitials(space.name);
+    paintSpaceIcon(b, space);
     if (mentions) {
       const pill = document.createElement('span');
       pill.className = 'rail-mentions';
@@ -8127,8 +8143,7 @@ async function openJoin(code) {
   S.joinCode = code;
   el.spaceJoinName.textContent = info.space.name;
   el.spaceJoinCount.textContent = `${info.space.memberCount} member${info.space.memberCount === 1 ? '' : 's'}`;
-  el.spaceJoinIcon.textContent = spaceInitials(info.space.name);
-  el.spaceJoinIcon.style.setProperty('--face-bg', faceColor(info.space.id));
+  paintSpaceIcon(el.spaceJoinIcon, info.space);
   el.spaceJoinError.hidden = true;
   el.spaceJoin.showModal();
 }
@@ -8706,6 +8721,7 @@ function spaceLogText(e) {
   const why = d.reason ? `. Reason: ${d.reason}` : '';
   switch (e.action) {
     case 'space-rename': return `${who} renamed the space from ${d.from} to ${d.to}`;
+    case 'space-icon': return d.removed ? `${who} took away the space's picture` : `${who} changed the space's picture`;
     case 'emoji-add': return `${who} added the emoji :${d.name}:`;
     case 'emoji-rename': return `${who} renamed the emoji :${d.from}: to :${d.to}:`;
     case 'emoji-remove': return `${who} deleted the emoji :${d.name}:`;
@@ -8858,6 +8874,10 @@ function renderSpaceSettings() {
   el.spaceTabs.querySelector('[data-tab="moderation"]').textContent = space.reports ? `Moderation (${space.reports})` : 'Moderation';
   for (const panel of el.spaceSettings.querySelectorAll('.tab-panel')) panel.hidden = panel.dataset.tab !== tab;
   el.spaceDanger.hidden = space.role !== 'owner';
+  if (tab === 'general') {
+    paintSpaceIcon(el.spacePic, space);
+    el.spacePicRemove.hidden = !space.icon;
+  }
   keepFocus(el.spaceSettings, () => {
     if (tab === 'roles') renderRolesPanel(space);
     if (tab === 'channels') renderChannelsPanel(space);
@@ -9028,7 +9048,7 @@ function ageTag() {
 
 const PERM_INFO = [
   ['administrator', 'Administrator', 'Can do everything, and see every channel, even private ones. Give this carefully.'],
-  ['manageSpace', 'Manage space', "Rename the space."],
+  ['manageSpace', 'Manage space', 'Rename the space and change its picture.'],
   ['manageChannels', 'Manage channels', 'Make, rename and delete channels, and choose who can see and post in them.'],
   ['manageRoles', 'Manage roles', 'Make and change roles below their own highest role, and give them to people.'],
   ['viewLog', 'See the log', 'See who changed what in the space, and every timeout, kick and ban.'],
@@ -9275,6 +9295,43 @@ async function onSpaceRename(e) {
   try {
     await api('PATCH', `/spaces/${space.id}`, { name });
     showSettingsError('');
+  } catch (err) {
+    showSettingsError(err.message);
+  }
+}
+
+// Its picture, on the rail in place of its initials: a new one, or back to the initials.
+async function onSpacePicPicked() {
+  const space = S.spaces.get(el.spaceSettings.dataset.space);
+  const file = el.spacePicInput.files[0];
+  el.spacePicInput.value = '';
+  if (!space || !file) return;
+  if (file.size > 8 * 1024 * 1024) return showSettingsError("A space's picture can be up to 8 MB.");
+  showSettingsError('');
+  el.spacePicBtn.disabled = true;
+  el.spacePicBtn.textContent = 'Uploading';
+  try {
+    const { icon } = await api('PUT', `/spaces/${space.id}/icon`, file);
+    space.icon = icon;
+    renderRail();
+    renderSpaceSettings();
+  } catch (err) {
+    showSettingsError(err.message);
+  } finally {
+    el.spacePicBtn.disabled = false;
+    el.spacePicBtn.textContent = 'Change picture';
+  }
+}
+
+async function onSpacePicRemove() {
+  const space = S.spaces.get(el.spaceSettings.dataset.space);
+  if (!space) return;
+  try {
+    await api('DELETE', `/spaces/${space.id}/icon`);
+    space.icon = null;
+    showSettingsError('');
+    renderRail();
+    renderSpaceSettings();
   } catch (err) {
     showSettingsError(err.message);
   }
@@ -13867,6 +13924,9 @@ async function init() {
     renderSpaceSettings();
   });
   el.spaceDeleteBtn.addEventListener('click', onSpaceDelete);
+  el.spacePicBtn.addEventListener('click', () => el.spacePicInput.click());
+  el.spacePicInput.addEventListener('change', onSpacePicPicked);
+  el.spacePicRemove.addEventListener('click', onSpacePicRemove);
   document.addEventListener('click', (e) => {
     if (!el.spaceMenu.hidden && !el.spaceMenu.contains(e.target) && !el.spaceHead.contains(e.target)) closeSpaceMenu();
   });

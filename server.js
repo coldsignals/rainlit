@@ -1846,6 +1846,44 @@ api.patch('/spaces/:spaceId', needUser, needMember, (req, res) => {
   res.json({ ok: true });
 });
 
+// Its picture, in the list of spaces down the side and when someone's invited (instead of its
+// initials): made smaller like a profile picture, for whoever can change its settings. A group
+// goes by its people's pictures instead.
+function spaceIconCheck(req, res) {
+  if (spaces.isGroup(req.space)) { fail(res, 400, "A group shows its people's pictures."); return false; }
+  if (!spaces.can(req.member, 'manageSpace')) { fail(res, 403, NOT_ALLOWED.manageSpace); return false; }
+  return true;
+}
+api.put('/spaces/:spaceId/icon', needUser, needMember, express.raw({ type: () => true, limit: AVATAR_MAX }), async (req, res) => {
+  if (!spaceIconCheck(req, res)) return;
+  const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  const kind = imageKind(buf);
+  if (!kind) return fail(res, 400, "A space's picture can be PNG, JPG, GIF or WebP.");
+  let pic = { buf, ext: kind };
+  try {
+    pic = await images.avatar(buf, kind);
+  } catch {}
+  // (A new name each time, so everyone's browser fetches the new picture.)
+  const name = `${req.space.id}-${crypto.randomBytes(4).toString('hex')}.${pic.ext}`;
+  fs.writeFileSync(path.join(AVATAR_DIR, name), pic.buf);
+  spaces.setIcon(req.space.id, name);
+  blobs.offload('avatars', name, AVATAR_TYPES[pic.ext]); // (to R2, if it's set up)
+  removeAvatarFile(req.space.icon);
+  spaces.log(req.space.id, req.user.id, 'space-icon', null, {});
+  spaceChanged(req.space.id);
+  res.json({ ok: true, icon: spaces.iconUrl(name) });
+});
+api.delete('/spaces/:spaceId/icon', needUser, needMember, (req, res) => {
+  if (!spaceIconCheck(req, res)) return;
+  if (req.space.icon) {
+    spaces.setIcon(req.space.id, null);
+    removeAvatarFile(req.space.icon);
+    spaces.log(req.space.id, req.user.id, 'space-icon', null, { removed: true });
+    spaceChanged(req.space.id);
+  }
+  res.json({ ok: true });
+});
+
 api.delete('/spaces/:spaceId', needUser, needMember, (req, res) => {
   if (spaces.isGroup(req.space)) return fail(res, 400, 'A group ends when everyone has left it.');
   if (!req.member.owner) return fail(res, 403, 'Only the owner can delete a space.');
@@ -2158,7 +2196,7 @@ api.get('/space-invites/:code', needUser, (req, res) => {
   const space = invite && spaces.getSpace(invite.space_id);
   if (!space) return fail(res, 404, "That invite link doesn't work any more.");
   res.json({
-    space: { id: space.id, name: space.name, memberCount: spaces.memberIds(space.id).length },
+    space: { id: space.id, name: space.name, icon: spaces.iconUrl(space.icon), memberCount: spaces.memberIds(space.id).length },
     member: spaces.isMember(space.id, req.user.id),
     banned: spaces.isBanned(space.id, req.user.id),
   });
