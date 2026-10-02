@@ -204,13 +204,13 @@ a.hp-piece:focus-visible { outline: 3px solid #f5b94a; outline-offset: 3px; }
   box-shadow: 0 14px 26px -16px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 .hp-avatar {
-  display: grid; place-items: center; flex: none;
+  position: relative; display: grid; place-items: center; flex: none;
   width: 50cqmin; height: 50cqmin;
   border-radius: 50%;
   overflow: hidden;
   color: #fff; font: 700 22cqmin/1 "Bricolage Grotesque", sans-serif;
 }
-.hp-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.hp-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .hp-me-sticker .hp-avatar { width: 56cqmin; height: 56cqmin; box-shadow: 0 0 0 3cqmin #fff, 0 6px 14px 3cqmin rgba(0, 0, 0, 0.25); }
 .hp-me-words { display: grid; gap: 0.6cqh; max-width: 100%; min-width: 0; }
 .hp-me-name { font-size: 11cqmin; line-height: 1.1; overflow-wrap: anywhere; }
