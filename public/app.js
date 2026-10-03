@@ -143,7 +143,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -3525,7 +3525,7 @@ async function deleteAsModerator(li) {
 // "Alice removed a message", or a moderator's "Alice removed Bea's message".
 function removedText(by, byName, was, author, authorName) {
   const thing = was === 'file' ? 'file' : 'message';
-  const who = by === S.clientId ? 'You' : byName;
+  const who = by === 'admin' ? "This server's admin" : by === S.clientId ? 'You' : byName;
   if (!author || author === by) return `${who} removed a ${thing}`;
   return `${who} removed ${author === S.clientId ? 'your' : `${authorName}'s`} ${thing}`;
 }
@@ -4070,6 +4070,63 @@ async function openDm(friendId) {
 }
 
 // ----- Flagged accounts -----
+// Admin: sexual content involving a child, kept as evidence (lib/evidence.js), and each one's
+// CyberTipline report number.
+async function renderEvidence() {
+  let data;
+  try {
+    data = await api('GET', '/admin/evidence');
+  } catch {
+    return;
+  }
+  if (!data.cases.length) {
+    const li = document.createElement('li');
+    li.className = 'muted';
+    li.textContent = 'Nothing kept.';
+    el.evidenceList.replaceChildren(li);
+    return;
+  }
+  const day = (ts) => new Date(ts).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+  el.evidenceList.replaceChildren(...data.cases.map((c) => {
+    const li = document.createElement('li');
+    li.className = 'flag-item evidence-item';
+    const words = document.createElement('span');
+    words.className = 'user-words';
+    const who = document.createElement('strong');
+    who.textContent = c.account && c.account.username ? `${c.account.displayName} (@${c.account.username})` : 'An account that was deleted';
+    const what = document.createElement('span');
+    what.textContent = `${c.what[0].toUpperCase()}${c.what.slice(1)} · case ${c.id}${c.files ? ` · ${c.files} file${c.files === 1 ? '' : 's'}` : ''}`;
+    const when = document.createElement('small');
+    when.className = 'muted';
+    when.textContent = `Kept ${day(c.confirmedAt)}, until ${day(c.keepUntil)}`;
+    words.append(who, what, when);
+    const form = document.createElement('form');
+    form.className = 'evidence-tipline';
+    const input = document.createElement('input');
+    input.placeholder = 'CyberTipline report number';
+    input.value = c.tipline || '';
+    input.maxLength = 40;
+    input.setAttribute('aria-label', `CyberTipline report number for case ${c.id}`);
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.className = 'small-btn';
+    save.textContent = c.tipline ? 'Saved' : 'Save';
+    input.addEventListener('input', () => { save.textContent = 'Save'; });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await api('PUT', `/admin/evidence/${c.id}`, { tipline: input.value.trim() });
+        save.textContent = 'Saved';
+      } catch (err) {
+        toast(err.message);
+      }
+    });
+    form.append(input, save);
+    li.append(words, form);
+    return li;
+  }));
+}
+
 // (lib/abuse.js) Accounts that look like they're filling up the free tier, with what was
 // noticed, for the admin: "Looks fine" clears it; Suspend is the usual one.
 
@@ -8341,8 +8398,20 @@ const REPORT_REASONS = {
   harassment: 'Harassment or hate',
   inappropriate: 'Something inappropriate or disturbing',
   danger: 'Someone may be in danger',
+  child: 'Sexual content involving a child',
+  intimate: 'Intimate pictures shared without permission',
   other: 'Something else',
 };
+// The ones only this server's admin sees (never a space's moderators: lib/safety.js), and what
+// the person reporting is told when they pick one.
+const ADMIN_ONLY_REPORTS = new Set(['child', 'intimate']);
+const URGENT_REPORTS = new Set(['danger', 'child', 'intimate']);
+const REPORT_HINTS = {
+  danger: 'If someone is in danger right now, please contact your local emergency services too.',
+  child: "Only this server's admin sees this. A copy is kept for the authorities (in the US, the National Center for Missing & Exploited Children), and it's taken down. Please don't save it or send it to anyone, even to report it.",
+  intimate: "Only this server's admin sees this, and it's taken down within 48 hours. If it's of you, you can say so below.",
+};
+const INTIMATE_HOURS = 48;
 
 let reportTarget = null;
 
@@ -8351,14 +8420,9 @@ let reportTarget = null;
 // your homepage's "ask me anything" box (with userId, if it wasn't anonymous).
 function openReportDialog(target) {
   reportTarget = target;
-  const c = target.messageId && S.channels.get(target.channelId);
-  const space = !target.homepage && !target.questionId && S.spaces.get(c ? c.spaceId : target.spaceId);
   el.reportTitle.textContent = target.questionId ? 'Report this question' : target.messageId ? `Report ${target.name}'s message` : target.homepage ? `Report ${target.name}'s homepage` : `Report ${target.name}`;
-  const copy = target.questionId ? ', with a copy of the question and who asked it' : target.messageId ? ', with a copy of the message' : target.homepage ? ', with a copy of what the page says' : '';
-  el.reportText.textContent = target.questionId && target.anonymous
-    ? `This server's admin will see your report${copy}. You still won't be told who it was, and they won't be told who sent it.`
-    : `${space ? `${space.name}'s moderators and ` : ''}${space ? 'this' : 'This'} server's admin will see your report${copy}. ${target.name} won't be told who sent it.`;
   for (const r of el.reportForm.querySelectorAll('input[name="report-reason"]')) r.checked = false;
+  renderReportText();
   el.reportDanger.hidden = true;
   el.reportNote.value = '';
   el.reportBlock.checked = false;
@@ -8369,6 +8433,20 @@ function openReportDialog(target) {
   el.reportBlockText.textContent = stop ? 'Stop their questions too' : `Block ${target.name} too`;
   el.reportError.hidden = true;
   el.reportDialog.showModal();
+}
+
+// Who'll see it: the space's moderators too, unless it's a kind only this server's admin sees.
+function renderReportText() {
+  const target = reportTarget;
+  if (!target) return;
+  const reason = el.reportForm.querySelector('input[name="report-reason"]:checked');
+  const adminOnly = Boolean(reason) && ADMIN_ONLY_REPORTS.has(reason.value);
+  const c = target.messageId && S.channels.get(target.channelId);
+  const space = !adminOnly && !target.homepage && !target.questionId && S.spaces.get(c ? c.spaceId : target.spaceId);
+  const copy = target.questionId ? ', with a copy of the question and who asked it' : target.messageId ? ', with a copy of the message' : target.homepage ? ', with a copy of what the page says' : '';
+  el.reportText.textContent = target.questionId && target.anonymous
+    ? `This server's admin will see your report${copy}. You still won't be told who it was, and they won't be told who sent it.`
+    : `${space ? `${space.name}'s moderators and ` : adminOnly ? 'Only ' : ''}${space || adminOnly ? 'this' : 'This'} server's admin will see your report${copy}. ${target.name} won't be told who sent it.`;
 }
 
 async function onReportSend(e) {
@@ -8429,9 +8507,27 @@ function reportItem(r, { spaceId = null, onResolve }) {
   time.textContent = fmtWhen(r.at);
   head.append(who, time);
   const why = document.createElement('strong');
-  why.className = `report-reason${r.reason === 'danger' ? ' urgent' : ''}`;
+  why.className = `report-reason${URGENT_REPORTS.has(r.reason) ? ' urgent' : ''}`;
   why.textContent = REPORT_REASONS[r.reason] || r.reason;
   li.append(head, why);
+  // (An intimate picture has to come down within 48 hours of being reported: the TAKE IT DOWN Act.)
+  if (r.reason === 'intimate' && !r.resolved && !r.messageGone) {
+    const due = r.at + INTIMATE_HOURS * 3600_000;
+    const by = document.createElement('small');
+    by.className = 'report-due';
+    by.textContent = due > Date.now()
+      ? `If it's what they say, take it down by ${fmtWhen(due)} (${INTIMATE_HOURS} hours from the report).`
+      : `Its ${INTIMATE_HOURS} hours are up: if it's what they say, take it down now.`;
+    li.append(by);
+  }
+  if (r.evidence) {
+    const kept = document.createElement('small');
+    kept.className = 'report-due';
+    kept.textContent = r.evidence.confirmedAt
+      ? `Kept as evidence until ${new Date(r.evidence.keepUntil).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' })} (see Kept as evidence, below).`
+      : "A copy was kept as evidence when it was reported. If it's what they say, keep it (below); if it isn't, its copy is deleted when you mark this as dealt with.";
+    li.append(kept);
+  }
   if (r.note) {
     const note = document.createElement('p');
     note.className = 'report-note';
@@ -8466,7 +8562,7 @@ function reportItem(r, { spaceId = null, onResolve }) {
     quote.className = 'report-quote';
     quote.textContent = s.text || (s.file ? `A file: ${s.file.name}` : s.gif ? `A GIF: ${s.gif.title || 'untitled'}` : '(not saved, so there is no copy)');
     const where = document.createElement('small');
-    where.textContent = s.channel ? `in #${s.channel}${s.space && !spaceId ? ` (${s.space})` : ''}` : 'in a DM';
+    where.textContent = `${s.channel ? `in #${s.channel}${s.space && !spaceId ? ` (${s.space})` : ''}` : 'in a DM'}${r.messageGone ? ', since removed' : ''}`;
     li.append(quote, where);
   }
   const acts = document.createElement('div');
@@ -8488,6 +8584,23 @@ function reportItem(r, { spaceId = null, onResolve }) {
     });
     acts.append(rm);
   }
+  // (The server's admin can take the message down wherever it is, a DM or any space's channel.)
+  const admin = !spaceId && S.me && S.me.isAdmin;
+  if (admin && !r.resolved && r.messageId && !r.messageGone) {
+    acts.append(sureButton('Remove the message', 'Click again: removed for everyone', async (b) => {
+      await api('POST', `/admin/reports/${r.id}/remove`, {});
+      b.textContent = 'Removed';
+    }));
+  }
+  // (Sexual content involving a child, whatever reason was picked that could be it: kept, taken
+  // down, suspended.)
+  if (admin && !r.resolved && r.target && r.target.id !== S.clientId && !['spam', 'harassment'].includes(r.reason)) {
+    acts.append(sureButton("It's sexual content involving a child", "Click again: kept a year as evidence, taken down, and they're suspended", async (b) => {
+      await api('POST', `/admin/reports/${r.id}/evidence`, {});
+      b.textContent = 'Kept as evidence';
+      renderAdmin();
+    }));
+  }
   // (The server's admin can act on the person, or their homepage, right from here.)
   if (!spaceId && S.me && S.me.isAdmin && r.target && r.target.id !== S.clientId) {
     if (s.kind === 'homepage') {
@@ -8505,7 +8618,17 @@ function reportItem(r, { spaceId = null, onResolve }) {
   done.type = 'button';
   done.className = 'small-btn';
   done.textContent = r.resolved ? 'Reopen' : 'Mark as dealt with';
-  done.addEventListener('click', () => onResolve(r, !r.resolved));
+  // (A copy kept for a report about a child, not yet confirmed: dealing with it otherwise deletes it.)
+  const pending = !r.resolved && r.evidence && !r.evidence.confirmedAt;
+  if (pending) done.textContent = "It isn't: delete its copy";
+  done.addEventListener('click', () => {
+    if (pending && !done.dataset.sure) {
+      done.dataset.sure = '1';
+      done.textContent = 'Click again to delete the copy and mark it dealt with';
+      return;
+    }
+    onResolve(r, !r.resolved);
+  });
   acts.append(done);
   if (r.resolved) {
     const by = document.createElement('small');
@@ -8739,7 +8862,7 @@ function spaceLogText(e) {
     case 'role-move': return `${who} moved the role ${d.name} ${d.up ? 'up' : 'down'}`;
     case 'role-give': return `${who} gave ${d.user} the role ${d.role}`;
     case 'role-take': return `${who} took the role ${d.role} from ${d.user}`;
-    case 'message-remove': return `${who} removed ${d.user}'s ${d.was === 'file' ? 'file' : 'message'} in #${d.channel}`;
+    case 'message-remove': return `${d.admin ? "This server's admin" : who} removed ${d.user}'s ${d.was === 'file' ? 'file' : 'message'} in #${d.channel}`;
     case 'timeout': return `${who} put ${d.user} in a timeout for ${DURATION_TEXT[d.seconds] || 'a while'}${why}`;
     case 'timeout-end': return `${who} ended ${d.user}'s timeout`;
     case 'kick': return `${who} kicked ${d.user}${why}`;
@@ -12768,6 +12891,7 @@ async function renderAdmin() {
   renderHomepageStats();
   renderAnnouncements();
   renderFlags();
+  renderEvidence();
   renderFeedbackAdmin();
   if (!reports.length) {
     const li = document.createElement('li');
@@ -13828,7 +13952,10 @@ async function init() {
   el.ageGateNo.addEventListener('click', onAgeGateNo);
   el.reportForm.addEventListener('change', () => {
     const reason = el.reportForm.querySelector('input[name="report-reason"]:checked');
-    el.reportDanger.hidden = !reason || reason.value !== 'danger';
+    const hint = reason && REPORT_HINTS[reason.value];
+    el.reportDanger.hidden = !hint;
+    if (hint) el.reportDanger.textContent = hint;
+    renderReportText();
     if (reason) el.reportError.hidden = true;
   });
   el.msgReport.addEventListener('click', () => {

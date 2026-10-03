@@ -52,6 +52,7 @@ const signups = require('./lib/signups');
 const storage = require('./lib/storage');
 const scrub = require('./lib/scrub');
 const settings = require('./lib/settings');
+const evidence = require('./lib/evidence');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -983,7 +984,7 @@ function reportHandlers(spaceId) {
   return ids;
 }
 
-api.post('/reports', needUser, (req, res) => {
+api.post('/reports', needUser, async (req, res) => {
   const b = req.body || {};
   if (!safety.REASONS.includes(b.reason)) return fail(res, 400, 'Pick what the problem is.');
   if (safety.reportsLastHour(req.user.id) >= safety.REPORTS_PER_HOUR) return fail(res, 429, "You've sent a lot of reports. Try again in a while.");
@@ -1038,8 +1039,20 @@ api.post('/reports', needUser, (req, res) => {
   // person would tell you two anonymous questions came from the same someone.)
   const already = !question && safety.openReportFor(req.user.id, r.messageId || null, r.targetId);
   const id = already ? already.id : safety.addReport(r);
+  const adminOnly = safety.ADMIN_ONLY.includes(r.reason);
   if (!already) {
-    for (const uid of reportHandlers(r.spaceId)) realtime.sendToUser(uid, { type: 'report-new', space: r.spaceId || null });
+    // A child: a copy's made before anything else can happen to it (lib/evidence.js).
+    if (r.reason === 'child') {
+      await evidence.keep({ reportId: id, reason: r.reason, messageId: r.messageId || null, targetId: r.targetId, homepage: (r.snapshot || {}).kind === 'homepage' })
+        .catch((err) => console.error(`[evidence] Couldn't keep a copy for report ${id}: ${err.message}`));
+    }
+    for (const uid of reportHandlers(adminOnly ? null : r.spaceId)) realtime.sendToUser(uid, { type: 'report-new', space: adminOnly ? null : r.spaceId || null });
+    // (These can't wait for the admin to open Rainlit: an email too, never saying what it is.)
+    if (adminOnly && mail.enabled) {
+      for (const a of db.prepare('SELECT * FROM users WHERE is_admin = 1 AND email IS NOT NULL').all()) {
+        mail.sendLater(mail.urgentReportEmail(a, r.reason, publicUrl(req), Date.now() + safety.INTIMATE_MS), 'an urgent report');
+      }
+    }
   }
   if (b.block && question && question.anonymous) {
     // (Whoever asked it anonymously can't ask you any more, and you still don't know who it was.)
@@ -1066,6 +1079,9 @@ function resolveRoute(scope) {
     if (!r || (scope === 'space' && r.space_id !== req.space.id)) return fail(res, 404, "That report isn't there any more.");
     const resolved = (req.body || {}).resolved !== false;
     safety.setResolved(r.id, req.user.id, resolved);
+    // (A copy kept for a report about a child, that the admin didn't find was one: it goes.)
+    const kept = resolved && scope === 'admin' && evidence.forReport(r.id);
+    if (kept && !kept.confirmedAt) evidence.discard(kept.id);
     if (r.space_id && spaces.getSpace(r.space_id)) {
       const target = people.userById(r.target_id);
       spaces.log(r.space_id, req.user.id, resolved ? 'report-resolve' : 'report-reopen', r.target_id, { user: target ? target.display_name : 'someone', reason: r.reason });
@@ -1075,8 +1091,75 @@ function resolveRoute(scope) {
   };
 }
 api.post('/spaces/:spaceId/reports/:reportId/resolve', needUser, needMember, needReportHandler, resolveRoute('space'));
-api.get('/admin/reports', needAdmin, (_req, res) => res.json({ reports: safety.allReports() }));
+api.get('/admin/reports', needAdmin, (_req, res) => {
+  const cases = evidence.byReport();
+  // (Whether a reported message is still there, for taking it down.)
+  const there = (id) => { const row = dms.getRow(id); return row ? ['text', 'file', 'gif'].includes(row.kind) : Boolean(dms.passingMessage(id)); };
+  res.json({ reports: safety.allReports().map((r) => ({ ...r, evidence: cases.get(r.id) || null, ...(r.messageId ? { messageGone: !there(r.messageId) } : {}) })) });
+});
 api.post('/admin/reports/:reportId/resolve', needAdmin, resolveRoute('admin'));
+
+// The admin taking a reported message down, wherever it is: a DM, or any space's channel (an
+// intimate picture shared without permission, say, which has to be down within 48 hours).
+// Everyone in the conversation sees "This server's admin removed Bea's message".
+function removeAsAdmin(id) {
+  const row = dms.getRow(id);
+  const passing = !row && dms.passingMessage(id);
+  const m = row ? { dm: row.dm_id, author: row.author_id, kind: row.kind } : passing ? { dm: passing.dm, author: passing.author, kind: passing.kind } : null;
+  if (!m || !['text', 'file', 'gif'].includes(m.kind)) return false;
+  if (row) dms.removeMessage(id, 'admin');
+  else dms.forgetPassing(id);
+  const channel = spaces.channel(m.dm);
+  const author = people.userById(m.author);
+  const authorName = author ? author.display_name : 'someone';
+  const was = m.kind === 'file' ? 'file' : 'message';
+  const audience = channel ? spaces.channelAudience(channel) : [...new Set(String(m.dm).split(':'))];
+  for (const uid of audience) realtime.sendToUser(uid, { type: 'dm-removed', dm: m.dm, id, by: 'admin', name: "This server's admin", was, author: m.author, authorName });
+  if (channel) spaces.log(channel.space_id, null, 'message-remove', m.author, { user: authorName, channel: channel.name, was, admin: true });
+  return true;
+}
+
+api.post('/admin/reports/:reportId/remove', needAdmin, (req, res) => {
+  const r = safety.reportById(req.params.reportId);
+  if (!r || !r.message_id) return fail(res, 404, "That report isn't about a message.");
+  if (!removeAsAdmin(r.message_id)) return fail(res, 404, "That message isn't there any more.");
+  res.json({ ok: true });
+});
+
+// Sexual content involving a child, found to be what the report says (from any report: someone
+// may have picked another reason). Its copy's kept a year (made now, if there isn't one yet), it
+// comes down (the message, the homepage, or a reported person's profile picture), and the account
+// is suspended. Then the admin reports it to NCMEC's CyberTipline, and notes the report's number.
+api.post('/admin/reports/:reportId/evidence', needAdmin, async (req, res) => {
+  const r = safety.reportById(req.params.reportId);
+  if (!r) return fail(res, 404, "That report isn't there any more.");
+  const snapshot = safety.reportJson(r).snapshot || {};
+  const before = evidence.forReport(r.id);
+  const c = before
+    ? evidence.confirm(before.id, req.user.id)
+    : await evidence.keep({ reportId: r.id, reason: r.reason, messageId: r.message_id, targetId: r.target_id, homepage: snapshot.kind === 'homepage' }, { confirmedBy: req.user.id });
+  if (r.message_id) removeAsAdmin(r.message_id);
+  const u = people.userById(r.target_id);
+  if (u && !u.is_admin) {
+    if (snapshot.kind === 'homepage') homepages.clear(u.id);
+    else if (!r.message_id && snapshot.kind !== 'question' && u.avatar) {
+      db.prepare('UPDATE users SET avatar = NULL WHERE id = ?').run(u.id);
+      removeAvatarFile(u.avatar);
+    }
+    if (!u.suspended_at) suspendUser(u, 'Child safety');
+  }
+  safety.setResolved(r.id, req.user.id, true);
+  for (const uid of reportHandlers(null)) realtime.sendToUser(uid, { type: 'report-new', space: null, quiet: true });
+  res.json({ case: evidence.summary(c) });
+});
+
+// What's being kept, and each one's CyberTipline report number.
+api.get('/admin/evidence', needAdmin, (_req, res) => res.json({ cases: evidence.list(), keepDays: Math.round(evidence.KEEP_MS / 86_400_000) }));
+api.put('/admin/evidence/:id', needAdmin, (req, res) => {
+  const c = evidence.setTipline(req.params.id, (req.body || {}).tipline);
+  if (!c || !c.confirmedAt) return fail(res, 404, "That isn't being kept any more.");
+  res.json({ case: evidence.summary(c) });
+});
 
 // Push notifications for when the app is closed (lib/push.js). The phone asks for the
 // server's public key, registers with its push app (ntfy, for example), then sends its address here.
@@ -2515,17 +2598,22 @@ api.put('/admin/users/:id/storage', needAdmin, (req, res) => {
 
 // Suspending an account: signed out everywhere at once, out of any call, and it can't sign in
 // again (or make a new account with its email) until the admin lets it back. Its homepage is
-// hidden meanwhile. What it sent stays, for its spaces' moderators to deal with.
+// hidden meanwhile. What it sent stays, for its spaces' moderators to deal with. (A report about
+// a child, confirmed, suspends one too.)
+function suspendUser(u, reason) {
+  db.prepare('UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ?')
+    .run(Date.now(), people.oneLine(reason || '', 200), u.id);
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id);
+  realtime.forgetUser(u.id, 'suspended');
+  console.log(`[accounts] Suspended: @${u.username}`);
+}
+
 api.post('/admin/users/:id/suspend', needAdmin, (req, res) => {
   const u = people.userById(req.params.id);
   if (!u) return fail(res, 404, 'Not found.');
   if (u.id === req.user.id) return fail(res, 400, "That's you!");
   if (u.is_admin) return fail(res, 400, "An admin can't be suspended.");
-  db.prepare('UPDATE users SET suspended_at = ?, suspended_reason = ? WHERE id = ?')
-    .run(Date.now(), people.oneLine((req.body || {}).reason || '', 200), u.id);
-  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id);
-  realtime.forgetUser(u.id, 'suspended');
-  console.log(`[accounts] Suspended: @${u.username}`);
+  suspendUser(u, (req.body || {}).reason);
   res.json({ ok: true });
 });
 

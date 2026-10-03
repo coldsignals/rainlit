@@ -289,6 +289,23 @@ take someone's homepage down, from the list of accounts or right from a report. 
 encrypted, so run it for people who trust you, keep your server's keys and passwords to
 yourself, and keep it updated.
 
+**What the law asks of you.** Whoever runs a server answers for what's on it. Two kinds of
+report reach only you, never a space's moderators:
+
+- **Sexual content involving a child.** A copy of what was reported, and of the account that
+  sent it, is kept the moment it's reported, so nothing deleted afterwards loses it. If it's
+  what the report says, press **It's sexual content involving a child**. The copy is then kept
+  for a year in your data folder's `evidence` folder (the app never shows it), what was
+  reported comes down, and the account is suspended. In the US, you then have to report it to
+  NCMEC's CyberTipline (register as a provider at esp.ncmec.org first), and note its number
+  under **Kept as evidence**. If it isn't what the report says, marking it dealt with deletes
+  the copy.
+- **Intimate pictures shared without permission.** In the US these have to come down within
+  48 hours of being reported (the TAKE IT DOWN Act); the report says by when. **Remove the
+  message** takes a reported message down wherever it is, in a DM or any space.
+
+With email set up, both also email you, without saying what was reported.
+
 **Room for files.** Under **Storage** in the admin panel: the biggest file anyone can send
 (25 MB to start with), and how much each person's files can add up to (1.5 GB), counting
 everything they've sent that's still there, notes too. Next to someone's account, you can give

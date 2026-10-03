@@ -758,6 +758,9 @@ li.suspended > .grow { color: var(--danger-text); }
 .report-head time { flex: none; color: var(--mist); font-size: 12px; }
 .report-reason { font-size: 13px; color: var(--lamp-text); }
 .report-reason.urgent { color: var(--danger); }
+.report-due { display: block; font-size: 13px; color: var(--mist); }
+.evidence-tipline { display: flex; align-items: center; gap: 6px; }
+.evidence-tipline input { width: 190px; }
 .report-note { margin: 0; color: var(--text); overflow-wrap: anywhere; }
 .report-quote { margin: 0; padding: 6px 10px; border-left: 3px solid var(--line); color: var(--mist); overflow-wrap: anywhere; white-space: pre-wrap; max-height: 8em; overflow: auto; }
 .report > small { color: var(--mist); font-size: 12px; }

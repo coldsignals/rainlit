@@ -991,6 +991,8 @@
         <label class="toggle"><input type="radio" name="report-reason" value="harassment" /><span>Harassment or hate</span></label>
         <label class="toggle"><input type="radio" name="report-reason" value="inappropriate" /><span>Something inappropriate or disturbing</span></label>
         <label class="toggle"><input type="radio" name="report-reason" value="danger" /><span>Someone may be in danger</span></label>
+        <label class="toggle"><input type="radio" name="report-reason" value="child" /><span>Sexual content involving a child</span></label>
+        <label class="toggle"><input type="radio" name="report-reason" value="intimate" /><span>Intimate pictures shared without permission</span></label>
         <label class="toggle"><input type="radio" name="report-reason" value="other" /><span>Something else</span></label>
       </div>
       <p id="report-danger" class="report-danger" hidden>If someone is in danger right now, please contact your local emergency services too.</p>
@@ -1077,8 +1079,19 @@
       </div>
       <section class="admin-section wide">
         <h3>Reports</h3>
-        <p class="hint">Everything reported on this server. Reports from a space also go to its moderators.</p>
+        <p class="hint">Everything reported on this server. Reports from a space also go to its moderators, except ones
+          about a child or intimate pictures, which only you see.</p>
         <ol id="report-list" class="report-list"></ol>
+      </section>
+      <section class="admin-section wide">
+        <h3>Kept as evidence</h3>
+        <p class="hint">Sexual content involving a child that you've confirmed from a report, with the account that sent it:
+          kept for a year on the server, in the data folder's <code>evidence</code> folder (the app never shows it), for the
+          authorities. US law says to report each one to NCMEC's
+          <a href="https://report.cybertip.org/" target="_blank" rel="noopener">CyberTipline</a> (as a provider:
+          <a href="https://esp.ncmec.org/registration" target="_blank" rel="noopener">register first</a>), then note its
+          report number here.</p>
+        <ol id="evidence-list" class="admin-list"></ol>
       </section>
       <section class="admin-section wide">
         <h3>Feedback</h3>
