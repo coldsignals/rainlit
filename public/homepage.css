@@ -791,7 +791,7 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-pet.lf .hp-pet-think { left: auto; right: 62%; transform-origin: 100% 100%; }
 .hp-pet-think.on { opacity: 1; transform: none; }
 .hp-pet-think img { width: 66%; height: 66%; object-fit: contain; image-rendering: pixelated; }
-/* Hearts, z's, sparkles and bubbles coming up from its head (and a cloudlet's rainbow, a dragon's
+/* Hearts, z's, sparkles and bubbles coming up from its head (and a droplet's ripples, a dragon's
    puff of flame). */
 .hp-pet-bits { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
 .hp-pet-bit {
@@ -817,14 +817,15 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   15% { opacity: 1; }
   to { transform: translate(calc(-50% + var(--pw) * var(--drift, 0) * 0.4), calc(var(--pw) * -1.1)); opacity: 0; }
 }
-.hp-pet-rainbow {
-  left: 50%; top: -34%; width: 100%; height: 56%;
-  animation: pet-rainbow 1.6s steps(8) forwards;
+/* (Three, one after another, spreading out from under it, like the rings under Rainlit's drop.) */
+.hp-pet-ripple {
+  left: 50%; top: 66%; width: 80%; height: 38%;
+  animation: pet-ripple 1.2s steps(8) forwards;
 }
-@keyframes pet-rainbow {
-  from { transform: translateX(-50%) scale(0.4); opacity: 0; }
-  20%, 70% { transform: translateX(-50%) scale(1); opacity: 1; }
-  to { transform: translateX(-50%) scale(1); opacity: 0; }
+@keyframes pet-ripple {
+  from { transform: translateX(-50%) scale(0.35); opacity: 0; }
+  20% { opacity: 0.95; }
+  to { transform: translateX(-50%) scale(1.3); opacity: 0; }
 }
 .hp-pet-flame {
   left: 88% !important; top: 26%; width: calc(var(--pw) / 22 * 5); height: calc(var(--pw) / 22 * 6);

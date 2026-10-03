@@ -56,7 +56,7 @@
   const PERKS = {
     fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms', 'embers'],
     pattern: ['starfield', 'bokeh', 'holo', 'waves'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels'],
-    click: ['confetti', 'hearts', 'stars', 'ripples', 'fireworks'], pet: ['cloud', 'dragon', 'fox'], piece: ['fortune'],
+    click: ['confetti', 'hearts', 'stars', 'ripples', 'fireworks'], pet: ['drop', 'dragon', 'fox'], piece: ['fortune'],
   };
 
   // ---------- Pixel stickers ----------
@@ -1182,13 +1182,13 @@
         betta: { label: 'Betta', a: '#b36bff', b: '#f0dcff', c: '#ff5fb0', s: '#9150e0' },
       },
     },
-    cloud: {
-      label: 'Cloudlet', name: 'Nimbus', food: 'raindrop', speed: 34, floats: true, glow: true, joy: 'rainbow',
+    drop: {
+      label: 'Droplet', name: 'Lumi', food: 'star', speed: 38, floats: true, glow: true, joy: 'ripple',
       coats: {
-        day: { label: 'Fair', a: '#ffffff', b: '#d6e4fb', d: '#7fd0ff', g: '#bfe6ff' },
-        dusk: { label: 'Dusk', a: '#efe6ff', b: '#cdbaf4', d: '#b99bff', g: '#d9c7ff' },
-        storm: { label: 'Stormy', a: '#bcc3d4', b: '#8f99b0', d: '#7aa2ff', g: '#a5bcff' },
-        candy: { label: 'Candy', a: '#ffe0ee', b: '#ffb9d9', d: '#ff8cc6', g: '#ffc6e3' },
+        lamp: { label: 'Lamplight', a: '#f9c862', b: '#fff1cc', c: '#ffffff', s: '#ee9f3c', g: '#ffd27a' },
+        rain: { label: 'Rain', a: '#7cc4ff', b: '#dcf1ff', c: '#ffffff', s: '#4a8fe8', g: '#9fd6ff' },
+        dusk: { label: 'Twilight', a: '#b99bff', b: '#efe6ff', c: '#ffffff', s: '#8a6ae0', g: '#cdb8ff' },
+        mint: { label: 'Sea glass', a: '#7fdcbf', b: '#dffaf0', c: '#ffffff', s: '#3fb393', g: '#a6f0da' },
       },
     },
     dragon: {
@@ -1216,7 +1216,8 @@
 
   // Each pet in pixels (18 across, 14 down), facing right, standing (or floating): a letter a
   // pixel, its colour (above). A line's drawn round it. The rest of how it looks is made from this
-  // one (petFrames): `eyes` are where its eyes are (each 2 by 2, from its top left), `mouth` where
+  // one (petFrames): `eyes` are where its eyes are (each 2 by 2, from its top left, or `eyeW` 1
+  // across; `face` is the colour round them, if it isn't a), `mouth` where
   // it opens its mouth, `legs` the row its legs start on (lying down, the rest of it comes `drop`
   // rows down, over them), `head` the column its head starts at (it lowers it to eat), and the
   // changes for its tail (or fins) moving (`swish`) and its legs as it walks (`walk`), each
@@ -1289,31 +1290,31 @@
       glad: [[15, 7, 'mm']],
       munch: [[15, 7, 'mk']],
     },
-    cloud: {
-      eyes: [[5, 5], [11, 5]], mouth: [8, 9], floats: true,
+    // (Rainlit's own drop as a little guy: traced from the logo, its glow and all, by
+    // scripts/tools/drop-pet.mjs.)
+    drop: {
+      eyes: [[7, 8], [11, 8]], eyeW: 1, face: 'b', mouth: [9, 10], floats: true,
       rows: [
-        '..................',
-        '.......aaaa.......',
-        '...aa.aaaaaa.aa...',
-        '..aaaaaaaaaaaaaa..',
-        '.aaaaaaaaaaaaaaaa.',
-        '.aaaaeeaaaaeeaaaa.',
-        'aaaaaeeaaaaeeaaaaa',
-        'aaaaraaaaaaaaraaaa',
-        'aaaaaaakaakaaaaaaa',
-        '.aaaaaaakkaaaaaaa.',
-        '.abbbbbbbbbbbbbba.',
-        '..bbbbbbbbbbbbbb..',
-        '....d...d...d.....',
-        '..................',
+        '.........s........',
+        '........sss.......',
+        '.......aaaaa......',
+        '......aaaaaaa.....',
+        '.....acaaaaaaa....',
+        '....acabbbbbaaa...',
+        '...aacbbbbbbbaaa..',
+        '...aaabbbbbbbaaa..',
+        '...aaabebbbebaaa..',
+        '...aaabebbbebaaa..',
+        '...aaabbbbbbbaaa..',
+        '....aabbbbbbbaa...',
+        '.....aabbbbbaa....',
+        '.......aaaaa......',
       ],
-      swish: [[0, 12, '..................'], [0, 13, '..d...d...d...d...']],
-      walk: [[], [[0, 12, '..................'], [0, 13, '..d...d...d...d...']]],
-      sleep: [[0, 12, '..................']],
+      // (Its tip flickers this way and that, like a lamp's flame.)
+      swish: [[8, 0, '..s'], [8, 1, '.sss']],
+      walk: [[], [[8, 0, 's..'], [7, 1, 'sss.']]],
       breathe: [],
-      glad: [[8, 9, 'mm']],
-      munch: [[8, 9, 'mm']],
-      sad: [[0, 12, '..d..d..d..d..d...'], [0, 13, '....d.....d.......']],
+      sad: [[9, 0, '.']],
     },
     dragon: {
       eyes: [[9, 4], [14, 4]], mouth: [12, 7], legs: 12, drop: 2, head: 8,
@@ -1380,13 +1381,19 @@
       }
       return g;
     };
-    const LOOK = {
-      shut: (x, y) => [[x, y, 'aa'], [x, y + 1, 'kk']],
-      glad: (x, y) => [[x, y, 'kk'], [x - 1, y + 1, 'kaak']],
-      sad: (x, y) => [[x, y, 'aa'], [x, y + 1, 'ee']],
+    const F = P.face || 'a';
+    const LOOK = P.eyeW === 1 ? {
+      // (Eyes a pixel across: shut, a line out to the side; glad, a little ^.)
+      shut: (x, y, i) => [[x, y, F], [i ? x : x - 1, y + 1, 'kk']],
+      glad: (x, y) => [[x, y, 'k'], [x - 1, y + 1, `k${F}k`]],
+      sad: (x, y) => [[x, y, F], [x, y + 1, 'e']],
+    } : {
+      shut: (x, y) => [[x, y, F + F], [x, y + 1, 'kk']],
+      glad: (x, y) => [[x, y, 'kk'], [x - 1, y + 1, `k${F}${F}k`]],
+      sad: (x, y) => [[x, y, F + F], [x, y + 1, 'ee']],
     };
     const eyes = (g, look, dy = 0) => {
-      for (const [x, y] of P.eyes) put(g, LOOK[look](x, y), dy);
+      P.eyes.forEach(([x, y], i) => put(g, LOOK[look](x, y, i), dy));
       return g;
     };
     // (Everything from column x0 on, n rows down.)
@@ -1466,6 +1473,14 @@
   const foodSrc = (food) => (FOODS[food] ? pixelsSrc(outlined(FOODS[food].rows), { k: '#2a1f33', ...FOODS[food].colors }) : pixelSrc(food) || pixelSrc('heart'));
   const DISH = pixelsSrc(outlined(['aaaaaaaaaaaaaa', 'bbbbbbbbbbbbbb', '.aaaaaaaaaaaa.', '..aaaaaaaaaa..', '....cccccc....']), { k: '#2a1f33', a: '#ff8fb1', b: '#ffc2d6', c: '#d6336c' });
   const BALL = pixelsSrc(outlined(['..aaa..', '.awaab.', 'awaaaab', 'aaaaaab', 'aaaaabb', '.aaabb.', '..bbb..']), { k: '#2a1f33', a: '#ff5f8f', w: '#ffffff', b: '#d6336c' });
+  // A ripple spreading out under a droplet when it's petted (like the rings under Rainlit's own
+  // drop), in its glow's colour.
+  const RIPPLE = ['......aaaaaa......', '...aaa......aaa...', '.aa............aa.', 'a................a', '.aa............aa.', '...aaa......aaa...', '......aaaaaa......'];
+  const ripples = new Map();
+  const rippleSrc = (color) => {
+    if (!ripples.has(color)) ripples.set(color, pixelsSrc(RIPPLE, { a: color }));
+    return ripples.get(color);
+  };
 
   // A pet, as it looks: standing about, unless it's given something to do (the classes in
   // homepage.css: walk, run, rest, sleep, joy, eat, sad).
@@ -1666,15 +1681,16 @@
       node.classList.toggle('sad', hungry());
       updateTag();
     }
-    // Hearts, z's, sparkles and bubbles, coming up from it (and a Glow pet's own: a rainbow, a
-    // puff of flame).
+    // Hearts, z's, sparkles and bubbles, coming up from it (and a Glow pet's own: ripples spreading
+    // out under it, a puff of flame).
     function bit(kind, text = '') {
       const b = document.createElement('i');
       b.className = `hp-pet-bit hp-pet-${kind}`;
       if (text) b.textContent = text;
-      const src = { heart: 'heart', spark: 'sparkle', rainbow: 'rainbow', flame: 'flame' }[kind];
+      const src = { heart: 'heart', spark: 'sparkle', flame: 'flame' }[kind];
       if (src) b.style.backgroundImage = `url("${pixelSrc(src)}")`;
-      if (kind !== 'rainbow') b.style.left = `${(me.dir > 0 ? 70 : 30) + rand(-10, 10)}%`;
+      if (kind === 'ripple') b.style.backgroundImage = `url("${rippleSrc((K.coats[pet.coat] || Object.values(K.coats)[0]).g)}")`;
+      else b.style.left = `${(me.dir > 0 ? 70 : 30) + rand(-10, 10)}%`;
       b.style.setProperty('--drift', `${rand(-0.25, 0.25).toFixed(2)}`);
       b.addEventListener('animationend', () => b.remove());
       setTimeout(() => b.remove(), 3000); // (in case it doesn't move at all)
@@ -1683,7 +1699,8 @@
     const hearts = (n) => {
       for (let i = 0; i < n; i++) setTimeout(() => bit('heart'), i * 150);
       if (K.glow) for (let i = 0; i < n; i++) setTimeout(() => bit('spark'), 70 + i * 170);
-      if (K.joy) bit(K.joy);
+      if (K.joy === 'ripple') for (let i = 0; i < 3; i++) setTimeout(() => bit('ripple'), i * 280);
+      else if (K.joy) bit(K.joy);
     };
 
     // (`free`: somewhere past where it can walk about, like up in its bed.)

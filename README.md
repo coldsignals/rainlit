@@ -254,9 +254,9 @@ been petted. Its room is pixel too, and yours to do up (its **Decorate** tab):
 a wallpaper (stripes, hearts, slate, wood panels, plaid...) and a floor, a rug,
 something on the wall (a picture, a clock, a guitar, a dartboard...), and
 something in each corner (a plant, a lamp, a bookshelf, a desk, an armchair, or
-its bed, where it naps). Glow brings three more pets: a cloudlet that makes
-rainbows when it's petted, a dragon that puffs flames, and a spirit fox with a
-glowing tail; and things for the room that glow: starlit, aurora and city
+its bed, where it naps). Glow brings three more pets: a droplet (Rainlit's own
+little drop) that sends out ripples when it's petted, a dragon that puffs
+flames, and a spirit fox with a glowing tail; and things for the room that glow: starlit, aurora and city
 wallpapers, cloud and crystal floors, a magic circle, fairy lights, a neon heart
 and a neon bolt, an aquarium, a lava lamp and an arcade machine (anyone can try
 them all on in the room). It's all just for fun: nothing nags you, and if you'd rather

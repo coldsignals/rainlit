@@ -12395,7 +12395,7 @@ function showGlowExtras() {
   if (glowExtrasShown || !window.Homepage || !Homepage.petEl) return;
   glowExtrasShown = true;
   const pets = el.glow.querySelector('[data-glow-pets]');
-  for (const [kind, coat] of [['cloud', 'day'], ['dragon', 'violet'], ['fox', 'twilight']]) {
+  for (const [kind, coat] of [['drop', 'lamp'], ['dragon', 'violet'], ['fox', 'twilight']]) {
     const pet = Homepage.petEl(kind, coat);
     pet.classList.add('walk');
     const item = document.createElement('span');
