@@ -450,16 +450,39 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
 - No notifications while Rainlit is closed, except in the Windows app (while
   it's in the tray) and the Android app with [ntfy](https://ntfy.sh/docs/subscribe/phone/)
   installed (see [mobile/README.md](mobile/README.md)).
-- Password reset emails. For now the admin makes reset links.
+- Messages aren't end-to-end encrypted yet, so whoever runs the server could
+  read the ones that are kept (rainlit.app doesn't; see its privacy policy).
 - Phones can't share their screen, even in the Android app (yet).
 - In a phone's browser, the call may pause if you switch apps or turn the screen
   off. The Android app keeps it going.
-- Calls and conversations are between two people (groups are on the
-  [roadmap](ROADMAP.md)).
 - Call history is saved on each device, not on the server.
 - A file sent straight through a call (saving off) restarts from the beginning
   if the connection drops while it's on its way, and shares the connection with
   the call, so on a slow connection the call can get choppier until it's done.
+
+## How Rainlit is made
+
+Rainlit is made by one person, who decides what it does, how it looks and
+feels and what it won't do, and answers for it. Most of
+the code is written by Claude, Anthropic's AI, working from those decisions:
+each change it wrote says so on GitHub ("Co-Authored-By: Claude"). That's how
+one person can make something this size, and it's why the rest of this
+section matters:
+
+- **Changes are tried before they go out,** on a brand-new server with its own
+  data, in a real browser, the way people use Rainlit: messages, files, calls,
+  homepages, pets, reports.
+- **Code typed where words go stays words.** Everything people write (messages,
+  names, statuses, spaces, homepages, reports) is shown as text, never made
+  part of the page, and the page only runs Rainlit's own scripts (its Content
+  Security Policy), so a slip can't let anyone run code in someone else's app.
+  Files that aren't pictures, videos or sound only ever download.
+- **Found a hole?** See [SECURITY.md](SECURITY.md): it's fixed first.
+- **It keeps as little as it can:** no ID checks, no IP addresses, and not
+  your birthday (only, if you're under 18, the day you turn 18). You can
+  download everything that's yours (Your profile, then Download your data), or
+  delete it, any time.
+- **It's all here to check:** the whole of Rainlit is free software (below).
 
 ## How it works
 

@@ -53,6 +53,7 @@ const storage = require('./lib/storage');
 const scrub = require('./lib/scrub');
 const settings = require('./lib/settings');
 const evidence = require('./lib/evidence');
+const yourData = require('./lib/export');
 const { getIceServers } = require('./lib/ice');
 const { db, transaction, DATA_DIR, AVATAR_DIR } = require('./lib/db');
 
@@ -761,6 +762,27 @@ api.delete('/me', needUser, async (req, res) => {
   }
   auth.clearSessionCookie(res);
   res.json({ ok: true });
+});
+
+// Your data, to take with you (lib/export.js): a .zip of what's yours here. One every few minutes
+// (it's a fair bit of work for the server).
+const EXPORT_EVERY_MS = 5 * 60_000;
+const exportedAt = new Map();
+api.get('/me/export', needUser, async (req, res) => {
+  const last = exportedAt.get(req.user.id) || 0;
+  if (Date.now() - last < EXPORT_EVERY_MS) return fail(res, 429, 'You just downloaded your data. You can again in a few minutes.');
+  exportedAt.set(req.user.id, Date.now());
+  try {
+    const out = await yourData.build(req.user.id);
+    res.set('Content-Type', 'application/zip');
+    res.set('Content-Disposition', `attachment; filename="${out.name}"`);
+    res.set('Cache-Control', 'no-store');
+    res.send(out.buf);
+  } catch (err) {
+    exportedAt.delete(req.user.id);
+    console.error(`[export] Couldn't put @${req.user.username}'s data together: ${err.message}`);
+    fail(res, 500, "Couldn't put your data together. Try again in a bit.");
+  }
 });
 
 function removeAvatarFile(name) {

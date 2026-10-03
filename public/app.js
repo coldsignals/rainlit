@@ -130,7 +130,7 @@ for (const id of [
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
-  'files-details', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
+  'files-details', 'export-btn', 'export-note', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
   'support-card', 'support-badge', 'support-title', 'support-note', 'support-btn', 'support-link', 'support-admin', 'support-state', 'support-costs',
   'homepage-stats',
   'mp-doing', 'activity-field', 'activity-playing', 'activity-listening', 'activity-others', 'activity-now', 'activity-game-list', 'activity-add', 'activity-pick',
@@ -12739,6 +12739,33 @@ async function onProfileSave(e) {
   }
 }
 
+// Your data, to take with you (lib/export.js): a .zip, saved to the device.
+async function onExport() {
+  el.exportBtn.disabled = true;
+  el.exportBtn.textContent = 'Putting it together';
+  el.exportNote.hidden = true;
+  try {
+    let res;
+    try {
+      res = await fetch(`${SERVER}/api/me/export`);
+    } catch {
+      throw new Error("Can't reach Rainlit. Check your internet connection and try again.");
+    }
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Something went wrong. Try again.');
+    const name = (/filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '') || [])[1] || 'rainlit-data.zip';
+    const url = URL.createObjectURL(await res.blob());
+    await saveUrl(url, name, 'application/zip');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    el.exportNote.textContent = `Saved as ${name}.`;
+  } catch (err) {
+    el.exportNote.textContent = err.message;
+  } finally {
+    el.exportNote.hidden = false;
+    el.exportBtn.disabled = false;
+    el.exportBtn.textContent = 'Download my data';
+  }
+}
+
 async function onAvatarPicked() {
   const file = el.avatarInput.files[0];
   el.avatarInput.value = '';
@@ -14219,6 +14246,7 @@ async function init() {
   el.profileStatus.addEventListener('input', updateStatusCount);
   el.avatarBtn.addEventListener('click', () => el.avatarInput.click());
   el.avatarInput.addEventListener('change', onAvatarPicked);
+  el.exportBtn.addEventListener('click', onExport);
   el.avatarRemoveBtn.addEventListener('click', onAvatarRemove);
   for (const a of document.querySelectorAll('a.legal-link')) {
     a.addEventListener('click', (e) => {

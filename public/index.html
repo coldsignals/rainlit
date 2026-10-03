@@ -783,12 +783,23 @@
           <ol id="files-list" class="admin-list files-list"></ol>
         </div>
       </details>
+      <details class="pw-details">
+        <summary>Download your data</summary>
+        <div class="pw-fields">
+          <p class="hint">A .zip of what's yours here: your profile, every message you've sent (your notes too),
+            your friends and spaces, your homepage with its pictures, your pet, and a list of your files (save
+            those from Your files, above). What other people sent isn't in it: that's theirs.</p>
+          <button id="export-btn" class="primary-btn small" type="button">Download my data</button>
+          <p id="export-note" class="hint" role="status" hidden></p>
+        </div>
+      </details>
       <details id="delete-details" class="pw-details">
         <summary>Delete your account</summary>
         <div class="pw-fields">
           <p class="delete-what">This deletes your account for good. Everything you've sent goes with it
             (messages, files and reactions, everywhere), and so do your conversations with friends, for
-            them too, your friends, and your profile. Groups you're in carry on without you.</p>
+            them too, your friends, and your profile. Groups you're in carry on without you. (To keep a
+            copy, download your data first.)</p>
           <ul id="delete-spaces" class="delete-spaces" hidden></ul>
           <label class="field">
             <span>Your password</span>
