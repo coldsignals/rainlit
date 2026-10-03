@@ -1,0 +1,8 @@
+# What code scanning reads: Rainlit's own code, not other people's it carries (the emoji picker,
+# under its own license) or the Android template's sample tests.
+name: Rainlit
+paths-ignore:
+  - public/vendor
+  - '**/node_modules'
+  - mobile/android/app/src/test
+  - mobile/android/app/src/androidTest

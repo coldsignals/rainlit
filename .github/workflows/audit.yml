@@ -1,0 +1,39 @@
+# Dependency audit: the packages Rainlit ships (the server's, and the Windows and Android apps' own)
+# against the public list of known vulnerabilities, on every push to main, on pull requests, and
+# once a week. A known high or critical one fails it. (Dependabot watches the rest, the tools that
+# build the apps included, and tells whoever looks after the repository.)
+name: Dependency audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '41 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: npm audit (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: server
+            dir: .
+          - name: Windows app
+            dir: desktop
+          - name: Android app
+            dir: mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Audit
+        working-directory: ${{ matrix.dir }}
+        run: npm audit --omit=dev --audit-level=high
