@@ -14239,8 +14239,9 @@ async function init() {
   el.signoutBtn.addEventListener('click', onSignOut);
   el.deleteDetails.addEventListener('toggle', () => { if (el.deleteDetails.open) renderDeletion(); });
   el.deleteBtn.addEventListener('click', onDeleteAccount);
-  // Dialogs close with their X, or by clicking outside them.
-  for (const d of [el.miniProfile, el.profile, el.admin, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog]) {
+  // Dialogs close with their X, or by clicking outside them (not the ones asking something that
+  // needs an answer: 18+, an announcement, sharing what you're doing).
+  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 

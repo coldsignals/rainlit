@@ -2163,8 +2163,24 @@ button.person.open { background: var(--dusk-hi); }
   color: var(--text);
 }
 .settings::backdrop { background: var(--scrim); }
-.settings-inner { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 16px 20px 22px; }
+.settings-inner { --pad-top: 16px; --pad-side: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; padding: var(--pad-top) var(--pad-side) 22px; }
 .settings-head { display: flex; justify-content: space-between; align-items: center; margin-right: -8px; }
+/* (Its head stays at the top as the rest scrolls under it, so its X is always there to close it:
+   the inner padding pulled into it, and given back below. A card's colours run under its head, so
+   a card's scrolls with the rest.) */
+.settings > .settings-inner > .settings-head {
+  position: sticky; top: 0; z-index: 3;
+  margin: calc(var(--pad-top) * -1) calc(var(--pad-side) * -1) -8px; padding: var(--pad-top) calc(var(--pad-side) - 8px) 8px var(--pad-side);
+  background: var(--panel);
+}
+/* (What scrolls under it fades in, rather than being cut off: over the gap below it, so it's only
+   seen when something's there.) */
+.settings > .settings-inner > .settings-head::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 10px;
+  background: linear-gradient(var(--panel), transparent); pointer-events: none;
+}
+.settings.carded > .settings-inner > .settings-head { position: relative; background: none; }
+.settings.carded > .settings-inner > .settings-head::after { content: none; }
 .settings-head h2 { margin: 0; font-size: 20px; font-weight: 600; }
 .settings .field select { background-color: var(--deep); }
 .settings input[type="range"] { width: 100%; accent-color: var(--lamp); }
@@ -2613,7 +2629,7 @@ button.person.open { background: var(--dusk-hi); }
   .settings.feedback-dialog { width: min(560px, calc(100vw / var(--zoom) - 32px)); }
 
   .settings.app-settings { width: min(920px, calc(100vw / var(--zoom) - 48px)); }
-  .app-settings > .settings-inner, .admin > .settings-inner { gap: 22px; padding: 20px 28px 26px; }
+  .app-settings > .settings-inner, .admin > .settings-inner { gap: 22px; --pad-top: 20px; --pad-side: 28px; padding: var(--pad-top) var(--pad-side) 26px; }
   .app-settings .settings-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
   .app-settings .settings-col { gap: 26px; }
   /* (Everyone's themes, and supporters' beside them.) */
