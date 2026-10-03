@@ -1128,7 +1128,8 @@
 
   // One piece, placed and turned. (In the editor, links don't go anywhere.)
   function pieceEl(p, ctx) {
-    const link = p.href && !ctx.edit;
+    // (A web address only: lib/homepages.js keeps no other kind, and this doesn't trust that.)
+    const link = typeof p.href === 'string' && /^https?:\/\//i.test(p.href) && !ctx.edit;
     const node = document.createElement(link ? 'a' : 'div');
     node.className = `hp-piece hp-${p.t}`;
     node.dataset.id = p.id;

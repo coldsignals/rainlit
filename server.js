@@ -308,7 +308,7 @@ api.post('/waitlist', (req, res) => {
   if (!mail.enabled) return fail(res, 400, "This Rainlit can't send emails, so it has no waitlist. Try again tomorrow.");
   if (!signups.checkProof(b.proof)) return fail(res, 400, 'That took too long. Try again.');
   const email = String(b.email || '').trim().toLowerCase();
-  if (!people.EMAIL_RE.test(email) || email.length > 254) return fail(res, 400, "That email address doesn't look right.");
+  if (email.length > 254 || !people.EMAIL_RE.test(email)) return fail(res, 400, "That email address doesn't look right.");
   if (signups.throwaway(email)) return fail(res, 400, 'Please use your real email address, not a throwaway one.');
   if (people.userByLogin(email)) return fail(res, 409, 'An account already uses that email. Sign in instead.');
   signups.join(email);
@@ -480,7 +480,7 @@ api.post('/signup', async (req, res) => {
   if (!firstAccount && signups.throwaway(email)) return fail(res, 400, 'Please use your real email address, not a throwaway one.');
   if (!people.USERNAME_RE.test(username)) return fail(res, 400, 'Usernames are 2 to 32 characters: letters, numbers, dots and underscores.');
   if (['everyone', 'here'].includes(username)) return fail(res, 409, 'That username is taken.'); // (they mean something in a message)
-  if (!people.EMAIL_RE.test(email) || email.length > 254) return fail(res, 400, "That email address doesn't look right.");
+  if (email.length > 254 || !people.EMAIL_RE.test(email)) return fail(res, 400, "That email address doesn't look right.");
   const pwProblem = checkNewPassword(b.password);
   if (pwProblem) return fail(res, 400, pwProblem);
   if (people.userByUsername(username)) return fail(res, 409, 'That username is taken.');
@@ -683,7 +683,7 @@ api.post('/me/email', needUser, async (req, res) => {
     return fail(res, 400, "Your password isn't right.");
   }
   const email = String(b.email || '').trim().toLowerCase();
-  if (!people.EMAIL_RE.test(email) || email.length > 254) return fail(res, 400, "That email address doesn't look right.");
+  if (email.length > 254 || !people.EMAIL_RE.test(email)) return fail(res, 400, "That email address doesn't look right.");
   if (email === req.user.email) return fail(res, 400, "That's already your email.");
   if (people.userByLogin(email)) return fail(res, 409, 'An account already uses that email.');
   try {
