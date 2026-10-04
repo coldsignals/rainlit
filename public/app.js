@@ -7805,19 +7805,25 @@ function renderSpaces() {
   renderGroups();
 }
 
+// Something new: a little yellow dot on Home (a conversation) or a space, unless it's set to
+// notify you about Nothing (that's muting it). A mention shows its number instead.
 function renderRail() {
   let dmUnread = 0;
-  for (const dm of S.dms.values()) if (!dm.channelId || groupOfChannel(dm.channelId)) dmUnread += dm.unread;
+  for (const dm of S.dms.values()) {
+    const group = dm.channelId && groupOfChannel(dm.channelId);
+    if (!dm.channelId || (group && group.notify !== 'none')) dmUnread += dm.unread;
+  }
   el.railHome.classList.toggle('open', S.view === 'home');
   el.railHome.classList.toggle('unread', S.view !== 'home' && dmUnread > 0);
   el.railSpaces.replaceChildren(...[...S.spaces.values()].filter((space) => !isGroupSpace(space)).map((space) => {
     const b = document.createElement('button');
     b.type = 'button';
-    const unread = spaceUnread(space.id);
+    const open = S.view === space.id;
     const mentions = spaceMentions(space.id);
-    b.className = `rail-btn rail-space${S.view === space.id ? ' open' : ''}${unread ? ' unread' : ''}`;
+    const dot = !open && !mentions && space.notify !== 'none' && spaceUnread(space.id);
+    b.className = `rail-btn rail-space${open ? ' open' : ''}${dot ? ' unread' : ''}`;
     b.title = space.name;
-    b.setAttribute('aria-label', `${space.name}${mentions ? ` (${mentions} mention${mentions === 1 ? '' : 's'})` : unread ? ' (unread)' : ''}`);
+    b.setAttribute('aria-label', `${space.name}${mentions ? ` (${mentions} mention${mentions === 1 ? '' : 's'})` : dot ? ' (unread)' : ''}`);
     paintSpaceIcon(b, space);
     if (mentions) {
       const pill = document.createElement('span');
@@ -8033,7 +8039,8 @@ async function onSpaceNotify(e) {
   try {
     await api('PUT', `/spaces/${space.id}/notify`, { level: b.dataset.level });
     space.notify = b.dataset.level;
-    toast({ all: `You'll hear about every message in ${space.name}.`, mentions: `You'll hear from ${space.name} when someone mentions you.`, none: `You won't hear from ${space.name}. Unread messages still show.` }[b.dataset.level]);
+    renderRail();
+    toast({ all: `You'll hear about every message in ${space.name}.`, mentions: `You'll hear from ${space.name} when someone mentions you.`, none: `You won't hear from ${space.name}, and its new messages won't light it up. Mentions of you still show.` }[b.dataset.level]);
   } catch (err) {
     toast(err.message);
   }
@@ -10846,6 +10853,7 @@ async function onGroupNotify() {
   try {
     await api('PUT', `/spaces/${space.id}/notify`, { level: el.groupNotify.value });
     space.notify = el.groupNotify.value;
+    renderRail();
   } catch (err) {
     toast(err.message);
   }

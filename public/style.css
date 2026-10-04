@@ -378,12 +378,18 @@ button { cursor: pointer; }
 .rail-space img, .space-icon img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .rail-home:hover, .rail-home.open { background: var(--dusk-hi); }
 .rail-home img { width: 26px; height: 26px; }
-.rail-btn.unread::before, .rail-btn.open::before {
+.rail-btn.open::before {
   content: ''; position: absolute; left: -12px; top: 50%;
-  width: 4px; height: 8px; border-radius: 0 4px 4px 0;
+  width: 4px; height: 36px; border-radius: 0 4px 4px 0;
   background: var(--text); transform: translateY(-50%);
 }
-.rail-btn.open::before { height: 36px; }
+/* Something new in it (app.js: renderRail): a little dot of the lamp's light. */
+.rail-btn.unread::after {
+  content: ''; position: absolute; top: -2px; right: -2px; z-index: 1;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--lamp);
+  box-shadow: 0 0 0 3px var(--rail), 0 0 10px 2px var(--lamp-glow);
+}
 .rail-add { color: var(--lamp-text); }
 .rail-add:hover { background: var(--lamp); color: var(--lamp-ink); }
 .rail-add .icon { width: 22px; height: 22px; }
@@ -2545,7 +2551,7 @@ button.person.open { background: var(--dusk-hi); }
   .app.in-dm { grid-template-columns: minmax(0, 1fr); }
   .app.in-dm .rail { display: none; }
   .rail-btn { width: 44px; height: 44px; }
-  .rail-btn.unread::before, .rail-btn.open::before { left: -10px; }
+  .rail-btn.open::before { left: -10px; }
   .sidebar { border-right: 0; }
   .app .content { display: none; }
   .app.in-dm .sidebar { display: none; }
