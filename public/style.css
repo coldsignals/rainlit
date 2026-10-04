@@ -2323,12 +2323,26 @@ button.person.open { background: var(--dusk-hi); }
 .pr-scene .pr-twinkle { inset: 0; animation: pr-twinkle 1.8s steps(1) infinite; }
 @keyframes pr-twinkle { 50% { opacity: 0.2; } }
 .pr-window { left: calc(var(--px) * 7); top: calc(var(--px) * 3); width: calc(var(--px) * 22); height: calc(var(--px) * 17); }
+/* (Its weather, homepage.js paintSky: the sky in its panes, and over it, in ::before, rain or snow
+   falling, clouds or the northern lights drifting by, or stars twinkling; a storm's lightning lights
+   up the window.) */
+.pr-scene .pr-window { background: var(--sky) calc(var(--px) * 2) calc(var(--px) * 2) / calc(var(--px) * 18) calc(var(--px) * 11) no-repeat; }
 .pr-window::before {
   content: ''; position: absolute; left: calc(var(--px) * 2); right: calc(var(--px) * 2); top: calc(var(--px) * 2); height: calc(var(--px) * 11);
-  background: var(--rain) 0 0 / calc(var(--px) * 8) calc(var(--px) * 8); image-rendering: pixelated;
-  animation: pr-rain 0.7s steps(4) infinite;
+  background: var(--fx) 0 0 / calc(var(--px) * var(--fx-w)) calc(var(--px) * var(--fx-h)); image-rendering: pixelated;
 }
+.pr-window[data-fx="rain"]::before { animation: pr-rain 0.7s steps(4) infinite; }
 @keyframes pr-rain { to { background-position: calc(var(--px) * -2) calc(var(--px) * 8); } }
+.pr-window[data-fx="storm"]::before { animation: pr-rain 0.45s steps(4) infinite; }
+.pr-window[data-fx="storm"] { animation: pr-lightning 7s steps(1) infinite; }
+@keyframes pr-lightning { 0%, 90%, 92.5%, 100% { filter: none; } 91%, 93.5% { filter: brightness(2.3) saturate(0.6); } }
+.pr-window[data-fx="snow"]::before { animation: pr-snow 3.6s steps(12) infinite; }
+@keyframes pr-snow { to { background-position: 0 calc(var(--px) * var(--fx-h)); } }
+.pr-window[data-fx="drift"]::before { animation: pr-drift 40s steps(24) infinite; }
+@keyframes pr-drift { to { background-position-x: calc(var(--px) * var(--fx-w)); } }
+.pr-window[data-fx="twinkle"]::before { background-size: 100% 100%; background-repeat: no-repeat; animation: pr-twinkle 2.6s steps(2) infinite; }
+.pr-window[data-fx="aurora"]::before { animation: pr-drift 18s steps(36) infinite, pr-aurora 6s ease-in-out infinite; }
+@keyframes pr-aurora { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.95; } }
 .pr-window::after { content: ''; position: absolute; inset: 0; background: var(--frame) 0 0 / 100% 100% no-repeat; image-rendering: pixelated; }
 .pr-scene .pr-thing { background-size: 100% 100%; background-repeat: no-repeat; }
 .pr-scene .pr-frames { background-size: 200% 100%; animation: pr-frames 1.3s steps(2) infinite; }
@@ -2423,6 +2437,9 @@ button.person.open { background: var(--dusk-hi); }
 .pr-swatch { display: block; width: 100%; height: 100%; image-rendering: pixelated; background-repeat: no-repeat; background-position: center; background-size: contain; }
 .pr-swatch-wall, .pr-swatch-floor { background-repeat: repeat; background-position: 0 0; }
 .pr-swatch.pr-none { background: linear-gradient(135deg, transparent 46%, var(--line) 46% 54%, transparent 54%); }
+/* (The weather: a little window, its sky as it is.) */
+.pr-swatch-sky { display: flex; width: 36px; height: 22px; margin: auto; outline: 2px solid #8a5a3c; }
+.pr-swatch-sky > i { flex: 1; image-rendering: pixelated; background-repeat: repeat, no-repeat; }
 @media (max-width: 560px) {
   .pet-kind { width: calc(33.3% - 7px); }
   .pet-decor-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }

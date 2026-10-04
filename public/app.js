@@ -12153,7 +12153,7 @@ function renderPetTabs() {
 
 // Doing up its room: a row for each place in it. Glow's things, for anyone without Glow, are
 // there to try on (in the room, never saved), wherever Glow's shown.
-const DECOR_ROWS = [['wall', 'Wallpaper'], ['floor', 'Floor'], ['rug', 'Rug'], ['hang', 'On the wall'], ['left', 'Left corner'], ['right', 'Right corner']];
+const DECOR_ROWS = [['wall', 'Wallpaper'], ['sky', 'Out the window'], ['floor', 'Floor'], ['rug', 'Rug'], ['hang', 'On the wall'], ['left', 'Left corner'], ['right', 'Right corner']];
 const furnishPetRoom = () => Homepage.furnish(el.petRoom, { ...(S.room || {}), ...(S.roomTry || {}) });
 
 function renderPetDecor() {

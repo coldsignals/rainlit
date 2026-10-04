@@ -254,12 +254,15 @@ been petted. Its room is pixel too, and yours to do up (its **Decorate** tab):
 a wallpaper (stripes, hearts, slate, wood panels, plaid...) and a floor, a rug,
 something on the wall (a picture, a clock, a guitar, a dartboard...), and
 something in each corner (a plant, a lamp, a bookshelf, a desk, an armchair, or
-its bed, where it naps). Glow brings three more pets: a droplet (Rainlit's own
-little drop) that sends out ripples when it's petted, a dragon that puffs
-flames, and a spirit fox with a glowing tail; and things for the room that glow: starlit, aurora and city
-wallpapers, cloud and crystal floors, a magic circle, fairy lights, a neon heart
-and a neon bolt, an aquarium, a lava lamp and an arcade machine (anyone can try
-them all on in the room). It's all just for fun: nothing nags you, and if you'd rather
+its bed, where it naps). The weather out its window changes by itself (day or
+night by your clock, and a new sky each hour), or pick one to keep: rain, a
+clear night, snow, a sunny day or a sunset. Glow brings three more pets: a
+droplet (Rainlit's own little drop) that sends out ripples when it's petted, a
+dragon that puffs flames, and a spirit fox with a glowing tail; and things for
+the room that glow: starlit, aurora and city wallpapers, cloud and crystal
+floors, a magic circle, fairy lights, a neon heart and a neon bolt, an aquarium,
+a lava lamp, an arcade machine, and a thunderstorm or the northern lights out
+the window (anyone can try them all on in the room). It's all just for fun: nothing nags you, and if you'd rather
 not see the pet button at all, Settings > Look hides it. Letting your pet go
 (its room's **Pet** tab, once you've said you're sure) deletes it, and
 everything about it; its room stays as you did it up, for the next one.

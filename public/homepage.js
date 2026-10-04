@@ -1950,6 +1950,15 @@
       did(what, data.pet);
     }
 
+    // What it's eating from or playing with (a bowl, a ball): put away when something else starts
+    // first, or a ball thrown again and again would be left lying about.
+    let busy = null;
+    function putAway(n) {
+      if (!n || n.classList.contains('gone')) return;
+      n.classList.add('gone');
+      setTimeout(() => n.remove(), 600);
+    }
+
     // Fed (a bowl comes, and it eats), or played with (a ball's thrown for it, three times).
     function did(what, info) {
       if (info) me.info = { ...me.info, ...info };
@@ -1960,9 +1969,10 @@
       me.plan = [];
       me.arrive = null;
       if (what === 'feed') {
+        putAway(busy);
         const bx = clampTo(me.x + me.dir * v.w * 0.95, v.x0, v.x1);
         const by = K.floats ? me.y - me.z : me.y;
-        const bowl = prop('hp-pet-bowl', bx, by, v.w * 0.45);
+        const bowl = (busy = prop('hp-pet-bowl', bx, by, v.w * 0.45));
         const food = document.createElement('i');
         food.style.backgroundImage = `url("${foodSrc(K.food)}")`;
         const dish = document.createElement('i');
@@ -1974,14 +1984,16 @@
           me.dir = -side;
           mode('eat', 2.8);
           me.plan.push(() => {
-            bowl.classList.add('gone');
-            setTimeout(() => bowl.remove(), 600);
+            putAway(bowl);
             mode('joy', 1.3);
             hearts(3);
           });
         };
       } else if (what === 'play') {
-        const ball = prop('hp-pet-ball', me.x, me.y - 4, v.w * 0.22);
+        // (Already playing: the same ball, thrown again.)
+        const playing = busy && busy.classList.contains('hp-pet-ball') && !busy.classList.contains('gone');
+        if (!playing) putAway(busy);
+        const ball = (busy = playing ? busy : prop('hp-pet-ball', me.x, me.y - 4, v.w * 0.22));
         ball.style.backgroundImage = `url("${BALL}")`;
         let throws = 3;
         const toss = () => {
@@ -1995,8 +2007,7 @@
               mode('joy', 0.6);
               me.plan.push(toss);
             } else {
-              ball.classList.add('gone');
-              setTimeout(() => ball.remove(), 600);
+              putAway(ball);
               mode('joy', 1.3);
               hearts(4);
             }
@@ -2060,7 +2071,7 @@
 
   const ROOM_ROWS = 42;
   const WALL_ROWS = 26;
-  const ROOM_DEFAULT = { wall: 'stripes', floor: 'wood', rug: 'round', hang: 'none', left: 'plant', right: 'bed' };
+  const ROOM_DEFAULT = { wall: 'stripes', floor: 'wood', rug: 'round', hang: 'none', left: 'plant', right: 'bed', sky: 'auto' };
 
   // (Pixels made to a shape: a flat oval in rings, from the middle out.)
   function oval(w, h, rings) {
@@ -2359,13 +2370,66 @@
       colors: { a: '#2b2f3d', A: '#363b4d', m: '#ff5fa8', M: '#ffd0e6', s: '#13233f', g: '#7dff8a', y: '#ffd84d', c: '#4a5068', r: '#ef4d5e', b: '#4c8dff' },
     },
   };
-  const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS };
-  // (Which list each place in the room picks from.)
-  const ROOM_SLOTS = { wall: 'wall', floor: 'floor', rug: 'rug', hang: 'hang', left: 'stand', right: 'stand' };
+  // What's out its window: the weather. Its owner picks one, or it changes by itself (day or night
+  // by their own clock, and the hour's weather: weatherNow). Each is the sky through the window (18
+  // by 11 of the room's pixels: two panes, the bar between) and, over it, rain or snow falling,
+  // clouds or the northern lights drifting by, or stars twinkling.
+  const SKY_W = 18;
+  const SKY_H = 11;
+  const skyRows = (fn) => Array.from({ length: SKY_H }, (_, y) => Array.from({ length: SKY_W }, (_, x) => fn(x, y)).join(''));
+  const dotted = (w, h, at, ch) => Array.from({ length: h }, (_, y) => Array.from({ length: w }, (_, x) => (at.some(([a, b]) => a === x && b === y) ? ch : '.')).join(''));
+  const at = (list, x, y) => list.some(([a, b]) => a === x && b === y);
+  const STARS = [[1, 1], [5, 3], [3, 8], [6, 6], [11, 9], [16, 8], [11, 2], [7, 0], [15, 6]];
+  const MOON = [[14, 1], [15, 1], [13, 2], [14, 2], [15, 2], [16, 2], [13, 3], [14, 3], [15, 3], [16, 3], [14, 4], [15, 4]];
+  const SUN = [[2, 1], [3, 1], [1, 2], [2, 2], [3, 2], [4, 2], [1, 3], [2, 3], [3, 3], [4, 3], [2, 4], [3, 4]];
+  const LOW_SUN = [[13, 8], [14, 8], [12, 9], [13, 9], [14, 9], [15, 9], [12, 10], [13, 10], [14, 10], [15, 10]];
+  const RAIN_TILE = ['........', '.r......', '.r......', '........', '.....r..', '.....r..', '........', '........'];
+  const WEATHER = {
+    auto: { label: 'Changes by itself' },
+    rain: { label: 'Rain', scene: skyRows(() => 'n'), colors: { n: '#1a2350' }, fx: 'rain', tile: RAIN_TILE, tileColors: { r: '#8fb8ff' } },
+    clear: {
+      label: 'Clear night', scene: skyRows((x, y) => (at(MOON, x, y) ? (x === 16 || y === 4 ? 'M' : 'm') : at(STARS, x, y) ? 's' : 'n')),
+      colors: { n: '#141c44', s: '#9fb0e8', m: '#ffeeb8', M: '#d9c27a' },
+      fx: 'twinkle', tile: dotted(SKY_W, SKY_H, [[1, 1], [11, 9], [7, 0], [16, 8]], 't'), tileColors: { t: '#ffffff' },
+    },
+    snow: {
+      label: 'Snow', scene: skyRows((x, y) => (y < 5 ? 'a' : 'b')), colors: { a: '#3a4870', b: '#4a5a84' },
+      fx: 'snow', tile: dotted(12, 12, [[2, 1], [8, 4], [5, 7], [10, 9], [1, 10], [6, 0]], 'w'), tileColors: { w: '#ffffff' },
+    },
+    sunny: {
+      label: 'Sunny day', scene: skyRows((x, y) => (at(SUN, x, y) ? 'y' : y < 6 ? 'a' : 'b')), colors: { a: '#72c1ff', b: '#a6dbff', y: '#ffe066' },
+      fx: 'drift',
+      tile: Array.from({ length: SKY_H }, (_, y) => Array.from({ length: 24 }, (_, x) => ((y === 2 && x >= 9 && x <= 11) || (y === 3 && x >= 7 && x <= 13) || (y === 7 && x >= 19 && x <= 21) || (y === 8 && x >= 17 && x <= 23) ? 'w' : (y === 4 && x >= 8 && x <= 12) || (y === 9 && x >= 18 && x <= 22) ? 'W' : '.')).join('')),
+      tileColors: { w: '#ffffff', W: '#dcecff' },
+    },
+    sunset: {
+      label: 'Sunset', scene: skyRows((x, y) => (at(LOW_SUN, x, y) ? 'S' : y < 2 ? 'p' : y < 5 ? 'q' : y < 8 ? 'o' : 'y')),
+      colors: { p: '#5a3f8c', q: '#b8578f', o: '#ff7e5f', y: '#ffb36b', S: '#ffe39a' },
+      fx: 'drift',
+      tile: Array.from({ length: SKY_H }, (_, y) => Array.from({ length: 24 }, (_, x) => ((y === 3 && x >= 2 && x <= 8) || (y === 6 && x >= 14 && x <= 21) ? 'c' : '.')).join('')),
+      tileColors: { c: '#8e4f86' },
+    },
+    storm: {
+      label: 'Thunderstorm', perk: true, scene: skyRows(() => 'n'), colors: { n: '#0e1330' },
+      fx: 'storm', tile: ['.r....r.', '.r....r.', '...r....', '...r...r', 'r......r', 'r...r...', '....r...', '..r.....'], tileColors: { r: '#a9c4ff' },
+    },
+    aurora: {
+      label: 'Northern lights', perk: true, scene: skyRows((x, y) => (at(STARS, x, y) ? 's' : 'n')), colors: { n: '#0c1330', s: '#8fa3e0' },
+      fx: 'aurora',
+      tile: Array.from({ length: SKY_H }, (_, y) => Array.from({ length: 36 }, (_, x) => {
+        const mid = 4 + Math.round(2 * Math.sin((2 * Math.PI * x) / 36));
+        return y === mid - 1 ? 'v' : y === mid ? 'g' : y === mid + 1 ? 'c' : '.';
+      }).join('')),
+      tileColors: { v: '#b07bff', g: '#5dffa8', c: '#5ee7ff' },
+    },
+  };
 
-  // The window, and the rain outside it.
+  const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS, sky: WEATHER };
+  // (Which list each place in the room picks from.)
+  const ROOM_SLOTS = { wall: 'wall', floor: 'floor', rug: 'rug', hang: 'hang', left: 'stand', right: 'stand', sky: 'sky' };
+
+  // The window (its weather in its panes: paintSky).
   const WINDOW = pixelsSrc(outlined(['aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbb', '.cccccccccccccccccc.']), { k: '#2a1f33', a: '#8a5a3c', b: '#b07a52', c: '#5e3f2c' });
-  const RAIN = pixelsSrc(['nnnnnnnn', 'nrnnnnnn', 'nrnnnnnn', 'nnnnnnnn', 'nnnnnrnn', 'nnnnnrnn', 'nnnnnnnn', 'nnnnnnnn'], { n: '#1a2350', r: '#8fb8ff' });
   const BASEBOARD = pixelsSrc(['aaaaaaaa', 'bbbbbbbb', 'cccccccc'], { a: '#c89a6a', b: '#8a5c3a', c: '#5e3f2c' });
 
   const thingSrc = new Map();
@@ -2390,6 +2454,44 @@
       }
     }
     return thingSrc.get(id);
+  }
+
+  const skySrc = new Map();
+  function skyOf(key) {
+    if (!skySrc.has(key)) {
+      const t = WEATHER[key];
+      skySrc.set(key, t && t.scene ? {
+        scene: pixelsSrc(t.scene, t.colors), fx: t.tile ? pixelsSrc(t.tile, t.tileColors) : null,
+        fw: t.tile ? t.tile[0].length : 0, fh: t.tile ? t.tile.length : 0, anim: t.fx || '',
+      } : null);
+    }
+    return skySrc.get(key);
+  }
+
+  // "Changes by itself": the hour's weather where its owner is, the same all that hour. Day or night
+  // by their clock, a sunset in the evening, rain often (it's Rainlit), and snow only in winter
+  // (December to February: north of the equator, where most are).
+  function weatherNow(d = new Date()) {
+    const h = d.getHours();
+    const winter = [11, 0, 1].includes(d.getMonth());
+    const day = Math.floor((d - new Date(d.getFullYear(), 0, 1)) / 86_400_000);
+    const r = (Math.imul((d.getFullYear() % 100) * 10_000 + day * 24 + h + 1, 2654435761) >>> 0) / 4294967296;
+    if (h >= 18 && h < 20) return r < 0.6 ? 'sunset' : 'rain';
+    if (h >= 7 && h < 18) return r < (winter ? 0.35 : 0.6) ? 'sunny' : r < (winter ? 0.7 : 1) ? 'rain' : 'snow';
+    return r < (winter ? 0.4 : 0.55) ? 'clear' : r < (winter ? 0.75 : 1) ? 'rain' : 'snow';
+  }
+
+  // The window's weather: the sky in its panes, and what falls or drifts across it.
+  function paintSky(win, key) {
+    const k = key === 'auto' || !(WEATHER[key] && WEATHER[key].scene) ? weatherNow() : key;
+    if (win.dataset.weather === k) return;
+    const s = skyOf(k);
+    win.dataset.weather = k;
+    win.dataset.fx = s.anim;
+    win.style.setProperty('--sky', `url("${s.scene}")`);
+    win.style.setProperty('--fx', s.fx ? `url("${s.fx}")` : 'none');
+    win.style.setProperty('--fx-w', String(s.fw || 1));
+    win.style.setProperty('--fx-h', String(s.fh || 1));
   }
 
   // A room's pixel: as big as its pet's (a pet is 22 of them across).
@@ -2458,7 +2560,10 @@
     const win = document.createElement('i');
     win.className = 'pr-window';
     win.style.setProperty('--frame', `url("${WINDOW}")`);
-    win.style.setProperty('--rain', `url("${RAIN}")`);
+    paintSky(win, r.sky);
+    // (Changing by itself: looked at again every few minutes, for a new hour.)
+    clearInterval(el.prSkyTimer);
+    if (r.sky === 'auto') el.prSkyTimer = setInterval(() => paintSky(win, 'auto'), 5 * 60_000);
     const base = layer('pr-base', null);
     base.style.backgroundImage = `url("${BASEBOARD}")`;
     scene.replaceChildren(layer('pr-wall', thingOf('wall', r.wall), true), layer('pr-floor', thingOf('floor', r.floor), true), base, win,
@@ -2469,6 +2574,21 @@
   function roomSwatch(list, key) {
     const n = document.createElement('i');
     n.className = `pr-swatch pr-swatch-${list}`;
+    // (The weather: a little window of it. Changing by itself: half day, half night.)
+    if (list === 'sky') {
+      const shown = key === 'auto' ? ['sunny', 'clear'] : [key];
+      n.append(...shown.map((k, i) => {
+        const s = skyOf(k);
+        const pane = document.createElement('i');
+        if (!s) return pane;
+        pane.style.backgroundImage = `${s.fx ? `url("${s.fx}"), ` : ''}url("${s.scene}")`;
+        const fxSize = s.fx ? `${s.anim === 'twinkle' ? '36px 22px' : `${s.fw * 2}px ${s.fh * 2}px`}, ` : '';
+        pane.style.backgroundSize = `${fxSize}36px 22px`;
+        pane.style.backgroundPosition = shown.length > 1 && i ? `${s.fx ? '-18px 0, ' : ''}-18px 0` : '0 0';
+        return pane;
+      }));
+      return n;
+    }
     const t = thingOf(list, key);
     if (!t) {
       n.classList.add('pr-none');
