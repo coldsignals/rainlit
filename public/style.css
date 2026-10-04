@@ -1236,6 +1236,8 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   object-fit: contain;
   background: #000;
 }
+/* A call's video before its picture comes (app.js: watchPicture): Rainlit's drop, rippling. */
+video.no-picture { background: url(/icons/drop-cam.svg) center / min(128px, 36%) auto no-repeat, #000; }
 
 .waiting { text-align: center; width: 100%; max-width: 460px; padding: 24px; }
 .waiting h2 { margin: 0 0 6px; font-size: 24px; font-weight: 600; letter-spacing: -0.015em; }

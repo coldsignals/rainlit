@@ -1452,6 +1452,10 @@ function handleServerMessage(msg) {
           S.failCount = 0;
           createPeer();
           playCallSound(true); // you've joined them
+        } else {
+          // Back, and still talking all along: anything either of you offered meanwhile, again.
+          resendOffer('back');
+          sendSignal(S.conn, { again: true });
         }
         if (!S.peer.away) resendDeletes(); // anything you removed while you were offline
       } else if (S.peer && serverForgot) {
@@ -1517,6 +1521,8 @@ function handleServerMessage(msg) {
         if (!S.conn || S.conn.pc.connectionState !== 'connected') {
           playCallSound(true);
           createPeer();
+        } else {
+          resendOffer('peer-back'); // (anything offered while they were gone never reached them)
         }
         renderPeer();
         resendDeletes();
@@ -1689,7 +1695,9 @@ function createPeer() {
   };
   // (Settled: the codecs the two ends agreed on are known now, for the video's encoder.)
   pc.onsignalingstatechange = () => {
-    if (S.conn === conn && pc.signalingState === 'stable' && conn.senders.video) tuneVideoSender();
+    if (S.conn !== conn) return;
+    if (pc.signalingState === 'have-local-offer') awaitAnswer(conn);
+    if (pc.signalingState === 'stable' && conn.senders.video) tuneVideoSender();
   };
   pc.ontrack = ({ track }) => {
     if (S.conn === conn) onRemoteTrack(track);
@@ -1723,6 +1731,32 @@ function stereoStreams(sdp) {
   }).join('');
 }
 
+// An offer whose answer never came. The server only passes things on to someone who's connected,
+// so one made while your friend's phone was locked (your camera turned on, say, which has to be
+// offered the first time) was dropped on the way: they'd see your camera's on, and never get its
+// picture. It goes again when they're back (or ask for it: again), when you are, and every so
+// often while it waits.
+function resendOffer(why = 'asked') {
+  const conn = S.conn;
+  if (!conn || !S.peer || S.peer.away || !wsOpen()) return;
+  const pc = conn.pc;
+  if (pc.signalingState !== 'have-local-offer' || !pc.localDescription || conn.makingOffer) return;
+  trace('offer-again', { why });
+  sendSignal(conn, { description: pc.localDescription });
+}
+
+function awaitAnswer(conn) {
+  clearTimeout(conn.answerTimer);
+  let wait = 4000;
+  const check = () => {
+    if (S.conn !== conn || conn.pc.signalingState !== 'have-local-offer') return;
+    resendOffer('no-answer');
+    wait = Math.min(wait * 2, 30_000);
+    conn.answerTimer = setTimeout(check, wait);
+  };
+  conn.answerTimer = setTimeout(check, wait);
+}
+
 function addLocalTracks(conn) {
   const pc = conn.pc;
   if (S.local.mic && !conn.senders.audio) conn.senders.audio = pc.addTrack(S.local.mic, S.localStream);
@@ -1745,8 +1779,9 @@ function sendSignal(conn, data) {
   wsSend({ type: 'signal', data: { pcId: conn.pcId, ...JSON.parse(JSON.stringify(data)) } });
 }
 
-async function handleSignal({ pcId, description, candidate }) {
+async function handleSignal({ pcId, description, candidate, again }) {
   if (!S.peer) return;
+  if (again) return resendOffer(); // (they're back: anything sent while they weren't goes again)
   if (!S.conn) createPeer();
   let conn = S.conn;
 
@@ -1763,6 +1798,9 @@ async function handleSignal({ pcId, description, candidate }) {
   const pc = conn.pc;
 
   if (description) {
+    // (An answer to an offer that's been answered already: one sent again, crossing the first
+    // answer on its way.)
+    if (description.type === 'answer' && pc.signalingState !== 'have-local-offer') return;
     const readyForOffer = !conn.makingOffer && (pc.signalingState === 'stable' || conn.settingAnswer);
     const collision = description.type === 'offer' && !readyForOffer;
     conn.ignoreOffer = !conn.polite && collision;
@@ -1795,7 +1833,7 @@ async function handleSignal({ pcId, description, candidate }) {
 function onRemoteTrack(track) {
   if (track.kind === 'video') {
     el.remoteVideo.srcObject = new MediaStream([track]);
-    el.remoteVideo.play().catch(() => {});
+    el.remoteVideo.play().catch((err) => trace('video-blocked', { why: (err && err.name) || undefined }));
     return;
   }
   if (S.remoteAudio.has(track.id)) return;
@@ -1846,6 +1884,56 @@ function askForSoundTap() {
     if (S.boostCtx) S.boostCtx.resume();
     for (const a of S.remoteAudio.values()) a.play().catch(() => {});
   }, { once: true });
+}
+
+// A call's video, until its picture comes, shows Rainlit's drop (style.css: .no-picture), not
+// the phone's own: Android draws a big grey play button for a video with no poster, which looks
+// broken. One that's stopped plays when it's tapped.
+const NO_POSTER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+function watchPicture(video) {
+  if (video.pictureWatched) return video;
+  video.pictureWatched = true;
+  video.poster = NO_POSTER;
+  const check = () => video.classList.toggle('no-picture', !(video.videoWidth > 0));
+  for (const e of ['loadeddata', 'playing', 'resize', 'emptied']) video.addEventListener(e, check);
+  video.addEventListener('click', () => {
+    if (video.paused && video.srcObject) video.play().catch(() => {});
+  });
+  check();
+  return video;
+}
+
+// Back to Rainlit (from a locked phone, say): any call video that stopped, or wouldn't start
+// while you were away, plays again.
+function replayVideos() {
+  for (const v of document.querySelectorAll('video')) {
+    if (v.srcObject && v.paused && !v.hidden) v.play().catch(() => {});
+  }
+}
+
+// Your friend's camera (or screen) is on, but its picture hasn't come in 6 seconds of you
+// looking: their video's played again from the start, and they're asked for anything they
+// offered that didn't arrive. Once each time.
+function checkPicture() {
+  const v = el.remoteVideo;
+  if (v.hidden || v.videoWidth > 0) {
+    S.noPicture = null;
+    return;
+  }
+  if (lookingAway() || !S.conn || S.conn.pc.connectionState !== 'connected') {
+    if (S.noPicture) S.noPicture.since = Date.now();
+    return;
+  }
+  const np = S.noPicture || (S.noPicture = { since: Date.now(), tried: false });
+  if (np.tried || Date.now() - np.since < 6000) return;
+  np.tried = true;
+  const track = v.srcObject && v.srcObject.getVideoTracks()[0];
+  trace('video-stuck', { track: track ? track.readyState : 'none', muted: track && track.muted ? true : undefined });
+  if (track) {
+    v.srcObject = new MediaStream([track]);
+    v.play().catch(() => {});
+  }
+  sendSignal(S.conn, { again: true });
 }
 
 function onConnectionState(conn) {
@@ -2209,6 +2297,7 @@ function closePeer() {
   S.conn = null;
   clearTimeout(conn.failTimer);
   clearTimeout(conn.connectTimer);
+  clearTimeout(conn.answerTimer);
   clearInterval(conn.statsTimer);
   const pc = conn.pc;
   pc.onnegotiationneeded = pc.onicecandidate = pc.onsignalingstatechange = pc.ontrack = pc.onconnectionstatechange = pc.oniceconnectionstatechange = null;
@@ -2280,6 +2369,7 @@ function renderPeer() {
 
   const showVideo = !awayView && Boolean(p.state.cam || p.state.screen);
   el.remoteVideo.hidden = !showVideo;
+  if (showVideo && el.remoteVideo.paused && el.remoteVideo.srcObject) el.remoteVideo.play().catch(() => {});
   el.peerCard.hidden = showVideo;
   el.peerCard.classList.toggle('away', awayView);
   el.peerAway.hidden = !awayView;
@@ -2337,6 +2427,7 @@ function renderTick() {
   el.offlineBanner.hidden = !(S.wsDownSince && Date.now() - S.wsDownSince > 3000);
   checkSocketHealth();
   vouchForPeer();
+  checkPicture();
 }
 
 // Your friend's page has gone quiet to the server (a phone that's been locked a while freezes
@@ -10165,7 +10256,7 @@ function renderVoiceView() {
     if (track) {
       if (!video || video.dataset.sid !== track.sid) {
         if (video) video.remove();
-        video = track.attach();
+        video = watchPicture(track.attach());
         video.dataset.sid = track.sid;
         video.muted = true;
         video.playsInline = true;
@@ -14397,6 +14488,8 @@ async function init() {
       try { p.win.close(); } catch {}
     }
   });
+  watchPicture(el.remoteVideo);
+  watchPicture(el.localVideo);
   el.remoteVideo.addEventListener('dblclick', () => el.fullscreenBtn.click());
   // Click your own camera or screen to see it big; click it (or your friend) again to swap back.
   el.selfView.addEventListener('click', () => toggleSelfBig());
@@ -14675,6 +14768,7 @@ async function init() {
       // (During a call the page stays "on screen" as far as the browser's concerned, so it
       // won't say so itself: see RainlitWebView.)
       if (S.androidPaused) return setPttHeld(false);
+      replayVideos(); // (a call's video, stopped while the screen was off)
       syncAndroidPush();
       // Back with a conversation open: you've seen what came in.
       if (S.openDm) {
@@ -14685,6 +14779,7 @@ async function init() {
   }
   // Back to the window (the desktop app, or from another app): catch up on what came in.
   window.addEventListener('focus', () => {
+    replayVideos();
     if (!S.openDm) return;
     const dm = dmFor(S.openDm);
     if (dm.unread || (dm.divider && !dm.divider.seen)) markDmSeen(dm);
@@ -14693,6 +14788,7 @@ async function init() {
   document.addEventListener('visibilitychange', () => {
     trace(document.hidden ? 'page-hidden' : 'page-visible');
     if (document.visibilityState !== 'visible') return setPttHeld(false);
+    replayVideos();
     if (!S.me) checkForUpdateSignedOut();
     syncAndroidPush(); // maybe ntfy was just installed
     if (S.conn && S.conn.pc.connectionState === 'connected') requestWakeLock();
@@ -14717,7 +14813,10 @@ async function init() {
     // without it, so tell the server this isn't a goodbye: it holds your place.
     if (S.inCall && S.conn && S.conn.pc.connectionState === 'connected') wsSend({ type: 'frozen' });
   });
-  document.addEventListener('resume', () => trace('page-resume')); // (for the call debug log)
+  document.addEventListener('resume', () => {
+    trace('page-resume'); // (for the call debug log)
+    replayVideos();
+  });
   window.addEventListener('pagehide', () => {
     trace('pagehide');
     sendTrace({ leaving: true });
