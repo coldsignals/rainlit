@@ -329,7 +329,10 @@ at the top closes it (on a phone, the back arrow).
   Home, for your conversations), and a red number when someone mentions you.
   What you hear from it is up to you, in the menu under its name: every message,
   only mentions of you, or nothing, which mutes it (no dot either; mentions of
-  you still show).
+  you still show). One channel can be muted too: right-click it (on a phone,
+  press and hold it), or press the bell at the top of it. Its new messages
+  don't light anything up, make a sound or reach your phone, unless they
+  mention you.
 - **18+ channels:** a space can mark a channel 18+ (in its settings, under
   **Who**), for things like horror, gory films and games, or crude jokes. Nothing in one reaches
   anyone until they've said they're 18 or older, which they're asked once, the

@@ -117,8 +117,8 @@ for (const id of [
   'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty', 'notes-row',
   'me-btn', 'me-face', 'me-name', 'me-status', 'admin-btn', 'app-settings-btn',
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
-  'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'dm-waiting', 'dm-waiting-text', 'dm-waiting-join', 'members-toggle', 'member-panel',
-  'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-homepage', 'menu-remove', 'menu-block',
+  'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'dm-waiting', 'dm-waiting-text', 'dm-waiting-join', 'channel-mute', 'members-toggle', 'member-panel',
+  'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-homepage', 'menu-remove', 'menu-block', 'channel-menu', 'cm-mute',
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'emoji-btn', 'space-emoji', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
   'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
@@ -2584,7 +2584,10 @@ function updateTitle() {
   if (S.ringing) return; // "Bea is calling" stays until the ringing stops
   const base = S.peer ? `Rainlit with ${S.peer.name}` : 'Rainlit';
   let unread = 0; // DMs, and mentions of you in spaces (other channel messages show on the rail)
-  for (const dm of S.dms.values()) unread += dm.channelId && !groupOfChannel(dm.channelId) ? dm.mentions || 0 : dm.unread; // (a group's messages count like a DM's)
+  for (const dm of S.dms.values()) {
+    const group = dm.channelId && groupOfChannel(dm.channelId);
+    unread += dm.channelId && !(group && group.notify !== 'none') ? dm.mentions || 0 : dm.unread; // (a group's messages count like a DM's, unless it's muted)
+  }
   document.title = unread ? `(${unread}) ${base}` : base;
   if (DESKTOP) DESKTOP.setUnread(unread);
   // The drop in the corner glows brighter while something's waiting for you, or you're in a call.
@@ -4512,6 +4515,7 @@ function closeDm() {
 function renderDmHead() {
   renderMemberPanel();
   el.dmWaiting.hidden = true; // (only a friend's conversation has it: see below)
+  el.channelMute.hidden = true; // (only a space's channel has it: renderChannelHead)
   if (isChannelKey(S.openDm)) {
     renderChannelHead();
     return renderComposer();
@@ -5179,6 +5183,7 @@ function onDmMessage(m) {
     if (fromThem) {
       dm.unread++;
       if (dm.channelId && mentionsMe(m)) dm.mentions = (dm.mentions || 0) + 1;
+      noteUnread(dm, m.at, Boolean(dm.channelId && mentionsMe(m)));
       renderFriends();
       updateTitle();
       if (S.sounds && !dm.channelId) playChime();
@@ -5222,11 +5227,13 @@ function onDmSaving({ dm: dmId, save }) {
 }
 
 // You read it on another device.
-function onDmRead({ dm: dmId }) {
+function onDmRead({ dm: dmId, at }) {
   const dm = S.dms.get(convOf(dmId));
   if (!dm || !(dm.unread || dm.mentions)) return;
-  dm.unread = 0;
-  dm.mentions = 0;
+  const after = at ? (dm.unreadAt || []).filter((u) => u.at > at) : [];
+  dm.unreadAt = after;
+  dm.unread = after.length;
+  dm.mentions = after.filter((u) => u.mention).length;
   renderFriends();
   updateTitle();
 }
@@ -5240,6 +5247,7 @@ function notifyChannel(dm, m) {
   if (!space || (S.blocked && S.blocked.has(m.author))) return;
   const mentioned = mentionsMe(m);
   if (space.notify === 'none' || (space.notify !== 'all' && !mentioned)) return;
+  if (c.muted && !mentioned) return;
   if (S.openDm === dm.friendId && !lookingAway()) return;
   if (!mentioned && Date.now() - (channelNotified.get(c.id) || 0) < 10_000) return;
   channelNotified.set(c.id, Date.now());
@@ -5261,6 +5269,7 @@ function notifyIncoming(dm, li) {
   markNew(dm, li);
   dm.unread++;
   if (li.classList.contains('mentioned')) dm.mentions = (dm.mentions || 0) + 1;
+  noteUnread(dm, Number(li.dataset.at), li.classList.contains('mentioned'));
   renderFriends();
   updateTitle();
   if (S.sounds && !dm.channelId && (!open || lookingAway())) playChime();
@@ -5269,7 +5278,11 @@ function notifyIncoming(dm, li) {
 let readTimers = new Map();
 
 // Tells the server (and your other devices) you've read this conversation, at most once a second.
+// It says up to when: a message that comes in after you've left the conversation, in the second
+// before this goes, stays unread (on all your devices: onDmRead).
 function markRead(dm) {
+  dm.seenUpTo = Math.max(Math.round(serverNow()), dm.lastAt || 0);
+  dm.unreadAt = [];
   if (dm.unread || dm.mentions) {
     dm.unread = 0;
     dm.mentions = 0;
@@ -5279,8 +5292,15 @@ function markRead(dm) {
   if (readTimers.has(dm.friendId)) return;
   readTimers.set(dm.friendId, setTimeout(() => {
     readTimers.delete(dm.friendId);
-    api('POST', `${convPath(dm.friendId)}/read`, {}).catch(() => {});
+    api('POST', `${convPath(dm.friendId)}/read`, { at: dm.seenUpTo }).catch(() => {});
   }, 1000));
+}
+
+// When each unread message came, and whether it mentions you, so a read (from another of your
+// devices, or this one a moment ago) leaves what came after it unread. (The newest 500.)
+function noteUnread(dm, at, mention) {
+  (dm.unreadAt ||= []).push({ at: at || serverNow(), mention });
+  if (dm.unreadAt.length > 500) dm.unreadAt.shift();
 }
 
 // ----- The "new messages" line -----
@@ -7615,6 +7635,7 @@ async function refreshSpaces() {
       if (!(S.openDm === key && !lookingAway())) {
         dm.unread = c.unread;
         dm.mentions = c.mentions || 0;
+        if (!dm.unread) dm.unreadAt = [];
       }
       kept.add(key);
     }
@@ -7795,9 +7816,13 @@ function spaceMentions(spaceId) {
 }
 
 function spaceUnread(spaceId) {
-  for (const [id, c] of S.channels) if (c.spaceId === spaceId && c.kind !== 'voice' && dmFor(`ch:${id}`).unread) return true;
+  for (const [id, c] of S.channels) if (c.spaceId === spaceId && c.kind !== 'voice' && !c.muted && dmFor(`ch:${id}`).unread) return true;
   return false;
 }
+
+// A channel you've muted: its new messages don't light anything up or make a sound (nor reach
+// your phone: the server knows too), unless they mention you.
+const channelMuted = (id) => Boolean((S.channels.get(id) || {}).muted);
 
 function renderSpaces() {
   renderRail();
@@ -7861,7 +7886,8 @@ function channelItem(c) {
   const li = document.createElement('li');
   const b = document.createElement('button');
   b.type = 'button';
-  b.className = `channel${S.openDm === key ? ' open' : ''}${dm.unread ? ' unread' : ''}`;
+  const muted = channelMuted(c.id);
+  b.className = `channel${S.openDm === key ? ' open' : ''}${dm.unread && !muted ? ' unread' : ''}${muted ? ' muted' : ''}`;
   b.innerHTML = `<svg class="icon"><use href="#${c.private ? 'i-lock' : 'i-hash'}"/></svg>`;
   if (c.private) b.title = 'Private: only some roles can see it';
   const name = document.createElement('span');
@@ -7869,13 +7895,17 @@ function channelItem(c) {
   name.textContent = c.name;
   b.append(name);
   if (c.adult) b.append(ageTag());
-  // New messages light a little orb; mentions of you get a count instead, like Discord.
+  // New messages light a little orb (not in one you've muted: a crossed-out bell instead);
+  // mentions of you get a count, like Discord.
   if (dm.mentions && S.openDm !== key) {
     const badge = document.createElement('span');
     badge.className = 'badge mention';
     badge.textContent = dm.mentions > 99 ? '99+' : String(dm.mentions);
     badge.title = `${dm.mentions} mention${dm.mentions === 1 ? '' : 's'} of you`;
     b.append(badge);
+  } else if (muted) {
+    b.insertAdjacentHTML('beforeend', '<svg class="icon muted-icon" aria-hidden="true"><use href="#i-bell-off"/></svg>');
+    b.title = b.title ? `${b.title} (muted)` : 'Muted';
   } else if (dm.unread && S.openDm !== key) {
     const orb = document.createElement('span');
     orb.className = 'unread-orb';
@@ -7883,8 +7913,58 @@ function channelItem(c) {
     b.append(orb);
   }
   b.addEventListener('click', () => openDm(key));
+  // Right-click on a computer, press and hold on a phone: mute it, or unmute it.
+  b.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    openChannelMenu(c.id, e.clientX, e.clientY);
+  });
   li.append(b);
   return li;
+}
+
+// A channel's menu (right-click it in the list).
+let menuChannelId = null;
+function openChannelMenu(channelId, x, y) {
+  const c = S.channels.get(channelId);
+  if (!c) return;
+  menuChannelId = channelId;
+  el.cmMute.textContent = c.muted ? 'Unmute channel' : 'Mute channel';
+  el.channelMenu.hidden = false;
+  // Next to the pointer, but never off the edge of the screen.
+  const r = el.channelMenu.getBoundingClientRect();
+  const z = uiZoom();
+  el.channelMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8)) / z}px`;
+  el.channelMenu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8)) / z}px`;
+  el.cmMute.focus();
+}
+
+function closeChannelMenu() {
+  el.channelMenu.hidden = true;
+}
+
+// Muting a channel (for you) or unmuting it: from its menu, or the bell at the top of it.
+async function muteChannel(channelId, muted) {
+  const c = S.channels.get(channelId);
+  if (!c) return;
+  try {
+    await api('PUT', `/channels/${channelId}/mute`, { muted });
+    c.muted = muted;
+    renderSide();
+    renderRail();
+    if (S.openDm === `ch:${channelId}`) renderMuteBtn(c);
+    toast(muted ? `Muted #${c.name}. Its new messages won't light up or make a sound, but mentions of you still do.` : `Unmuted #${c.name}.`);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+function renderMuteBtn(c) {
+  el.channelMute.hidden = false;
+  el.channelMute.setAttribute('aria-pressed', String(Boolean(c.muted)));
+  el.channelMute.querySelector('use').setAttribute('href', c.muted ? '#i-bell-off' : '#i-bell');
+  const label = c.muted ? `Unmute #${c.name}` : `Mute #${c.name}`;
+  el.channelMute.title = label;
+  el.channelMute.setAttribute('aria-label', label);
 }
 
 // The channel you were in last, in each space.
@@ -7960,6 +8040,7 @@ function renderChannelHead() {
   el.dmSave.hidden = true;
   el.dmCallBtn.hidden = true;
   el.dmNotice.hidden = true;
+  renderMuteBtn(c);
 }
 
 // A group's head: its picture and name (click for its details), how many are in it, and its
@@ -10508,6 +10589,7 @@ async function refreshFriends() {
       if (!(S.openDm === f.id && !lookingAway())) {
         dm.unread = f.dm.unread;
         dm.readAt = f.dm.readAt;
+        if (!dm.unread) dm.unreadAt = [];
       }
     }
   } catch (err) {
@@ -14142,6 +14224,19 @@ async function init() {
   el.smMembers.addEventListener('click', openMembers);
   el.smSettings.addEventListener('click', openSpaceSettings);
   el.smNotify.addEventListener('click', onSpaceNotify);
+  el.channelMute.addEventListener('click', () => {
+    const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
+    if (c) muteChannel(c.id, !c.muted);
+  });
+  el.cmMute.addEventListener('click', () => {
+    const c = S.channels.get(menuChannelId);
+    closeChannelMenu();
+    if (c) muteChannel(c.id, !c.muted);
+  });
+  document.addEventListener('pointerdown', (e) => { if (!el.channelMenu.contains(e.target)) closeChannelMenu(); }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeChannelMenu(); });
+  window.addEventListener('blur', closeChannelMenu);
+  window.addEventListener('resize', closeChannelMenu);
   el.membersToggle.addEventListener('click', () => {
     S.showMembers = !S.showMembers;
     store.set('showMembers', S.showMembers ? 'on' : 'off');

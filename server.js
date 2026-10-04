@@ -1584,6 +1584,7 @@ function pushChannelMessage(req, mentions) {
     const mentioned = everyone || ids.includes(uid);
     const level = spaces.notifyLevel(req.channel.space_id, uid);
     if (level === 'none' || (level === 'mentions' && !mentioned)) continue;
+    if (!mentioned && spaces.channelMuted(req.channel.id, uid)) continue;
     if (safety.hasBlocked(uid, req.user.id)) continue;
     const key = `${uid}:${req.channel.id}`;
     if (!mentioned && Date.now() - (lastChannelPush.get(key) || 0) < 60_000) continue;
@@ -2183,6 +2184,20 @@ api.put('/spaces/:spaceId/notify', needUser, needMember, (req, res) => {
   spaces.setNotify(req.space.id, req.user.id, level);
   realtime.sendToUser(req.user.id, { type: 'space-changed', space: req.space.id }); // your other devices
   res.json({ ok: true, level });
+});
+
+// Muting a channel, for you: its new messages don't light anything up, make a sound or reach
+// your phone, unless they mention you. (An 18+ one too, before you've said you're old enough to
+// open it: it's listed for you all the same.)
+api.put('/channels/:channelId/mute', needUser, (req, res) => {
+  const channel = spaces.channel(req.params.channelId);
+  const member = channel && spaces.memberOf(channel.space_id, req.user.id);
+  const access = member && spaces.channelAccess(channel, { ...member, adult: true });
+  if (!access || !access.see || channel.kind === 'voice') return fail(res, 404, "That channel isn't there, or you can't see it.");
+  const muted = Boolean((req.body || {}).muted);
+  spaces.setChannelMuted(channel.id, req.user.id, muted);
+  realtime.sendToUser(req.user.id, { type: 'space-changed', space: channel.space_id }); // your other devices
+  res.json({ ok: true, muted });
 });
 
 // ----- Bringing a Discord server over (lib/discord.js) -----

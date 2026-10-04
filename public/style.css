@@ -419,6 +419,10 @@ button { cursor: pointer; }
 .channel:hover { background: var(--dusk); color: var(--text); }
 .channel.open { background: var(--dusk-hi); color: var(--text); }
 .channel.unread { color: var(--text); font-weight: 650; }
+/* Muted (for you): dimmer, with a crossed-out bell. */
+.channel.muted { opacity: 0.6; }
+.channel.muted:hover, .channel.muted.open { opacity: 1; }
+.channel .muted-icon { width: 15px; height: 15px; opacity: 0.85; }
 .channel .badge { position: static; }
 .channel .unread-orb {
   flex: none; width: 9px; height: 9px; margin-right: 3px; border-radius: 50%;
