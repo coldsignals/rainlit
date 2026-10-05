@@ -534,6 +534,7 @@
   function back() {
     const dialog = $('homepage');
     if (!dialog.open) return false;
+    if (H.closeTopPopup($('hp-page'))) return true;
     if (state.editing && state.picked) {
       pick(null);
       return true;
@@ -558,7 +559,7 @@
 
   function add(fields) {
     const p = { id: newId(), r: round((Math.random() - 0.5) * 8), ...fields };
-    Object.assign(p, spot(p.w, p.h));
+    if (fields.x === undefined) Object.assign(p, spot(p.w, p.h));
     change((doc) => doc.pieces.push(p));
     pick(p.id);
     return p;
@@ -611,11 +612,18 @@
     });
   }
 
-  // Pictures: uploaded, then onto the page at a sensible size (or behind it).
+  // Pictures and videos: uploaded, then onto the page at a sensible size (or a picture behind it).
   async function upload(files, { background = false } = {}) {
     for (const file of files) {
+      if (!background && /^video\//.test(file.type)) {
+        const f = await uploadVideo(file);
+        if (!f) continue;
+        const k = Math.min(1, 360 / Math.max(f.shape.w, f.shape.h));
+        add({ t: 'video', file: f.id, frame: 'none', caption: '', href: '', w: round(Math.max(48, f.shape.w * k)), h: round(Math.max(48, f.shape.h * k)) });
+        continue;
+      }
       if (!/^image\/(png|jpeg|gif|webp)$/.test(file.type)) {
-        note(`${file.name}: pictures can be PNG, JPG, GIF or WebP.`);
+        note(`${file.name}: pictures can be PNG, JPG, GIF or WebP${background ? '' : ', and videos MP4 or WebM'}.`);
         continue;
       }
       if (file.size > 5 * 1024 * 1024) {
@@ -638,6 +646,65 @@
         setSaved(state.dirty ? 'Saving…' : 'Saved');
       }
     }
+  }
+
+  // A video's size, from this browser playing it: null if it can't (one made with a codec it
+  // doesn't have, say), and 0 by 0 if there's no picture in it.
+  function videoShape(file) {
+    return new Promise((resolve) => {
+      const v = document.createElement('video');
+      const url = URL.createObjectURL(file);
+      let timer = 0;
+      const done = (shape) => {
+        clearTimeout(timer);
+        v.onloadedmetadata = v.onerror = null;
+        v.removeAttribute('src');
+        v.load();
+        URL.revokeObjectURL(url);
+        resolve(shape);
+      };
+      timer = setTimeout(() => done(null), 10_000);
+      v.muted = true;
+      v.preload = 'metadata';
+      v.onloadedmetadata = () => done({ w: v.videoWidth || 0, h: v.videoHeight || 0 });
+      v.onerror = () => done(null);
+      v.src = url;
+    });
+  }
+
+  // A video, uploaded (once it's been checked it plays here): the file, and its shape. Or null.
+  async function uploadVideo(file) {
+    if (file.size > 20 * 1024 * 1024) return void note(`${file.name} is too big: videos can be up to 20 MB.`);
+    const shape = await videoShape(file);
+    if (!shape) return void note(`${file.name} won't play in this browser. Videos can be MP4 (H.264) or WebM.`);
+    if (!shape.w || !shape.h) return void note(`${file.name} has no picture in it. (A song? Add it with the music player, in Old web.)`);
+    setSaved('Uploading…');
+    try {
+      const { file: f, usage } = await app.api('POST', '/homepages/me/files', file);
+      state.data.usage = usage;
+      if (f.kind !== 'video') {
+        setSaved(state.dirty ? 'Saving…' : 'Saved');
+        return void note(`${file.name} isn't a video. Videos can be MP4 or WebM.`);
+      }
+      return { ...f, shape };
+    } catch (err) {
+      note(err.message);
+      setSaved(state.dirty ? 'Saving…' : 'Saved');
+      return null;
+    }
+  }
+
+  // A video for a piece to pop up when it's clicked: picked, uploaded, and handed on (with its name).
+  function videoButton(label, onDone) {
+    const input = el('input', { type: 'file', accept: 'video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v' });
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      input.value = '';
+      if (!file) return;
+      const f = await uploadVideo(file);
+      if (f) onDone(f, file.name.trim().slice(0, 60));
+    });
+    return el('label', { class: 'hp-item wide hp-upload-btn' }, el('span', { text: label }), input);
   }
 
   // A song for a music player: a new player, or a different song for one (`piece`).
@@ -767,9 +834,11 @@
   }
 
   function stickersTab() {
-    const pixels = Object.keys(H.PIXEL).map((name) => el('button', { class: 'hp-item', type: 'button', title: H.PIXEL_NAMES[name] || name, onclick: () => addPixel(name) },
-      el('img', { src: H.pixelSrc(name), alt: H.PIXEL_NAMES[name] || name })));
-    const out = [h3('Pixel stickers'), el('div', { class: 'hp-grid' }, ...pixels), h3('Any emoji'),
+    const sticker = (name) => el('button', { class: 'hp-item', type: 'button', title: H.PIXEL_NAMES[name] || name, onclick: () => addPixel(name) },
+      el('img', { src: H.pixelSrc(name), alt: H.PIXEL_NAMES[name] || name }));
+    const desktop = new Set(H.DESKTOP);
+    const out = [h3('Pixel stickers'), el('div', { class: 'hp-grid' }, ...Object.keys(H.PIXEL).filter((n) => !desktop.has(n)).map(sticker)),
+      h3('From an old desktop'), el('div', { class: 'hp-grid' }, ...H.DESKTOP.filter((n) => H.PIXEL[n]).map(sticker)), h3('Any emoji'),
       el('div', { class: 'hp-grid' }, el('button', {
         class: 'hp-item wide', type: 'button', text: 'Pick an emoji…',
         onclick: () => app.pickEmoji((picked) => {
@@ -793,7 +862,8 @@
   }
 
   function uploadButton(label, opts = {}) {
-    const input = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/gif,image/webp', multiple: !opts.background });
+    const accept = `image/png,image/jpeg,image/gif,image/webp${opts.background ? '' : ',video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v'}`;
+    const input = el('input', { type: 'file', accept, multiple: !opts.background });
     input.addEventListener('change', () => {
       const files = [...input.files];
       input.value = '';
@@ -804,9 +874,9 @@
 
   function picturesTab() {
     return [
-      h3('Pictures and GIFs'),
-      el('div', { class: 'hp-grid' }, uploadButton('Add pictures…')),
-      el('p', { class: 'hp-note-small', text: `PNG, JPG, GIF or WebP, up to 5 MB each. ${usageText()} Pick one on the page to give it a frame, a caption or a link.` }),
+      h3('Pictures, GIFs and videos'),
+      el('div', { class: 'hp-grid' }, uploadButton('Add pictures or videos…')),
+      el('p', { class: 'hp-note-small', text: `Pictures can be PNG, JPG, GIF or WebP (up to 5 MB each), and videos MP4 or WebM (up to 20 MB; they play without their sound till a visitor turns it on). ${usageText()} Pick one on the page to give it a frame (an old window, say), a caption, or something to do when it's clicked: open a link, or pop up a video.` }),
     ];
   }
 
@@ -852,6 +922,15 @@
           onclick: () => add({ t: 'shelf', style: 'wood', items: [], labels: true, w: 520, h: 210 }),
         }),
         el('button', {
+          class: 'hp-item wide', type: 'button', text: 'Taskbar',
+          onclick: () => {
+            // (Along the bottom of what's showing, the page's width.)
+            const page = $('hp-page');
+            const y = (page.scrollTop + page.clientHeight) / scale() - 50;
+            add({ t: 'taskbar', style: 'window', label: 'start', x: 0, y: round(Math.max(0, y)), r: 0, w: H.WIDTH, h: 36 });
+          },
+        }),
+        el('button', {
           class: 'hp-item wide', type: 'button', text: 'Friend button…', 'aria-expanded': String(Boolean(state.friendPicker)),
           onclick: () => {
             state.friendPicker = !state.friendPicker;
@@ -862,7 +941,7 @@
       ...(supporter() || glowOffered() ? [el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, glowItem('fortune', 'Fortune ball', 'The fortune ball', {
         t: 'fortune', color: '#b98bff', label: 'ask me something, then click me', answers: [], w: 200, h: 250,
       })), tryingNow('piece:')))] : []),
-      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers. A friend button (like the old web\'s little 88x31 badges) takes visitors to a friend\'s page. A fortune ball answers whatever visitors ask it.' }),
+      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers. A friend button (like the old web\'s little 88x31 badges) takes visitors to a friend\'s page. A taskbar has a start button and a clock (each visitor\'s own time). A fortune ball answers whatever visitors ask it.' }),
     ];
   }
 
@@ -1134,6 +1213,41 @@
       });
       return field('Link (opens when someone clicks it)', input);
     };
+    // What a click does: nothing, open a link, or pop up a video (in a window of 1998, say).
+    const clickField = () => {
+      const asked = state.clicks && state.clicks.id === p.id ? state.clicks.mode : null;
+      const mode = p.pop ? 'video' : p.href ? 'link' : asked || 'none';
+      const choose = (m) => {
+        state.clicks = { id: p.id, mode: m };
+        if (m === 'none' && (p.href || p.pop)) set({ href: '', pop: '', popName: '' });
+        else if (m === 'link' && p.pop) set({ pop: '', popName: '' });
+        else if (m === 'video' && p.href) set({ href: '' });
+        else renderTray();
+      };
+      const out = [field('When someone clicks it', chips({ none: 'Nothing', link: 'Opens a link', video: 'Pops up a video' }, mode, choose))];
+      if (mode === 'link') out.push(linkField());
+      if (mode === 'video') {
+        out.push(el('div', { class: 'hp-grid' }, videoButton(p.pop ? 'A different video…' : 'Pick a video…', (f, name) => set({ pop: f.id, popName: name, popWin: p.popWin || 'window', href: '' }))));
+        if (p.pop) {
+          out.push(field('Its window', chips(H.WINDOWS, p.popWin || 'window', (popWin) => set({ popWin }))),
+            words("The window's name", 'popName', 60, 'video.mp4'),
+            el('div', { class: 'hp-row' }, el('button', {
+              class: 'hp-tool', type: 'button', text: 'Try it',
+              onclick: () => H.popVideo(p, { fileUrl: (id) => `/homepage-files/${id}` }, $('hp-page')),
+            })),
+            el('p', { class: 'hp-note-small', text: 'It pops up somewhere over your page, playing with its sound, till it\'s closed. Every click pops up another (five at most).' }));
+        } else {
+          out.push(el('p', { class: 'hp-note-small', text: 'MP4 or WebM, up to 20 MB.' }));
+        }
+      }
+      return out;
+    };
+    const windowName = (fallback) => {
+      if (!['window', 'xp', 'mac', 'browser'].includes(p.frame) && p.frame !== 'photo') return [];
+      const cap = el('input', { type: 'text', maxlength: '60', value: p.caption || '', placeholder: p.frame === 'photo' ? 'a caption' : fallback });
+      cap.addEventListener('change', () => set({ caption: cap.value.trim() }));
+      return [field(p.frame === 'photo' ? 'Caption' : "The window's name", cap)];
+    };
 
     if (p.t === 'text') {
       const box = el('textarea', { maxlength: '1000', rows: '3' });
@@ -1181,20 +1295,21 @@
       if (p.box !== 'none') out.push(field(p.box === 'highlight' ? 'Highlighter color' : 'Box color', colors(p.c2, (c2) => set({ c2 }))));
       out.push(field('Effect', chips(H.EFFECTS, p.fx, (fx) => set({ fx }), null, H.PERKS.fx)));
       if (['shadow', 'outline', 'glow', 'lamplight'].includes(p.fx)) out.push(field(`${H.EFFECTS[p.fx]} color`, colors(p.c3, (c3) => set({ c3 }))));
-      out.push(linkField());
+      out.push(...clickField());
     } else if (p.t === 'image') {
-      out.push(field('Frame', chips(H.FRAMES, p.frame, (frame) => set({ frame }), null, H.PERKS.frame)));
-      if (p.frame === 'photo' || p.frame === 'window') {
-        const cap = el('input', { type: 'text', maxlength: '60', value: p.caption || '', placeholder: p.frame === 'window' ? 'untitled.gif' : 'a caption' });
-        cap.addEventListener('change', () => set({ caption: cap.value.trim() }));
-        out.push(field(p.frame === 'window' ? "The window's name" : 'Caption', cap));
-      }
-      out.push(linkField());
+      out.push(field('Frame', chips(H.FRAMES, p.frame, (frame) => set({ frame }), null, H.PERKS.frame)), ...windowName('untitled.gif'), ...clickField());
+    } else if (p.t === 'video') {
+      out.push(el('p', { class: 'hp-note-small', text: 'It plays over and over without its sound while it\'s on the screen, and visitors can turn the sound on. (For someone who\'d rather things didn\'t move, only when they press play.)' }),
+        field('Frame', chips(H.FRAMES, p.frame, (frame) => set({ frame }), null, H.PERKS.frame)), ...windowName('untitled.mpg'), ...clickField());
+    } else if (p.t === 'taskbar') {
+      out.push(el('p', { class: 'hp-note-small', text: "An old desktop's taskbar. Its clock shows each visitor their own time." }),
+        field('Kind', chips(H.TASKBARS, p.style, (style) => set({ style }))),
+        words('The start button says', 'label', 12, 'start'));
     } else if (p.t === 'sticker') {
       out.push(el('div', { class: 'hp-row' }, el('button', {
         class: 'hp-chip', type: 'button', 'aria-pressed': String(p.outline !== false), text: 'White edge',
         onclick: () => set({ outline: p.outline === false }),
-      })), linkField());
+      })), ...clickField());
     } else if (p.t === 'tape') {
       out.push(field('Kind', chips(H.TAPES, p.style, (style) => set({ style }))), field('Color', colors(p.color, (color) => set({ color }))));
     } else if (p.t === 'paper') {
@@ -1311,7 +1426,7 @@
           field('Words color', colors(p.c2, (c2) => set({ c2 })))),
         field('A sticker on it', icons),
         field('Font', fonts('font')),
-        linkField());
+        ...clickField());
     } else if (p.t === 'fortune') {
       const answers = el('textarea', { rows: '5', maxlength: '1300', placeholder: 'one answer on each line (or leave it empty for its forecasts: "The clouds say yes.", "Foggy... ask again."...)' });
       answers.value = (p.answers || []).join('\n');

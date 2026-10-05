@@ -1233,8 +1233,8 @@ api.put('/homepages/me', needUser, (req, res) => {
   res.json(homepages.forViewer(req.user, page, req.user));
 });
 
-// A picture (or a song) for your page. It stays as long as it's on the page.
-api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit: homepages.AUDIO_MAX + 1024 }), async (req, res) => {
+// A picture (or a video, or a song) for your page. It stays as long as it's on the page.
+api.post('/homepages/me/files', needUser, express.raw({ type: () => true, limit: homepages.VIDEO_MAX + 1024 }), async (req, res) => {
   const slow = abuse.checkPace(req.user, Buffer.isBuffer(req.body) ? req.body.length : 0);
   if (slow) return fail(res, 429, slow);
   try {
@@ -2797,7 +2797,7 @@ app.use(
 app.use((err, req, res, _next) => {
   if (err.type === 'entity.too.large' || err.status === 413) {
     return fail(res, 413, req.path.includes('avatar') ? 'Profile pictures can be up to 8 MB.'
-      : req.path.includes('homepages') ? 'Pictures can be up to 5 MB, and songs 10 MB.' : "That's too big.");
+      : req.path.includes('homepages') ? 'Pictures can be up to 5 MB, videos 20 MB, and songs 10 MB.' : "That's too big.");
   }
   if (err.status && err.status < 500) return fail(res, err.status, "That request didn't make sense.");
   console.error(err);

@@ -191,16 +191,28 @@ from your own (**Your homepage**, then **Edit**).
 - **Put anything anywhere:** words in 14 fonts (pixel, handwriting, gothic,
   neon, Comic...), with boxes (a sticky note, a label, a speech bubble, a
   caution sign) and effects (glow, rainbow, blinking, scrolling, wavy);
-  pictures and GIFs with frames (a photo with a caption, a stamp, a heart, a
-  window from 1998); pixel stickers, any emoji and your spaces' emoji; tape
-  and paper. Drag to move; the handles resize and turn (or press **R**).
-  **To front** and **To back** stack them, and **Undo** takes anything back.
+  pictures, GIFs and videos with frames (a photo with a caption, a stamp, a
+  heart, or a window: 1998's, 2001's, a 1997 Mac's or an old browser's); pixel
+  stickers (an old desktop's too: a computer, a folder, a bin, an hourglass, an
+  error...), any emoji and your spaces' emoji; tape and paper. Drag to move;
+  the handles resize and turn (or press **R**). **To front** and **To back**
+  stack them, and **Undo** takes anything back.
+- **Videos:** MP4 or WebM, up to 20 MB each, sharing the page's room (40 MB)
+  with its pictures and songs. On the page one plays over and over without its
+  sound while it's on the screen, and visitors can turn the sound on (for
+  anyone who'd rather things didn't move, it waits for them to press play).
+- **Click it for a video:** a button, a picture, a sticker or some words can
+  open a link, or pop up a video instead: it opens somewhere over the page in a
+  window (1998, 2001, 1997, an old browser, or a plain one), playing with its
+  sound, until it's closed with its ×. Every click pops up another. **Try it**
+  shows you while you're making it.
 - **The old web:** a visitor counter (like the hit counters of old, every
   visit counts but yours), a guestbook anyone who can see your page can sign (they
   can delete what they wrote, and you can delete anything in it; you hear
-  when someone signs it), and a music player for a song of yours (MP3, M4A,
-  OGG, FLAC or WAV, up to 10 MB), as a tunebox, a cassette or just a button.
-  It only plays when a visitor presses play.
+  when someone signs it), a music player for a song of yours (MP3, M4A,
+  OGG, FLAC or WAV, up to 10 MB), as a tunebox, a cassette or just a button
+  (it only plays when a visitor presses play), and a taskbar, 1998's or
+  2001's, with a start button and a clock showing each visitor their own time.
 - **Ask me anything:** a box visitors ask you things in, anonymously if you
   let them (you aren't told who asked; whoever runs the server is, only if
   you report the question). Only you see a question until you answer it,

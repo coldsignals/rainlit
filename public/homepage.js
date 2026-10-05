@@ -29,7 +29,7 @@
   };
   const EFFECTS = { none: 'Plain', shadow: 'Shadow', outline: 'Outline', glow: 'Glow', rainbow: 'Rainbow', blink: 'Blink', marquee: 'Scrolling', wave: 'Wavy', shimmer: 'Shimmer', lamplight: 'Lamplight' };
   const BOXES = { none: 'None', note: 'Sticky note', label: 'Label', box: 'Box', highlight: 'Highlighter', hazard: 'Caution', bubble: 'Speech bubble' };
-  const FRAMES = { none: 'None', photo: 'Photo', rounded: 'Rounded', circle: 'Circle', heart: 'Heart', stamp: 'Stamp', window: 'Window', sticker: 'Sticker', gilded: 'Gilded', neon: 'Neon' };
+  const FRAMES = { none: 'None', photo: 'Photo', rounded: 'Rounded', circle: 'Circle', heart: 'Heart', stamp: 'Stamp', window: '1998 window', xp: '2001 window', mac: '1997 window', browser: 'Old browser', sticker: 'Sticker', gilded: 'Gilded', neon: 'Neon' };
   const TAPES = { plain: 'Plain', stripes: 'Stripes', dots: 'Dots', checks: 'Checks' };
   const PAPERS = { lined: 'Lined', grid: 'Grid', dotted: 'Dotted', plain: 'Plain', sticky: 'Sticky note', kraft: 'Kraft', torn: 'Torn' };
   const ME_STYLES = { card: 'Card', sticker: 'Sticker', plain: 'Plain' };
@@ -39,10 +39,14 @@
   const MUSICS = { tunebox: 'Tunebox', cassette: 'Cassette', plain: 'Plain' };
   const SHELVES = { wood: 'Wood', glass: 'Glass', pixel: 'Pixel', white: 'White' };
   const BUTTONS = { bevel: 'Classic', shiny: 'Shiny', stripes: 'Stripes', dark: 'Dark' };
+  // Old desktops' windows: what a video pops up in (and the frames that are windows).
+  const WINDOWS = { window: '1998', xp: '2001', mac: '1997', browser: 'Old browser', plain: 'Plain' };
+  const TASKBARS = { window: '1998', xp: '2001' };
   // What each kind of piece is called (in the editor, and Admin's count of what pages use).
   const PIECE_NAMES = {
     text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter',
     guestbook: 'Guestbook', music: 'Music player', shelf: 'Shelf', button: 'Friend button', ask: 'Ask me anything', fortune: 'Fortune ball',
+    video: 'Video', taskbar: 'Taskbar',
   };
   const PATTERNS = {
     dots: 'Polka dots', stripes: 'Stripes', checks: 'Checks', gingham: 'Gingham', grid: 'Grid', hearts: 'Hearts', stars: 'Stars', flowers: 'Flowers', zigzag: 'Zigzag', clouds: 'Clouds',
@@ -100,6 +104,17 @@
     'planet': [".......kkkk.......", ".....kkooOOkk.....", "....kooooooOOk....", ".kkkoooooooooOkkk.", "kYYkooooooooOOkYYk", "kYYYYYYYYYYYYYYYYk", ".kyyyyyyyyyyyyyyk.", "..kkoooooooooOkk..", "....kooooooOOk....", ".....kkooOOkk.....", ".......kkkk......."],
     'basketball': [".....kkkkk.....", "....kookook....", "...koookoook...", "..kkoookoookk..", ".kokoookoookok.", "koookookookoook", "koookookookoook", "kkkkkkkkkkkkkkk", "koookookookoOOk", "koookookookOOOk", ".kokoookooOkOk.", "..kkoookoOOkk..", "...koookOOOk...", "....kookOOk....", ".....kkkkk....."],
     'coffee': ["...k..k.....", "..kWkkWk....", "...kWkkWk...", ".kkWkkWkk...", "kwwwwwwwwkk.", "kwNNNNNNwwwk", "kwwwwwwwWkwk", "krrrrrrrRkwk", "kwwwwwwwWwwk", "kwwwwwwwWkk.", ".kwwwwwwWk..", "..kWWWWWk...", "...kkkkk...."],
+    // An old desktop's (drawn in a script too, not outlined: they come that way).
+    'computer': ["..kkkkkkkkkkkk..", ".kWWWWWWWWWWWWk.", ".kWkkkkkkkkkkWk.", ".kWkbbbbbbbbkWk.", ".kWkbcbbbbbbkWk.", ".kWkbbcbbbbbkWk.", ".kWkbbbbbbbbkWk.", ".kWkkkkkkkkkkWk.", ".kWWWWWWWWWgWWk.", ".kkkkkkkkkkkkkk.", "......kSSk......", "....kkkkkkkk....", "..kWWWWWWWWWWk..", ".kWsWsWsWsWsWWk.", "kkkkkkkkkkkkkkkk"],
+    'folder': [".kkkkkk.........", "kooooook........", "koooooookkkkkkk.", "kooooooooooooook", "kokkkkkkkkkkkkkk", "kkYyyyyyyyyyyyyk", "kkyyyyyyyyyyyyyk", "kkyyyyyyyyyyyyyk", "kkyyyyyyyyyyyyyk", "kkyyyyyyyyyyyyOk", "kkyyyyyyyyyyyOOk", ".kkkkkkkkkkkkkkk"],
+    'trash': ["......kkkk......", "..kkkkWWWWkkkk..", ".kWWWWWWWWWWWWk.", ".kkkkkkkkkkkkkk.", "..kWsWsWsWsWsk..", "..kWsWsWsWsWsk..", "..kWsWsWsWsWsk..", "..kWsWsWsWsWsk..", "...kWsWsWsWsk...", "...kWsWsWsWsk...", "...kWsWsWsWsk...", "....kkkkkkkk...."],
+    'globe': [".....kkkkkk.....", "...kkbbggbbbkk..", "..kbbgggbbbbbbk.", ".kbbbggggbbgbbbk", ".kbbbbggbbgggbbk", "kbbbbbgbbbggggbk", "kbbbbbbbbbgggbbk", "kbggbbbbbbbgbbbk", "kbgggbbbbbbbbbBk", "kbbgggbbbbbbbbBk", ".kbbggbbbbbbbBk.", ".kbbbgbbbbbbBBk.", "..kbbbbbbbbBBk..", "...kkBBBBBBkk...", ".....kkkkkk....."],
+    'mail': ["kkkkkkkkkkkkkkkk", "kWkwwwwwwwwwwkWk", "kwWkwwwwwwwwkWwk", "kwwWkwwwwwwkWwwk", "kwwwWkwwwwkWwwwk", "kwwwwWkkkkWwwwwk", "kwwwwwWWWWwwwwwk", "kwwwwwwwwwwwwwwk", "kwwwwwwwwwwrrwwk", "kWWWWWWWWWWrrWWk", "kkkkkkkkkkkkkkkk"],
+    'notepad': ["..kkkkkkkkkkk...", ".kbBkbBkbBkbBk..", ".kwwwwwwwwwwwk..", ".kwkkkkkkkwwwk..", ".kwwwwwwwwwwwk..", ".kwkkkkkkkkkwk..", ".kwwwwwwwwwwwk..", ".kwkkkkkkwwwwk..", ".kwwwwwwwwwwwk..", ".kwkkkkkkkkwwk..", ".kwwwwwwwwwwwk..", ".kWWWWWWWWWWWk..", "..kkkkkkkkkkk..."],
+    'hourglass': ["kkkkkkkkkkkk", "kNNNNNNNNNNk", ".kkkkkkkkkk.", ".kwYyyyyywk.", "..kwYyyywk..", "...kwyywk...", "....kwyk....", "....kwyk....", "...kwwywk...", "..kwwwywwk..", ".kwwwyyywwk.", ".kwyyyyyyyk.", ".kkkkkkkkkk.", "kNNNNNNNNNNk", "kkkkkkkkkkkk"],
+    'warning': [".......kk.......", "......kyyk......", "......kyyk......", ".....kyyyyk.....", ".....kykkyk.....", "....kyykkyyk....", "....kyykkyyk....", "...kyyykkyyyk...", "...kyyykkyyyk...", "..kyyyyyyyyyyk..", "..kyyyykkyyyyk..", ".kyyyyykkyyyyyk.", ".kyyyyyyyyyyyOk.", "kkkkkkkkkkkkkkkk"],
+    'error': [".....kkkkkk.....", "...kkrrrrrrkk...", "..krrrrrrrrrrk..", ".krrwwrrrrwwrrk.", ".krrwwwrrwwwrrk.", "krrrrwwwwwwrrrRk", "krrrrrwwwwrrrrRk", "krrrrrwwwwrrrrRk", "krrrrwwwwwwrrrRk", ".krrwwwrrwwwrRk.", ".krrwwrrrrwwRRk.", "..krrrrrrrRRRk..", "...kkRRRRRRkk...", ".....kkkkkk....."],
+    'cd': [".....kkkkkk.....", "...kkWWWWccWkk..", "..kWWWWWccvvWWk.", ".kWWWWWWcvvWWWWk", ".kWWWWWWvvWWWWWk", "kWWWWWkkkkWWWWWk", "kWWWWkwwwwkWWWWk", "kWWWWkwkkwkWWWWk", "kppWWkwkkwkWWWWk", "kWppWkwwwwkWWWWk", ".kWyyWkkkkWWWWk.", ".kWWyyWWWWWWWSk.", "..kWWWWWWWWWSk..", "...kkWWWWWSkk...", ".....kkkkkk....."],
   };
   const PIXEL_NAMES = {
     heart: 'Heart', 'heart-pink': 'Pink heart', star: 'Star', sparkle: 'Sparkle', moon: 'Moon', flame: 'Little flame',
@@ -108,7 +123,11 @@
     smiley: 'Smiley', bow: 'Bow', music: 'Music', cursor: 'Cursor', floppy: 'Floppy disk',
     controller: 'Controller', headphones: 'Headphones', skull: 'Skull', sword: 'Sword', rocket: 'Rocket', planet: 'Planet',
     basketball: 'Basketball', coffee: 'Coffee',
+    computer: 'Computer', folder: 'Folder', trash: 'Bin', globe: 'The Internet', mail: 'Mail', notepad: 'Notepad',
+    hourglass: 'Hourglass', warning: 'Warning', error: 'Error', cd: 'CD',
   };
+  // (The old desktop's, in a row of their own in the editor.)
+  const DESKTOP = ['computer', 'folder', 'trash', 'globe', 'mail', 'notepad', 'hourglass', 'warning', 'error', 'cd', 'cursor', 'floppy'];
 
   const uri = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   // Pixels (rows of letters, each a colour) as rectangles, a run of one colour at a time (`dx`
@@ -354,6 +373,54 @@
     node.append(inner);
   }
 
+  // ---------- Old desktops' windows ----------
+  // A window of 1998 (grey and bevelled), 2001 (blue and glossy), 1997 (a Mac's: pinstriped, its
+  // close box on the left), an old browser (1998's, with an address bar) or a plain one, with a
+  // title, around a pane: a picture's or a video's frame, or what a video pops up in. Only a
+  // popup's close button does anything (`closable`); a frame's buttons are for show.
+  const isWindow = (frame) => Boolean(WINDOWS[frame]) && frame !== 'plain';
+  function windowEl(root, theme, title, { closable = false, folder = 'My Pictures' } = {}) {
+    const kind = WINDOWS[theme] ? theme : 'window';
+    root.classList.add('hp-win', `hp-win-${kind}`);
+    const bar = document.createElement('div');
+    bar.className = 'hp-win-bar';
+    const name = document.createElement('span');
+    name.className = 'hp-win-title';
+    name.textContent = kind === 'browser' ? `${title} - Web Browser` : title;
+    bar.append(name);
+    let close = null;
+    for (const [k, glyph] of [['min', '_'], ['max', '□'], ['close', '×']]) {
+      const b = document.createElement(k === 'close' && closable ? 'button' : 'b');
+      b.className = `hp-win-knob hp-win-${k}`;
+      b.textContent = glyph;
+      if (k === 'close' && closable) {
+        b.type = 'button';
+        b.title = 'Close';
+        b.setAttribute('aria-label', 'Close');
+        close = b;
+      } else {
+        b.setAttribute('aria-hidden', 'true');
+      }
+      bar.append(b);
+    }
+    root.append(bar);
+    if (kind === 'browser') {
+      const tools = document.createElement('div');
+      tools.className = 'hp-win-tools';
+      tools.setAttribute('aria-hidden', 'true');
+      const address = document.createElement('span');
+      address.className = 'hp-win-address';
+      address.textContent = `file:///C:/${folder}/${title}`;
+      for (const glyph of ['◀', '▶']) tools.append(Object.assign(document.createElement('b'), { textContent: glyph }));
+      tools.append(address);
+      root.append(tools);
+    }
+    const pane = document.createElement('div');
+    pane.className = 'hp-win-pane';
+    root.append(pane);
+    return { pane, close, bar };
+  }
+
   function imagePiece(node, p, ctx) {
     const img = document.createElement('img');
     img.alt = p.caption || '';
@@ -362,23 +429,8 @@
     img.loading = 'lazy';
     img.decoding = 'async';
     node.classList.add(`hp-frame-${p.frame || 'none'}`);
-    if (p.frame === 'window') {
-      const bar = document.createElement('div');
-      bar.className = 'hp-window-bar';
-      const title = document.createElement('span');
-      title.textContent = p.caption || 'untitled.gif';
-      const knobs = document.createElement('i');
-      knobs.setAttribute('aria-hidden', 'true');
-      for (const k of ['_', '□', '×']) {
-        const b = document.createElement('b');
-        b.textContent = k;
-        knobs.append(b);
-      }
-      bar.append(title, knobs);
-      const pane = document.createElement('div');
-      pane.className = 'hp-window-pane';
-      pane.append(img);
-      node.append(bar, pane);
+    if (isWindow(p.frame)) {
+      windowEl(node, p.frame, p.caption || 'untitled.gif').pane.append(img);
       return;
     }
     node.append(img);
@@ -388,6 +440,226 @@
       cap.textContent = p.caption;
       node.append(cap);
     }
+  }
+
+  // A video of the owner's. On the page it plays without its sound, over and over like a GIF,
+  // while it's on the screen; for someone who'd rather things didn't move, only once they press
+  // its button. Its button turns the sound on (and plays it), or off.
+  const NO_POSTER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // (not Android's grey play button)
+  const calmMotion = () => Boolean(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function videoPiece(node, p, ctx) {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    video.poster = NO_POSTER;
+    video.src = ctx.fileUrl(p.file);
+    video.setAttribute('aria-label', p.caption || 'A video');
+    node.classList.add(`hp-frame-${p.frame || 'none'}`);
+    let box = node;
+    if (isWindow(p.frame)) {
+      box = windowEl(node, p.frame, p.caption || 'untitled.mpg', { folder: 'My Videos' }).pane;
+      box.append(video);
+    } else {
+      node.append(video);
+      if (p.frame === 'photo' && p.caption) {
+        const cap = document.createElement('span');
+        cap.className = 'hp-caption';
+        cap.textContent = p.caption;
+        node.append(cap);
+      }
+    }
+    if (ctx.edit) {
+      video.autoplay = true; // (in the editor it just plays)
+      return;
+    }
+    const calm = calmMotion();
+    video.hpStopped = calm;
+    const sound = document.createElement('button');
+    sound.type = 'button';
+    const sync = () => {
+      const state = video.paused && video.hpStopped ? 'play' : video.muted ? 'off' : 'on';
+      sound.className = `hp-video-sound hp-sound-${state}`;
+      const label = { play: 'Play it', off: 'Turn its sound on', on: 'Turn its sound off' }[state];
+      sound.title = label;
+      sound.setAttribute('aria-label', label);
+    };
+    sound.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (video.muted || video.paused) {
+        video.hpStopped = false;
+        video.muted = false;
+        video.play().catch(() => {});
+      } else {
+        video.muted = true;
+        if (calm) {
+          video.hpStopped = true;
+          video.pause();
+        }
+      }
+      sync();
+    });
+    for (const e of ['play', 'pause', 'volumechange']) video.addEventListener(e, sync);
+    sync();
+    box.append(sound);
+    watchVideo(video);
+  }
+
+  // Videos play only while they're on the screen.
+  let videoWatch = null;
+  function watchVideo(video) {
+    if (!('IntersectionObserver' in window)) {
+      if (!video.hpStopped) video.play().catch(() => {});
+      return;
+    }
+    videoWatch ||= new IntersectionObserver((seen) => {
+      for (const e of seen) {
+        if (e.isIntersecting && !e.target.hpStopped) e.target.play().catch(() => {});
+        else if (!e.isIntersecting) e.target.pause();
+      }
+    }, { threshold: 0.2 });
+    videoWatch.observe(video);
+  }
+
+  // An old desktop's taskbar: its start button (the owner's words on it, beside Rainlit's drop),
+  // and a clock with the visitor's own time.
+  function taskbarPiece(node, p) {
+    node.classList.add(`hp-taskbar-${TASKBARS[p.style] ? p.style : 'window'}`);
+    const start = document.createElement('span');
+    start.className = 'hp-taskbar-start';
+    const drop = document.createElement('img');
+    drop.src = '/icons/drop-clean.svg';
+    drop.alt = '';
+    drop.draggable = false;
+    const label = document.createElement('span');
+    label.textContent = p.label || 'start';
+    start.append(drop, label);
+    const clock = document.createElement('span');
+    clock.className = 'hp-taskbar-clock';
+    const tick = () => { clock.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+    tick();
+    const timer = setInterval(() => (clock.isConnected ? tick() : clearInterval(timer)), 10_000);
+    node.append(start, clock);
+  }
+
+  // ---------- Videos that pop up ----------
+  // A click on a piece that pops one up (its owner picked the video, and the window): it opens
+  // somewhere on the screen over the page, playing, with its sound (someone clicked for it), and
+  // stays till it's closed with its ×. Its title drags it about, and a click on the video stops
+  // it or plays it again. A few can be up at once (a new one closes the oldest).
+  const POPS_MAX = 5;
+  let popsOver = 20;
+  function popVideo(p, ctx, from) {
+    const host = (from && from.closest('.hp-frame')) || document.body;
+    const up = host.querySelectorAll(':scope > .hp-popup');
+    if (up.length >= POPS_MAX) closePopup(up[0]);
+    const title = p.popName || 'video.mp4';
+    const win = document.createElement('div');
+    win.className = 'hp-popup';
+    win.setAttribute('role', 'dialog');
+    win.setAttribute('aria-label', title);
+    const { pane, close, bar } = windowEl(win, p.popWin, title, { closable: true, folder: 'My Videos' });
+    const video = document.createElement('video');
+    video.playsInline = true;
+    video.poster = NO_POSTER;
+    video.src = ctx.fileUrl(p.pop);
+    const paused = () => win.classList.toggle('hp-popup-paused', video.paused);
+    video.addEventListener('click', () => (video.paused ? video.play().catch(() => {}) : video.pause()));
+    for (const e of ['play', 'pause', 'ended']) video.addEventListener(e, paused);
+    pane.append(video);
+    close.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closePopup(win);
+    });
+    win.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      e.preventDefault();
+      closePopup(win);
+    });
+    win.addEventListener('pointerdown', () => { win.style.zIndex = String(++popsOver); });
+    win.style.zIndex = String(++popsOver);
+    host.append(win);
+    // Its size: the video's shape, up to 420 wide (less on a phone), and never taller than most of
+    // the screen. Then somewhere random, all of it showing.
+    const size = (ratio) => {
+      const extraW = win.offsetWidth - pane.clientWidth, extraH = win.offsetHeight - pane.clientHeight;
+      let w = Math.min(420, host.clientWidth * 0.86 - extraW);
+      let h = w / ratio;
+      const tall = host.clientHeight * 0.78 - extraH;
+      if (h > tall) {
+        h = tall;
+        w = h * ratio;
+      }
+      pane.style.width = `${Math.max(80, Math.round(w))}px`;
+      pane.style.height = `${Math.max(60, Math.round(h))}px`;
+    };
+    const keepIn = () => {
+      const x = Math.min(Math.max(0, host.clientWidth - win.offsetWidth), Math.max(0, parseFloat(win.style.left) || 0));
+      const y = Math.min(Math.max(0, host.clientHeight - win.offsetHeight), Math.max(0, parseFloat(win.style.top) || 0));
+      win.style.left = `${Math.round(x)}px`;
+      win.style.top = `${Math.round(y)}px`;
+    };
+    size(4 / 3);
+    win.style.left = `${Math.random() * Math.max(0, host.clientWidth - win.offsetWidth)}px`;
+    win.style.top = `${Math.random() * Math.max(0, host.clientHeight - win.offsetHeight)}px`;
+    keepIn();
+    video.addEventListener('loadedmetadata', () => {
+      if (video.videoWidth && video.videoHeight) size(video.videoWidth / video.videoHeight);
+      keepIn();
+    }, { once: true });
+    video.play().catch(paused);
+    dragBy(bar, win, keepIn);
+    close.focus({ preventScroll: true });
+    return win;
+  }
+
+  function closePopup(win) {
+    const video = win.querySelector('video');
+    if (video) {
+      video.pause();
+      video.removeAttribute('src');
+      video.load(); // (stops it downloading)
+    }
+    win.remove();
+  }
+
+  // The topmost popup over a page, closed (Escape, one at a time). Whether there was one.
+  function closeTopPopup(page) {
+    const host = page && page.closest('.hp-frame');
+    const up = host ? [...host.querySelectorAll(':scope > .hp-popup')] : [];
+    if (!up.length) return false;
+    closePopup(up.reduce((a, b) => (Number(b.style.zIndex) > Number(a.style.zIndex) ? b : a)));
+    return true;
+  }
+
+  // Dragging a popup about by its title bar (not its buttons), inside what it's over. (The
+  // pointer's moves, scaled to the page's own pixels, for an app that's zoomed.)
+  function dragBy(bar, win, keepIn) {
+    bar.addEventListener('pointerdown', (e) => {
+      if (e.button > 0 || e.target.closest('button')) return;
+      e.preventDefault();
+      const k = win.getBoundingClientRect().width / (win.offsetWidth || 1) || 1;
+      const x0 = e.clientX, y0 = e.clientY, left = win.offsetLeft, top = win.offsetTop;
+      try {
+        bar.setPointerCapture(e.pointerId);
+      } catch {}
+      const move = (m) => {
+        win.style.left = `${left + (m.clientX - x0) / k}px`;
+        win.style.top = `${top + (m.clientY - y0) / k}px`;
+        keepIn();
+      };
+      const done = () => {
+        bar.removeEventListener('pointermove', move);
+        bar.removeEventListener('pointerup', done);
+        bar.removeEventListener('pointercancel', done);
+      };
+      bar.addEventListener('pointermove', move);
+      bar.addEventListener('pointerup', done);
+      bar.addEventListener('pointercancel', done);
+    });
   }
 
   function stickerPiece(node, p) {
@@ -1116,6 +1388,12 @@
   // and its effects.
   function hush(page) {
     for (const a of page.querySelectorAll('audio')) a.pause();
+    for (const v of page.querySelectorAll('video')) {
+      v.pause();
+      if (videoWatch) videoWatch.unobserve(v);
+    }
+    const host = page.closest && page.closest('.hp-frame');
+    if (host) for (const w of host.querySelectorAll(':scope > .hp-popup')) closePopup(w);
     if (page.hpPet) page.hpPet.stop();
     if (page.hpFx) page.hpFx.stop();
   }
@@ -1123,13 +1401,15 @@
   const DRAW = {
     text: textPiece, image: imagePiece, sticker: stickerPiece, tape: tapePiece, paper: paperPiece, me: mePiece,
     counter: counterPiece, guestbook: guestbookPiece, music: musicPiece, shelf: shelfPiece, button: buttonPiece,
-    ask: askPiece, fortune: fortunePiece,
+    ask: askPiece, fortune: fortunePiece, video: videoPiece, taskbar: taskbarPiece,
   };
 
-  // One piece, placed and turned. (In the editor, links don't go anywhere.)
+  // One piece, placed and turned. A click opens its link, or pops up its video. (In the editor,
+  // neither happens.)
   function pieceEl(p, ctx) {
     // (A web address only: lib/homepages.js keeps no other kind, and this doesn't trust that.)
-    const link = typeof p.href === 'string' && /^https?:\/\//i.test(p.href) && !ctx.edit;
+    const pops = typeof p.pop === 'string' && /^[a-f0-9]{24}$/.test(p.pop) && !ctx.edit;
+    const link = !pops && typeof p.href === 'string' && /^https?:\/\//i.test(p.href) && !ctx.edit;
     const node = document.createElement(link ? 'a' : 'div');
     node.className = `hp-piece hp-${p.t}`;
     node.dataset.id = p.id;
@@ -1139,6 +1419,17 @@
       node.href = p.href;
       node.target = '_blank';
       node.rel = 'noopener noreferrer nofollow ugc';
+    }
+    if (pops) {
+      node.classList.add('hp-pops');
+      node.tabIndex = 0;
+      node.setAttribute('role', 'button');
+      node.addEventListener('click', () => popVideo(p, ctx, node));
+      node.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        popVideo(p, ctx, node);
+      });
     }
     if (DRAW[p.t]) DRAW[p.t](node, p, ctx);
     return node;
@@ -3066,8 +3357,10 @@
 
   window.Homepage = {
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
-    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES,
+    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
+    // (a piece's video, popped up to try: the editor)
+    popVideo, closeTopPopup,
     petEl, petRoom, petMeters, fullWords, happyWords,
     ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
