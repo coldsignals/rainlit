@@ -443,6 +443,102 @@
     }
   }
 
+  // ---------- Loud sound, kept down ----------
+  // Sound on a homepage (a video that pops up, a video's sound turned on, a song) goes through a
+  // limiter, so something made to be as loud as it can be (an "earrape") comes out about as loud
+  // as anything else, and quieter sound is left as it is. It fades in, too. For that the page has
+  // to be let read the file: from this server it always can; from R2, once its bucket allows it
+  // (a CORS rule: SELF-HOSTING.md, step 13). Until then (or in a browser without Web Audio), it
+  // fades in to half volume instead.
+  let soundCtx = null;
+  let readable = (() => {
+    try {
+      return sessionStorage.getItem('hpMediaCors') !== 'no';
+    } catch {
+      return true;
+    }
+  })();
+
+  // A video's or a song's file, loaded so the page can read it if it's let (and as it is if not).
+  function loadSound(media, url) {
+    if (!readable) {
+      media.hpPlain = true;
+      media.src = url;
+      return;
+    }
+    media.crossOrigin = 'anonymous';
+    media.addEventListener('error', () => {
+      if (media.hpPlain) return;
+      // (The bucket won't let this page read it: it's played as it is.)
+      const wanted = !media.paused;
+      media.hpPlain = true;
+      readable = false;
+      try {
+        sessionStorage.setItem('hpMediaCors', 'no');
+      } catch {}
+      media.removeAttribute('crossorigin');
+      media.src = url;
+      if (wanted) media.play().catch(() => {});
+    }, { once: true });
+    media.src = url;
+  }
+
+  // Its sound, about to be heard: through the limiter (once it's known the page can read it).
+  // A compressor with a hard ceiling about 14 dB under full (about where most videos and songs
+  // play): the browser makes up for what it takes (about twice as loud, measured), which the gain
+  // after it takes back, so anything quieter than the ceiling comes out as it went in.
+  const LIMIT = { threshold: -14, knee: 0, ratio: 20, attack: 0.003, release: 0.25 };
+  const AFTER = 0.51;
+  function soundOn(media) {
+    if (media.hpSound || media.hpWaiting) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    // (Made now, in the click that asked for the sound: browsers let it start then.)
+    if (Ctx && !media.hpPlain) {
+      try {
+        soundCtx ||= new Ctx();
+        if (soundCtx.state === 'suspended') soundCtx.resume().catch(() => {});
+      } catch {}
+    }
+    const limit = () => {
+      media.hpWaiting = false;
+      if (media.hpSound) return;
+      if (!soundCtx || media.hpPlain) return softly(media);
+      try {
+        const source = soundCtx.createMediaElementSource(media);
+        const limiter = soundCtx.createDynamicsCompressor();
+        for (const [k, v] of Object.entries(LIMIT)) limiter[k].value = v;
+        const gain = soundCtx.createGain();
+        const t = soundCtx.currentTime;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(AFTER, t + 0.8);
+        source.connect(limiter).connect(gain).connect(soundCtx.destination);
+        media.hpSound = { ctx: soundCtx, source, limiter, gain };
+        media.volume = 1;
+      } catch {
+        softly(media);
+      }
+    };
+    if (media.hpPlain || media.readyState >= 1) return limit();
+    // (Silent till then: nothing gets out before the limiter's in place.)
+    media.volume = 0;
+    media.hpWaiting = true;
+    media.addEventListener('loadedmetadata', limit, { once: true });
+  }
+
+  // Without the limiter: half volume, faded in.
+  function softly(media) {
+    if (media.hpSound) return;
+    media.hpSound = { soft: true };
+    const start = performance.now();
+    media.volume = 0;
+    const step = () => {
+      const k = Math.min(1, (performance.now() - start) / 1200);
+      media.volume = 0.5 * k;
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
   // A video of the owner's. On the page it plays without its sound, over and over like a GIF,
   // while it's on the screen; for someone who'd rather things didn't move, only once they press
   // its button. Its button turns the sound on (and plays it), or off.
@@ -455,7 +551,7 @@
     video.playsInline = true;
     video.preload = 'metadata';
     video.poster = NO_POSTER;
-    video.src = ctx.fileUrl(p.file);
+    loadSound(video, ctx.fileUrl(p.file));
     video.setAttribute('aria-label', p.caption || 'A video');
     node.classList.add(`hp-frame-${p.frame || 'none'}`);
     let box = node;
@@ -491,6 +587,7 @@
       e.stopPropagation();
       if (video.muted || video.paused) {
         video.hpStopped = false;
+        soundOn(video);
         video.muted = false;
         video.play().catch(() => {});
       } else {
@@ -565,7 +662,8 @@
     const video = document.createElement('video');
     video.playsInline = true;
     video.poster = NO_POSTER;
-    video.src = ctx.fileUrl(p.pop);
+    loadSound(video, ctx.fileUrl(p.pop));
+    soundOn(video);
     const paused = () => win.classList.toggle('hp-popup-paused', video.paused);
     video.addEventListener('click', () => (video.paused ? video.play().catch(() => {}) : video.pause()));
     for (const e of ['play', 'pause', 'ended']) video.addEventListener(e, paused);
@@ -620,6 +718,7 @@
   function closePopup(win) {
     const video = win.querySelector('video');
     if (video) {
+      if (video.hpSound && video.hpSound.source) video.hpSound.source.disconnect();
       video.pause();
       video.removeAttribute('src');
       video.load(); // (stops it downloading)
@@ -1206,7 +1305,7 @@
     const audio = document.createElement('audio');
     audio.preload = 'none';
     audio.loop = true;
-    audio.src = ctx.fileUrl(p.file);
+    loadSound(audio, ctx.fileUrl(p.file));
     const play = document.createElement('button');
     play.type = 'button';
     play.className = 'hp-play';
@@ -1233,6 +1332,7 @@
       e.stopPropagation();
       if (audio.paused) {
         for (const other of document.querySelectorAll('.hp-music audio')) if (other !== audio) other.pause();
+        soundOn(audio);
         audio.play().catch(() => {});
       } else {
         audio.pause();

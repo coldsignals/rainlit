@@ -2578,7 +2578,14 @@ api.get('/admin/users', needAdmin, (_req, res) => {
 
 // Room for files (lib/storage.js): the biggest file, how much each person's can add up to, and
 // the disk. And one person's own amount (more, or less, than everyone's; null goes back).
-api.get('/admin/storage', needAdmin, (_req, res) => res.json({ ...storage.overview(), r2: blobs.status(), usage: abuse.usage() }));
+api.get('/admin/storage', needAdmin, async (req, res) => res.json(await storageState(req)));
+
+// (And whether R2's bucket lets this site read its files, for homepages' sound limiter.)
+async function storageState(req) {
+  const r2 = blobs.status();
+  if (r2.enabled) r2.readable = await blobs.readableFrom(new URL(publicUrl(req)).origin);
+  return { ...storage.overview(), r2, usage: abuse.usage() };
+}
 
 // What people put on their homepages, all of them together (counts only), to see what gets used.
 api.get('/admin/homepages', needAdmin, (_req, res) => res.json(homepages.stats()));
@@ -2589,10 +2596,10 @@ api.post('/admin/flags/:id/clear', needAdmin, (req, res) => {
   if (!abuse.clear(req.params.id, req.user.id)) return fail(res, 404, "That flag isn't there any more.");
   res.json({ ok: true, open: abuse.openCount() });
 });
-api.put('/admin/storage', needAdmin, (req, res) => {
+api.put('/admin/storage', needAdmin, async (req, res) => {
   const b = req.body || {};
   storage.configure({ fileMb: b.fileMb, personMb: b.personMb });
-  res.json({ ...storage.overview(), r2: blobs.status(), usage: abuse.usage() });
+  res.json(await storageState(req));
 });
 // Supporting Rainlit (lib/supporters.js): what running it costs a month (for the support page's
 // bar), how much supporters cover, and how much Cloudflare's sent for voice this month. And

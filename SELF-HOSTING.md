@@ -219,6 +219,22 @@ adds up. Cloudflare R2 stores files for about $0.015 a GB a month, and sending f
 3. Add `R2_ACCOUNT_ID` (your Cloudflare account's ID, shown on the R2 page), `R2_ACCESS_KEY_ID`
    and `R2_SECRET_ACCESS_KEY` (from the token) and `R2_BUCKET` (its name) to your settings, and
    restart.
+4. In the bucket's **Settings**, under **CORS Policy**, add this (with your Rainlit's address):
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://your-rainlit.example"],
+       "AllowedMethods": ["GET", "HEAD"],
+       "AllowedHeaders": ["*"],
+       "MaxAgeSeconds": 86400
+     }
+   ]
+   ```
+
+   It lets Rainlit's pages read the videos and songs on homepages, to turn sound that's made to be
+   as loud as it can be down to everything else's (without it, they only fade in, at half volume).
+   The admin panel's Storage says whether it's working.
 
 New files go to R2 as soon as they're written. Files from before move over in the background,
 starting half a minute after Rainlit starts (the admin panel's Storage says how many are left).

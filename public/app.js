@@ -13254,6 +13254,8 @@ async function renderStorage(state) {
   const r2 = state.r2 && state.r2.enabled ? state.r2 : null;
   el.storageState.textContent = `Everyone's files take up ${fmtBytes(state.files)}.`
     + (r2 ? ` They're kept in Cloudflare R2 (${r2.inR2} files, ${fmtBytes(r2.bytes)})${r2.left ? `, with ${r2.left} still moving there` : ''}.` : '')
+    + (r2 && r2.readable === false ? " Homepages can't turn loud sound down yet (it only fades in, at half volume): the R2 bucket needs a CORS rule letting this site read its files (SELF-HOSTING.md, step 13)." : '')
+    + (r2 && r2.readable ? ' The bucket lets this site read its files, so homepages turn loud sound down.' : '')
     + (d ? ` The disk has ${fmtBytes(d.free)} free, of ${fmtBytes(d.total)}.` : '')
     + (d && d.full ? " It's nearly full, so uploads are paused: make it bigger (on Render: your service, then Disks; it takes seconds)." : '');
   const u = state.usage && state.usage.days[0];
