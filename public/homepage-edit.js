@@ -1213,7 +1213,7 @@
       });
       return field('Link (opens when someone clicks it)', input);
     };
-    // What a click does: nothing, open a link, or pop up a video (in a window of 1998, say).
+    // What a click does: nothing, open a link, or pop up a video (in a Rain95 window, say).
     const clickField = () => {
       const asked = state.clicks && state.clicks.id === p.id ? state.clicks.mode : null;
       const mode = p.pop ? 'video' : p.href ? 'link' : asked || 'none';

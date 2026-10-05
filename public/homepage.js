@@ -29,7 +29,7 @@
   };
   const EFFECTS = { none: 'Plain', shadow: 'Shadow', outline: 'Outline', glow: 'Glow', rainbow: 'Rainbow', blink: 'Blink', marquee: 'Scrolling', wave: 'Wavy', shimmer: 'Shimmer', lamplight: 'Lamplight' };
   const BOXES = { none: 'None', note: 'Sticky note', label: 'Label', box: 'Box', highlight: 'Highlighter', hazard: 'Caution', bubble: 'Speech bubble' };
-  const FRAMES = { none: 'None', photo: 'Photo', rounded: 'Rounded', circle: 'Circle', heart: 'Heart', stamp: 'Stamp', window: '1998 window', xp: '2001 window', mac: '1997 window', browser: 'Old browser', sticker: 'Sticker', gilded: 'Gilded', neon: 'Neon' };
+  const FRAMES = { none: 'None', photo: 'Photo', rounded: 'Rounded', circle: 'Circle', heart: 'Heart', stamp: 'Stamp', window: 'Rain95', xp: 'RainXP', mac: 'Raintosh', browser: 'Rainscape', sticker: 'Sticker', gilded: 'Gilded', neon: 'Neon' };
   const TAPES = { plain: 'Plain', stripes: 'Stripes', dots: 'Dots', checks: 'Checks' };
   const PAPERS = { lined: 'Lined', grid: 'Grid', dotted: 'Dotted', plain: 'Plain', sticky: 'Sticky note', kraft: 'Kraft', torn: 'Torn' };
   const ME_STYLES = { card: 'Card', sticker: 'Sticker', plain: 'Plain' };
@@ -40,8 +40,8 @@
   const SHELVES = { wood: 'Wood', glass: 'Glass', pixel: 'Pixel', white: 'White' };
   const BUTTONS = { bevel: 'Classic', shiny: 'Shiny', stripes: 'Stripes', dark: 'Dark' };
   // Old desktops' windows: what a video pops up in (and the frames that are windows).
-  const WINDOWS = { window: '1998', xp: '2001', mac: '1997', browser: 'Old browser', plain: 'Plain' };
-  const TASKBARS = { window: '1998', xp: '2001' };
+  const WINDOWS = { window: 'Rain95', xp: 'RainXP', mac: 'Raintosh', browser: 'Rainscape', plain: 'Plain' };
+  const TASKBARS = { window: 'Rain95', xp: 'RainXP' };
   // What each kind of piece is called (in the editor, and Admin's count of what pages use).
   const PIECE_NAMES = {
     text: 'Words', image: 'Picture', sticker: 'Sticker', tape: 'Tape', paper: 'Paper', me: 'Profile card', counter: 'Visitor counter',
@@ -374,8 +374,9 @@
   }
 
   // ---------- Old desktops' windows ----------
-  // A window of 1998 (grey and bevelled), 2001 (blue and glossy), 1997 (a Mac's: pinstriped, its
-  // close box on the left), an old browser (1998's, with an address bar) or a plain one, with a
+  // A window: Rain95's (grey and bevelled, like 1998's), RainXP's (blue and glossy, like 2001's),
+  // Raintosh's (a 1997 Mac's: pinstriped, its close box on the left), Rainscape's (an old browser,
+  // with an address bar) or a plain one, with a
   // title, around a pane: a picture's or a video's frame, or what a video pops up in. Only a
   // popup's close button does anything (`closable`); a frame's buttons are for show.
   const isWindow = (frame) => Boolean(WINDOWS[frame]) && frame !== 'plain';
@@ -386,7 +387,7 @@
     bar.className = 'hp-win-bar';
     const name = document.createElement('span');
     name.className = 'hp-win-title';
-    name.textContent = kind === 'browser' ? `${title} - Web Browser` : title;
+    name.textContent = kind === 'browser' ? `${title} - Rainscape` : title;
     bar.append(name);
     let close = null;
     for (const [k, glyph] of [['min', '_'], ['max', '□'], ['close', '×']]) {

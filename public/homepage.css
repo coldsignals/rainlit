@@ -146,8 +146,8 @@ a.hp-piece:focus-visible, .hp-pops:focus-visible { outline: 3px solid #f5b94a; o
 }
 .hp-frame-stamp :is(img, video) { outline: 1px solid rgba(0, 0, 0, 0.12); }
 /* ----- Old desktops' windows (homepage.js: windowEl): a picture's or a video's frame, or a
-   popup. 1998's grey and bevelled (and its browser, with an address bar), 2001's blue and
-   glossy, 1997's pinstriped Mac with its close box on the left, and a plain one. ----- */
+   popup. Rain95's grey and bevelled (and Rainscape, its browser, with an address bar), RainXP's
+   blue and glossy, Raintosh's pinstriped, its close box on the left, and a plain one. ----- */
 .hp-win { display: flex; flex-direction: column; box-sizing: border-box; }
 .hp-win-bar { display: flex; align-items: center; flex: none; gap: 2px; user-select: none; }
 .hp-win-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
