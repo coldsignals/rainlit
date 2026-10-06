@@ -694,6 +694,31 @@
     }
   }
 
+  // A sound for a piece to play when it's clicked: picked, uploaded, and handed on (with its name).
+  function soundButton(label, onDone) {
+    const input = el('input', { type: 'file', accept: 'audio/*,.mp3,.m4a,.ogg,.oga,.opus,.flac,.wav' });
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      input.value = '';
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) return note(`${file.name} is too big: sounds can be up to 10 MB.`);
+      setSaved('Uploading…');
+      try {
+        const { file: f, usage } = await app.api('POST', '/homepages/me/files', file);
+        state.data.usage = usage;
+        if (f.kind !== 'audio') {
+          setSaved(state.dirty ? 'Saving…' : 'Saved');
+          return note(`${file.name} isn't a sound. Sounds can be MP3, M4A, OGG, FLAC or WAV.`);
+        }
+        onDone(f, file.name.trim().slice(0, 60));
+      } catch (err) {
+        note(err.message);
+        setSaved(state.dirty ? 'Saving…' : 'Saved');
+      }
+    });
+    return el('label', { class: 'hp-item wide hp-upload-btn' }, el('span', { text: label }), input);
+  }
+
   // A video for a piece to pop up when it's clicked: picked, uploaded, and handed on (with its name).
   function videoButton(label, onDone) {
     const input = el('input', { type: 'file', accept: 'video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v' });
@@ -1213,18 +1238,18 @@
       });
       return field('Link (opens when someone clicks it)', input);
     };
-    // What a click does: nothing, open a link, or pop up a video (in a Rain95 window, say).
+    // What a click does: nothing, open a link, pop up a video (in a Rain95 window, say), or play a
+    // sound (a meow for a spinning cat).
     const clickField = () => {
       const asked = state.clicks && state.clicks.id === p.id ? state.clicks.mode : null;
-      const mode = p.pop ? 'video' : p.href ? 'link' : asked || 'none';
+      const mode = p.sound ? 'sound' : p.pop ? 'video' : p.href ? 'link' : asked || 'none';
+      const off = { none: { href: '', pop: '', popName: '', sound: '', soundName: '' }, link: { pop: '', popName: '', sound: '', soundName: '' }, video: { href: '', sound: '', soundName: '' }, sound: { href: '', pop: '', popName: '' } };
       const choose = (m) => {
         state.clicks = { id: p.id, mode: m };
-        if (m === 'none' && (p.href || p.pop)) set({ href: '', pop: '', popName: '' });
-        else if (m === 'link' && p.pop) set({ pop: '', popName: '' });
-        else if (m === 'video' && p.href) set({ href: '' });
+        if (Object.keys(off[m]).some((k) => p[k])) set(off[m]);
         else renderTray();
       };
-      const out = [field('When someone clicks it', chips({ none: 'Nothing', link: 'Opens a link', video: 'Pops up a video' }, mode, choose))];
+      const out = [field('When someone clicks it', chips({ none: 'Nothing', link: 'Opens a link', video: 'Pops up a video', sound: 'Plays a sound' }, mode, choose))];
       if (mode === 'link') out.push(linkField());
       if (mode === 'video') {
         out.push(el('div', { class: 'hp-grid' }, videoButton(p.pop ? 'A different video…' : 'Pick a video…', (f, name) => set({ pop: f.id, popName: name, popWin: p.popWin || 'window', href: '' }))));
@@ -1238,6 +1263,18 @@
             el('p', { class: 'hp-note-small', text: 'It pops up somewhere over your page, playing with its sound, till it\'s closed. Every click pops up another (five at most).' }));
         } else {
           out.push(el('p', { class: 'hp-note-small', text: 'MP4 or WebM, up to 20 MB.' }));
+        }
+      }
+      if (mode === 'sound') {
+        out.push(el('div', { class: 'hp-grid' }, soundButton(p.sound ? 'A different sound…' : 'Pick a sound…', (f, name) => set({ sound: f.id, soundName: name, href: '', pop: '', popName: '' }))));
+        if (p.sound) {
+          const tryIt = el('button', {
+            class: 'hp-tool', type: 'button', text: 'Try it',
+            onclick: () => H.playSound(tryIt, p, { fileUrl: (id) => `/homepage-files/${id}` }),
+          });
+          out.push(el('p', { class: 'hp-note-small', text: `${p.soundName || 'A sound'}: it plays from the start each time it's clicked.` }), el('div', { class: 'hp-row' }, tryIt));
+        } else {
+          out.push(el('p', { class: 'hp-note-small', text: 'MP3, M4A, OGG, FLAC or WAV, up to 10 MB.' }));
         }
       }
       return out;

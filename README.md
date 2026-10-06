@@ -201,11 +201,12 @@ from your own (**Your homepage**, then **Edit**).
   with its pictures and songs. On the page one plays over and over without its
   sound while it's on the screen, and visitors can turn the sound on (for
   anyone who'd rather things didn't move, it waits for them to press play).
-- **Click it for a video:** a button, a picture, a sticker or some words can
-  open a link, or pop up a video instead: it opens somewhere over the page in a
-  window (Rain95, RainXP, Raintosh, Rainscape or a plain one), playing with its
-  sound, until it's closed with its ×. Every click pops up another. **Try it**
-  shows you while you're making it.
+- **Click it for a video, or a sound:** a button, a picture, a sticker or some
+  words can open a link, or pop up a video instead: it opens somewhere over the
+  page in a window (Rain95, RainXP, Raintosh, Rainscape or a plain one),
+  playing with its sound, until it's closed with its ×. Every click pops up
+  another. Or it plays a sound of yours (a meow when a spinning cat's clicked),
+  from the start each time. **Try it** shows you while you're making it.
 - **The old web:** a visitor counter (like the hit counters of old, every
   visit counts but yours), a guestbook anyone who can see your page can sign (they
   can delete what they wrote, and you can delete anything in it; you hear

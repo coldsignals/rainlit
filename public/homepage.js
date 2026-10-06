@@ -489,7 +489,7 @@
   // after it takes back, so anything quieter than the ceiling comes out as it went in.
   const LIMIT = { threshold: -14, knee: 0, ratio: 20, attack: 0.003, release: 0.25 };
   const AFTER = 0.51;
-  function soundOn(media) {
+  function soundOn(media, fade = 0.8) {
     if (media.hpSound || media.hpWaiting) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
     // (Made now, in the click that asked for the sound: browsers let it start then.)
@@ -502,7 +502,7 @@
     const limit = () => {
       media.hpWaiting = false;
       if (media.hpSound) return;
-      if (!soundCtx || media.hpPlain) return softly(media);
+      if (!soundCtx || media.hpPlain) return softly(media, fade);
       try {
         const source = soundCtx.createMediaElementSource(media);
         const limiter = soundCtx.createDynamicsCompressor();
@@ -510,12 +510,12 @@
         const gain = soundCtx.createGain();
         const t = soundCtx.currentTime;
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(AFTER, t + 0.8);
+        gain.gain.exponentialRampToValueAtTime(AFTER, t + fade);
         source.connect(limiter).connect(gain).connect(soundCtx.destination);
         media.hpSound = { ctx: soundCtx, source, limiter, gain };
         media.volume = 1;
       } catch {
-        softly(media);
+        softly(media, fade);
       }
     };
     if (media.hpPlain || media.readyState >= 1) return limit();
@@ -526,13 +526,13 @@
   }
 
   // Without the limiter: half volume, faded in.
-  function softly(media) {
+  function softly(media, fade = 0.8) {
     if (media.hpSound) return;
     media.hpSound = { soft: true };
     const start = performance.now();
     media.volume = 0;
     const step = () => {
-      const k = Math.min(1, (performance.now() - start) / 1200);
+      const k = Math.min(1, (performance.now() - start) / (fade * 1500));
       media.volume = 0.5 * k;
       if (k < 1) requestAnimationFrame(step);
     };
@@ -640,6 +640,33 @@
     tick();
     const timer = setInterval(() => (clock.isConnected ? tick() : clearInterval(timer)), 10_000);
     node.append(start, clock);
+  }
+
+  // ---------- Sounds that play ----------
+  // A click on a piece that plays one of its owner's sounds: from the start each time, through
+  // the limiter (faded in for only a moment, so a short one isn't lost), and the piece bounces.
+  // Loaded with the page, to play at once. (`holder`: the piece, or the editor's Try it.)
+  function clickSound(holder, p, ctx) {
+    if (holder.hpAudio && holder.hpAudio.hpFile === p.sound) return holder.hpAudio;
+    const audio = document.createElement('audio');
+    audio.hpFile = p.sound;
+    audio.preload = 'auto';
+    loadSound(audio, ctx.fileUrl(p.sound));
+    if (holder.classList.contains('hp-piece')) holder.append(audio); // (so leaving the page stops it)
+    holder.hpAudio = audio;
+    return audio;
+  }
+
+  function playSound(holder, p, ctx) {
+    const audio = clickSound(holder, p, ctx);
+    soundOn(audio, 0.03);
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+    if (holder.classList.contains('hp-piece')) {
+      holder.classList.remove('hp-boop');
+      void holder.offsetWidth; // (again from the start)
+      holder.classList.add('hp-boop');
+    }
   }
 
   // ---------- Videos that pop up ----------
@@ -1509,8 +1536,9 @@
   // neither happens.)
   function pieceEl(p, ctx) {
     // (A web address only: lib/homepages.js keeps no other kind, and this doesn't trust that.)
-    const pops = typeof p.pop === 'string' && /^[a-f0-9]{24}$/.test(p.pop) && !ctx.edit;
-    const link = !pops && typeof p.href === 'string' && /^https?:\/\//i.test(p.href) && !ctx.edit;
+    const sounds = typeof p.sound === 'string' && /^[a-f0-9]{24}$/.test(p.sound) && !ctx.edit;
+    const pops = !sounds && typeof p.pop === 'string' && /^[a-f0-9]{24}$/.test(p.pop) && !ctx.edit;
+    const link = !sounds && !pops && typeof p.href === 'string' && /^https?:\/\//i.test(p.href) && !ctx.edit;
     const node = document.createElement(link ? 'a' : 'div');
     node.className = `hp-piece hp-${p.t}`;
     node.dataset.id = p.id;
@@ -1521,18 +1549,20 @@
       node.target = '_blank';
       node.rel = 'noopener noreferrer nofollow ugc';
     }
-    if (pops) {
+    if (pops || sounds) {
+      const act = () => (sounds ? playSound(node, p, ctx) : popVideo(p, ctx, node));
       node.classList.add('hp-pops');
       node.tabIndex = 0;
       node.setAttribute('role', 'button');
-      node.addEventListener('click', () => popVideo(p, ctx, node));
+      node.addEventListener('click', act);
       node.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
-        popVideo(p, ctx, node);
+        act();
       });
     }
     if (DRAW[p.t]) DRAW[p.t](node, p, ctx);
+    if (sounds) clickSound(node, p, ctx);
     return node;
   }
 
@@ -3460,8 +3490,8 @@
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
     COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
-    // (a piece's video, popped up to try: the editor)
-    popVideo, closeTopPopup,
+    // (a piece's video popped up, or its sound played, to try: the editor)
+    popVideo, closeTopPopup, playSound,
     petEl, petRoom, petMeters, fullWords, happyWords,
     ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
