@@ -868,6 +868,65 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .face.xl { width: 84px; height: 84px; font-size: 34px; }
 .face.xl[data-presence]::after { width: 20px; height: 20px; border-width: 4px; right: 0; bottom: 0; border-color: var(--panel); }
 
+/* ----- Birthdays (app.js: partyFace, confetti) ----- */
+/* Balloons and confetti on someone's picture, on the day: a little bunch tucked against its top
+   corner (on a profile, bigger, floating up beside it), bobbing, and bits of confetti twinkling. */
+.bday { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.bday .balloon {
+  position: absolute; width: 27%; height: 33%;
+  border-radius: 50% 50% 47% 47% / 44% 44% 56% 56%;
+  background: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.85) 0 9%, transparent 11%), var(--b);
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.16), 0 1px 2px rgba(0, 0, 0, 0.25);
+  transform-origin: 50% 180%;
+  animation: bday-bob 2.8s ease-in-out infinite alternate;
+}
+.bday .balloon::before {
+  content: ''; position: absolute; left: 50%; top: 95%; width: 22%; height: 13%; translate: -50% 0;
+  background: var(--b); clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.bday .balloon::after { content: ''; position: absolute; left: 50%; top: 106%; width: 1px; height: 70%; background: rgba(150, 150, 168, 0.9); }
+.bday .balloon:nth-child(1) { --b: #ff5f8f; right: -5%; top: -20%; animation-delay: -0.5s; }
+.bday .balloon:nth-child(2) { --b: #ffd23f; right: 17%; top: -27%; animation-delay: -1.6s; z-index: -1; }
+.bday .balloon:nth-child(3) { --b: #4c8dff; right: -14%; top: 0; animation-delay: -2.4s; }
+.face.xl .bday .balloon { width: 30%; height: 37%; }
+.face.xl .bday .balloon:nth-child(1) { right: -18%; top: -9%; }
+.face.xl .bday .balloon:nth-child(2) { right: 4%; top: -17%; }
+.face.xl .bday .balloon:nth-child(3) { right: -40%; top: 9%; }
+@keyframes bday-bob {
+  from { transform: translateY(5%) rotate(-8deg); }
+  to { transform: translateY(-8%) rotate(7deg); }
+}
+.bday b { position: absolute; width: 9%; height: 9%; border-radius: 1px; background: var(--c); animation: bday-twinkle 1.9s ease-in-out infinite; }
+.bday b:nth-of-type(3n+1) { border-radius: 50%; }
+.bday b:nth-of-type(1) { --c: #ffd23f; left: -10%; top: 8%; }
+.bday b:nth-of-type(2) { --c: #6ad07a; left: -16%; top: 52%; animation-delay: -0.6s; }
+.bday b:nth-of-type(3) { --c: #a57bff; left: 10%; top: -14%; animation-delay: -1.1s; }
+.bday b:nth-of-type(4) { --c: #ff9f43; left: 34%; bottom: -12%; animation-delay: -0.3s; }
+.bday b:nth-of-type(5) { --c: #8ae4ff; left: -4%; bottom: 2%; animation-delay: -1.4s; }
+.bday b:nth-of-type(6) { --c: #ff5f8f; left: 40%; top: -18%; animation-delay: -0.9s; }
+@keyframes bday-twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.55) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.15) rotate(120deg); }
+}
+@media (prefers-reduced-motion: reduce) { .bday .balloon, .bday b { animation: none; } }
+/* Your birthday, the first time you open Rainlit that day: confetti over everything. */
+.confetti { position: fixed; inset: 0; z-index: 9999; overflow: hidden; pointer-events: none; }
+.confetti i {
+  position: absolute; left: var(--x); top: -5%; width: 9px; height: 13px; border-radius: 2px;
+  animation: confetti-fall var(--t) linear var(--d) forwards;
+}
+.confetti i.round { width: 9px; height: 9px; border-radius: 50%; }
+@keyframes confetti-fall {
+  from { top: -5%; transform: translateX(0) rotate(0deg); }
+  to { top: 105%; transform: translateX(var(--sway)) rotate(var(--r)); }
+}
+/* Your profile: your birthday's month and day, and whether it's celebrated where others see. */
+.bday-row { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 8px; }
+.field .bday-row select { padding-left: 11px; padding-right: 30px; background-position: right 9px center; background-size: 15px; }
+.bday-toggle { margin-top: -4px; font-weight: 500; }
+.mp-birthday { margin: 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--lamp) 18%, transparent); font-weight: 600; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 .me-card {
   display: flex; align-items: center; gap: 4px;
   padding: 8px 8px 10px;

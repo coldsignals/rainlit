@@ -666,6 +666,7 @@
       </div>
       <p id="mp-presence" class="mp-presence"></p>
       <p id="mp-status" class="mp-status"></p>
+      <p id="mp-birthday" class="mp-birthday" hidden></p>
       <div id="mp-doing" class="mp-doing" hidden></div>
       <div class="mp-actions">
         <span class="mp-buttons">
@@ -734,6 +735,14 @@
           <option value="invisible">Appear offline</option>
         </select>
       </label>
+      <div class="field birthday-field">
+        <span>Your birthday <small class="hint">(if you'd like it celebrated: the day, never the year)</small></span>
+        <div class="bday-row">
+          <select id="profile-bday-month" aria-label="Your birthday's month"></select>
+          <select id="profile-bday-day" aria-label="Your birthday's day"></select>
+        </div>
+      </div>
+      <label class="toggle bday-toggle"><input id="profile-bday-shown" type="checkbox" /><span>Celebrate it where others can see: on the day, balloons and confetti on your picture, for everyone who can see your profile</span></label>
       <div class="field" hidden>
         <span>Badges</span>
         <div id="profile-badges" class="badge-tray"></div>

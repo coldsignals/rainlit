@@ -626,6 +626,17 @@ api.patch('/me', needUser, (req, res) => {
     if (!set.display_name) return fail(res, 400, "Your display name can't be empty.");
   }
   if ('statusText' in b) set.status_text = people.oneLine(b.statusText, people.STATUS_MAX);
+  // A birthday to celebrate (just its month and day), whether others see it celebrated on the day,
+  // and the time zone that makes it the day (lib/people.js: Birthdays). None: all three go.
+  if ('birthday' in b) {
+    const day = b.birthday ? people.cleanBirthday(b.birthday) : null;
+    if (b.birthday && !day) return fail(res, 400, "That isn't a day of the year.");
+    set.birthday = day;
+    set.birthday_shown = day && b.birthdayShown ? 1 : 0;
+    set.tz = day ? people.cleanTz(b.tz) || req.user.tz || null : null;
+  } else if ('tz' in b && req.user.birthday) {
+    set.tz = people.cleanTz(b.tz) || req.user.tz;
+  }
   if ('presence' in b) {
     if (!['auto', 'away', 'dnd', 'invisible'].includes(b.presence)) return fail(res, 400, 'Pick online, away, do not disturb or appear offline.');
     set.presence = b.presence;

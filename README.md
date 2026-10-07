@@ -137,6 +137,13 @@ and released is in [desktop/README.md](desktop/README.md).
   across, losslessly, so it's never blurred or blocky), display name and a status
   of up to 120 characters. Your password, your email and sign out are there too,
   and **Your files**: everything you've sent, biggest first, to make room.
+- **Your birthday:** add one to Your profile (just the month and day, never the
+  year) and it's celebrated on the day, by your own clock: confetti over
+  everything the first time you open Rainlit, and balloons and confetti on your
+  picture all day. Tick **Celebrate it where others can see** and everyone who
+  can see your profile sees the balloons too (only that it's your birthday,
+  that day: never the date). Leave it empty and nothing's kept: the birthday
+  you signed up with never is.
 - **Your card:** how your profile looks to everyone who opens it (Your profile,
   **Customize**): two colours it goes between, a pattern along its top (any of
   the homepages', in those colours), a font for your name (any of theirs), and
@@ -503,7 +510,8 @@ section matters:
   Files that aren't pictures, videos or sound only ever download.
 - **Found a hole?** See [SECURITY.md](SECURITY.md): it's fixed first.
 - **It keeps as little as it can:** no ID checks, no IP addresses, and not
-  your birthday (only, if you're under 18, the day you turn 18). You can
+  your birthday (only, if you're under 18, the day you turn 18; and the month
+  and day of one you add to your profile to have it celebrated). You can
   download everything that's yours (Your profile, then Download your data), or
   delete it, any time.
 - **It's all here to check:** the whole of Rainlit is free software (below).

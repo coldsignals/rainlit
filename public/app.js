@@ -119,6 +119,7 @@ for (const id of [
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
   'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'dm-waiting', 'dm-waiting-text', 'dm-waiting-join', 'channel-mute', 'members-toggle', 'member-panel',
   'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-homepage', 'menu-remove', 'menu-block', 'channel-menu', 'cm-mute',
+  'profile-bday-month', 'profile-bday-day', 'profile-bday-shown', 'mp-birthday',
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'emoji-btn', 'space-emoji', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
   'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
@@ -4536,6 +4537,7 @@ function renderDmHead() {
   el.dmBack.setAttribute('aria-label', 'Back to friends');
   el.dmBack.title = 'Back to friends';
   renderFace(el.dmFace, f, f.presence);
+  partyFace(el.dmFace, f);
   el.dmName.textContent = f.displayName;
   const doing = f.presence !== 'offline' && S.doing.get(f.id);
   el.dmSub.textContent = doing ? doingWords(doing) : f.statusText || PRESENCE_LABEL[f.presence];
@@ -7505,6 +7507,7 @@ async function checkSignedIn() {
 const PRESENCE_LABEL = { online: 'Online', away: 'Away', dnd: 'Do not disturb', offline: 'Offline' };
 
 function setMe(user) {
+  setTimeout(birthdayGreeting, 0); // (your birthday, today: once)
   const nowAdult = Boolean(S.me && !S.me.adult && user.adult);
   const supportChanged = Boolean(S.me && S.me.supporter && user.supporter && S.me.supporter.active !== user.supporter.active);
   const first = !S.me;
@@ -7534,6 +7537,7 @@ function myPresence() {
 function renderMe() {
   if (!S.me) return;
   renderFace(el.meFace, S.me, myPresence());
+  partyFace(el.meFace, S.me);
   el.meName.textContent = S.me.displayName;
   el.meStatus.textContent = S.me.statusText || (S.me.presence === 'invisible' ? 'Appearing offline' : S.me.presence === 'dnd' ? 'Do not disturb' : `@${S.me.username}`);
   el.adminBtn.hidden = !S.me.isAdmin;
@@ -8488,6 +8492,7 @@ function memberRow(space, m) {
   name.textContent = m.id === S.clientId ? `${m.displayName} (you)` : m.displayName;
   name.style.color = tint(memberColor(space, m.id));
   if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
+  if (birthdayNow(m)) name.append(birthdayWords());
   const user = document.createElement('span');
   user.className = 'member-user';
   user.textContent = `@${m.username}`;
@@ -8505,7 +8510,7 @@ function memberRow(space, m) {
     chips.append(...theirs.map(roleChip));
     text.append(chips);
   }
-  btn.append(makeFace(m, null), text);
+  btn.append(partyFace(makeFace(m, null), m), text);
   li.append(btn);
   const giveable = canManageMemberIn(space, m) ? space.roles.filter((r) => canManageRoleIn(space, r)) : [];
   const mods = ['timeout', 'kick', 'ban'].filter((perm) => canModerateIn(space, m, perm));
@@ -9127,6 +9132,7 @@ function memberPanelRow(space, m, dim) {
   name.textContent = m.displayName;
   name.style.color = tint(memberColor(space, m.id));
   if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
+  if (birthdayNow(m)) name.append(birthdayWords());
   text.append(name);
   const doing = !dim && S.doing.get(m.id);
   if (doing || (m.statusText && !dim)) {
@@ -9136,7 +9142,7 @@ function memberPanelRow(space, m, dim) {
     if (doing) markDoing(status, doing);
     text.append(status);
   }
-  b.append(makeFace(m, dim ? null : presenceIn(m)), text);
+  b.append(partyFace(makeFace(m, dim ? null : presenceIn(m)), m), text);
   b.addEventListener('click', () => openMiniProfile(m.id));
   return b;
 }
@@ -11003,6 +11009,107 @@ function renderFriends() {
   el.requestList.replaceChildren(...requests);
 }
 
+// ---------------- Birthdays ----------------
+// One added to your profile (just the month and day) is celebrated on the day, by your own
+// clock: confetti over everything when you open Rainlit, once, and balloons and confetti on your
+// picture all day. Others see the balloons only if you said so, and only on the day: the server
+// says it's today (user.birthday is true), never the date (lib/people.js: Birthdays).
+
+function myBirthdayToday(now = new Date()) {
+  const b = S.me && S.me.birthday;
+  if (!b) return false;
+  const today = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  if (b === today) return true;
+  const y = now.getFullYear();
+  return b === '02-29' && today === '02-28' && !(y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0));
+}
+
+const birthdayNow = (p) => (p && p.id === S.clientId ? myBirthdayToday() : Boolean(p && p.birthday));
+
+// Balloons and confetti on someone's picture, on their birthday (`node`: a .face), or none.
+function partyFace(node, user) {
+  const had = node.querySelector(':scope > .bday');
+  const party = birthdayNow(user);
+  if (had && !party) had.remove();
+  if (!party || had) return node;
+  const deco = document.createElement('span');
+  deco.className = 'bday';
+  deco.setAttribute('aria-hidden', 'true');
+  deco.innerHTML = '<i class="balloon"></i><i class="balloon"></i><i class="balloon"></i><b></b><b></b><b></b><b></b><b></b><b></b>';
+  node.append(deco);
+  return node;
+}
+
+// (For a screen reader, by their name.)
+function birthdayWords() {
+  const w = document.createElement('span');
+  w.className = 'sr-only';
+  w.textContent = ' (birthday today)';
+  return w;
+}
+
+// Confetti falling over everything, for a while.
+const CONFETTI = ['#ff6b8b', '#ffd23f', '#6ad07a', '#4c8dff', '#a57bff', '#ff9f43', '#8ae4ff'];
+function confetti(n, ms) {
+  const layer = document.createElement('div');
+  layer.className = 'confetti';
+  layer.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < n; i++) {
+    const bit = document.createElement('i');
+    const r = Math.random;
+    bit.style.cssText = `--x:${(r() * 100).toFixed(1)}%;--d:${(r() * 1.4).toFixed(2)}s;--t:${(2.4 + r() * 1.8).toFixed(2)}s;`
+      + `--r:${Math.round(r() * 720 - 360)}deg;--sway:${Math.round(r() * 60 - 30)}px;background:${CONFETTI[i % CONFETTI.length]}`;
+    if (i % 3 === 0) bit.classList.add('round');
+    layer.append(bit);
+  }
+  document.body.append(layer);
+  setTimeout(() => layer.remove(), ms);
+}
+
+// Your birthday, the first time you open Rainlit that day: confetti over everything, and a happy
+// birthday.
+function birthdayGreeting() {
+  if (!myBirthdayToday()) return;
+  const day = new Date().toDateString();
+  if (store.get('bdayGreeted', '') === day) return;
+  store.set('bdayGreeted', day);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) confetti(110, 6000);
+  toast(`Happy birthday, ${S.me.displayName}! 🎂${S.me.birthdayShown ? '' : " There are balloons on your picture today (only you see them: Your profile can share them)."}`, 9000);
+}
+
+// Your birthday in Your profile: its month and day (each month's days), and whether it's shown.
+function fillProfileBirthday() {
+  const [m, d] = (S.me.birthday || '').split('-').map(Number);
+  const months = [...Array(12)].map((_, i) => new Date(2000, i, 1).toLocaleDateString([], { month: 'long' }));
+  el.profileBdayMonth.replaceChildren(new Option('Month', ''), ...months.map((name, i) => new Option(name, String(i + 1).padStart(2, '0'))));
+  el.profileBdayMonth.value = m ? String(m).padStart(2, '0') : '';
+  fillProfileBirthdayDays(d);
+  el.profileBdayShown.checked = Boolean(S.me.birthdayShown);
+  syncBirthdayShown();
+}
+
+function fillProfileBirthdayDays(keep = Number(el.profileBdayDay.value)) {
+  const month = Number(el.profileBdayMonth.value);
+  const days = month ? [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] : 31;
+  el.profileBdayDay.replaceChildren(new Option('Day', ''), ...[...Array(days)].map((_, i) => new Option(String(i + 1), String(i + 1).padStart(2, '0'))));
+  el.profileBdayDay.value = keep && keep <= days ? String(keep).padStart(2, '0') : '';
+}
+
+function syncBirthdayShown() {
+  const any = Boolean(el.profileBdayMonth.value && el.profileBdayDay.value);
+  el.profileBdayShown.disabled = !any;
+  if (!any) el.profileBdayShown.checked = false;
+}
+
+const birthdayPicked = () => (el.profileBdayMonth.value && el.profileBdayDay.value ? `${el.profileBdayMonth.value}-${el.profileBdayDay.value}` : '');
+const myTz = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  } catch {
+    return '';
+  }
+};
+
 function personText(name, sub) {
   const text = document.createElement('span');
   text.className = 'person-text';
@@ -11030,7 +11137,8 @@ function friendRow(f) {
   if (typing) text.querySelector('.person-sub').classList.add('typing-now');
   else if (waiting) text.querySelector('.person-sub').classList.add('waiting-now');
   else if (doing) markDoing(text.querySelector('.person-sub'), doing);
-  btn.append(makeFace(f, f.presence), text);
+  if (birthdayNow(f)) text.querySelector('.person-name').append(birthdayWords());
+  btn.append(partyFace(makeFace(f, f.presence), f), text);
   if (waiting) {
     const w = document.createElement('span');
     w.className = 'waiting-call';
@@ -11675,6 +11783,15 @@ function renderMiniProfile() {
   dressCard(el.miniProfile, blocked ? null : p.card, el.mpName);
   renderFace(el.mpFace, p, presence);
   el.mpName.textContent = p.displayName;
+  // Their birthday (yours, by your clock): balloons on their picture, and a line saying so.
+  const party = !blocked && birthdayNow(p);
+  if (party) partyFace(el.mpFace, p);
+  el.mpBirthday.hidden = !party;
+  if (party) {
+    el.mpBirthday.textContent = !self ? `🎂 It's ${p.displayName}'s birthday today!`
+      : S.me.birthdayShown ? '🎂 Happy birthday! Everyone who can see your profile sees the balloons today.'
+      : '🎂 Happy birthday! Only you see this. (Your profile can share it.)';
+  }
   el.mpUsername.textContent = `@${p.username}`;
   renderBadges(el.mpBadges, p.badges);
   el.mpPresence.hidden = !presence;
@@ -11809,6 +11926,7 @@ function openCard() {
 function renderCard() {
   if (!S.me || !window.Homepage) return;
   renderFace(el.cardPreviewFace, S.me, myPresence());
+  partyFace(el.cardPreviewFace, S.me);
   el.cardPreviewName.textContent = S.me.displayName;
   el.cardPreviewUsername.textContent = `@${S.me.username}`;
   el.cardPreviewStatus.textContent = S.me.statusText || '';
@@ -12049,6 +12167,7 @@ function openProfile() {
   el.profileName.value = S.me.displayName;
   el.profileStatus.value = S.me.statusText;
   el.profilePresence.value = S.me.presence;
+  fillProfileBirthday();
   el.profileAccount.textContent = `@${S.me.username} · ${S.me.email}`;
   el.profileHomepageLink.textContent = `${location.host}/@${S.me.username}`;
   renderEmailRow();
@@ -12911,6 +13030,9 @@ async function onProfileSave(e) {
       displayName: el.profileName.value,
       statusText: el.profileStatus.value,
       presence: el.profilePresence.value,
+      birthday: birthdayPicked(),
+      birthdayShown: el.profileBdayShown.checked,
+      tz: myTz(),
     });
     setMe(user);
     el.profile.close();
@@ -14439,6 +14561,11 @@ async function init() {
   el.callElsewhereBtn.addEventListener('click', () => openDm(S.callWith));
   el.mpRemove.addEventListener('click', onRemoveFriend);
   el.profileForm.addEventListener('submit', onProfileSave);
+  el.profileBdayMonth.addEventListener('change', () => {
+    fillProfileBirthdayDays();
+    syncBirthdayShown();
+  });
+  el.profileBdayDay.addEventListener('change', syncBirthdayShown);
   el.profileStatus.addEventListener('input', updateStatusCount);
   el.avatarBtn.addEventListener('click', () => el.avatarInput.click());
   el.avatarInput.addEventListener('change', onAvatarPicked);
