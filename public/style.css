@@ -868,6 +868,12 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .face.xl { width: 84px; height: 84px; font-size: 34px; }
 .face.xl[data-presence]::after { width: 20px; height: 20px; border-width: 4px; right: 0; bottom: 0; border-color: var(--panel); }
 
+/* The Android app out of sight during a call or in a voice channel (app.js: the visibility
+   listener): its page is kept "on screen" for the call's sake, so nothing's drawn or moving till
+   it's back, and the phone gets back the memory its pictures took. */
+.app-away body > * { visibility: hidden !important; }
+.app-away *, .app-away *::before, .app-away *::after { animation-play-state: paused !important; }
+
 /* ----- Birthdays (app.js: partyFace, confetti) ----- */
 /* Balloons and confetti on someone's picture, on the day: a little bunch tucked against its top
    corner (on a profile, bigger, floating up beside it), bobbing, and bits of confetti twinkling. */

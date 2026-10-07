@@ -3168,6 +3168,7 @@ function onCallWaiting({ with: friendId, on, call, away }) {
   if (on) S.waitingFor.set(friendId, { call: Boolean(call), away: Boolean(away) });
   else S.waitingFor.delete(friendId);
   renderFriends(); // (the row, and the conversation if it's open)
+  rejoinIfWaited();
 }
 
 // Connected (again): who's waiting as of now. It may have changed while the connection was cut.
@@ -3176,6 +3177,19 @@ function setWaiting(list) {
   S.waitingFor.clear();
   for (const w of list || []) if (w.on) S.waitingFor.set(w.with, { call: Boolean(w.call), away: Boolean(w.away) });
   if (JSON.stringify([...S.waitingFor]) !== was) renderFriends();
+  rejoinIfWaited();
+}
+
+// Android closed the whole app during a call (resumeAfterRestart): if your friend's still in that
+// call, join it again by itself. Whether it did.
+function rejoinIfWaited() {
+  const r = S.rejoinAfterExit;
+  const w = r && S.waitingFor.get(r.with);
+  if (!w || !w.call || S.inCall || S.startingCall) return false;
+  S.rejoinAfterExit = null;
+  S.restartNote = `${r.note}, so it joined your call again.`;
+  startCall(r.with);
+  return true;
 }
 
 // Waiting for you, and you could join: not already in that call.
@@ -5726,7 +5740,7 @@ function newDrop(w, h, anywhere) {
 function rainStep(now) {
   if (!el.rain.classList.contains('on') && now > rainStopAt) {
     S.rainFrame = 0;
-    el.rain.getContext('2d').clearRect(0, 0, el.rain.width, el.rain.height);
+    el.rain.width = el.rain.height = 0; // (stopped: its picture's memory goes back, till it starts again)
     return;
   }
   S.rainFrame = requestAnimationFrame(rainStep);
@@ -10636,14 +10650,25 @@ async function resumeAfterRestart() {
     trace('app-start', {
       stillInCall: status.inCall, restarted: status.restarted, restarts: status.restarts || undefined,
       exit: e ? `${EXIT_WHY[e.reason] || `reason ${e.reason}`} at ${new Date(e.at).toISOString().slice(11, 19)} UTC${e.text ? `: ${String(e.text).slice(0, 120)}` : ''}` : undefined,
+      // (How much memory it was using then, and whether it was on screen: newer apps say.)
+      exitMb: e && e.pss ? Math.round(e.pss / 1024) : undefined,
+      exitShown: e && e.importance ? e.importance <= 100 : undefined,
     }, a.with);
   }
   // (Android's note about the page being closed, when the app just started it again itself,
   // is about that same thing: the app didn't close, so the rejoin message says it instead.)
   if (status.lastExit && a && !status.restarted) {
     const e = status.lastExit;
-    const detail = e.text ? ` (${String(e.text).slice(0, 90)})` : '';
-    toast(`Rainlit closed during your call at ${fmtTime(e.at)}: ${EXIT_WHY[e.reason] || 'Android stopped it'}${detail}.`, 15_000);
+    const used = e.pss ? `it was using ${Math.round(e.pss / 1024)} MB${e.importance > 100 ? ', in the background' : ''}` : '';
+    const detail = e.text || used ? ` (${[String(e.text || '').slice(0, 90), used].filter(Boolean).join('; ')})` : '';
+    const note = `Rainlit closed during your call at ${fmtTime(e.at)}: ${EXIT_WHY[e.reason] || 'Android stopped it'}${detail}`;
+    // The whole app closed, so the call did too: if your friend's still in it, back in it you go
+    // (once the server says they are: see rejoinIfWaited). If they've left, the note's enough.
+    if (!status.inCall && S.friends.has(a.with)) {
+      S.rejoinAfterExit = { with: a.with, note };
+      if (rejoinIfWaited()) return;
+    }
+    toast(`${note}.`, 15_000);
   }
   const why = status.restarted === 'crashed' ? "Rainlit's page crashed" : "Android closed Rainlit's page to free up memory";
   if (!status.inCall || !a || S.inCall || S.startingCall || !S.friends.has(a.with)) {
@@ -14991,10 +15016,16 @@ async function init() {
 
   // Push: when the phone's push app hands Rainlit a new address, send it to the server.
   if (ANDROID) ANDROID.addListener('push', () => syncAndroidPush());
+  // Android saying it's short of memory (newer apps pass it on): noted in the call debug log.
+  if (ANDROID) ANDROID.addListener('memory', (d) => trace('memory-low', { level: d && d.level, away: S.androidPaused || undefined }));
   // The Android app going to the background and coming back.
   if (ANDROID) {
     ANDROID.addListener('visibility', (d) => {
       S.androidPaused = !(d && d.visible);
+      // (Out of sight in a call, the page is kept "on screen" so the call carries on: see
+      // RainlitWebView. Nothing's drawn or moving meanwhile, so the phone gets back the memory
+      // its pictures took, which makes it less likely to close Rainlit when it runs short.)
+      document.documentElement.classList.toggle('app-away', S.androidPaused && Boolean(S.inCall || S.voice));
       trace(S.androidPaused ? 'app-hidden' : 'app-visible');
       sendBackground();
       // (During a call the page stays "on screen" as far as the browser's concerned, so it

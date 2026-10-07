@@ -67,7 +67,7 @@ public class CallService extends Service {
         if (wakeLock == null) {
             PowerManager power = (PowerManager) getSystemService(Context.POWER_SERVICE);
             wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "rainlit:call");
-            wakeLock.acquire(12 * 60 * 60 * 1000L); // let go after 12 hours, just in case
+            wakeLock.acquire(48 * 60 * 60 * 1000L); // let go after two days, just in case (calls can go on all night, and the next day)
         }
         if (wifiLock == null) {
             WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);

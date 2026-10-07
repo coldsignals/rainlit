@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.app.ActivityManager;
 import android.app.ApplicationExitInfo;
+import android.content.ComponentCallbacks2;
+import android.content.res.Configuration;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -41,7 +43,27 @@ public class RainlitPlugin extends Plugin {
     public void load() {
         current = this;
         Notifications.createChannels(getContext());
+        getContext().registerComponentCallbacks(memoryWatch);
     }
+
+    // Android saying it's short of memory (and how short), passed on to the page: for the call
+    // debug log, to see whether it warned before it closed the app.
+    private final ComponentCallbacks2 memoryWatch = new ComponentCallbacks2() {
+        @Override
+        public void onTrimMemory(int level) {
+            JSObject data = new JSObject();
+            data.put("level", level);
+            notifyListeners("memory", data);
+        }
+
+        @Override
+        public void onLowMemory() {
+            onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE);
+        }
+
+        @Override
+        public void onConfigurationChanged(Configuration config) {}
+    };
 
     @Override
     protected void handleOnResume() {
@@ -131,6 +153,7 @@ public class RainlitPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         handler.removeCallbacks(watchPhone); // (this page is gone; a new one takes over)
+        getContext().unregisterComponentCallbacks(memoryWatch);
     }
 
     /** Other apps' sound turned down during the call, or not (a setting). */
@@ -308,6 +331,11 @@ public class RainlitPlugin extends Plugin {
                         exit.put("reason", r);
                         exit.put("text", e.getDescription() != null ? e.getDescription() : "");
                         exit.put("at", e.getTimestamp());
+                        // How much memory it was using (kB), and how important Android thought it
+                        // was then (100: on screen; 125: in the background with a call going).
+                        exit.put("pss", e.getPss());
+                        exit.put("rss", e.getRss());
+                        exit.put("importance", e.getImportance());
                         result.put("lastExit", exit);
                     }
                 }
