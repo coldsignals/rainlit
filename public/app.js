@@ -13841,7 +13841,10 @@ function traceDevice() {
   const browser = name ? `${name === 'Edg' ? 'Edge' : name} ${v}` : '';
   const app = ANDROID ? `Android app ${(S.androidApp && S.androidApp.mine) || ''}` : DESKTOP ? `Windows app ${DESKTOP.version || ''}` : 'browser';
   const tz = -new Date().getTimezoneOffset() / 60;
-  return [app.trim(), browser, os, `UTC${tz >= 0 ? '+' : ''}${tz}`].filter(Boolean).join(', ');
+  // (About how much memory the device has, as the browser rounds it: a phone that's short of it
+  // closes apps in the background, calls too.)
+  const ram = navigator.deviceMemory ? `${navigator.deviceMemory} GB memory` : '';
+  return [app.trim(), browser, os, ram, `UTC${tz >= 0 ? '+' : ''}${tz}`].filter(Boolean).join(', ');
 }
 
 function netInfo() {
