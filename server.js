@@ -24,6 +24,7 @@ const traces = require('./lib/traces');
 const discord = require('./lib/discord');
 const accounts = require('./lib/accounts');
 const emojis = require('./lib/emoji');
+const sounds = require('./lib/sounds');
 const homepages = require('./lib/homepages');
 const pets = require('./lib/pets');
 const announcements = require('./lib/announcements');
@@ -123,7 +124,7 @@ const CSP = [
   "font-src 'self'", // (Rainlit's typeface is served from here: public/fonts)
   `img-src 'self' blob: data: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`, // (R2: files, if they're kept there)
   `media-src 'self' blob: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`,
-  `connect-src 'self' https://api.klipy.com${LIVEKIT_SRC}`,
+  `connect-src 'self' https://api.klipy.com${LIVEKIT_SRC}${blobs.origin ? ` ${blobs.origin}` : ''}`, // (R2: soundboard sounds)
   "frame-ancestors 'none'",
   "base-uri 'none'",
   "form-action 'self'",
@@ -174,6 +175,13 @@ app.get('/emoji/:id', (req, res) => {
   if (!e) return res.sendStatus(404);
   const type = { png: 'image/png', gif: 'image/gif', webp: 'image/webp', jpg: 'image/jpeg' }[e.file.split('.').pop()];
   blobs.send(res, 'emoji', e.file, { type, cache: 'public, max-age=31536000, immutable', headers: { 'Content-Security-Policy': "default-src 'none'; sandbox" } });
+});
+
+// A soundboard sound (lib/sounds.js). Anyone can load one: whoever's in the call hears it.
+app.get('/sounds/:id', (req, res) => {
+  const s = /^[a-f0-9]{24}$/.test(req.params.id) && sounds.byId(req.params.id);
+  if (!s) return res.sendStatus(404);
+  blobs.send(res, 'sounds', s.file, { type: sounds.TYPES[s.file.split('.').pop()], cache: 'public, max-age=31536000, immutable', headers: { 'Content-Security-Policy': "default-src 'none'; sandbox" } });
 });
 
 // Homepages (lib/homepages.js): rainlit.app/@name, for anyone the page's owner lets see it (the
@@ -1803,11 +1811,7 @@ api.patch(conv('/messages/:id'), needUser, needConv, (req, res) => {
 });
 
 // Emoji reactions, by either of you, on any saved message.
-const EMOJI_RE = /^(?:\p{Extended_Pictographic}|\p{Emoji_Component}|\u200d|\ufe0f|\u20e3)+$/u;
-function cleanEmoji(value) {
-  const s = String(value || '');
-  return s.length <= 32 && EMOJI_RE.test(s) && /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3/u.test(s) ? s : null;
-}
+const { cleanEmoji } = emojis;
 
 // A reaction: an emoji, or a custom one from a space you're in (see lib/emoji.js). Taking one
 // off works whatever became of its emoji.
@@ -2314,6 +2318,55 @@ api.delete('/spaces/:spaceId/emoji/:emojiId', needUser, needMember, needPerm('ma
     res.json({ ok: true });
   } catch (err) {
     emojiFail(res, err);
+  }
+});
+
+// ----- A space's soundboard (lib/sounds.js) -----
+
+function soundFail(res, err) {
+  if (!(err instanceof sounds.SoundError)) throw err;
+  fail(res, err.status, err.message);
+}
+
+api.get('/spaces/:spaceId/sounds', needUser, needMember, (req, res) => {
+  res.json({ sounds: sounds.list(req.space.id), max: sounds.MAX_PER_SPACE });
+});
+
+// The sound is the body; its name, emoji and length (in ms, measured by the app) come along as
+// ?name=&emoji=&ms=.
+api.post('/spaces/:spaceId/sounds', needUser, needMember, needPerm('manageSoundboard'), express.raw({ type: () => true, limit: '1100kb' }), (req, res) => {
+  if (spaces.isGroup(req.space)) return fail(res, 400, "Groups don't have their own sounds.");
+  try {
+    const { name, emoji, ms } = req.query;
+    const s = sounds.add(req.space.id, req.user.id, { name, emoji, ms }, Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0));
+    spaces.log(req.space.id, req.user.id, 'sound-add', null, { name: s.name });
+    spaceChanged(req.space.id);
+    res.json({ sound: s });
+  } catch (err) {
+    soundFail(res, err);
+  }
+});
+
+api.patch('/spaces/:spaceId/sounds/:soundId', needUser, needMember, needPerm('manageSoundboard'), (req, res) => {
+  try {
+    const { name, emoji } = req.body || {};
+    const { was, sound: s } = sounds.edit(req.space.id, req.params.soundId, { name, emoji });
+    if (was !== s.name) spaces.log(req.space.id, req.user.id, 'sound-rename', null, { from: was, to: s.name });
+    spaceChanged(req.space.id);
+    res.json({ sound: s });
+  } catch (err) {
+    soundFail(res, err);
+  }
+});
+
+api.delete('/spaces/:spaceId/sounds/:soundId', needUser, needMember, needPerm('manageSoundboard'), (req, res) => {
+  try {
+    const s = sounds.remove(req.space.id, req.params.soundId);
+    spaces.log(req.space.id, req.user.id, 'sound-remove', null, { name: s.name });
+    spaceChanged(req.space.id);
+    res.json({ ok: true });
+  } catch (err) {
+    soundFail(res, err);
   }
 });
 

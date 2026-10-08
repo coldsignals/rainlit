@@ -661,6 +661,7 @@ button { cursor: pointer; }
 .voice-ctl.on { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .voice-ctl[data-voice="camera"].on, .voice-ctl[data-voice="screen"].on { background: color-mix(in srgb, var(--online) 14%, transparent); border-color: color-mix(in srgb, var(--online) 45%, transparent); }
 .voice-ctl.voice-leave { background: var(--danger); border-color: var(--danger); color: #fff; }
+.voice-ctl.lit { background: var(--text); border-color: var(--text); color: var(--night); }
 .channel.voice-channel.open { color: var(--online); }
 @media (max-width: 760px) {
   .voice-grid { padding: 12px; gap: 10px; }
@@ -739,6 +740,14 @@ li.suspended > .grow { color: var(--danger-text); }
 .emoji-admin li { display: flex; align-items: center; gap: 10px; }
 .emoji-admin .emoji-img { width: 32px; height: 32px; flex: none; }
 .emoji-admin input { flex: 1; min-width: 0; padding: 8px 10px; background: var(--dusk); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: inherit; font-size: 14px; }
+/* A space's sounds, in its settings: hear it, its emoji, its name, how long it is. */
+.sound-admin { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.sound-admin li { display: flex; align-items: center; gap: 8px; }
+.sound-admin input { flex: 1; min-width: 0; padding: 8px 10px; background: var(--dusk); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: inherit; font-size: 14px; }
+.sound-emoji { flex: none; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; font-size: 20px; line-height: 1; background: var(--dusk); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.sound-emoji:hover { background: var(--dusk-hi); }
+.sound-emoji.none { filter: grayscale(1); opacity: 0.45; }
+.sound-length { flex: none; color: var(--mist); font-variant-numeric: tabular-nums; }
 /* Notes: a conversation with yourself, at the top of Home. */
 .notes-row { margin-bottom: 6px; }
 .face.notes-face { background: var(--dusk-hi); color: var(--lamp-text); }
@@ -2155,6 +2164,84 @@ a.embed-author:hover .embed-name { text-decoration: underline; }
 .ctl.leave:hover .ctl-icon { filter: brightness(1.08); }
 .ctl:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* ================= The soundboard ================= */
+
+.soundboard {
+  position: fixed; z-index: 65;
+  width: min(384px, calc(100vw - 16px));
+  max-height: min(470px, calc(100vh - 140px));
+  display: flex; flex-direction: column;
+  background: var(--pop);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+.soundboard[hidden] { display: none; }
+.sb-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px 6px; }
+.sb-head strong { flex: 1; font-size: 15px; }
+.sb-volume { display: flex; align-items: center; gap: 6px; color: var(--mist); }
+.sb-volume .icon { width: 16px; height: 16px; flex: none; }
+.sb-volume input { width: 112px; }
+.sb-list { overflow-y: auto; padding: 0 14px 4px; overscroll-behavior: contain; }
+.sb-list h3 { margin: 10px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--mist); }
+.sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.sb-item { position: relative; min-width: 0; }
+.sb-tile {
+  width: 100%; height: 100%; min-height: 66px;
+  display: grid; justify-items: center; align-content: center; gap: 5px;
+  padding: 9px 6px 8px;
+  background: var(--dusk); color: var(--text);
+  border: 1px solid var(--line); border-radius: 10px;
+  font: inherit; font-size: 12.5px; line-height: 1.25; text-align: center; cursor: pointer;
+  transition: background 0.12s, transform 0.08s;
+}
+.sb-tile:hover { background: var(--dusk-hi); }
+.sb-tile:active { transform: scale(0.97); }
+.sb-emoji { font-size: 22px; line-height: 1; }
+.sb-name { max-width: 100%; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.sb-hear {
+  position: absolute; top: 3px; right: 3px;
+  width: 22px; height: 22px; display: grid; place-items: center; padding: 0;
+  background: none; border: 0; border-radius: 50%; color: var(--mist);
+  opacity: 0; cursor: pointer; transition: opacity 0.12s;
+}
+.sb-item:hover .sb-hear, .sb-hear:focus-visible { opacity: 1; }
+.sb-hear:hover { background: var(--dusk); color: var(--text); }
+.sb-hear .icon { width: 14px; height: 14px; }
+@media (hover: none) { .sb-hear { opacity: 0.75; } }
+.sb-foot { margin: 0; padding: 8px 14px 12px; font-size: 12px; color: var(--mist); }
+/* After you play one, a moment before the next (the line along the top counts it down). */
+.sb-cool { position: absolute; top: 0; left: 0; width: 0; height: 2px; background: var(--lamp); }
+.soundboard.cooling .sb-cool { animation: sb-cool 3s linear forwards; }
+.soundboard.cooling .sb-tile { opacity: 0.55; pointer-events: none; }
+@keyframes sb-cool { from { width: 100%; } to { width: 0; } }
+
+/* Who played what: over their tile in a voice channel, or over the call. */
+.sb-pop {
+  position: absolute; left: 50%; top: 12%; z-index: 5;
+  max-width: 88%;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 13px 6px 9px;
+  background: rgba(8, 11, 18, 0.78); color: #fff;
+  border-radius: 999px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+  pointer-events: none;
+  animation: sb-pop 2.6s ease-out forwards;
+}
+.sb-pop-emoji { font-size: 22px; line-height: 1; }
+.sb-pop-text { overflow: hidden; text-overflow: ellipsis; }
+@keyframes sb-pop {
+  0% { opacity: 0; transform: translate(-50%, 10px) scale(0.9); }
+  10% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -6px); }
+  100% { opacity: 0; transform: translate(-50%, -14px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sb-pop { animation: sb-pop-calm 2.6s linear forwards; }
+  @keyframes sb-pop-calm { 0%, 85% { opacity: 1; transform: translateX(-50%); } 100% { opacity: 0; transform: translateX(-50%); } }
+}
+
 /* How many messages you haven't read, on a friend in the list. */
 .badge {
   flex: none;
@@ -2634,7 +2721,7 @@ button.person.open { background: var(--dusk-hi); }
   .main { padding: 0 8px; }
   .controls { gap: 2px; padding: 10px 4px 12px; }
   .ctl { flex-basis: 64px; }
-  .ctl-icon { width: 50px; height: 50px; }
+  .ctl-icon { width: min(50px, 100%); height: auto; aspect-ratio: 1; }
   .ctl-label { font-size: 11px; }
   .avatar { width: 112px; height: 112px; font-size: 46px; }
   .self-view { width: 30%; aspect-ratio: 3 / 4; }

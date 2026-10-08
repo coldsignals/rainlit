@@ -342,6 +342,16 @@ at the top closes it (on a phone, the back arrow).
   Everyone in the space can use them anywhere they chat, in a DM too (on Discord
   that takes Nitro): type `:` and a name, or pick one from the emoji button,
   and react with them. A message that's only emoji shows them big.
+- **Soundboard:** in a call or a voice channel, press **Sounds** and pick one,
+  and everyone there hears it: Rainlit's own (tada, ba dum tss, sad trombone,
+  crickets, applause and more) or your spaces' own. A space's owner and admins
+  (and roles with "Manage soundboard") add up to 24 in its settings: MP3, OGG,
+  WAV, M4A, FLAC or WebM, up to 5 seconds and 1 MB. Its members can play them in
+  any call or voice channel (on Discord that takes Nitro). Each app plays them
+  through a limiter, so none is louder than about where most things play, and
+  stops them at 5 seconds. One every 3 seconds each, and "Use the soundboard"
+  is a permission (everyone has it to start with). Set how loud they are for
+  you, or turn them off, in settings.
 - **A space's picture:** its owner and admins (and roles with "Manage space")
   give it one under **General** in its settings. Everyone sees it in their
   list of spaces down the side, and on its invites, instead of its initials.

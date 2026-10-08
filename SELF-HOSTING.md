@@ -209,7 +209,7 @@ for 3,000 emails a month):
 ## 13. Keep files in Cloudflare R2 (optional)
 
 Everything people send, their profile and homepage pictures and songs, and spaces' custom emoji
-are kept on your server's disk to start with, and sent from there each time someone opens one.
+and sounds are kept on your server's disk to start with, and sent from there each time someone opens one.
 On a host that charges for what it sends (Render counts every gigabyte past the first few), that
 adds up. Cloudflare R2 stores files for about $0.015 a GB a month, and sending from it is free.
 
@@ -232,8 +232,9 @@ adds up. Cloudflare R2 stores files for about $0.015 a GB a month, and sending f
    ]
    ```
 
-   It lets Rainlit's pages read the videos and songs on homepages, to turn sound that's made to be
-   as loud as it can be down to everything else's (without it, they only fade in, at half volume).
+   It lets Rainlit's pages read the videos and songs on homepages, and soundboard sounds, to turn
+   sound that's made to be as loud as it can be down to everything else's (without it, they play
+   at half volume).
    The admin panel's Storage says whether it's working.
 
 New files go to R2 as soon as they're written. Files from before move over in the background,

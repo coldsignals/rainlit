@@ -27,6 +27,7 @@
       <symbol id="i-cam" viewBox="0 0 24 24"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
       <symbol id="i-cam-off" viewBox="0 0 24 24"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M2 2l20 20"/></symbol>
       <symbol id="i-screen" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m9 10 3-3 3 3M12 7v6"/></symbol>
+      <symbol id="i-soundboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><circle cx="15.6" cy="19.2" r="1.8"/><path d="M17.4 19.2v-5.6l3.2-1"/></symbol>
       <symbol id="i-screen-switch" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M15.6 8.4a4 4 0 0 0-6.6-.9L8 8.5"/><path d="M8 5.8v2.7h2.7"/><path d="M8.4 11.6a4 4 0 0 0 6.6.9l1-1"/><path d="M16 14.2v-2.7h-2.7"/></symbol>
       <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
       <symbol id="i-leave" viewBox="0 0 24 24"><path transform="translate(12 12) rotate(135) scale(0.76) translate(-12 -12)" stroke-width="2.37" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
@@ -331,6 +332,7 @@
           <button class="voice-ctl" type="button" data-voice="flip" hidden><svg class="icon"><use href="#i-flip-cam"/></svg></button>
           <button class="voice-ctl" type="button" data-voice="screen"><svg class="icon"><use href="#i-screen"/></svg></button>
           <button class="voice-ctl" type="button" data-voice="switch" hidden><svg class="icon"><use href="#i-screen-switch"/></svg></button>
+          <button class="voice-ctl" type="button" data-voice="sounds" aria-haspopup="dialog" aria-expanded="false" hidden><svg class="icon"><use href="#i-soundboard"/></svg></button>
           <button class="voice-ctl voice-leave" type="button" data-voice="leave"><svg class="icon"><use href="#i-leave"/></svg></button>
         </div>
       </div>
@@ -479,6 +481,10 @@
         <span class="ctl-icon"><svg class="icon"><use href="#i-screen-switch"/></svg></span>
         <span class="ctl-label">Switch</span>
       </button>
+      <button id="sounds-btn" class="ctl" type="button" title="Soundboard" aria-haspopup="dialog" aria-expanded="false" hidden>
+        <span class="ctl-icon"><svg class="icon"><use href="#i-soundboard"/></svg></span>
+        <span class="ctl-label">Sounds</span>
+      </button>
       <button id="leave-btn" class="ctl leave" type="button" data-sound>
         <span class="ctl-icon"><svg class="icon"><use href="#i-leave"/></svg></span>
         <span class="ctl-label">Leave</span>
@@ -607,6 +613,20 @@
   <!-- A channel's menu: right-click it in the list (on a phone, press and hold it). -->
   <div id="channel-menu" class="menu" role="menu" hidden>
     <button id="cm-mute" type="button" role="menuitem">Mute channel</button>
+  </div>
+
+  <!-- The soundboard: sounds to play for everyone in your call or voice channel (from its button). -->
+  <div id="soundboard" class="soundboard" role="dialog" aria-label="Soundboard" hidden>
+    <span class="sb-cool" aria-hidden="true"></span>
+    <div class="sb-head">
+      <strong>Soundboard</strong>
+      <label class="sb-volume" title="How loud sounds are for you">
+        <svg class="icon"><use href="#i-speaker"/></svg>
+        <input id="sb-volume" type="range" min="0" max="100" step="5" value="60" aria-label="Soundboard volume (only for you)" />
+      </label>
+    </div>
+    <div id="sb-list" class="sb-list"></div>
+    <p class="sb-foot">Everyone here hears what you play.</p>
   </div>
 
   <!-- ============ A friend is calling ============ -->
@@ -942,6 +962,7 @@
         <button type="button" role="tab" data-tab="roles">Roles</button>
         <button type="button" role="tab" data-tab="channels">Channels</button>
         <button type="button" role="tab" data-tab="emoji">Emoji</button>
+        <button type="button" role="tab" data-tab="sounds">Soundboard</button>
         <button type="button" role="tab" data-tab="moderation">Moderation</button>
       </div>
       <section id="space-general" class="tab-panel" data-tab="general">
@@ -971,6 +992,7 @@
         <small class="hint">Rename one by changing its name. <b>Who</b> sets who can see it and post in it. Deleting one deletes everything in it, for everyone.</small>
       </section>
       <section id="space-emoji" class="tab-panel" data-tab="emoji" hidden></section>
+      <section id="space-sounds" class="tab-panel" data-tab="sounds" hidden></section>
       <section id="space-moderation" class="tab-panel" data-tab="moderation" hidden></section>
       <p id="space-settings-error" class="form-error" role="alert" hidden></p>
     </div>
@@ -1397,6 +1419,11 @@
               <span>Friend's volume <output id="volume-value" class="field-value">100%</output></span>
               <input id="volume-input" type="range" min="0" max="300" step="5" value="100" />
               <small id="volume-hint" class="hint">Above 100% makes a quiet friend louder. It works best with headphones.</small>
+            </label>
+            <label class="field">
+              <span>Soundboard volume <output id="soundboard-value" class="field-value">60%</output></span>
+              <input id="soundboard-input" type="range" min="0" max="100" step="5" value="60" />
+              <small class="hint">How loud the sounds people play in calls are, for you. All the way down turns them off.</small>
             </label>
             <div class="ptt-field">
               <label class="toggle">

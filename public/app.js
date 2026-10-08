@@ -154,6 +154,7 @@ for (const id of [
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
+  'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -1442,6 +1443,8 @@ function handleServerMessage(msg) {
     case 'voice-resend': // (what you're sending got lost at Cloudflare's end)
       if (S.voice && S.voice.channelId === msg.channel && S.voice.room && S.voice.room.resend) S.voice.room.resend();
       return;
+    case 'sound': // (someone played one from the soundboard, where you are)
+      return onSound(msg);
     case 'dm-edited':
       return onDmEdited(msg);
     case 'dm-reactions':
@@ -1646,6 +1649,7 @@ function applyCall(call) {
     S.call = null;
     S.lastLogSeq = 0;
     renderTick();
+    renderSoundButtons();
     return;
   }
   if (!S.call || S.call.id !== call.id) {
@@ -1655,6 +1659,7 @@ function applyCall(call) {
   }
   for (const e of call.log) addLogEntry(e);
   renderTick();
+  renderSoundButtons();
 }
 
 // Joins, drops and reconnects, kept for the summary at the end of the call.
@@ -2619,7 +2624,7 @@ function renderControls() {
   el.screenBtn.setAttribute('aria-pressed', String(sharing));
   el.screenBtn.querySelector('.ctl-label').textContent = sharing ? 'Stop sharing' : 'Share screen';
   el.screenSwitchBtn.hidden = !sharing;
-
+  renderSoundButtons();
 }
 
 // The tab's title shows who you're in a call with and how many messages you haven't read.
@@ -6029,6 +6034,621 @@ function routeChimes() {
   if (S.soundCtx && S.soundCtx.setSinkId) S.soundCtx.setSinkId(S.devices.speaker || '').catch(() => {});
 }
 
+// ---------------- The soundboard ----------------
+//
+// Short sounds anyone in a call or a voice channel can play for everyone there (lib/sounds.js):
+// Rainlit's own (made here, the first time each is played: makeSound) and your spaces' own. The
+// server passes a sound on to everyone there, you too, and each app plays it: through a limiter
+// (as homepages' sounds are, so nothing comes out louder than about where most things play), at
+// your soundboard volume (Settings, or the soundboard's own slider), and for 5 seconds at most.
+// Not while you're deafened. Someone's next sound stops their last, and four at once is the most.
+
+const SOUNDBOARD = [
+  { id: 'tada', name: 'Tada', emoji: '🎉' },
+  { id: 'drums', name: 'Ba dum tss', emoji: '🥁' },
+  { id: 'trombone', name: 'Sad trombone', emoji: '🎺' },
+  { id: 'boop', name: 'Boop', emoji: '👉' },
+  { id: 'crickets', name: 'Crickets', emoji: '🦗' },
+  { id: 'applause', name: 'Applause', emoji: '👏' },
+  { id: 'airhorn', name: 'Airhorn', emoji: '📯' },
+  { id: 'rain', name: 'Rain', emoji: '🌧️' },
+];
+const SOUND_MAX_S = 5.2;
+const SOUND_GAP_MS = 3000; // (one every 3 seconds each, as the server lets through)
+const SOUND_LIMIT = { threshold: -14, knee: 0, ratio: 20, attack: 0.003, release: 0.25 };
+const SOUND_AFTER = 0.51; // (takes back what the limiter adds: see homepage.js)
+const soundBuffers = new Map(); // sound id -> a promise of its AudioBuffer (null: it wouldn't load)
+const soundsPlaying = []; // { from, src, gain, ctx } (or { from, audio }), oldest first
+
+function soundboardVolume() {
+  const v = Number(store.get('soundboardVolume', '60'));
+  return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) / 100 : 0.6;
+}
+
+function setSoundboardVolume(percent) {
+  store.set('soundboardVolume', String(percent));
+  if (S.soundboardOut) S.soundboardOut.gain.gain.value = SOUND_AFTER * soundboardVolume();
+  renderSoundboardVolume();
+}
+
+function renderSoundboardVolume() {
+  const percent = String(Math.round(soundboardVolume() * 100));
+  el.soundboardInput.value = percent;
+  el.sbVolume.value = percent;
+  el.soundboardValue.textContent = soundboardVolume() ? `${percent}%` : 'Off';
+}
+
+// Where your soundboard plays: the voice channel you're in, if you can play sounds there, or
+// your call, once it's started. Null: nowhere.
+function soundboardHere() {
+  const v = S.voice;
+  if (v) {
+    const c = S.channels.get(v.channelId);
+    return v.state === 'connected' && c && c.can && c.can.sounds ? { voice: v } : null;
+  }
+  return S.inCall && S.call && S.peer ? { call: S.call } : null;
+}
+
+// What you pressed: everyone there hears it (you too, when the server passes it back).
+function playBoardSound(id) {
+  if (Date.now() - (S.soundSentAt || 0) < SOUND_GAP_MS || !soundboardHere()) return;
+  S.soundSentAt = Date.now();
+  unlockSounds();
+  wsSend({ type: 'sound', sound: id });
+  el.soundboard.classList.remove('cooling');
+  void el.soundboard.offsetWidth; // (so its little countdown starts again)
+  el.soundboard.classList.add('cooling');
+  clearTimeout(S.soundCoolTimer);
+  S.soundCoolTimer = setTimeout(() => el.soundboard.classList.remove('cooling'), SOUND_GAP_MS);
+}
+
+// Someone played one (maybe you), where you are.
+function onSound(msg) {
+  const v = S.voice;
+  const here = msg.channel ? Boolean(v && v.channelId === msg.channel) : Boolean(msg.call && S.inCall && S.call && S.call.id === msg.call);
+  if (!here || !msg.sound) return;
+  const own = SOUNDBOARD.find((b) => b.id === msg.sound.id);
+  const url = String(msg.sound.url || '');
+  const sound = own || {
+    id: String(msg.sound.id), name: String(msg.sound.name || 'A sound').slice(0, 32), emoji: msg.sound.emoji ? String(msg.sound.emoji).slice(0, 32) : null,
+    url: /^\/sounds\/[a-f0-9]{24}$/.test(url) ? url : null,
+  };
+  if (!own && !sound.url) return;
+  showSoundPop(msg.from, sound);
+  if (msg.channel ? v.deafened : S.deafened || S.onPhone) return;
+  hearSound(sound, msg.from);
+}
+
+// A sound, through the limiter, at your soundboard volume. from: whose it is (their last one
+// stops); none, for trying one out in a space's settings.
+async function hearSound(sound, from = null) {
+  const volume = soundboardVolume();
+  if (!volume) return;
+  unlockSounds();
+  const ctx = S.soundCtx;
+  if (!ctx) return;
+  if (ctx.state === 'suspended') await ctx.resume().catch(() => {});
+  const buffer = await soundBuffer(ctx, sound);
+  if (ctx.state !== 'running') return;
+  for (const p of soundsPlaying.filter((p) => p.from === from)) stopSound(p);
+  while (soundsPlaying.length >= 4) stopSound(soundsPlaying[0]);
+  if (!buffer) return sound.url ? hearPlain(sound, volume, from) : undefined;
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const gain = ctx.createGain();
+  src.connect(gain).connect(soundboardOut(ctx).limiter);
+  const t = ctx.currentTime + 0.01;
+  src.start(t);
+  if (buffer.duration > SOUND_MAX_S) {
+    // (Longer than a sound can be: it fades out there.)
+    gain.gain.setValueAtTime(1, t + SOUND_MAX_S - 0.25);
+    gain.gain.linearRampToValueAtTime(0.0001, t + SOUND_MAX_S);
+    src.stop(t + SOUND_MAX_S + 0.02);
+  }
+  const p = { from, src, gain, ctx };
+  soundsPlaying.push(p);
+  src.onended = () => {
+    const i = soundsPlaying.indexOf(p);
+    if (i >= 0) soundsPlaying.splice(i, 1);
+    gain.disconnect();
+  };
+}
+
+function stopSound(p) {
+  const i = soundsPlaying.indexOf(p);
+  if (i >= 0) soundsPlaying.splice(i, 1);
+  if (p.audio) return p.audio.pause();
+  try {
+    const t = p.ctx.currentTime;
+    p.gain.gain.cancelScheduledValues(t);
+    p.gain.gain.setValueAtTime(p.gain.gain.value, t);
+    p.gain.gain.linearRampToValueAtTime(0.0001, t + 0.08);
+    p.src.stop(t + 0.1);
+  } catch {}
+}
+
+// The way out: the limiter, then your soundboard volume, to the speaker the call's sound uses
+// (the chimes' player: see routeChimes).
+function soundboardOut(ctx) {
+  if (S.soundboardOut && S.soundboardOut.ctx === ctx) return S.soundboardOut;
+  const limiter = ctx.createDynamicsCompressor();
+  for (const [k, v] of Object.entries(SOUND_LIMIT)) limiter[k].value = v;
+  const gain = ctx.createGain();
+  gain.gain.value = SOUND_AFTER * soundboardVolume();
+  limiter.connect(gain).connect(ctx.destination);
+  return (S.soundboardOut = { ctx, limiter, gain });
+}
+
+// A sound, ready to play: made (Rainlit's own) or fetched, once.
+function soundBuffer(ctx, sound) {
+  if (!soundBuffers.has(sound.id)) {
+    const making = SOUNDBOARD.some((b) => b.id === sound.id) ? makeSound(sound.id, ctx.sampleRate)
+      : fetch(`${SERVER}${sound.url}`).then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.arrayBuffer();
+      }).then((data) => ctx.decodeAudioData(data));
+    soundBuffers.set(sound.id, making.catch(() => {
+      soundBuffers.delete(sound.id); // (tried again next time)
+      return null;
+    }));
+  }
+  return soundBuffers.get(sound.id);
+}
+
+// Without the limiter (its file can't be read here, only played): as it is, at half your volume.
+function hearPlain(sound, volume, from) {
+  const audio = new Audio(`${SERVER}${sound.url}`);
+  audio.volume = 0.5 * volume;
+  if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).catch(() => {});
+  const p = { from, audio };
+  soundsPlaying.push(p);
+  const done = () => stopSound(p);
+  audio.addEventListener('ended', done);
+  audio.addEventListener('error', done);
+  setTimeout(done, SOUND_MAX_S * 1000);
+  audio.play().catch(done);
+}
+
+// Rainlit's own sounds, made rather than fetched: each one drawn the first time it's played.
+async function makeSound(id, rate = 48000) {
+  const seconds = { tada: 1.8, drums: 1.6, trombone: 2.9, boop: 0.5, crickets: 2.6, applause: 3, airhorn: 1.7, rain: 3.6 }[id];
+  const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, Math.ceil(rate * seconds), rate);
+  const out = ctx.createGain();
+  out.connect(ctx.destination);
+  const white = ctx.createBuffer(1, rate * 2, rate);
+  const w = white.getChannelData(0);
+  for (let i = 0; i < w.length; i++) w[i] = Math.random() * 2 - 1;
+  const panned = (node, pan, dest) => {
+    const p = ctx.createStereoPanner();
+    p.pan.value = pan;
+    node.connect(p).connect(dest);
+  };
+  // A note: in quickly, held, then dying away; maybe sliding to another pitch, or wavering.
+  const tone = (freq, at, hold, { type = 'sine', level = 0.3, attack = 0.01, release = 0.2, to = 0, glide = hold, pan = 0, dest = out, vibrato = 0 } = {}) => {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, at);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, at + glide);
+    if (vibrato) {
+      const lfo = ctx.createOscillator();
+      const depth = ctx.createGain();
+      lfo.frequency.value = 5.5;
+      depth.gain.value = freq * vibrato;
+      lfo.connect(depth).connect(o.frequency);
+      lfo.start(at + 0.15);
+      lfo.stop(at + hold + release);
+    }
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(level, at + attack);
+    g.gain.setValueAtTime(level, at + Math.max(attack, hold));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + Math.max(attack, hold) + release);
+    o.connect(g);
+    panned(g, pan, dest);
+    o.start(at);
+    o.stop(at + Math.max(attack, hold) + release + 0.05);
+  };
+  // A burst of noise, through a filter: the same shape as a note.
+  const hiss = (at, hold, { level = 0.3, type = 'bandpass', freq = 2000, q = 1, attack = 0.002, release = 0.1, pan = 0, dest = out } = {}) => {
+    const s = ctx.createBufferSource();
+    s.buffer = white;
+    s.loop = true;
+    const f = ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, at);
+    g.gain.linearRampToValueAtTime(level, at + attack);
+    g.gain.setValueAtTime(level, at + Math.max(attack, hold));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + Math.max(attack, hold) + release);
+    s.connect(f).connect(g);
+    panned(g, pan, dest);
+    s.start(at, Math.random() * 1.9);
+    s.stop(at + Math.max(attack, hold) + release + 0.02);
+  };
+  const filter = (type, freq, q = 0.7) => {
+    const f = ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = q;
+    f.connect(out);
+    return f;
+  };
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  switch (id) {
+    case 'tada': {
+      // A quick "ta", then a big bright chord, and a sparkle on top.
+      const brass = filter('lowpass', 1200);
+      brass.frequency.setValueAtTime(1200, 0.16);
+      brass.frequency.linearRampToValueAtTime(3400, 0.3);
+      brass.frequency.exponentialRampToValueAtTime(1300, 1.7);
+      for (const f of [392, 523.25]) tone(f, 0, 0.07, { type: 'sawtooth', level: 0.12, release: 0.05, dest: brass });
+      for (const [f, pan] of [[261.63, 0], [523.25, -0.25], [659.25, 0.25], [783.99, -0.1], [1046.5, 0.1]]) {
+        tone(f, 0.16, 0.75, { type: 'sawtooth', level: 0.09, attack: 0.02, release: 0.7, dest: brass, pan, vibrato: 0.004 });
+      }
+      [2093, 2637, 3136, 4186].forEach((f, i) => tone(f, 0.26 + i * 0.07, 0.02, { type: 'triangle', level: 0.06, release: 0.4, pan: i % 2 ? 0.45 : -0.45 }));
+      break;
+    }
+    case 'drums': {
+      // Ba (the snare), dum (a tom)... tss (the cymbal, with a kick under it).
+      hiss(0, 0.01, { level: 0.5, freq: 1800, q: 0.7, release: 0.16 });
+      tone(230, 0, 0.01, { level: 0.45, release: 0.12, to: 160, glide: 0.1 });
+      tone(150, 0.21, 0.02, { level: 0.65, release: 0.3, to: 92, glide: 0.25 });
+      hiss(0.21, 0.005, { level: 0.18, freq: 900, release: 0.05 });
+      tone(95, 0.52, 0.02, { level: 0.85, release: 0.32, to: 45, glide: 0.2 });
+      hiss(0.52, 0.02, { level: 0.32, type: 'highpass', freq: 6500, q: 0.5, release: 1 });
+      hiss(0.52, 0.02, { level: 0.2, freq: 9500, q: 2, pan: 0.2, release: 0.9 });
+      break;
+    }
+    case 'trombone': {
+      // Wah, wah, wah, waaah: each note opening up and closing, the last one wobbling down.
+      const notes = [[293.66, 0, 0.34], [277.18, 0.46, 0.34], [261.63, 0.92, 0.34], [246.94, 1.38, 1.05]];
+      for (const [f, at, hold] of notes) {
+        const last = hold > 0.5;
+        const wah = filter('lowpass', 350, 5);
+        wah.frequency.setValueAtTime(350, at);
+        wah.frequency.exponentialRampToValueAtTime(1500, at + 0.12);
+        wah.frequency.exponentialRampToValueAtTime(last ? 700 : 450, at + hold + 0.1);
+        tone(f, at, hold, { type: 'sawtooth', level: 0.32, attack: 0.04, release: last ? 0.4 : 0.1, dest: wah, vibrato: last ? 0.03 : 0, to: last ? f * 0.93 : 0, glide: hold + 0.3 });
+      }
+      break;
+    }
+    case 'boop':
+      tone(330, 0, 0.05, { level: 0.5, attack: 0.005, release: 0.2, to: 880, glide: 0.07 });
+      tone(660, 0, 0.05, { level: 0.1, attack: 0.005, release: 0.12, to: 1760, glide: 0.07 });
+      break;
+    case 'crickets':
+      // Two crickets, a little out of step, each chirp three quick pulses.
+      for (const [f, pan, start, every] of [[4300, -0.45, 0.05, 0.62], [4750, 0.45, 0.33, 0.7]]) {
+        for (let at = start; at < 2.3; at += every) {
+          for (let k = 0; k < 3; k++) tone(f, at + k * 0.045, 0.012, { level: 0.22, attack: 0.004, release: 0.02, pan });
+        }
+      }
+      break;
+    case 'applause': {
+      // A crowd clapping, building up, then dying away.
+      const swell = (t) => Math.min(1, t / 0.35) * (t > 1.9 ? Math.max(0.08, 1 - (t - 1.9) / 0.9) : 1);
+      for (let i = 0; i < 240; i++) {
+        const at = rnd(0.02, 2.8);
+        hiss(at, 0.003, { level: 0.24 * swell(at) * rnd(0.55, 1), freq: rnd(900, 2600), q: rnd(1.1, 2.2), attack: 0.001, release: rnd(0.025, 0.06), pan: rnd(-0.8, 0.8) });
+      }
+      hiss(0, 1.5, { level: 0.035, freq: 1500, q: 0.5, attack: 0.35, release: 1.2, pan: -0.3 });
+      hiss(0, 1.5, { level: 0.035, freq: 1700, q: 0.5, attack: 0.35, release: 1.2, pan: 0.3 });
+      break;
+    }
+    case 'airhorn': {
+      // Short, short, looong.
+      const grit = ctx.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(2.5 * (i / 511.5 - 1));
+      grit.curve = curve;
+      grit.connect(filter('lowpass', 3600));
+      for (const [at, hold] of [[0, 0.12], [0.2, 0.12], [0.42, 1.02]]) {
+        for (const [mult, level] of [[1, 0.22], [1.26, 0.16], [1.5, 0.12], [2.01, 0.06]]) {
+          tone(440 * mult * 0.96, at, hold, { type: 'sawtooth', level, attack: 0.012, release: 0.07, to: 440 * mult, glide: 0.05, dest: grit });
+        }
+      }
+      break;
+    }
+    case 'rain': {
+      // Rainlit's own: a soft shower, drops landing close by, and a little bell as it clears.
+      for (const pan of [-0.5, 0.5]) {
+        hiss(0, 2.2, { level: 0.09, type: 'lowpass', freq: 2400, q: 0.3, attack: 0.6, release: 0.9, pan });
+        hiss(0, 2.2, { level: 0.03, type: 'highpass', freq: 5000, q: 0.3, attack: 0.6, release: 0.9, pan: -pan });
+      }
+      for (let i = 0; i < 28; i++) {
+        const at = rnd(0.25, 2.7);
+        const f = rnd(700, 1500);
+        tone(f, at, 0.004, { level: rnd(0.08, 0.18), attack: 0.002, release: 0.06, to: f * 1.9, glide: 0.035, pan: rnd(-0.7, 0.7) });
+      }
+      for (const [f, at] of [[1318.51, 2.55], [1975.53, 2.68]]) {
+        tone(f, at, 0.01, { level: 0.09, attack: 0.008, release: 0.85 });
+        tone(f * 2.76, at, 0.01, { level: 0.02, attack: 0.008, release: 0.3 });
+      }
+      break;
+    }
+  }
+  const buffer = await ctx.startRendering();
+  evenOut(buffer);
+  return buffer;
+}
+
+// Rainlit's own sounds all about as loud as each other: their loud parts (the loudest tenth of
+// each 50 ms) at the same level, and nothing over the top.
+function evenOut(buffer, target = 0.1, ceiling = 0.89) {
+  const size = Math.round(buffer.sampleRate * 0.05);
+  const chans = [...Array(buffer.numberOfChannels)].map((_, c) => buffer.getChannelData(c));
+  const levels = [];
+  let peak = 0;
+  for (let at = 0; at < buffer.length; at += size) {
+    let sum = 0;
+    let n = 0;
+    for (const d of chans) {
+      for (let i = at; i < Math.min(at + size, d.length); i++) {
+        sum += d[i] * d[i];
+        peak = Math.max(peak, Math.abs(d[i]));
+        n++;
+      }
+    }
+    levels.push(Math.sqrt(sum / Math.max(1, n)));
+  }
+  levels.sort((a, b) => b - a);
+  const loud = levels[Math.floor(levels.length * 0.1)] || 0;
+  if (!loud || !peak) return;
+  const k = Math.min(target / loud, ceiling / peak);
+  for (const d of chans) for (let i = 0; i < d.length; i++) d[i] *= k;
+}
+
+// ----- The soundboard itself: a little panel above its button -----
+
+// (keyboard: opened from the keyboard, so the first sound has the focus.)
+function toggleSoundboard(anchor, keyboard = false) {
+  if (!el.soundboard.hidden && S.soundboardAnchor === anchor) return closeSoundboard();
+  if (!soundboardHere()) return;
+  unlockSounds();
+  S.soundboardAnchor = anchor;
+  renderSoundboard();
+  el.soundboard.hidden = false;
+  placeSoundboard();
+  renderSoundButtons();
+  const first = el.soundboard.querySelector('.sb-tile');
+  if (first && keyboard) first.focus({ preventScroll: true });
+}
+
+function closeSoundboard() {
+  if (el.soundboard.hidden) return;
+  el.soundboard.hidden = true;
+  S.soundboardAnchor = null;
+  renderSoundButtons();
+}
+
+// Rainlit's own first, then each of your spaces' (the one you're in a voice channel of first).
+function renderSoundboard() {
+  const here = soundboardHere();
+  const first = here && here.voice ? here.voice.spaceId : '';
+  const spaces = [...S.spaces.values()].filter((s) => !isGroupSpace(s) && s.sounds && s.sounds.length)
+    .sort((a, b) => (b.id === first) - (a.id === first) || a.name.localeCompare(b.name));
+  const groups = [{ name: 'Rainlit', sounds: SOUNDBOARD }, ...spaces.map((s) => ({ name: s.name, sounds: s.sounds }))];
+  el.sbList.replaceChildren(...groups.map((g) => {
+    const section = document.createElement('section');
+    const h = document.createElement('h3');
+    h.textContent = g.name;
+    const grid = document.createElement('div');
+    grid.className = 'sb-grid';
+    for (const sound of g.sounds) {
+      const item = document.createElement('div');
+      item.className = 'sb-item';
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.className = 'sb-tile';
+      play.title = `Play ${sound.name} for everyone`;
+      const mark = document.createElement('span');
+      mark.className = 'sb-emoji';
+      mark.textContent = sound.emoji || '🔊';
+      const name = document.createElement('span');
+      name.className = 'sb-name';
+      name.textContent = sound.name;
+      play.append(mark, name);
+      play.addEventListener('click', () => playBoardSound(sound.id));
+      const hear = document.createElement('button');
+      hear.type = 'button';
+      hear.className = 'sb-hear';
+      hear.title = 'Hear it (only you)';
+      hear.setAttribute('aria-label', `Hear ${sound.name} (only you)`);
+      hear.innerHTML = '<svg class="icon"><use href="#i-speaker"/></svg>';
+      hear.addEventListener('click', () => hearSound(sound));
+      item.append(play, hear);
+      grid.append(item);
+    }
+    section.append(h, grid);
+    return section;
+  }));
+  renderSoundboardVolume();
+}
+
+// Above its button (or below, if there's more room there), as tall as fits.
+function placeSoundboard() {
+  const a = S.soundboardAnchor;
+  const box = el.soundboard;
+  if (!a || box.hidden) return;
+  const r = a.getBoundingClientRect();
+  const above = r.top - 18;
+  const below = innerHeight - r.bottom - 18;
+  const up = above >= 300 || above >= below;
+  box.style.maxHeight = `${Math.max(150, Math.min(470, up ? above : below))}px`;
+  const w = box.offsetWidth;
+  const h = box.offsetHeight;
+  box.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`;
+  box.style.top = `${Math.max(8, up ? r.top - h - 10 : r.bottom + 10)}px`;
+}
+
+// The soundboard buttons: there while you can play sounds, lit while it's open.
+function renderSoundButtons() {
+  const here = soundboardHere();
+  if (!here) closeSoundboard();
+  el.soundsBtn.hidden = !(here && here.call);
+  for (const b of [el.soundsBtn, ...document.querySelectorAll('[data-voice="sounds"]')]) {
+    const open = !el.soundboard.hidden && S.soundboardAnchor === b;
+    b.classList.toggle('lit', open);
+    b.setAttribute('aria-expanded', String(open));
+    if (b !== el.soundsBtn) b.hidden = !(here && here.voice);
+  }
+}
+
+// Who played what: over their tile in a voice channel, or over the call.
+function showSoundPop(from, sound) {
+  const v = S.voice;
+  const tile = v && !el.voiceView.hidden && v.tiles.get(`${from}:cam`);
+  const box = tile || (S.inCall && !el.call.hidden ? el.stage : null);
+  if (!box) return;
+  const pop = document.createElement('div');
+  pop.className = 'sb-pop';
+  const mark = document.createElement('span');
+  mark.className = 'sb-pop-emoji';
+  mark.textContent = sound.emoji || '🔊';
+  const text = document.createElement('span');
+  text.className = 'sb-pop-text';
+  const who = from === (S.me && S.me.id) ? 'You' : (profileOf(from) || {}).displayName || (S.peer && S.peer.id === from && S.peer.name) || 'Someone';
+  text.textContent = tile ? sound.name : `${who}: ${sound.name}`;
+  pop.append(mark, text);
+  for (const old of box.querySelectorAll(':scope > .sb-pop')) old.remove();
+  box.append(pop);
+  setTimeout(() => pop.remove(), 2600);
+}
+
+// ----- A space's sounds, in its settings -----
+
+function renderSoundsPanel(space) {
+  const list = space.sounds || [];
+  const head = document.createElement('div');
+  head.className = 'emoji-admin-head';
+  const count = document.createElement('span');
+  count.textContent = `${list.length} of 24`;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'audio/*,.mp3,.ogg,.oga,.opus,.wav,.m4a,.flac,.weba,.webm';
+  input.multiple = true;
+  input.hidden = true;
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'primary-btn small';
+  add.textContent = 'Upload sound';
+  add.disabled = list.length >= 24;
+  add.addEventListener('click', () => input.click());
+  input.addEventListener('change', () => uploadSounds(space, [...input.files]));
+  head.append(count, add, input);
+  const hint = document.createElement('small');
+  hint.className = 'hint';
+  hint.textContent = "MP3, OGG, WAV, M4A, FLAC or WebM, up to 5 seconds and 1 MB each. Everyone in the space can play them for everyone in a call or voice channel, from its soundboard button. They're never louder than about where most things play.";
+  const ul = document.createElement('ul');
+  ul.className = 'sound-admin';
+  for (const s of list) {
+    const li = document.createElement('li');
+    const hear = document.createElement('button');
+    hear.type = 'button';
+    hear.className = 'icon-btn ghost';
+    hear.title = `Hear ${s.name}`;
+    hear.setAttribute('aria-label', `Hear ${s.name}`);
+    hear.innerHTML = '<svg class="icon"><use href="#i-speaker"/></svg>';
+    hear.addEventListener('click', () => hearSound(s));
+    const mark = document.createElement('button');
+    mark.type = 'button';
+    mark.className = `sound-emoji${s.emoji ? '' : ' none'}`;
+    mark.textContent = s.emoji || '🙂';
+    mark.title = 'Choose its emoji';
+    mark.setAttribute('aria-label', `${s.name}'s emoji: choose another`);
+    mark.addEventListener('click', () => openEmojiPicker(null, async (picked) => {
+      if (!picked) return;
+      if (!picked.unicode) return showSettingsError("A sound's emoji can be any everyday one, but not the space's own.");
+      try {
+        await api('PATCH', `/spaces/${space.id}/sounds/${s.id}`, { emoji: picked.unicode });
+        showSettingsError('');
+      } catch (err) {
+        showSettingsError(err.message);
+      }
+    }));
+    const name = document.createElement('input');
+    name.value = s.name;
+    name.maxLength = 32;
+    name.dataset.keep = `sound-${s.id}`;
+    name.setAttribute('aria-label', 'Sound name');
+    name.addEventListener('change', async () => {
+      const v = name.value.trim();
+      if (!v || v === s.name) return (name.value = s.name);
+      try {
+        await api('PATCH', `/spaces/${space.id}/sounds/${s.id}`, { name: v });
+        showSettingsError('');
+      } catch (err) {
+        name.value = s.name;
+        showSettingsError(err.message);
+      }
+    });
+    name.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); name.blur(); } });
+    const length = document.createElement('small');
+    length.className = 'sound-length';
+    length.textContent = `${(s.ms / 1000).toFixed(1)} s`;
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'icon-btn ghost';
+    del.title = `Delete ${s.name}`;
+    del.setAttribute('aria-label', `Delete ${s.name}`);
+    del.innerHTML = '<svg class="icon"><use href="#i-trash"/></svg>';
+    del.addEventListener('click', async () => {
+      if (!confirm(`Delete the sound "${s.name}"?`)) return;
+      try {
+        await api('DELETE', `/spaces/${space.id}/sounds/${s.id}`);
+        showSettingsError('');
+      } catch (err) {
+        showSettingsError(err.message);
+      }
+    });
+    li.append(hear, mark, name, length, del);
+    ul.append(li);
+  }
+  el.spaceSounds.replaceChildren(head, hint, ul);
+}
+
+async function uploadSounds(space, files) {
+  showSettingsError('');
+  for (const file of files) {
+    if (file.size > 1024 * 1024) {
+      showSettingsError(`${file.name} is too big: sounds can be up to 1 MB.`);
+      continue;
+    }
+    let ms;
+    try {
+      ms = await soundLength(file);
+    } catch {
+      showSettingsError(`${file.name} didn't play here. Sounds can be MP3, OGG, WAV, M4A, FLAC or WebM files.`);
+      continue;
+    }
+    if (ms > SOUND_MAX_S * 1000) {
+      showSettingsError(`${file.name} is ${(ms / 1000).toFixed(1)} seconds long: sounds can be up to 5.`);
+      continue;
+    }
+    const name = file.name.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 32) || 'Sound';
+    try {
+      const res = await fetch(`${SERVER}/api/spaces/${space.id}/sounds?name=${encodeURIComponent(name)}&ms=${ms}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file,
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "That sound didn't upload. Try again.");
+    } catch (err) {
+      showSettingsError(err.message);
+    }
+  }
+  await refreshSpaces();
+  renderSpaceSettings();
+}
+
+// How long a sound file is, in ms (an error if this browser can't play it).
+async function soundLength(file) {
+  const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 1, 44100);
+  const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+  return Math.max(1, Math.round(buffer.duration * 1000));
+}
+
 // ---------------- Files ----------------
 //
 // Files go straight to your friend over the call's own connection (a WebRTC data
@@ -7779,6 +8399,8 @@ async function onSpaceChanged(spaceId) {
   if (el.spaceMembers.open) renderMembers();
   if (el.spaceSettings.open) renderSpaceSettings();
   if (el.groupInfo.open) renderGroupInfo();
+  if (!el.soundboard.hidden) renderSoundboard(); // (its sounds, or whether you can play them, changed)
+  renderSoundButtons();
 }
 
 function onSpaceRemoved(spaceId, why) {
@@ -7834,7 +8456,7 @@ const isAdministrator = (space, m) => space.everyonePerms.includes('administrato
   || space.roles.some((r) => m.roles.includes(r.id) && r.perms.includes('administrator'));
 const canModerateIn = (space, m, perm) => canIn(space, perm) && !m.owner && m.id !== S.clientId
   && (space.role === 'owner' || topOf(space, m) < myTop(space)) && !(perm === 'timeout' && isAdministrator(space, m));
-const SETTINGS_TABS = [['general', ['manageSpace']], ['roles', ['manageRoles']], ['channels', ['manageChannels']], ['emoji', ['manageEmoji']], ['moderation', ['timeout', 'ban', 'viewLog', 'manageMessages', 'kick']]];
+const SETTINGS_TABS = [['general', ['manageSpace']], ['roles', ['manageRoles']], ['channels', ['manageChannels']], ['emoji', ['manageEmoji']], ['sounds', ['manageSoundboard']], ['moderation', ['timeout', 'ban', 'viewLog', 'manageMessages', 'kick']]];
 const settingsTabsFor = (space) => SETTINGS_TABS.filter(([, perms]) => perms.some((p) => canIn(space, p))).map(([tab]) => tab);
 const canOpenSettings = (space) => Boolean(space) && settingsTabsFor(space).length > 0;
 
@@ -9088,6 +9710,9 @@ function spaceLogText(e) {
     case 'emoji-add': return `${who} added the emoji :${d.name}:`;
     case 'emoji-rename': return `${who} renamed the emoji :${d.from}: to :${d.to}:`;
     case 'emoji-remove': return `${who} deleted the emoji :${d.name}:`;
+    case 'sound-add': return `${who} added the sound "${d.name}"`;
+    case 'sound-rename': return `${who} renamed the sound "${d.from}" to "${d.to}"`;
+    case 'sound-remove': return `${who} deleted the sound "${d.name}"`;
     case 'space-import': return `${who} brought the space over from ${d.from || 'Discord'} (${d.channels} channels, ${d.roles} roles)`;
     case 'owner-deleted': return `The owner deleted their account, so the space passed to ${d.user || 'its most senior member'}`;
     case 'everyone-perms': return `${who} changed what everyone can do`;
@@ -9247,6 +9872,7 @@ function renderSpaceSettings() {
     if (tab === 'channels') renderChannelsPanel(space);
     if (tab === 'moderation') renderModerationPanel(space);
     if (tab === 'emoji') renderEmojiPanel(space);
+    if (tab === 'sounds') renderSoundsPanel(space);
   });
 }
 
@@ -9422,8 +10048,10 @@ const PERM_INFO = [
   ['ban', 'Ban people', "Take people below them out for good, and lift bans."],
   ['mentionEveryone', 'Mention @everyone', 'Notify everyone who can see a channel at once.'],
   ['manageEmoji', 'Manage emoji', "Add, rename and delete the space's own emoji."],
+  ['manageSoundboard', 'Manage soundboard', "Add, change and delete the space's own sounds."],
   ['connect', 'Join voice channels', ''],
   ['speak', 'Talk in voice channels', 'And share their camera or screen there.'],
+  ['soundboard', 'Use the soundboard', 'Play sounds for everyone in the voice channels they can talk in.'],
   ['invite', 'Invite people', 'Make invite links.'],
   ['send', 'Send messages', ''],
   ['files', 'Send files', ''],
@@ -10303,13 +10931,15 @@ function renderVoice() {
       const act = b.dataset.voice;
       const on = act === 'mute' ? v.muted || !v.speak : act === 'deafen' ? v.deafened
         : act === 'camera' ? Boolean(me && me.isCameraEnabled) : act === 'screen' ? Boolean(me && me.isScreenShareEnabled) : false;
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', String(on));
+      if (act !== 'sounds') { // (it opens the soundboard: see renderSoundButtons)
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', String(on));
+      }
       const icon = b.querySelector('use');
       if (icon && act === 'mute') icon.setAttribute('href', on ? '#i-mic-off' : '#i-mic');
       if (icon && act === 'deafen') icon.setAttribute('href', on ? '#i-headphones-off' : '#i-headphones');
       if (icon && act === 'camera') icon.setAttribute('href', on ? '#i-cam' : '#i-cam-off');
-      const label = { mute: on ? 'Unmute' : 'Mute', deafen: on ? 'Undeafen' : 'Deafen', camera: on ? 'Turn camera off' : 'Turn camera on', screen: on ? 'Stop sharing' : 'Share your screen', leave: 'Leave voice' }[act];
+      const label = { mute: on ? 'Unmute' : 'Mute', deafen: on ? 'Undeafen' : 'Deafen', camera: on ? 'Turn camera off' : 'Turn camera on', screen: on ? 'Stop sharing' : 'Share your screen', sounds: 'Soundboard', leave: 'Leave voice' }[act];
       if (label) {
         b.title = label;
         b.setAttribute('aria-label', label);
@@ -10332,6 +10962,7 @@ function renderVoice() {
   const space = S.view !== 'home' && S.spaces.get(S.view);
   if (space) renderSide();
   if (!el.voiceView.hidden) renderVoiceView();
+  renderSoundButtons();
 }
 
 // (Cloudflare) Others' video comes only while it's being looked at: the voice view, or popped
@@ -14262,6 +14893,7 @@ function teardown({ sendLeave, keepActive = false }) {
   el.stage.classList.remove('self-big');
   renderCallPlacement();
   renderSelf();
+  renderSoundButtons();
   renderRejoin();
   renderFriends();
   updateTitle();
@@ -14452,7 +15084,8 @@ async function init() {
   el.addVoiceBtn.addEventListener('click', () => startNewChannel('voice'));
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-voice]');
-    if (b) onVoiceControl(b.dataset.voice);
+    if (b && b.dataset.voice === 'sounds') toggleSoundboard(b, e.detail === 0);
+    else if (b) onVoiceControl(b.dataset.voice);
   });
   el.voicePanelWhere.addEventListener('click', showVoiceView);
   el.voiceBack.addEventListener('click', hideVoiceView);
@@ -14897,6 +15530,22 @@ async function init() {
   el.camSelect.addEventListener('change', onCamChange);
   el.speakerSelect.addEventListener('change', onSpeakerChange);
   el.volumeInput.addEventListener('input', onVolumeChange);
+  el.soundsBtn.addEventListener('click', (e) => toggleSoundboard(el.soundsBtn, e.detail === 0));
+  el.sbVolume.addEventListener('input', () => setSoundboardVolume(el.sbVolume.value));
+  el.soundboardInput.addEventListener('input', () => setSoundboardVolume(el.soundboardInput.value));
+  renderSoundboardVolume();
+  document.addEventListener('pointerdown', (e) => {
+    const a = S.soundboardAnchor;
+    if (!el.soundboard.hidden && !el.soundboard.contains(e.target) && !(a && a.contains(e.target))) closeSoundboard();
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !el.soundboard.hidden) {
+      const a = S.soundboardAnchor;
+      closeSoundboard();
+      if (a) a.focus();
+    }
+  });
+  addEventListener('resize', placeSoundboard);
   el.shareQuality.addEventListener('change', onShareQualityChange);
   el.streamMute.addEventListener('click', () => {
     S.streamMuted = !S.streamMuted;
@@ -15037,7 +15686,7 @@ async function init() {
   // Pressing anything clickable makes a soft click (if that's on in settings).
   document.addEventListener('click', (e) => {
     const target = e.target.closest && e.target.closest(CLICKABLE);
-    if (target && !target.disabled && e.target !== el.clicksInput && !target.closest('[data-sound], [data-voice]:not([data-voice="hear"])')) playClick();
+    if (target && !target.disabled && e.target !== el.clicksInput && !target.closest('[data-sound], [data-voice]:not([data-voice="hear"]):not([data-voice="sounds"])')) playClick();
   }, true);
   el.soundsInput.addEventListener('change', () => {
     S.sounds = el.soundsInput.checked;
