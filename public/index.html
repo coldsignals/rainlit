@@ -27,6 +27,7 @@
       <symbol id="i-cam" viewBox="0 0 24 24"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
       <symbol id="i-cam-off" viewBox="0 0 24 24"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M2 2l20 20"/></symbol>
       <symbol id="i-screen" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m9 10 3-3 3 3M12 7v6"/></symbol>
+      <symbol id="i-screen-switch" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M15.6 8.4a4 4 0 0 0-6.6-.9L8 8.5"/><path d="M8 5.8v2.7h2.7"/><path d="M8.4 11.6a4 4 0 0 0 6.6.9l1-1"/><path d="M16 14.2v-2.7h-2.7"/></symbol>
       <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
       <symbol id="i-leave" viewBox="0 0 24 24"><path transform="translate(12 12) rotate(135) scale(0.76) translate(-12 -12)" stroke-width="2.37" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
       <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
@@ -263,6 +264,7 @@
           <button class="icon-btn ghost" type="button" data-voice="deafen"><svg class="icon"><use href="#i-headphones"/></svg></button>
           <button class="icon-btn ghost" type="button" data-voice="camera"><svg class="icon"><use href="#i-cam-off"/></svg></button>
           <button class="icon-btn ghost" type="button" data-voice="screen"><svg class="icon"><use href="#i-screen"/></svg></button>
+          <button class="icon-btn ghost" type="button" data-voice="switch" hidden><svg class="icon"><use href="#i-screen-switch"/></svg></button>
           <button class="icon-btn ghost voice-leave" type="button" data-voice="leave"><svg class="icon"><use href="#i-leave"/></svg></button>
         </div>
         <button id="voice-hear" class="text-btn" type="button" data-voice="hear" hidden>Tap to hear everyone</button>
@@ -328,6 +330,7 @@
           <button class="voice-ctl" type="button" data-voice="camera"><svg class="icon"><use href="#i-cam-off"/></svg></button>
           <button class="voice-ctl" type="button" data-voice="flip" hidden><svg class="icon"><use href="#i-flip-cam"/></svg></button>
           <button class="voice-ctl" type="button" data-voice="screen"><svg class="icon"><use href="#i-screen"/></svg></button>
+          <button class="voice-ctl" type="button" data-voice="switch" hidden><svg class="icon"><use href="#i-screen-switch"/></svg></button>
           <button class="voice-ctl voice-leave" type="button" data-voice="leave"><svg class="icon"><use href="#i-leave"/></svg></button>
         </div>
       </div>
@@ -471,6 +474,10 @@
       <button id="screen-btn" class="ctl" type="button" aria-pressed="false" data-sound>
         <span class="ctl-icon"><svg class="icon"><use href="#i-screen"/></svg></span>
         <span class="ctl-label">Share screen</span>
+      </button>
+      <button id="screen-switch-btn" class="ctl" type="button" title="Share something else instead" data-sound hidden>
+        <span class="ctl-icon"><svg class="icon"><use href="#i-screen-switch"/></svg></span>
+        <span class="ctl-label">Switch</span>
       </button>
       <button id="leave-btn" class="ctl leave" type="button" data-sound>
         <span class="ctl-icon"><svg class="icon"><use href="#i-leave"/></svg></span>

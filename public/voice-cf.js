@@ -102,6 +102,16 @@
       return els;
     }
 
+    // Something else in its place (a screen share's other window): swapped in on the same sender,
+    // without renegotiating, and the old one stopped.
+    async swap(next) {
+      if (this.sender) await this.sender.replaceTrack(next);
+      const old = this.mediaStreamTrack;
+      this.mediaStreamTrack = next;
+      for (const el of this.elements) el.srcObject = new MediaStream([next]);
+      if (old !== next) old.stop();
+    }
+
     // Another camera (front or back, on a phone): swapped in, without renegotiating.
     async restartTrack(constraints = {}) {
       if (!this.sender) return;
@@ -161,6 +171,10 @@
 
     setCameraEnabled(on, options) {
       return this.room.setCamera(on, options);
+    }
+
+    switchScreen(options) {
+      return this.room.switchScreen(options);
     }
 
     setScreenShareEnabled(on, options) {
@@ -516,14 +530,7 @@
       if (lp.pubs.has(Source.ScreenShare)) return;
       if (!lp.permissions.canPublish) throw cantTalk();
       const smooth = options.contentHint === 'motion';
-      this.screenSmooth = smooth;
-      this.screenSaver = Boolean(options.saver);
-      const sharp = Boolean(this.limits.sharp) && !this.screenSaver;
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: sharp ? { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: smooth ? 60 : 30 } }
-          : smooth ? { width: { max: 1280 }, height: { max: 720 }, frameRate: { max: 30 } } : { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: 15 } },
-        audio: Boolean(options.audio),
-      });
+      const stream = await this.askScreen(options);
       const video = stream.getVideoTracks()[0];
       if (options.contentHint) video.contentHint = options.contentHint;
       const audio = stream.getAudioTracks()[0];
@@ -536,8 +543,62 @@
       }
       this.addLocal('screen', video);
       if (audio) this.addLocal('screenAudio', audio);
-      // (Stopped from the browser's own "Stop sharing".)
-      video.addEventListener('ended', () => { if (lp.pubs.has(Source.ScreenShare)) this.setScreen(false).catch(() => {}); });
+      this.endsShare(video);
+    }
+
+    // What to share, from the browser's chooser (or the desktop app's), at its sharpness.
+    askScreen(options) {
+      const smooth = options.contentHint === 'motion';
+      this.screenSmooth = smooth;
+      this.screenSaver = Boolean(options.saver);
+      const sharp = Boolean(this.limits.sharp) && !this.screenSaver;
+      return navigator.mediaDevices.getDisplayMedia({
+        video: sharp ? { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: smooth ? 60 : 30 } }
+          : smooth ? { width: { max: 1280 }, height: { max: 720 }, frameRate: { max: 30 } } : { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: 15 } },
+        audio: Boolean(options.audio),
+      });
+    }
+
+    // (Stopped from the browser's own "Stop sharing": if it's still what's being shared.)
+    endsShare(video) {
+      const lp = this.localParticipant;
+      video.addEventListener('ended', () => {
+        const pub = lp.pubs.get(Source.ScreenShare);
+        if (pub && pub.track && pub.track.mediaStreamTrack === video) this.setScreen(false).catch(() => {});
+      });
+    }
+
+    // Something else shared instead (another window, or screen), without stopping: its picture
+    // goes out on the same sender (nothing for Cloudflare to know), and its sound too; or the
+    // sound starts, or stops, if only one of them has any. Cancelled, the old one carries on.
+    async switchScreen(options = {}) {
+      const lp = this.localParticipant;
+      const pub = lp.pubs.get(Source.ScreenShare);
+      if (!pub || !pub.track) return this.setScreen(true, options);
+      const stream = await this.askScreen(options);
+      const video = stream.getVideoTracks()[0];
+      const audio = stream.getAudioTracks()[0] || null;
+      if (!lp.pubs.get(Source.ScreenShare)) { // (stopped meanwhile)
+        for (const t of stream.getTracks()) t.stop();
+        return;
+      }
+      if (options.contentHint) video.contentHint = options.contentHint;
+      await pub.track.swap(video);
+      this.endsShare(video);
+      const sound = lp.pubs.get(Source.ScreenShareAudio);
+      if (sound && audio) {
+        await sound.track.swap(audio);
+      } else if (sound) {
+        await this.queue(() => this.unpublishNow(['screenAudio']));
+        this.dropLocal(['screenAudio']);
+      } else if (audio) {
+        try {
+          await this.queue(() => this.publishNow([{ kind: 'screenAudio', mst: audio }]));
+          this.addLocal('screenAudio', audio);
+        } catch {
+          audio.stop(); // (the picture's switched; it goes without its sound)
+        }
+      }
     }
 
     // What's being sent (to send again, on a new connection).

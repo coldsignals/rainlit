@@ -142,7 +142,7 @@ for (const id of [
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-idle', 'peer-away', 'peer-away-time', 'offline-banner',
   'video-label', 'video-muted', 'video-name', 'video-idle', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
-  'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
+  'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
   'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
@@ -1083,16 +1083,16 @@ async function flipCam() {
   }
 }
 
-async function toggleScreen() {
-  if (S.local.screen) return stopScreen();
+// What to share: the browser's chooser (or the desktop app's). A stream, or null if they cancelled
+// (or it didn't work: then they're told).
+async function askToShare() {
   // Game and video sound should come through as it is, not cleaned up like a voice.
   const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
   // Sharing your whole screen with its sound would also capture your friend's voice coming out
   // of Rainlit, and they'd hear themselves. This leaves Rainlit's own sound out.
   if (navigator.mediaDevices.getSupportedConstraints().restrictOwnAudio) audio.restrictOwnAudio = true;
-  let stream;
   try {
-    stream = await navigator.mediaDevices.getDisplayMedia({
+    return await navigator.mediaDevices.getDisplayMedia({
       video: shareConstraints(),
       audio,
       systemAudio: 'include',
@@ -1101,8 +1101,14 @@ async function toggleScreen() {
     });
   } catch (err) {
     if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') toast("Couldn't start screen sharing.");
-    return;
+    return null;
   }
+}
+
+async function toggleScreen() {
+  if (S.local.screen) return stopScreen();
+  const stream = await askToShare();
+  if (!stream) return;
   if (!S.inCall) { stream.getTracks().forEach((t) => t.stop()); return; }
   const vt = stream.getVideoTracks()[0];
   const at = stream.getAudioTracks()[0] || null;
@@ -1124,6 +1130,41 @@ async function toggleScreen() {
     toast(/Firefox\//.test(navigator.userAgent)
       ? "Firefox can't include sound when sharing your screen. To share sound too, use Chrome or Edge."
       : 'Sharing without sound. To include it, tick "Share audio" in the sharing window next time.', 8000);
+  }
+}
+
+// Something else to share, without stopping (Switch, while you're sharing): the new window or
+// screen goes out in the old one's place, on the same connection, so your friend just sees it
+// change; its sound too, or none if it has none. Cancelled, the old one carries on.
+async function switchScreen() {
+  if (!S.local.screen || S.switchingShare) return;
+  S.switchingShare = true;
+  try {
+    const stream = await askToShare();
+    if (!stream) return;
+    if (!S.inCall || !S.local.screen) { stream.getTracks().forEach((t) => t.stop()); return; }
+    const oldVideo = S.local.screen;
+    const oldSound = S.local.screenAudio;
+    const vt = stream.getVideoTracks()[0];
+    const at = stream.getAudioTracks()[0] || null;
+    vt.contentHint = shareQuality().hint;
+    oldVideo.onended = null;
+    S.local.screen = vt;
+    S.local.screenAudio = at;
+    vt.onended = () => { if (S.local.screen === vt) stopScreen(); };
+    await setOutgoingVideo(vt);
+    const conn = S.conn;
+    if (conn && !conn.waitingForOffer) {
+      if (conn.senders.screenAudio) await conn.senders.screenAudio.replaceTrack(at);
+      else if (at) conn.senders.screenAudio = conn.pc.addTrack(at, S.localStream);
+    }
+    oldVideo.stop();
+    if (oldSound) oldSound.stop();
+    renderSelf();
+    renderControls();
+    sendState();
+  } finally {
+    S.switchingShare = false;
   }
 }
 
@@ -2577,6 +2618,7 @@ function renderControls() {
   el.screenBtn.classList.toggle('lit', sharing);
   el.screenBtn.setAttribute('aria-pressed', String(sharing));
   el.screenBtn.querySelector('.ctl-label').textContent = sharing ? 'Stop sharing' : 'Share screen';
+  el.screenSwitchBtn.hidden = !sharing;
 
 }
 
@@ -10216,10 +10258,17 @@ async function onVoiceControl(act) {
         resolution: { width: 1920, height: 1080, frameRate: smooth ? 60 : 30 },
       }, { audioPreset: { maxBitrate: 128_000 }, forceStereo: true, dtx: false, red: false });
       playShareSound(me.isScreenShareEnabled);
+    } else if (act === 'switch') {
+      // Something else to share, without stopping (Rainlit's own voice, through Cloudflare: see
+      // voice-cf.js. With LiveKit there's no Switch: stop and share again).
+      if (!me.isScreenShareEnabled || !me.switchScreen) return;
+      const smooth = el.shareQuality.value !== 'sharp';
+      await me.switchScreen({ audio: true, contentHint: smooth ? 'motion' : 'detail', saver: el.shareQuality.value === 'saver' });
     }
   } catch (err) {
-    if (err && err.name === 'NotAllowedError' && act === 'screen') return; // (they cancelled the picker)
-    toast(mediaErrorText(err, act === 'camera' ? 'Camera' : act === 'screen' ? 'Screen share' : 'Microphone'));
+    const sharing = act === 'screen' || act === 'switch';
+    if (err && err.name === 'NotAllowedError' && sharing) return; // (they cancelled the picker)
+    toast(mediaErrorText(err, act === 'camera' ? 'Camera' : sharing ? 'Screen share' : 'Microphone'));
   }
   wsSend({ type: 'voice-update', muted: v.muted || !v.speak, deafened: v.deafened, video: Boolean(me && me.isCameraEnabled), screen: Boolean(me && me.isScreenShareEnabled) });
   renderVoice();
@@ -10266,6 +10315,11 @@ function renderVoice() {
         b.setAttribute('aria-label', label);
       }
       if (act === 'screen') b.hidden = Boolean(ANDROID) || !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+      if (act === 'switch') {
+        b.hidden = !(me && me.isScreenShareEnabled && me.switchScreen);
+        b.title = 'Share something else instead';
+        b.setAttribute('aria-label', b.title);
+      }
       if (act === 'flip') {
         b.hidden = !(me && me.isCameraEnabled && isPhone() && S.cameraCount > 1);
         b.title = 'Switch between your front and back cameras';
@@ -14690,6 +14744,7 @@ async function init() {
     if (!S.callSounds) playClick(); // (its own sound is a call sound; without those, the plain click)
     toggleScreen();
   });
+  el.screenSwitchBtn.addEventListener('click', switchScreen);
   el.leaveBtn.addEventListener('click', onLeaveClick);
   el.fullscreenBtn.addEventListener('click', () => setStageFull(!stageFull()));
   watchStagePointer();

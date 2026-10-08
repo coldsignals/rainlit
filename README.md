@@ -465,6 +465,10 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
   themselves. This needs Chrome or Edge: Firefox can't include sound in a
   screen share at all. In the Windows app, tick **Share audio** in its own
   sharing window instead.
+- **Share something else without stopping:** while you're sharing, **Switch**
+  (next to **Stop sharing**, in a call or a voice channel) picks another window
+  or screen, and it takes the old one's place straight away: your friends just
+  see it change. Cancel the picker and the old one carries on.
 - **See your own stream big:** click the small "You" preview of your screen or
   camera. It fills the call and your friend moves to the corner; click either
   one to swap back.
