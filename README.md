@@ -325,14 +325,17 @@ at the top closes it (on a phone, the back arrow).
 - **Messages stay.** Send them any time, even when your friend is offline;
   they'll see them next time they open Rainlit. Scroll up for older ones.
 - **Unread messages:** a yellow number on your friend in the list, and a yellow
-  "new messages" line above the first one you haven't seen. A soft "ding-dong"
-  plays when a message arrives in a conversation you don't have open. Turn the
-  sound off in settings. (On a phone it may not play while the app is in the
-  background.)
+  "new messages" line above the first one you haven't seen. A soft chime (two
+  raindrops) plays when a message arrives in a conversation you don't have open.
+  Turn the sound off in settings. (On a phone it may not play while the app is
+  in the background.)
 - **Grouped messages:** several in a row from the same person, a few minutes
   apart, share one name and time.
 - **Click sounds:** a soft click when you press buttons, friends and menu
   items (not while typing). Turn it off in settings.
+- **Sound style:** Rainlit's sounds are raindrops: tuned drops, a little echo,
+  and deafening sounds like going under water. Settings has **Classic** too,
+  the bells Rainlit had before (a doorbell for messages).
 - **GIFs:** press **GIF** next to the message box to see what's trending or
   search, and click one to send it. They play in the conversation (only while
   they're on screen, and not at all if your device is set to reduce motion,

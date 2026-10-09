@@ -154,7 +154,7 @@ for (const id of [
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
-  'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds',
+  'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -269,6 +269,7 @@ const S = {
   showStats: store.get('streamStats', 'off') === 'on',
   sounds: store.get('sounds', 'on') !== 'off',
   clickSounds: store.get('clickSounds', 'on') !== 'off',
+  soundStyle: store.get('soundStyle', 'rainlit') === 'classic' ? 'classic' : 'rainlit', // (see SOUND_STYLES)
   embeds: store.get('embeds', 'on') !== 'off', // link previews
   compactChat: store.get('compactChat', 'off') === 'on', // messages without people's pictures beside them
   petButton: store.get('petButton', 'on') !== 'off', // your pet's button, by your profile
@@ -5421,7 +5422,165 @@ function unlockSounds() {
   } catch {}
 }
 
-// One soft bell note. A quiet overtone on top makes it ring like a bell instead of beep.
+// ----- Rainlit's sounds -----
+//
+// Every sound is made on the spot (there's no sound file to load), in one of two styles, picked
+// in Settings: Rainlit's own raindrops, or the bells it had when it was Porchlight ("Classic",
+// kept just as they were). Both make the same sounds, the same way round (things starting or
+// coming on go up, things stopping or going off come down):
+//   chime: a new message. ring: a call coming in (and, quieter, yours going out). share: a
+//   screen share starting or stopping. call: someone joining or leaving a call. control: your
+//   own call buttons. click: any other button.
+// Each is given the sound player (ctx) and when to start (t).
+
+const SOUND_STYLES = {
+  // Raindrops: tuned drops (in A major), with a little echo on the ones that ring on.
+  rainlit: {
+    // Two drops, the second lower: rain off the roof, into a puddle.
+    chime(ctx, t) {
+      const room = dripRoom(ctx);
+      dropNote(ctx, 880, t, { level: 0.15, length: 0.55, dest: room }); // A5
+      dropNote(ctx, 659.25, t + 0.15, { level: 0.15, length: 0.75, dest: room }); // E5
+    },
+    // Drops falling into a little tune, and settling: C#, A, B, E, A.
+    ring(ctx, t, loudness = 1) {
+      const room = dripRoom(ctx);
+      for (const [freq, at, length] of [[1108.73, 0, 0.45], [880, 0.15, 0.45], [987.77, 0.3, 0.45], [659.25, 0.5, 0.6], [880, 0.8, 0.9]]) {
+        dropNote(ctx, freq, t + at, { level: 0.14 * loudness, length, dest: room });
+      }
+    },
+    // A glint: three quick drops going up (starting) or coming back down (stopping).
+    share(ctx, t, starting) {
+      const notes = starting ? [880, 1108.73, 1318.51] : [1318.51, 1108.73, 880]; // A5, C#6, E6
+      notes.forEach((freq, i) => dropNote(ctx, freq, t + i * 0.075, { level: 0.13, length: 0.35, dest: dripRoom(ctx) }));
+    },
+    // Two drops: up when someone joins (or comes back), down when someone drops or leaves.
+    call(ctx, t, joining) {
+      const notes = joining ? [659.25, 987.77] : [987.77, 659.25]; // E5 and B5
+      notes.forEach((freq, i) => dropNote(ctx, freq, t + i * 0.09, { level: 0.095, length: 0.28, glass: 0.15, dest: dripRoom(ctx) }));
+    },
+    // Mute falls and unmute rises; deafen goes under water (and undeafen comes back up); the
+    // camera is a tap with two drops going up (on) or down (off); switching speaker, two drips.
+    control(ctx, t, kind) {
+      const drop = (freq, at, opts) => dropNote(ctx, freq, at, { level: 0.1, length: 0.14, glass: 0.15, ...opts });
+      switch (kind) {
+        case 'mute': drop(987.77, t); drop(659.25, t + 0.065); break; // B5, then E5
+        case 'unmute': drop(659.25, t); drop(987.77, t + 0.065); break;
+        case 'deafen': underwater(ctx, t, false); break;
+        case 'undeafen': underwater(ctx, t, true); break;
+        case 'camera-on': this.click(ctx, t - 0.005); drop(1318.51, t + 0.02, { level: 0.045, length: 0.09 }); drop(1760, t + 0.07, { level: 0.04, length: 0.12 }); break; // E6, A6
+        case 'camera-off': this.click(ctx, t - 0.005); drop(1760, t + 0.02, { level: 0.045, length: 0.09 }); drop(1318.51, t + 0.07, { level: 0.04, length: 0.12 }); break;
+        case 'route': drop(1318.51, t, { level: 0.06, length: 0.06 }); drop(1318.51, t + 0.085, { level: 0.06, length: 0.06 }); break;
+        default: this.click(ctx, t - 0.005);
+      }
+    },
+    // A tiny drop on glass: a quick rising "plip" and the tap of it landing, a little different
+    // each time (up to about 10% either way).
+    click(ctx, t) {
+      const pitch = 0.9 + Math.random() * 0.2;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.setValueAtTime(1300 * pitch, t);
+      osc.frequency.exponentialRampToValueAtTime(2000 * pitch, t + 0.016);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.023, t + 0.002);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.05);
+      const tap = ctx.createBufferSource();
+      tap.buffer = clickNoiseFor(ctx);
+      tap.playbackRate.value = pitch * 1.4;
+      const tone = ctx.createBiquadFilter();
+      tone.type = 'bandpass';
+      tone.frequency.value = 4200 * pitch;
+      tone.Q.value = 1.4;
+      const tapGain = ctx.createGain();
+      tapGain.gain.value = 0.02;
+      tap.connect(tone).connect(tapGain).connect(ctx.destination);
+      tap.start(t);
+    },
+  },
+
+  // Classic: the bells. A doorbell for messages, a ringing tune, soft boops and a tick.
+  classic: {
+    chime(ctx, t) {
+      bellNote(ctx, 659.25, t); // E5
+      bellNote(ctx, 523.25, t + 0.17); // C5
+    },
+    // C, E, G, E, rising and settling.
+    ring(ctx, t, loudness = 1) {
+      for (const [freq, at] of [[523.25, 0], [659.25, 0.2], [783.99, 0.4], [659.25, 0.72]]) bellNote(ctx, freq, t + at, loudness);
+    },
+    // Two bell notes going up (starting) or coming back down (stopping).
+    share(ctx, t, starting) {
+      const notes = starting ? [783.99, 1046.5] : [1046.5, 783.99]; // G5 and C6
+      notes.forEach((freq, i) => bellNote(ctx, freq, t + i * 0.11, 0.75));
+    },
+    // A quick two-note "boop": rising when someone joins (or comes back to) the call, falling
+    // when someone drops or leaves.
+    call(ctx, start, joining) {
+      const notes = joining ? [523.25, 783.99] : [783.99, 523.25]; // C5 up to G5, or back down
+      notes.forEach((freq, i) => {
+        const t = start + i * 0.09;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.13, t + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.22);
+      });
+    },
+    // Mute falls and unmute rises, deafen does the same, lower and rounder; the camera is a
+    // shutter tick with a note going up (on) or down (off); switching speaker, a double tick.
+    control(ctx, t, kind) {
+      switch (kind) {
+        case 'mute': plainNote(ctx, 740, t); plainNote(ctx, 494, t + 0.07); break; // F#5, then B4
+        case 'unmute': plainNote(ctx, 494, t); plainNote(ctx, 740, t + 0.07); break;
+        case 'deafen': plainNote(ctx, 440, t, { type: 'triangle', level: 0.14 }); plainNote(ctx, 294, t + 0.08, { type: 'triangle', level: 0.14, length: 0.16 }); break; // A4, then D4
+        case 'undeafen': plainNote(ctx, 294, t, { type: 'triangle', level: 0.14 }); plainNote(ctx, 440, t + 0.08, { type: 'triangle', level: 0.14, length: 0.16 }); break;
+        case 'camera-on': this.click(ctx, t - 0.005); plainNote(ctx, 1320, t + 0.02, { level: 0.06, length: 0.09, to: 1760 }); break;
+        case 'camera-off': this.click(ctx, t - 0.005); plainNote(ctx, 1320, t + 0.02, { level: 0.06, length: 0.09, to: 990 }); break;
+        case 'route': plainNote(ctx, 880, t, { level: 0.07, length: 0.05 }); plainNote(ctx, 880, t + 0.085, { level: 0.07, length: 0.05 }); break;
+        default: this.click(ctx, t - 0.005);
+      }
+    },
+    // A soft, short "tick", like a quiet switch: a few milliseconds of filtered noise with a
+    // tiny low thump under it, pitched a little differently each time (up to about 10% either
+    // way), so pressing things doesn't sound machine-identical.
+    click(ctx, t) {
+      const pitch = 0.9 + Math.random() * 0.2;
+      const noise = ctx.createBufferSource();
+      noise.buffer = clickNoiseFor(ctx);
+      noise.playbackRate.value = pitch;
+      const tone = ctx.createBiquadFilter();
+      tone.type = 'bandpass';
+      tone.frequency.value = 2600 * pitch;
+      tone.Q.value = 0.9;
+      const tickGain = ctx.createGain();
+      tickGain.gain.value = 0.09;
+      noise.connect(tone).connect(tickGain).connect(ctx.destination);
+      noise.start(t);
+
+      const thump = ctx.createOscillator();
+      thump.frequency.setValueAtTime(190 * pitch, t);
+      thump.frequency.exponentialRampToValueAtTime(90 * pitch, t + 0.03);
+      const thumpGain = ctx.createGain();
+      thumpGain.gain.setValueAtTime(0.0001, t);
+      thumpGain.gain.exponentialRampToValueAtTime(0.06, t + 0.003);
+      thumpGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+      thump.connect(thumpGain).connect(ctx.destination);
+      thump.start(t);
+      thump.stop(t + 0.05);
+    },
+  },
+};
+const styleSounds = () => SOUND_STYLES[S.soundStyle] || SOUND_STYLES.rainlit;
+
+// One soft bell note (Classic). A quiet overtone on top makes it ring like a bell instead of beep.
 function bellNote(ctx, freq, t, loudness = 1) {
   for (const [mult, level, length] of [[1, 0.16, 0.9], [2.76, 0.035, 0.35]]) {
     const osc = ctx.createOscillator();
@@ -5436,6 +5595,99 @@ function bellNote(ctx, freq, t, loudness = 1) {
   }
 }
 
+// A plain note (Classic's boops and ticks): quickly in, dying away, maybe sliding to another.
+function plainNote(ctx, freq, at, { type = 'sine', level = 0.11, length = 0.12, to = null } = {}) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, at);
+  if (to) osc.frequency.exponentialRampToValueAtTime(to, at + length * 0.8);
+  gain.gain.setValueAtTime(0.0001, at);
+  gain.gain.exponentialRampToValueAtTime(level, at + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + length);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(at);
+  osc.stop(at + length + 0.02);
+}
+
+// A raindrop, tuned: it starts a little low and lands on its note (the "plip" of a drop meeting
+// water), with a glassy ring an octave and a fifth above that dies away first. dest: where it
+// goes (the drip room, for a little echo, or straight out).
+function dropNote(ctx, freq, at, { level = 0.12, length = 0.5, from = 0.7, glass = 0.22, dest = ctx.destination } = {}) {
+  for (const [mult, peak, last] of [[1, level, length], [3, level * glass, length * 0.35]]) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.setValueAtTime(freq * mult * from, at);
+    osc.frequency.exponentialRampToValueAtTime(freq * mult, at + 0.022);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(peak, at + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + last);
+    osc.connect(gain).connect(dest);
+    osc.start(at);
+    osc.stop(at + last + 0.03);
+  }
+}
+
+// A little echo, like drops in a quiet room: what goes in comes out as it is, then again, softer
+// and duller each time. One for each sound player, made the first time it's needed.
+const dripRooms = new WeakMap();
+function dripRoom(ctx) {
+  if (dripRooms.has(ctx)) return dripRooms.get(ctx);
+  const input = ctx.createGain();
+  const delay = ctx.createDelay(1);
+  delay.delayTime.value = 0.15;
+  const dull = ctx.createBiquadFilter();
+  dull.type = 'lowpass';
+  dull.frequency.value = 2400;
+  const again = ctx.createGain();
+  again.gain.value = 0.3;
+  const wet = ctx.createGain();
+  wet.gain.value = 0.32;
+  input.connect(ctx.destination);
+  input.connect(delay);
+  delay.connect(dull).connect(again).connect(delay);
+  dull.connect(wet).connect(ctx.destination);
+  dripRooms.set(ctx, input);
+  return input;
+}
+
+// Deafening: two low drops, the sound closing over them as if going under water. Undeafening:
+// coming back up.
+function underwater(ctx, t, up) {
+  const muffle = ctx.createBiquadFilter();
+  muffle.type = 'lowpass';
+  muffle.Q.value = 3;
+  muffle.frequency.setValueAtTime(up ? 350 : 2400, t);
+  muffle.frequency.exponentialRampToValueAtTime(up ? 2400 : 350, t + 0.22);
+  muffle.connect(ctx.destination);
+  (up ? [329.63, 440] : [440, 329.63]).forEach((freq, i) => { // E4 and A4
+    const at = t + i * 0.08;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq * 0.75, at);
+    osc.frequency.exponentialRampToValueAtTime(freq, at + 0.025);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(0.12, at + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + (i ? 0.2 : 0.14));
+    osc.connect(gain).connect(muffle);
+    osc.start(at);
+    osc.stop(at + 0.23);
+  });
+}
+
+// A few milliseconds of noise, fading out fast: the clicks' tap. Made once, then reused.
+let clickNoise = null;
+function clickNoiseFor(ctx) {
+  if (!clickNoise) {
+    const len = Math.floor(ctx.sampleRate * 0.025);
+    clickNoise = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = clickNoise.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len / 6));
+  }
+  return clickNoise;
+}
+
 // Sounds are made on the spot, so there's no sound file to load. They're skipped
 // if sound isn't allowed yet (it would play late, all at once).
 function soundReady() {
@@ -5443,26 +5695,22 @@ function soundReady() {
   return Boolean(S.soundCtx && S.soundCtx.state === 'running') && !appAsleep();
 }
 
-// A soft two-note doorbell for new messages (not on do not disturb, unless it's to hear it).
+// New messages' chime (not on do not disturb, unless it's to hear it).
 function playChime(anyway = false) {
   if ((dnd() && !anyway) || !soundReady() || performance.now() - S.lastChime < 1500) return; // not twice in a row
   S.lastChime = performance.now();
-  const start = S.soundCtx.currentTime + 0.02;
-  bellNote(S.soundCtx, 659.25, start); // E5
-  bellNote(S.soundCtx, 523.25, start + 0.17); // C5
+  styleSounds().chime(S.soundCtx, S.soundCtx.currentTime + 0.02);
 }
 
-// The ringing tune: C, E, G, E, rising and settling. Your friend hears it when you
-// call; you hear it (a little quieter) while you wait for them to pick up.
-const RING_TUNE = [[523.25, 0], [659.25, 0.2], [783.99, 0.4], [659.25, 0.72]];
+// The ringing, every 3 seconds. Your friend hears it when you call; you hear it (a little
+// quieter) while you wait for them to pick up.
 const RING_EVERY_MS = 3000;
 // (A call coming in rings, unless you're on do not disturb: it still shows.)
 const ringIn = () => { if (!dnd()) playRingtone(); };
 
 function playRingtone(loudness = 1) {
   if (!soundReady()) return;
-  const start = S.soundCtx.currentTime + 0.02;
-  for (const [freq, at] of RING_TUNE) bellNote(S.soundCtx, freq, start + at, loudness);
+  styleSounds().ring(S.soundCtx, S.soundCtx.currentTime + 0.02, loudness);
 }
 
 // In Settings: which Rainlit app you're using, or (in a browser) where to get one.
@@ -5909,34 +6157,16 @@ function drawFireflies(ctx, dt, w, h, t) {
   ctx.globalAlpha = 1;
 }
 
-// A quick two-note "boop": rising when someone joins (or comes back to) the call,
-// falling when someone drops or leaves.
-// Screen sharing starting (two bell notes going up) or stopping (coming back down), for
-// whoever's sharing and whoever's watching.
+// Screen sharing starting or stopping, for whoever's sharing and whoever's watching.
 function playShareSound(starting) {
   if (!S.callSounds || !soundReady()) return;
-  const start = S.soundCtx.currentTime + 0.02;
-  const notes = starting ? [783.99, 1046.5] : [1046.5, 783.99]; // G5 and C6
-  notes.forEach((freq, i) => bellNote(S.soundCtx, freq, start + i * 0.11, 0.75));
+  styleSounds().share(S.soundCtx, S.soundCtx.currentTime + 0.02, starting);
 }
 
+// Someone joining (or coming back to) the call, or dropping or leaving it.
 function playCallSound(joining) {
   if (!S.callSounds || !soundReady()) return;
-  const ctx = S.soundCtx;
-  const start = ctx.currentTime + 0.02;
-  const notes = joining ? [523.25, 783.99] : [783.99, 523.25]; // C5 up to G5, or back down
-  notes.forEach((freq, i) => {
-    const t = start + i * 0.09;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.13, t + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.22);
-  });
+  styleSounds().call(S.soundCtx, S.soundCtx.currentTime + 0.02, joining);
 }
 
 // While you're calling and they haven't picked up, declined or missed it.
@@ -5952,84 +6182,26 @@ function updateRingback() {
 }
 
 // Your own call buttons each have their own sound (with "Soft click when you press things"
-// on), so you can tell by ear what you just did: mute falls and unmute rises, deafen does the
-// same, lower and rounder; the camera is a shutter tick with a note going up (on) or down
-// (off); switching between speaker, earpiece and headset is a quick double tick. (Sharing
-// your screen has the bell pair everyone in the call hears, and leaving the call's "left".)
+// on), so you can tell by ear what you just did: mute, deafen, the camera, and switching
+// between speaker, earpiece and headset. (Sharing your screen has the sound everyone in the
+// call hears, and leaving the call's "left".)
 function playControlSound(kind) {
   const ctx = S.soundCtx;
   if (!S.clickSounds || !ctx || ctx.state !== 'running') return;
-  const t = ctx.currentTime + 0.01;
-  const note = (freq, at, { type = 'sine', level = 0.11, length = 0.12, to = null } = {}) => {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, at);
-    if (to) osc.frequency.exponentialRampToValueAtTime(to, at + length * 0.8);
-    gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(level, at + 0.006);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + length);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(at);
-    osc.stop(at + length + 0.02);
-  };
-  switch (kind) {
-    case 'mute': note(740, t); note(494, t + 0.07); break; // F#5, then B4
-    case 'unmute': note(494, t); note(740, t + 0.07); break;
-    case 'deafen': note(440, t, { type: 'triangle', level: 0.14 }); note(294, t + 0.08, { type: 'triangle', level: 0.14, length: 0.16 }); break; // A4, then D4
-    case 'undeafen': note(294, t, { type: 'triangle', level: 0.14 }); note(440, t + 0.08, { type: 'triangle', level: 0.14, length: 0.16 }); break;
-    case 'camera-on': playClick(); note(1320, t + 0.02, { level: 0.06, length: 0.09, to: 1760 }); break;
-    case 'camera-off': playClick(); note(1320, t + 0.02, { level: 0.06, length: 0.09, to: 990 }); break;
-    case 'route': note(880, t, { level: 0.07, length: 0.05 }); note(880, t + 0.085, { level: 0.07, length: 0.05 }); break;
-    default: playClick();
-  }
+  styleSounds().control(ctx, ctx.currentTime + 0.01, kind);
 }
 
-// Chimes play through the same speaker you picked for your friend's voice.
-// A soft, short "tick" for pressing buttons, like a quiet switch: a few milliseconds
-// of filtered noise with a tiny low thump under it. Made once, then reused.
-let clickNoise = null;
-
+// A soft, short click for pressing buttons.
 function playClick() {
   const ctx = S.soundCtx;
   if (!S.clickSounds || !ctx || ctx.state !== 'running') return;
-  if (!clickNoise) {
-    const len = Math.floor(ctx.sampleRate * 0.025);
-    clickNoise = ctx.createBuffer(1, len, ctx.sampleRate);
-    const data = clickNoise.getChannelData(0);
-    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len / 6)); // fades out fast
-  }
-  const t = ctx.currentTime + 0.005;
-  // Every click is pitched a little differently (up to about 10% either way), so
-  // pressing things doesn't sound machine-identical.
-  const pitch = 0.9 + Math.random() * 0.2;
-  const noise = ctx.createBufferSource();
-  noise.buffer = clickNoise;
-  noise.playbackRate.value = pitch;
-  const tone = ctx.createBiquadFilter();
-  tone.type = 'bandpass';
-  tone.frequency.value = 2600 * pitch;
-  tone.Q.value = 0.9;
-  const tickGain = ctx.createGain();
-  tickGain.gain.value = 0.09;
-  noise.connect(tone).connect(tickGain).connect(ctx.destination);
-  noise.start(t);
-
-  const thump = ctx.createOscillator();
-  thump.frequency.setValueAtTime(190 * pitch, t);
-  thump.frequency.exponentialRampToValueAtTime(90 * pitch, t + 0.03);
-  const thumpGain = ctx.createGain();
-  thumpGain.gain.setValueAtTime(0.0001, t);
-  thumpGain.gain.exponentialRampToValueAtTime(0.06, t + 0.003);
-  thumpGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
-  thump.connect(thumpGain).connect(ctx.destination);
-  thump.start(t);
-  thump.stop(t + 0.05);
+  styleSounds().click(ctx, ctx.currentTime + 0.005);
 }
 
 // Things that click when pressed. Typing boxes and sliders don't.
 const CLICKABLE = 'button, a[href], summary, select, input[type="checkbox"], input[type="radio"], [role="menuitem"]';
 
+// Chimes play through the same speaker you picked for your friend's voice.
 function routeChimes() {
   if (S.soundCtx && S.soundCtx.setSinkId) S.soundCtx.setSinkId(S.devices.speaker || '').catch(() => {});
 }
@@ -15677,6 +15849,13 @@ async function init() {
     S.embeds = el.embedsInput.checked;
     store.set('embeds', S.embeds ? 'on' : 'off');
     for (const body of document.querySelectorAll('.chat-log li > .msg-text')) showEmbeds(body.parentElement, body._text);
+  });
+  el.soundStyle.value = S.soundStyle;
+  el.soundStyle.addEventListener('change', () => {
+    S.soundStyle = el.soundStyle.value === 'classic' ? 'classic' : 'rainlit';
+    store.set('soundStyle', S.soundStyle);
+    unlockSounds();
+    if (soundReady()) styleSounds().chime(S.soundCtx, S.soundCtx.currentTime + 0.02); // (so you hear what you picked)
   });
   el.clicksInput.addEventListener('change', () => {
     S.clickSounds = el.clicksInput.checked;

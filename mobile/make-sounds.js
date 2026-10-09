@@ -1,6 +1,7 @@
 // Renders Rainlit's chime and ringtone to WAV files for the Android app's notifications.
-// They're the same bell notes the website plays (bellNote, playChime, RING_TUNE in
-// public/app.js), so a notification sounds like Rainlit. Run: node make-sounds.js
+// They're the same bell notes the website's Classic sounds play (bellNote, and SOUND_STYLES'
+// classic chime and ring, in public/app.js), so a notification sounds like Rainlit. Run:
+// node make-sounds.js
 
 'use strict';
 
