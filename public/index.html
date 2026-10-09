@@ -605,6 +605,7 @@
     <button id="menu-call" type="button" role="menuitem">Call</button>
     <button id="menu-profile" type="button" role="menuitem">View profile</button>
     <button id="menu-homepage" class="menu-homepage" type="button" role="menuitem"><img class="homepage-btn-icon" alt="" /><span>Homepage</span></button>
+    <button id="menu-record" type="button" role="menuitem">Save a record of your calls</button>
     <hr />
     <button id="menu-remove" class="danger" type="button" role="menuitem">Remove friend</button>
     <button id="menu-block" class="danger" type="button" role="menuitem">Block</button>
@@ -827,6 +828,23 @@
           <div class="files-meter" aria-hidden="true"><span id="files-bar"></span></div>
           <p id="files-note" class="hint"></p>
           <ol id="files-list" class="admin-list files-list"></ol>
+        </div>
+      </details>
+      <details class="pw-details">
+        <summary>A record of your calls</summary>
+        <div class="pw-fields">
+          <label class="toggle">
+            <input id="call-record-input" type="checkbox" />
+            <span>Keep a record of my calls <small class="toggle-note">(just for you: when each call and voice channel visit started and
+              ended, who rang, and who was there with you and for how long, even where a conversation isn't saving its messages.
+              Never what's said.)</small></span>
+          </label>
+          <p class="hint">To save a record of your calls with a friend (when, how long, who rang, and your messages if you like), as a
+            page to keep, print or save as a PDF, open their menu (right-click them in your friends, or press and hold) and choose
+            <b>Save a record of your calls</b>. It has the calls from your conversation with them either way, and the rest from your
+            own record if you keep one.</p>
+          <p id="call-record-note" class="hint" role="status" hidden></p>
+          <button id="call-record-delete" class="text-btn danger" type="button">Delete my call record</button>
         </div>
       </details>
       <details class="pw-details">
@@ -1062,6 +1080,22 @@
       <label id="report-block-field" class="toggle"><input id="report-block" type="checkbox" /><span id="report-block-text">Block them too</span></label>
       <p id="report-error" class="form-error" role="alert" hidden></p>
       <button id="report-send" class="primary-btn" type="submit">Send report</button>
+    </form>
+  </dialog>
+
+  <!-- A record of your calls with a friend, to keep, print or save as a PDF -->
+  <dialog id="record-dialog" class="settings space-dialog" aria-labelledby="record-title">
+    <form id="record-form" class="settings-inner" novalidate>
+      <div class="settings-head"><h2 id="record-title">Your calls</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p id="record-about" class="mod-text"></p>
+      <div class="record-dates">
+        <label class="field"><span>From</span><input id="record-from" type="date" /></label>
+        <label class="field"><span>To</span><input id="record-to" type="date" /></label>
+      </div>
+      <small class="hint">Leave them empty for all of it.</small>
+      <label class="toggle"><input id="record-messages" type="checkbox" /><span>Our messages too <small class="toggle-note">(what you both sent, while your conversation was saving)</small></span></label>
+      <p id="record-error" class="form-error" role="alert" hidden></p>
+      <button id="record-save" class="primary-btn" type="submit">Save the record</button>
     </form>
   </dialog>
 

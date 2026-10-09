@@ -155,6 +155,8 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
+  'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete',
+  'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -13050,6 +13052,7 @@ function openProfile() {
   el.profileStatus.value = S.me.statusText;
   el.profilePresence.value = S.me.presence;
   fillProfileBirthday();
+  fillCallRecord();
   el.profileAccount.textContent = `@${S.me.username} · ${S.me.email}`;
   el.profileHomepageLink.textContent = `${location.host}/@${S.me.username}`;
   renderEmailRow();
@@ -13921,6 +13924,98 @@ async function onProfileSave(e) {
     toast('Profile saved.');
   } catch (err) {
     showProfileError(err.message);
+  }
+}
+
+// ----- Your call record, and a record of your calls with a friend -----
+
+// Your own record of your calls (lib/callrecord.js), in Your profile: on or off, or deleted.
+function fillCallRecord() {
+  const since = S.me && S.me.callRecordSince;
+  el.callRecordInput.checked = Boolean(since);
+  el.callRecordNote.hidden = !since;
+  if (since) el.callRecordNote.textContent = `On since ${new Date(since).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}.`;
+}
+
+async function onCallRecordToggle() {
+  const on = el.callRecordInput.checked;
+  try {
+    setMe((await api('PUT', '/me/call-record', { on })).user);
+  } catch (err) {
+    showProfileError(err.message);
+  }
+  fillCallRecord();
+}
+
+async function onCallRecordDelete() {
+  if (!confirm('Delete your call record? Calls stay in your conversations (where they save): only your own record of them goes.')) return;
+  try {
+    const { deleted } = await api('DELETE', '/me/call-record');
+    el.callRecordNote.hidden = false;
+    el.callRecordNote.textContent = (deleted ? 'Deleted.' : "There wasn't anything in it yet.") + (S.me.callRecordSince ? ' It\'s still on: calls from now on are kept.' : '');
+  } catch (err) {
+    showProfileError(err.message);
+  }
+}
+
+// A record of your calls with a friend (lib/record.js), and your messages if you like: a page
+// to keep, print or save as a PDF. From and to are whole days, on this device's clock.
+let recordFor = null;
+
+function openRecord(friendId) {
+  const f = S.friends.get(friendId);
+  if (!f) return;
+  recordFor = friendId;
+  el.recordTitle.textContent = `Your calls with ${f.displayName}`;
+  el.recordAbout.textContent = `A page with every call you and ${f.displayName} have had on Rainlit (when, how long, and who rang), and how many and how long altogether, to keep, print or save as a PDF.`;
+  el.recordFrom.value = '';
+  el.recordTo.value = '';
+  el.recordMessages.checked = false;
+  showRecordError('');
+  el.recordDialog.showModal();
+}
+
+function showRecordError(text) {
+  el.recordError.textContent = text;
+  el.recordError.hidden = !text;
+}
+
+async function onRecordSave(e) {
+  e.preventDefault();
+  const day = (value, after = false) => {
+    if (!value) return null;
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, m - 1, d + (after ? 1 : 0)).getTime();
+  };
+  const from = day(el.recordFrom.value);
+  const to = day(el.recordTo.value, true);
+  if (from && to && to <= from) return showRecordError("The day it's to is before the day it's from.");
+  const q = new URLSearchParams({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', locale: navigator.language || 'en-US' });
+  if (from) q.set('from', String(from));
+  if (to) q.set('to', String(to));
+  if (el.recordMessages.checked) q.set('messages', '1');
+  showRecordError('');
+  el.recordSave.disabled = true;
+  el.recordSave.textContent = 'Putting it together';
+  try {
+    let res;
+    try {
+      res = await fetch(`${SERVER}/api/friends/${encodeURIComponent(recordFor)}/record?${q}`);
+    } catch {
+      throw new Error("Can't reach Rainlit. Check your internet connection and try again.");
+    }
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Something went wrong. Try again.');
+    const name = (/filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '') || [])[1] || 'rainlit-calls.html';
+    const url = URL.createObjectURL(await res.blob());
+    await saveUrl(url, name, 'text/html');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    el.recordDialog.close();
+    toast(`Saved as ${name}. Open it to read it, print it, or save it as a PDF.`, 8000);
+  } catch (err) {
+    showRecordError(err.message);
+  } finally {
+    el.recordSave.disabled = false;
+    el.recordSave.textContent = 'Save the record';
   }
 }
 
@@ -15215,6 +15310,7 @@ async function init() {
   el.menuCall.addEventListener('click', menuAction((id) => (S.inCall && S.callWith === id ? openDm(id) : startCall(id))));
   el.menuProfile.addEventListener('click', menuAction(openMiniProfile));
   el.menuHomepage.addEventListener('click', menuAction((id) => Homepage.open(id)));
+  el.menuRecord.addEventListener('click', menuAction(openRecord));
   el.profileHomepageBtn.addEventListener('click', () => {
     el.profile.close();
     Homepage.open(S.me.id);
@@ -15457,6 +15553,9 @@ async function init() {
   el.avatarBtn.addEventListener('click', () => el.avatarInput.click());
   el.avatarInput.addEventListener('change', onAvatarPicked);
   el.exportBtn.addEventListener('click', onExport);
+  el.callRecordInput.addEventListener('change', onCallRecordToggle);
+  el.callRecordDelete.addEventListener('click', onCallRecordDelete);
+  el.recordForm.addEventListener('submit', onRecordSave);
   el.avatarRemoveBtn.addEventListener('click', onAvatarRemove);
   for (const a of document.querySelectorAll('a.legal-link')) {
     a.addEventListener('click', (e) => {
@@ -15479,7 +15578,7 @@ async function init() {
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them (not the ones asking something that
   // needs an answer: 18+, an announcement, sharing what you're doing).
-  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog, el.recordDialog]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 

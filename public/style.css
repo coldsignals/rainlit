@@ -735,6 +735,7 @@ li.suspended > .grow { color: var(--danger-text); }
 .msg-reacts .emoji-img { width: 22px; height: 22px; vertical-align: -5px; }
 .mention-pick .emoji-img { width: 24px; height: 24px; }
 .emoji-btn { flex: none; align-self: center; }
+.record-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .emoji-admin-head { display: flex; align-items: center; gap: 12px; justify-content: space-between; color: var(--mist); }
 .emoji-admin { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
 .emoji-admin li { display: flex; align-items: center; gap: 10px; }

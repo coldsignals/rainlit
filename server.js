@@ -25,6 +25,8 @@ const discord = require('./lib/discord');
 const accounts = require('./lib/accounts');
 const emojis = require('./lib/emoji');
 const sounds = require('./lib/sounds');
+const callrecord = require('./lib/callrecord');
+const records = require('./lib/record');
 const homepages = require('./lib/homepages');
 const pets = require('./lib/pets');
 const announcements = require('./lib/announcements');
@@ -124,7 +126,7 @@ const CSP = [
   "font-src 'self'", // (Rainlit's typeface is served from here: public/fonts)
   `img-src 'self' blob: data: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`, // (R2: files, if they're kept there)
   `media-src 'self' blob: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`,
-  `connect-src 'self' https://api.klipy.com${LIVEKIT_SRC}${blobs.origin ? ` ${blobs.origin}` : ''}`, // (R2: soundboard sounds)
+  `connect-src 'self' blob: https://api.klipy.com${LIVEKIT_SRC}${blobs.origin ? ` ${blobs.origin}` : ''}`, // (blob: something made here to save, read back to hand to the Android app; R2: soundboard sounds)
   "frame-ancestors 'none'",
   "base-uri 'none'",
   "form-action 'self'",
@@ -802,6 +804,35 @@ api.get('/me/export', needUser, async (req, res) => {
     console.error(`[export] Couldn't put @${req.user.username}'s data together: ${err.message}`);
     fail(res, 500, "Couldn't put your data together. Try again in a bit.");
   }
+});
+
+// Your own record of your calls (lib/callrecord.js): on or off, or deleted.
+api.put('/me/call-record', needUser, (req, res) => {
+  callrecord.setKeeping(req.user.id, Boolean((req.body || {}).on));
+  res.json({ user: people.selfUser(people.userById(req.user.id)) });
+});
+api.delete('/me/call-record', needUser, (req, res) => {
+  res.json({ deleted: callrecord.clear(req.user.id) });
+});
+
+// A record of your time with a friend (lib/record.js), as a page to keep or print: ?from= and
+// ?to= (when, in ms: to is the moment after), ?messages=1 for your messages too, ?tz= and ?locale=
+// for how times are written. (Not twice in a row.)
+const recordedAt = new Map();
+api.get('/friends/:friendId/record', needUser, (req, res) => {
+  const friend = people.userById(String(req.params.friendId));
+  const q = req.query;
+  if (!friend || friend.id === req.user.id) return fail(res, 404, "There's no one like that.");
+  const talked = db.prepare('SELECT 1 FROM dms WHERE id = ?').get(dms.dmIdOf(req.user.id, friend.id)) || callrecord.hasAny(req.user.id, friend.id);
+  if (!talked) return fail(res, 404, `You haven't talked with ${friend.display_name} on Rainlit yet.`);
+  if (Date.now() - (recordedAt.get(req.user.id) || 0) < 2000) return fail(res, 429, 'One moment: you just saved one.');
+  recordedAt.set(req.user.id, Date.now());
+  const ms = (v) => (v !== undefined && Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
+  const out = records.build(req.user.id, friend.id, { from: ms(q.from), to: ms(q.to), withMessages: q.messages === '1', tz: q.tz, locale: q.locale });
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="${out.name}"`);
+  res.set('Cache-Control', 'no-store');
+  res.send(out.html);
 });
 
 function removeAvatarFile(name) {

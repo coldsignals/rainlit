@@ -491,6 +491,23 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
 - **Full screen:** the button at the top right of your friend's video, or
   double-click the video.
 
+## A record of your calls
+
+- **Save a record of your calls** with a friend (from their menu: right-click
+  them, or press and hold): a page to keep, print or save as a PDF, with every
+  call (when, how long, who rang, and missed ones), how many and how long
+  altogether, month by month, the days you talked, how many messages each of
+  you sent, and the messages themselves if you tick **Our messages too**. Pick
+  the days it covers, or leave them empty for all of it. Its calls come from
+  your conversation (it notes each one, while it's saving), so it works back to
+  your first call.
+- **Keep a record of my calls** (Your profile, under A record of your calls):
+  Rainlit keeps, just for you, when each of your calls started and ended and
+  who rang, even where a conversation isn't saving its messages, and your time
+  in voice channels and group calls with each person. Records of time with a
+  friend include it. Delete it there any time. It's in **Download my data**
+  too (calls.json).
+
 ## What it can't do yet
 
 - Sounds (ringing, message chimes) only start working after you've clicked
