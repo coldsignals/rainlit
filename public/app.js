@@ -489,6 +489,56 @@ function mediaErrorText(err, what) {
 
 // ---------------- Media ----------------
 
+// ----- Which microphone (and camera, and speaker) -----
+// What's picked in Settings is kept by its id and by its name: Android's app gives devices new
+// ids each time it starts, so one whose id has gone is found again by its name ("Wired headset").
+
+const DEVICE_KINDS = { mic: 'audioinput', cam: 'videoinput', speaker: 'audiooutput' };
+
+// (devices: from enumerateDevices.)
+function relabelDevice(key, devices) {
+  const id = S.devices[key];
+  const label = store.get(`${key}Label`, '');
+  const list = devices.filter((d) => d.kind === DEVICE_KINDS[key] && d.deviceId);
+  if (!id || !label || list.some((d) => d.deviceId === id)) return;
+  const same = list.find((d) => d.label === label);
+  if (!same) return;
+  S.devices[key] = same.deviceId;
+  store.set(key, same.deviceId);
+}
+
+// The microphone to open: the one picked (found again by its name, if need be), or, with none
+// picked, on Android, a wired headset's when one's plugged in. Some phones' own "default" is the
+// phone's microphone, which hears the headset and sends your friend's voice back to them, late.
+// '' for the default.
+async function pickMic(android = Boolean(ANDROID)) {
+  if (!S.devices.mic && !android) return '';
+  const list = async () => {
+    try {
+      return (await navigator.mediaDevices.enumerateDevices())
+        .filter((d) => d.kind === 'audioinput' && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications');
+    } catch {
+      return [];
+    }
+  };
+  let mics = await list();
+  if (S.devices.mic && mics.some((d) => d.deviceId === S.devices.mic)) return S.devices.mic;
+  if (!mics.some((d) => d.label)) {
+    // (Their names come once a microphone's been opened: one opened for a moment, to see them.)
+    try {
+      (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach((t) => t.stop());
+    } catch {}
+    mics = await list();
+  }
+  if (S.devices.mic) {
+    relabelDevice('mic', mics);
+    if (mics.some((d) => d.deviceId === S.devices.mic)) return S.devices.mic;
+    // (Gone, and not found by its name: as if none were picked.)
+  }
+  const wired = android && mics.find((d) => /wired headset/i.test(d.label));
+  return wired ? wired.deviceId : '';
+}
+
 async function getMicTrack(deviceId) {
   const audio = { ...S.micFx };
   try {
@@ -895,7 +945,7 @@ async function toggleMic() {
   if (!S.local.mic) {
     try {
       S.micOn = true;
-      await setMicTrack(await getMicTrack(S.devices.mic));
+      await setMicTrack(await getMicTrack(await pickMic()));
       playControlSound('unmute');
     } catch (err) {
       S.micOn = false;
@@ -1128,6 +1178,7 @@ function finishCamPreview(go) {
     if (p.changed && el.camPreviewSelect.value) {
       S.devices.cam = el.camPreviewSelect.value;
       store.set('cam', S.devices.cam);
+      store.set('camLabel', (el.camPreviewSelect.selectedOptions[0] || {}).textContent || '');
     }
     if (!el.camPreviewAlways.checked) store.set('camPreview', 'off');
   }
@@ -2274,7 +2325,7 @@ async function reviveMic(why) {
   // Close the old one first: while it's open, Chrome would hand back the same stuck mic.
   if (S.local.mic) S.local.mic.stop();
   try {
-    const track = await getMicTrack(S.devices.mic);
+    const track = await getMicTrack(await pickMic());
     if (!S.inCall) return track.stop();
     await setMicTrack(track);
     // Closing the mic can put Android back on its default speaker; go back to the one picked.
@@ -8168,18 +8219,21 @@ function setUiScale(size) {
 async function fillDeviceLists() {
   let devices = [];
   try { devices = await navigator.mediaDevices.enumerateDevices(); } catch {}
+  for (const key of Object.keys(DEVICE_KINDS)) relabelDevice(key, devices);
   const fill = (select, kind, current, fallbackLabel) => {
     select.innerHTML = '';
     const list = devices.filter((d) => d.kind === kind);
     const def = document.createElement('option');
     def.value = '';
-    def.textContent = 'System default';
+    // (On Android, a wired headset's microphone when one's plugged in: see pickMic.)
+    def.textContent = ANDROID && kind === 'audioinput' ? 'Automatic' : 'System default';
     select.append(def);
     list.forEach((d, i) => {
       if (d.deviceId === 'default' || d.deviceId === 'communications' || !d.deviceId) return;
       const o = document.createElement('option');
       o.value = d.deviceId;
       o.textContent = d.label || `${fallbackLabel} ${i + 1}`;
+      o.dataset.label = d.label || '';
       select.append(o);
     });
     select.value = [...select.options].some((o) => o.value === current) ? current : '';
@@ -8223,15 +8277,19 @@ async function fillDeviceLists() {
 async function restartMic() {
   if (!S.local.mic) return;
   try {
-    await setMicTrack(await getMicTrack(S.devices.mic));
+    await setMicTrack(await getMicTrack(await pickMic()));
   } catch (err) {
     toast(mediaErrorText(err, 'Microphone'));
   }
 }
 
+// (Its name too, to find it again: see relabelDevice.)
+const pickedLabel = (select) => (select.selectedOptions[0] && select.selectedOptions[0].dataset.label) || '';
+
 function onMicChange() {
   S.devices.mic = el.micSelect.value;
   store.set('mic', S.devices.mic);
+  store.set('micLabel', pickedLabel(el.micSelect));
   restartMic();
   voiceDevicesChanged();
 }
@@ -8251,6 +8309,7 @@ function onMicFxChange() {
 async function onCamChange() {
   S.devices.cam = el.camSelect.value;
   store.set('cam', S.devices.cam);
+  store.set('camLabel', pickedLabel(el.camSelect));
   if (!S.local.cam) return;
   try {
     const t = await getCamTrack(S.devices.cam);
@@ -8268,6 +8327,7 @@ async function onCamChange() {
 function onSpeakerChange() {
   S.devices.speaker = el.speakerSelect.value;
   store.set('speaker', S.devices.speaker);
+  store.set('speakerLabel', pickedLabel(el.speakerSelect));
   voiceDevicesChanged();
   for (const a of S.remoteAudio.values()) if (a.setSinkId) a.setSinkId(S.devices.speaker).catch(() => {});
   if (S.boostCtx && S.boostCtx.setSinkId) S.boostCtx.setSinkId(S.devices.speaker || '').catch(() => {});
@@ -11087,8 +11147,10 @@ async function joinVoice(channelId) {
     VK = cloudflare ? await loadCfVoice() : await loadLivekit();
     if (!VK.isE2EESupported()) throw new Error("This browser can't join encrypted voice channels. Try the Rainlit app, or Chrome, Edge or a recent Firefox.");
     if (S.voice !== v) return;
+    const mic = await pickMic();
+    if (S.voice !== v) return;
     const audio = {
-      audioCaptureDefaults: { ...S.micFx, ...(S.devices.mic ? { deviceId: S.devices.mic } : {}) },
+      audioCaptureDefaults: { ...S.micFx, ...(mic ? { deviceId: mic } : {}) },
       ...(S.devices.speaker ? { audioOutput: { deviceId: S.devices.speaker } } : {}),
     };
     let room;
@@ -11479,7 +11541,8 @@ function voiceDevicesChanged() {
   if (S.devices.speaker) v.room.switchActiveDevice('audiooutput', S.devices.speaker).catch(() => {});
   if (v.room.localParticipant.isMicrophoneEnabled) {
     v.room.localParticipant.setMicrophoneEnabled(false)
-      .then(() => v.room.localParticipant.setMicrophoneEnabled(true, { ...S.micFx, ...(S.devices.mic ? { deviceId: S.devices.mic } : {}) }))
+      .then(() => pickMic())
+      .then((mic) => v.room.localParticipant.setMicrophoneEnabled(true, { ...S.micFx, ...(mic ? { deviceId: mic } : {}) }))
       .catch((err) => toast(mediaErrorText(err, 'Microphone')));
   }
 }
@@ -15246,6 +15309,7 @@ async function traceStatus() {
     out: S.audioRoute ? S.audioRoute.current : undefined,
     vol: `${Math.round(Math.min(S.volume, volumeCap()) * 100)}%`,
     echo: S.micFx.echoCancellation ? undefined : 'off',
+    mic: S.local.mic && S.local.mic.label ? JSON.stringify(S.local.mic.label.slice(0, 40)) : undefined,
     net: netInfo(),
     battery: S.battery ? `${Math.round(S.battery.level * 100)}%${S.battery.charging ? ' charging' : ''}` : undefined,
     // How big the page has grown (a phone short on memory closes the biggest apps first).
@@ -15396,7 +15460,7 @@ async function startCall(friendId) {
   S.micOn = true;
   let micError = null;
   try {
-    await setMicTrack(await getMicTrack(S.devices.mic));
+    await setMicTrack(await getMicTrack(await pickMic()));
   } catch (err) {
     S.micOn = false;
     micError = err;
