@@ -2386,6 +2386,7 @@ async function requestWakeLock() {
 
 function renderPeer() {
   updateRingback();
+  renderSoundButtons(); // (the soundboard's there once your friend is)
   const p = S.peer;
   const mediaUp = Boolean(S.conn && S.conn.pc.connectionState === 'connected');
   const awayView = Boolean(p && p.away && !mediaUp);
