@@ -755,6 +755,27 @@ li.suspended > .grow { color: var(--danger-text); }
 .sound-emoji:hover { background: var(--dusk-hi); }
 .sound-emoji.none { filter: grayscale(1); opacity: 0.45; }
 .sound-length { flex: none; color: var(--mist); font-variant-numeric: tabular-nums; }
+/* A sound to add: its waveform, the part kept lit and framed (drag it along, or its ends), and a line
+   along it as it plays; a longer one's all of it in a strip above, where up close is marked. */
+.sound-trim-file { margin: 0; color: var(--mist); font-size: 13px; overflow-wrap: anywhere; }
+.sound-trim-all { position: relative; height: 30px; border-radius: 8px; background: var(--deep); touch-action: none; cursor: pointer; }
+.sound-trim-all[hidden] { display: none; }
+.sound-trim-all canvas { position: absolute; left: 0; top: 3px; width: 100%; height: calc(100% - 6px); }
+.sound-trim-all-view { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border: 1px solid var(--mist); border-radius: 4px; background: rgba(255, 255, 255, 0.06); pointer-events: none; }
+.sound-trim-wave { position: relative; height: 96px; border-radius: 10px; background: var(--deep); touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.sound-trim-wave canvas { position: absolute; left: 0; top: 6px; width: 100%; height: calc(100% - 12px); }
+.sound-trim-pick { position: absolute; top: 0; bottom: 0; min-width: 4px; box-sizing: border-box; border: 2px solid var(--lamp); border-radius: 8px; background: color-mix(in srgb, var(--lamp) 12%, transparent); cursor: grab; }
+.sound-trim-pick:focus-visible, .sound-trim-edge:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.sound-trim-edge { position: absolute; top: 50%; width: 10px; height: 36px; margin-top: -18px; border-radius: 5px; background: var(--lamp); cursor: ew-resize; }
+.sound-trim-edge[data-edge="start"] { left: -6px; }
+.sound-trim-edge[data-edge="end"] { right: -6px; }
+.sound-trim-playhead { position: absolute; top: 4px; bottom: 4px; width: 2px; margin-left: -1px; background: var(--text); pointer-events: none; }
+.sound-trim-playhead[hidden] { display: none; }
+.sound-trim-row { display: flex; align-items: center; gap: 10px; }
+.sound-trim-play { flex: none; background: var(--dusk-hi); }
+.sound-trim-times { color: var(--mist); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.sound-trim-name { display: flex; align-items: center; gap: 8px; }
+.sound-trim-name input { flex: 1; min-width: 0; padding: 9px 11px; background: var(--dusk); border: 1px solid var(--line); border-radius: 8px; color: var(--text); font: inherit; font-size: 14px; }
 /* Notes: a conversation with yourself, at the top of Home. */
 .notes-row { margin-bottom: 6px; }
 .face.notes-face { background: var(--dusk-hi); color: var(--lamp-text); }

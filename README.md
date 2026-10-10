@@ -348,8 +348,10 @@ at the top closes it (on a phone, the back arrow).
 - **Soundboard:** in a call or a voice channel, press **Sounds** and pick one,
   and everyone there hears it: Rainlit's own (tada, ba dum tss, sad trombone,
   boop and applause) or your spaces' own. A space's owner and admins
-  (and roles with "Manage soundboard") add up to 24 in its settings: MP3, OGG,
-  WAV, M4A, FLAC or WebM, up to 5 seconds and 1 MB. Its members can play them in
+  (and roles with "Manage soundboard") add up to 24 in its settings, from an
+  MP3, OGG, WAV, M4A, FLAC or WebM file or a video's sound (up to 10 MB and 5
+  minutes): drag along its waveform to pick the part to keep (up to 5 seconds),
+  hear it, and name it; only that part's uploaded. Its members can play them in
   any call or voice channel (on Discord that takes Nitro). Each app plays them
   through a limiter, so none is louder than about where most things play, and
   stops them at 5 seconds. One every 3 seconds each, and "Use the soundboard"

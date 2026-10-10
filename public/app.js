@@ -158,6 +158,8 @@ for (const id of [
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
   'cam-preview-field', 'cam-preview-input',
+  'sound-trim', 'sound-trim-form', 'sound-trim-file', 'sound-trim-all', 'sound-trim-all-canvas', 'sound-trim-all-view', 'sound-trim-wave', 'sound-trim-canvas',
+  'sound-trim-pick', 'sound-trim-playhead', 'sound-trim-play', 'sound-trim-times', 'sound-trim-hint', 'sound-trim-emoji', 'sound-trim-name', 'sound-trim-error', 'sound-trim-save',
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
@@ -6755,7 +6757,7 @@ function renderSoundsPanel(space) {
   count.textContent = `${list.length} of 24`;
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = 'audio/*,.mp3,.ogg,.oga,.opus,.wav,.m4a,.flac,.weba,.webm';
+  input.accept = 'audio/*,video/mp4,video/webm,video/quicktime,.mp3,.ogg,.oga,.opus,.wav,.m4a,.flac,.weba,.webm,.mp4,.mov';
   input.multiple = true;
   input.hidden = true;
   const add = document.createElement('button');
@@ -6768,7 +6770,7 @@ function renderSoundsPanel(space) {
   head.append(count, add, input);
   const hint = document.createElement('small');
   hint.className = 'hint';
-  hint.textContent = "MP3, OGG, WAV, M4A, FLAC or WebM, up to 5 seconds and 1 MB each. Everyone in the space can play them for everyone in a call or voice channel, from its soundboard button. They're never louder than about where most things play.";
+  hint.textContent = "From an MP3, OGG, WAV, M4A, FLAC or WebM file, or a video's sound, up to 10 MB: you pick the part to keep, up to 5 seconds. Everyone in the space can play them for everyone in a call or voice channel, from its soundboard button. They're never louder than about where most things play.";
   const ul = document.createElement('ul');
   ul.className = 'sound-admin';
   for (const s of list) {
@@ -6837,44 +6839,377 @@ function renderSoundsPanel(space) {
   el.spaceSounds.replaceChildren(head, hint, ul);
 }
 
+// Each file picked, one after another: opened (to pick the part to keep, and name it), then added.
 async function uploadSounds(space, files) {
   showSettingsError('');
   for (const file of files) {
-    if (file.size > 1024 * 1024) {
-      showSettingsError(`${file.name} is too big: sounds can be up to 1 MB.`);
+    if (file.size > TRIM_FILE_MAX) {
+      showSettingsError(`${file.name} is too big: a sound can come from a file up to 10 MB.`);
       continue;
     }
-    let ms;
+    let buffer;
     try {
-      ms = await soundLength(file);
+      buffer = await decodeSound(file);
     } catch {
-      showSettingsError(`${file.name} didn't play here. Sounds can be MP3, OGG, WAV, M4A, FLAC or WebM files.`);
+      showSettingsError(`${file.name} didn't play here. Sounds can come from MP3, OGG, WAV, M4A, FLAC or WebM files, or a video's sound.`);
       continue;
     }
-    if (ms > SOUND_MAX_S * 1000) {
-      showSettingsError(`${file.name} is ${(ms / 1000).toFixed(1)} seconds long: sounds can be up to 5.`);
+    if (buffer.duration > TRIM_LONGEST_S) {
+      showSettingsError(`${file.name} is ${Math.round(buffer.duration / 60)} minutes long: a sound can come from a file up to 5 minutes.`);
       continue;
     }
-    const name = file.name.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 32) || 'Sound';
-    try {
-      const res = await fetch(`${SERVER}/api/spaces/${space.id}/sounds?name=${encodeURIComponent(name)}&ms=${ms}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file,
-      });
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "That sound didn't upload. Try again.");
-    } catch (err) {
-      showSettingsError(err.message);
+    if (await trimSound(space, file, buffer)) {
+      await refreshSpaces();
+      renderSpaceSettings();
     }
   }
-  await refreshSpaces();
-  renderSpaceSettings();
 }
 
-// How long a sound file is, in ms (an error if this browser can't play it).
-async function soundLength(file) {
-  const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 1, 44100);
-  const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
-  return Math.max(1, Math.round(buffer.duration * 1000));
+// ----- A sound to add: the part of it to keep -----
+// A file picked for a space's soundboard opens here first: its waveform, with the part to keep
+// (up to SOUND_MAX_S) picked out, to drag along or stretch from either end and hear first; and
+// its name and emoji. Only that part's uploaded, as a WAV, with a few milliseconds' fade at each
+// end so it doesn't click (or the file itself, if all of it's kept and it's small enough).
+
+const TRIM_FILE_MAX = 10 * 1024 * 1024;
+const TRIM_LONGEST_S = 5 * 60;
+const TRIM_SHORTEST_S = 0.2;
+const TRIM_FADE_S = 0.008;
+let trim = null; // { space, file, buffer, start, end, emoji, view, drag, playing, resolve }
+
+const trimClock = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+
+// The file, as sound (at 48 kHz: what the part that's kept is saved at).
+async function decodeSound(file) {
+  const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 1, 48000);
+  return ctx.decodeAudioData(await file.arrayBuffer());
 }
+
+// Resolves once it's added (true), or not (false).
+function trimSound(space, file, buffer) {
+  finishTrim(false);
+  return new Promise((resolve) => {
+    const len = Math.min(buffer.duration, SOUND_MAX_S);
+    trim = { space, file, buffer, start: 0, end: len, emoji: null, view: null, top: null, drag: null, dragAll: false, playing: null, resolve };
+    el.soundTrimFile.textContent = `${file.name} · ${trimClock(buffer.duration).replace(/\.\d$/, '')}`;
+    el.soundTrimName.value = file.name.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 32) || 'Sound';
+    el.soundTrimHint.textContent = buffer.duration > SOUND_MAX_S
+      ? `Drag the lit part along, or its ends, to pick up to ${Math.floor(SOUND_MAX_S)} seconds of it.`
+      : 'Drag its ends to leave a bit off, if you like.';
+    renderTrimEmoji();
+    showTrimError('');
+    el.soundTrim.showModal();
+    drawTrim();
+  });
+}
+
+function finishTrim(added) {
+  const t = trim;
+  if (!t) return;
+  stopTrimPlay();
+  trim = null;
+  if (el.soundTrim.open) el.soundTrim.close();
+  t.resolve(added);
+}
+
+function showTrimError(text) {
+  el.soundTrimError.textContent = text;
+  el.soundTrimError.hidden = !text;
+}
+
+function renderTrimEmoji() {
+  el.soundTrimEmoji.textContent = trim.emoji || '🙂';
+  el.soundTrimEmoji.classList.toggle('none', !trim.emoji);
+}
+
+// The loudest moment in each of `bars` slivers of it, from one second to another (the loudest in
+// all of it is 1).
+function trimPeaks(from, to, bars) {
+  const b = trim.buffer;
+  const chans = [...Array(b.numberOfChannels)].map((_, i) => b.getChannelData(i));
+  if (trim.top == null) {
+    let top = 0;
+    for (const d of chans) for (let j = 0; j < d.length; j++) if (Math.abs(d[j]) > top) top = Math.abs(d[j]);
+    trim.top = top || 1;
+  }
+  const peaks = new Float32Array(bars);
+  const a = from * b.sampleRate;
+  const per = ((to - from) * b.sampleRate) / bars;
+  for (let i = 0; i < bars; i++) {
+    let m = 0;
+    for (const d of chans) for (let j = Math.floor(a + i * per), end = Math.min(d.length, Math.floor(a + (i + 1) * per)); j < end; j++) if (Math.abs(d[j]) > m) m = Math.abs(d[j]);
+    peaks[i] = m / trim.top;
+  }
+  return peaks;
+}
+
+function drawWave(canvas, from, to, step, peaksKey) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+  const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== w || canvas.height !== h) Object.assign(canvas, { width: w, height: h });
+  const bars = Math.max(1, Math.floor(w / (step * dpr)));
+  const key = `${from}|${to}|${bars}`;
+  if (!trim[peaksKey] || trim[peaksKey].key !== key) trim[peaksKey] = { key, peaks: trimPeaks(from, to, bars) };
+  const peaks = trim[peaksKey].peaks;
+  const g = canvas.getContext('2d');
+  const css = getComputedStyle(el.soundTrim);
+  const lit = css.getPropertyValue('--lamp').trim() || '#f5b94a';
+  const dim = css.getPropertyValue('--mist').trim() || '#a9b4c8';
+  g.clearRect(0, 0, w, h);
+  for (let i = 0; i < bars; i++) {
+    const at = from + ((i + 0.5) / bars) * (to - from);
+    const on = at >= trim.start && at <= trim.end;
+    const bh = Math.max(dpr, peaks[i] * h * 0.92);
+    g.globalAlpha = on ? 1 : 0.35;
+    g.fillStyle = on ? lit : dim;
+    g.fillRect(i * step * dpr, (h - bh) / 2, Math.max(1, (step - 1) * dpr), bh);
+  }
+  g.globalAlpha = 1;
+}
+
+// What's shown up close: all of it, or (a longer one) TRIM_VIEW_S around the part kept, with all
+// of it in a strip above, to jump about in.
+const TRIM_VIEW_S = 20;
+function trimView(recentre = false) {
+  const d = trim.buffer.duration;
+  const span = Math.min(d, TRIM_VIEW_S);
+  const v = trim.view;
+  if (!v || recentre || trim.start < v.start || trim.end > v.start + span) {
+    const mid = (trim.start + trim.end) / 2;
+    trim.view = { start: Math.min(Math.max(mid - span / 2, 0), d - span), span };
+  }
+  return trim.view;
+}
+
+// Its waveform, lit where it's kept, and the part that's kept framed over it.
+function drawTrim() {
+  if (!trim) return;
+  const d = trim.buffer.duration;
+  const v = trimView();
+  const long = d > TRIM_VIEW_S;
+  el.soundTrimAll.hidden = !long;
+  if (long) {
+    drawWave(el.soundTrimAllCanvas, 0, d, 2, 'allPeaks');
+    el.soundTrimAllView.style.left = `${(v.start / d) * 100}%`;
+    el.soundTrimAllView.style.width = `${(v.span / d) * 100}%`;
+  }
+  drawWave(el.soundTrimCanvas, v.start, v.start + v.span, 3, 'viewPeaks');
+  const pct = (s) => `${((s - v.start) / v.span) * 100}%`;
+  el.soundTrimPick.style.left = pct(trim.start);
+  el.soundTrimPick.style.width = `${((trim.end - trim.start) / v.span) * 100}%`;
+  const len = trim.end - trim.start;
+  el.soundTrimTimes.textContent = `${trimClock(trim.start)} to ${trimClock(trim.end)} (${len.toFixed(1)} seconds)`;
+}
+
+// The part kept: one end moved (start or end), or all of it moved along (move), within the rules
+// (no longer than a sound can be, no shorter than a blink).
+function setTrim(mode, at) {
+  const d = trim.buffer.duration;
+  const len = trim.end - trim.start;
+  if (mode === 'start') trim.start = Math.min(Math.max(at, 0, trim.end - SOUND_MAX_S), trim.end - TRIM_SHORTEST_S);
+  else if (mode === 'end') trim.end = Math.max(Math.min(at, d, trim.start + SOUND_MAX_S), trim.start + TRIM_SHORTEST_S);
+  else {
+    trim.start = Math.min(Math.max(at, 0), d - len);
+    trim.end = trim.start + len;
+  }
+  stopTrimPlay();
+  drawTrim();
+}
+
+// Where the pointer is, in seconds: up close (within what's shown there, while it's held), or
+// in the strip of all of it.
+function trimTimeAt(e, all = false) {
+  const box = all ? el.soundTrimAll : el.soundTrimWave;
+  const r = box.getBoundingClientRect();
+  const k = Math.min(Math.max(e.clientX - r.left, 0), r.width) / r.width;
+  return all ? k * trim.buffer.duration : trim.view.start + k * trim.view.span;
+}
+
+function onTrimDown(e) {
+  if (!trim || e.button > 0) return;
+  e.preventDefault();
+  const at = trimTimeAt(e);
+  const edge = e.target.closest('[data-edge]');
+  if (edge) trim.drag = { mode: edge.dataset.edge };
+  else if (at >= trim.start && at <= trim.end) trim.drag = { mode: 'move', grab: at - trim.start };
+  else {
+    // (Somewhere else: the part kept starts there.)
+    setTrim('move', at);
+    trim.drag = { mode: 'move', grab: 0 };
+  }
+  el.soundTrimWave.setPointerCapture(e.pointerId);
+}
+
+function onTrimMove(e) {
+  if (!trim || !trim.drag) return;
+  const at = trimTimeAt(e);
+  setTrim(trim.drag.mode, trim.drag.mode === 'move' ? at - trim.drag.grab : at);
+}
+
+// (Let go: up close comes round to it again, if it's gone near an edge.)
+function onTrimUp() {
+  if (!trim || !trim.drag) return;
+  trim.drag = null;
+  trimView(true);
+  drawTrim();
+}
+
+// In the strip of all of it: the part kept goes where it's pressed (or dragged to).
+function onTrimAllDown(e) {
+  if (!trim || e.button > 0) return;
+  e.preventDefault();
+  trim.dragAll = true;
+  el.soundTrimAll.setPointerCapture(e.pointerId);
+  onTrimAllMove(e);
+}
+
+function onTrimAllMove(e) {
+  if (!trim || !trim.dragAll) return;
+  const len = trim.end - trim.start;
+  setTrim('move', trimTimeAt(e, true) - len / 2);
+  trimView(true);
+  drawTrim();
+}
+
+function onTrimAllUp() {
+  if (trim) trim.dragAll = false;
+}
+
+// From the keyboard: the arrows move the part kept (or, on one of its ends, that end), a tenth of
+// a second at a time, or a second with Shift.
+function onTrimKey(e) {
+  if (!trim || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  e.preventDefault();
+  const by = (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 1 : 0.1);
+  const edge = e.target.closest('[data-edge]');
+  if (edge) setTrim(edge.dataset.edge, (edge.dataset.edge === 'start' ? trim.start : trim.end) + by);
+  else setTrim('move', trim.start + by);
+}
+
+// Hearing the part kept, as everyone will (through the soundboard's limiter), with a line along it.
+function playTrim() {
+  if (!trim) return;
+  if (trim.playing) return stopTrimPlay();
+  unlockSounds();
+  const ctx = S.soundCtx;
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  const src = ctx.createBufferSource();
+  src.buffer = trim.buffer;
+  const fade = ctx.createGain();
+  const limiter = ctx.createDynamicsCompressor();
+  for (const [k, v] of Object.entries(SOUND_LIMIT)) limiter[k].value = v;
+  const out = ctx.createGain();
+  out.gain.value = SOUND_AFTER * (soundboardVolume() || 0.6); // (turned all the way down: you'd still want to hear this)
+  src.connect(fade).connect(limiter).connect(out).connect(ctx.destination);
+  const len = trim.end - trim.start;
+  const t = ctx.currentTime + 0.02;
+  fade.gain.setValueAtTime(0, t);
+  fade.gain.linearRampToValueAtTime(1, t + TRIM_FADE_S);
+  fade.gain.setValueAtTime(1, t + len - TRIM_FADE_S);
+  fade.gain.linearRampToValueAtTime(0, t + len);
+  src.start(t, trim.start, len);
+  const p = { src, out, ctx, t, from: trim.start, len };
+  trim.playing = p;
+  src.onended = () => { if (trim && trim.playing === p) stopTrimPlay(); };
+  el.soundTrimPlay.querySelector('use').setAttribute('href', '#i-stop');
+  el.soundTrimPlay.setAttribute('aria-label', 'Stop');
+  el.soundTrimPlay.title = 'Stop';
+  el.soundTrimPlayhead.hidden = false;
+  const tick = () => {
+    if (!trim || trim.playing !== p) return;
+    const at = p.from + Math.min(Math.max(ctx.currentTime - t, 0), len);
+    el.soundTrimPlayhead.style.left = `${((at - trim.view.start) / trim.view.span) * 100}%`;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function stopTrimPlay() {
+  const p = trim && trim.playing;
+  if (!p) return;
+  trim.playing = null;
+  try { p.src.stop(); } catch {}
+  setTimeout(() => p.out.disconnect(), 50);
+  el.soundTrimPlay.querySelector('use').setAttribute('href', '#i-play');
+  el.soundTrimPlay.setAttribute('aria-label', 'Hear it');
+  el.soundTrimPlay.title = 'Hear it';
+  el.soundTrimPlayhead.hidden = true;
+}
+
+// The part kept, on its own: two channels at most (more are mixed down), faded in and out.
+async function cutSound(buffer, start, end) {
+  const rate = buffer.sampleRate;
+  const len = end - start;
+  const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(Math.min(2, buffer.numberOfChannels), Math.max(1, Math.round(len * rate)), rate);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const fade = ctx.createGain();
+  fade.gain.setValueAtTime(0, 0);
+  fade.gain.linearRampToValueAtTime(1, TRIM_FADE_S);
+  fade.gain.setValueAtTime(1, Math.max(TRIM_FADE_S, len - TRIM_FADE_S));
+  fade.gain.linearRampToValueAtTime(0, len);
+  src.connect(fade).connect(ctx.destination);
+  src.start(0, start, len);
+  return ctx.startRendering();
+}
+
+// A WAV file of it (16-bit).
+function encodeWav(buffer) {
+  const chans = buffer.numberOfChannels;
+  const n = buffer.length;
+  const data = new DataView(new ArrayBuffer(44 + n * chans * 2));
+  const text = (at, s) => { for (let i = 0; i < s.length; i++) data.setUint8(at + i, s.charCodeAt(i)); };
+  text(0, 'RIFF'); data.setUint32(4, 36 + n * chans * 2, true); text(8, 'WAVE');
+  text(12, 'fmt '); data.setUint32(16, 16, true); data.setUint16(20, 1, true); data.setUint16(22, chans, true);
+  data.setUint32(24, buffer.sampleRate, true); data.setUint32(28, buffer.sampleRate * chans * 2, true); data.setUint16(32, chans * 2, true); data.setUint16(34, 16, true);
+  text(36, 'data'); data.setUint32(40, n * chans * 2, true);
+  const ch = [...Array(chans)].map((_, i) => buffer.getChannelData(i));
+  let at = 44;
+  for (let i = 0; i < n; i++) {
+    for (let c = 0; c < chans; c++) {
+      const x = Math.max(-1, Math.min(1, ch[c][i]));
+      data.setInt16(at, x < 0 ? x * 0x8000 : x * 0x7fff, true);
+      at += 2;
+    }
+  }
+  return new Blob([data.buffer], { type: 'audio/wav' });
+}
+
+async function saveTrim(e) {
+  e.preventDefault();
+  const t = trim;
+  if (!t) return;
+  const name = el.soundTrimName.value.trim().slice(0, 32);
+  if (!name) return showTrimError('Give the sound a name.');
+  stopTrimPlay();
+  showTrimError('');
+  el.soundTrimSave.disabled = true;
+  el.soundTrimSave.textContent = 'Adding it';
+  try {
+    // (All of a small file: as it is. Otherwise the part kept, cut out.)
+    const whole = t.start < 0.001 && t.end > t.buffer.duration - 0.001 && t.file.size <= 1024 * 1024;
+    const body = whole ? t.file : encodeWav(await cutSound(t.buffer, t.start, t.end));
+    const ms = Math.max(1, Math.round((t.end - t.start) * 1000));
+    const q = new URLSearchParams({ name, ms: String(ms) });
+    if (t.emoji) q.set('emoji', t.emoji);
+    let res;
+    try {
+      res = await fetch(`${SERVER}/api/spaces/${t.space.id}/sounds?${q}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body });
+    } catch {
+      throw new Error("Can't reach Rainlit. Check your internet connection and try again.");
+    }
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "That sound didn't upload. Try again.");
+    if (trim === t) finishTrim(true);
+  } catch (err) {
+    if (trim === t) showTrimError(err.message);
+  } finally {
+    el.soundTrimSave.disabled = false;
+    el.soundTrimSave.textContent = 'Add it';
+  }
+}
+
 
 // ---------------- Files ----------------
 //
@@ -15640,7 +15975,7 @@ async function init() {
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them (not the ones asking something that
   // needs an answer: 18+, an announcement, sharing what you're doing).
-  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog, el.recordDialog, el.camPreview]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 
@@ -15873,6 +16208,24 @@ async function init() {
   });
   el.camPreviewCancel.addEventListener('click', () => finishCamPreview(false));
   el.camPreview.addEventListener('close', () => finishCamPreview(false)); // (Escape, its X, or a click outside)
+  // A sound to add: the part of it to keep.
+  el.soundTrimWave.addEventListener('pointerdown', onTrimDown);
+  el.soundTrimWave.addEventListener('pointermove', onTrimMove);
+  for (const type of ['pointerup', 'pointercancel']) el.soundTrimWave.addEventListener(type, onTrimUp);
+  el.soundTrimWave.addEventListener('keydown', onTrimKey);
+  el.soundTrimAll.addEventListener('pointerdown', onTrimAllDown);
+  el.soundTrimAll.addEventListener('pointermove', onTrimAllMove);
+  for (const type of ['pointerup', 'pointercancel']) el.soundTrimAll.addEventListener(type, onTrimAllUp);
+  el.soundTrimPlay.addEventListener('click', playTrim);
+  el.soundTrimEmoji.addEventListener('click', () => openEmojiPicker(null, (picked) => {
+    if (!trim || !picked) return;
+    if (!picked.unicode) return showTrimError("A sound's emoji can be any everyday one, but not the space's own.");
+    trim.emoji = picked.unicode;
+    renderTrimEmoji();
+  }));
+  el.soundTrimForm.addEventListener('submit', saveTrim);
+  el.soundTrim.addEventListener('close', () => finishTrim(false));
+  addEventListener('resize', () => { if (trim) drawTrim(); });
   el.speakerSelect.addEventListener('change', onSpeakerChange);
   el.volumeInput.addEventListener('input', onVolumeChange);
   el.soundsBtn.addEventListener('click', (e) => toggleSoundboard(el.soundsBtn, e.detail === 0));

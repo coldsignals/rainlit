@@ -27,6 +27,7 @@
       <symbol id="i-cam" viewBox="0 0 24 24"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></symbol>
       <symbol id="i-cam-off" viewBox="0 0 24 24"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M2 2l20 20"/></symbol>
       <symbol id="i-screen" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="m9 10 3-3 3 3M12 7v6"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
       <symbol id="i-soundboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><circle cx="15.6" cy="19.2" r="1.8"/><path d="M17.4 19.2v-5.6l3.2-1"/></symbol>
       <symbol id="i-screen-switch" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M15.6 8.4a4 4 0 0 0-6.6-.9L8 8.5"/><path d="M8 5.8v2.7h2.7"/><path d="M8.4 11.6a4 4 0 0 0 6.6.9l1-1"/><path d="M16 14.2v-2.7h-2.7"/></symbol>
       <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
@@ -1097,6 +1098,37 @@
         <button id="cam-preview-cancel" class="text-btn" type="button">Cancel</button>
         <button id="cam-preview-go" class="primary-btn" type="submit">Turn camera on</button>
       </div>
+    </form>
+  </dialog>
+
+  <!-- A sound to add to a space's soundboard: the part of it to keep, and its name and emoji -->
+  <dialog id="sound-trim" class="settings space-dialog" aria-labelledby="sound-trim-title">
+    <form id="sound-trim-form" class="settings-inner" novalidate>
+      <div class="settings-head"><h2 id="sound-trim-title">Add a sound</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p id="sound-trim-file" class="sound-trim-file"></p>
+      <div id="sound-trim-all" class="sound-trim-all" title="All of it: press where to take it from" hidden>
+        <canvas id="sound-trim-all-canvas"></canvas>
+        <span id="sound-trim-all-view" class="sound-trim-all-view"></span>
+      </div>
+      <div id="sound-trim-wave" class="sound-trim-wave">
+        <canvas id="sound-trim-canvas"></canvas>
+        <div id="sound-trim-pick" class="sound-trim-pick" tabindex="0" aria-label="The part to keep (the arrow keys move it)">
+          <span class="sound-trim-edge" data-edge="start" tabindex="0" aria-label="Where it starts (the arrow keys move it)"></span>
+          <span class="sound-trim-edge" data-edge="end" tabindex="0" aria-label="Where it ends (the arrow keys move it)"></span>
+        </div>
+        <span id="sound-trim-playhead" class="sound-trim-playhead" hidden></span>
+      </div>
+      <div class="sound-trim-row">
+        <button id="sound-trim-play" class="icon-btn sound-trim-play" type="button" aria-label="Hear it" title="Hear it"><svg class="icon"><use href="#i-play"/></svg></button>
+        <span id="sound-trim-times" class="sound-trim-times"></span>
+      </div>
+      <small id="sound-trim-hint" class="hint"></small>
+      <div class="sound-trim-name">
+        <button id="sound-trim-emoji" class="sound-emoji none" type="button" title="Choose its emoji" aria-label="Choose its emoji">🙂</button>
+        <input id="sound-trim-name" maxlength="32" aria-label="Its name" autocomplete="off" />
+      </div>
+      <p id="sound-trim-error" class="form-error" role="alert" hidden></p>
+      <button id="sound-trim-save" class="primary-btn" type="submit">Add it</button>
     </form>
   </dialog>
 
