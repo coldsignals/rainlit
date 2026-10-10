@@ -485,6 +485,11 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
 - **See your own stream big:** click the small "You" preview of your screen or
   camera. It fills the call and your friend moves to the corner; click either
   one to swap back.
+- **See yourself before your camera's on:** on a computer, the camera button
+  first shows your camera, live, with a choice of camera (the one you pick
+  stays your camera, as in settings); **Turn camera on** goes live, and Cancel
+  doesn't. Untick "Show this each time" to go straight on (settings turns it
+  back on). On a phone it goes straight on; **Flip** switches cameras.
 - **Pick a headset or webcam:** the settings button. You can also turn your
   friend's volume down there, and switch the browser's noise suppression, echo
   cancellation and automatic mic volume on or off.

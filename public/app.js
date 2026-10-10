@@ -156,6 +156,8 @@ for (const id of [
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete',
+  'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
+  'cam-preview-field', 'cam-preview-input',
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
@@ -1007,10 +1009,16 @@ async function toggleCam() {
     if (!S.local.screen) await setOutgoingVideo(null);
     t.stop();
   } else {
+    let shown = null;
+    if (camPreviewWanted()) {
+      shown = await previewCamera();
+      if (!shown) return;
+      if (!S.inCall || S.local.cam) return shown.stop();
+    }
     el.camBtn.disabled = true;
     try {
       // (On a phone, the camera it used last, in this call or an earlier one: front or back.)
-      const t = S.facing && isPhone() ? await getFacingTrack(S.facing).catch(() => getCamTrack(S.devices.cam)) : await getCamTrack(S.devices.cam);
+      const t = shown || (S.facing && isPhone() ? await getFacingTrack(S.facing).catch(() => getCamTrack(S.devices.cam)) : await getCamTrack(S.devices.cam));
       if (!S.inCall) { t.stop(); return; }
       useCamTrack(t);
       playControlSound('camera-on');
@@ -1041,6 +1049,92 @@ async function getFacingTrack(facing) {
     video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }, facingMode: { exact: facing } },
   });
   return s.getVideoTracks()[0];
+}
+
+// ----- Your camera, before it turns on -----
+// On a computer, turning your camera on first shows you how you look, with a choice of camera (the
+// same choice as in Settings), until you say not to (there, or in Settings). Phones go straight
+// on: they have a front and a back camera, and Flip.
+
+const camPreviewWanted = () => !isPhone() && store.get('camPreview', 'on') !== 'off';
+let camPeek = null; // { track, asked, changed, resolve }, while it's open
+
+// Resolves with the camera's track, live (a call carries on with it), or null if you changed your
+// mind.
+function previewCamera() {
+  finishCamPreview(false);
+  return new Promise((resolve) => {
+    camPeek = { track: null, asked: 0, changed: false, resolve };
+    el.camPreviewAlways.checked = true;
+    el.camPreviewSelect.replaceChildren();
+    el.camPreview.showModal();
+    fillCamPreviewList(S.devices.cam);
+    startCamPreview(S.devices.cam);
+  });
+}
+
+async function startCamPreview(deviceId) {
+  const p = camPeek;
+  if (!p) return;
+  if (p.track) p.track.stop();
+  p.track = null;
+  const asked = ++p.asked;
+  el.camPreviewVideo.srcObject = null;
+  el.camPreviewStatus.textContent = 'Starting your camera…';
+  el.camPreviewStatus.hidden = false;
+  el.camPreviewGo.disabled = true;
+  try {
+    const t = await getCamTrack(deviceId);
+    if (camPeek !== p || p.asked !== asked) return t.stop(); // (closed, or another camera picked, meanwhile)
+    p.track = t;
+    el.camPreviewVideo.srcObject = new MediaStream([t]);
+    el.camPreviewStatus.hidden = true;
+    el.camPreviewGo.disabled = false;
+    fillCamPreviewList(t.getSettings().deviceId); // (their names, now the browser will say)
+  } catch (err) {
+    if (camPeek === p && p.asked === asked) el.camPreviewStatus.textContent = mediaErrorText(err, 'Camera');
+  }
+}
+
+async function fillCamPreviewList(current) {
+  let cams = [];
+  try {
+    cams = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput' && d.deviceId);
+  } catch {}
+  if (!camPeek) return;
+  el.camPreviewSelect.replaceChildren(...cams.map((d, i) => {
+    const o = document.createElement('option');
+    o.value = d.deviceId;
+    o.textContent = d.label || `Camera ${i + 1}`;
+    return o;
+  }));
+  if (cams.some((d) => d.deviceId === current)) el.camPreviewSelect.value = current;
+  el.camPreviewSelect.disabled = cams.length < 2;
+}
+
+// Going on (go: with the camera that's showing), or not. A camera picked here becomes yours, as
+// in Settings.
+function finishCamPreview(go) {
+  const p = camPeek;
+  if (!p) return;
+  camPeek = null;
+  const track = go ? p.track : null;
+  if (!track && p.track) p.track.stop();
+  el.camPreviewVideo.srcObject = null;
+  if (el.camPreview.open) el.camPreview.close();
+  if (track) {
+    if (p.changed && el.camPreviewSelect.value) {
+      S.devices.cam = el.camPreviewSelect.value;
+      store.set('cam', S.devices.cam);
+    }
+    if (!el.camPreviewAlways.checked) store.set('camPreview', 'off');
+  }
+  p.resolve(track);
+}
+
+function renderCamPreviewSetting() {
+  el.camPreviewField.hidden = isPhone();
+  el.camPreviewInput.checked = store.get('camPreview', 'on') !== 'off';
 }
 
 // Phones with a front and a back camera can flip between them.
@@ -7799,6 +7893,7 @@ async function fillDeviceLists() {
   };
   fill(el.micSelect, 'audioinput', S.devices.mic, 'Microphone');
   fill(el.camSelect, 'videoinput', S.devices.cam, 'Camera');
+  renderCamPreviewSetting();
   const canPickSpeaker = 'setSinkId' in HTMLMediaElement.prototype;
   el.speakerField.hidden = !canPickSpeaker;
   if (canPickSpeaker) fill(el.speakerSelect, 'audiooutput', S.devices.speaker, 'Speaker');
@@ -10751,6 +10846,7 @@ async function joinVoice(channelId) {
 }
 
 async function leaveVoice({ quiet = false } = {}) {
+  finishCamPreview(false);
   const v = S.voice;
   if (!v) return;
   S.voice = null;
@@ -11038,6 +11134,12 @@ async function onVoiceControl(act) {
       applyVoiceAudio();
     } else if (act === 'camera') {
       if (!v.speak) return toast("You can't share video in this channel.");
+      if (!me.isCameraEnabled && camPreviewWanted()) {
+        const shown = await previewCamera();
+        if (!shown) return;
+        shown.stop(); // (the channel opens it itself, sized for it)
+        if (S.voice !== v || v.state !== 'connected' || me.isCameraEnabled) return;
+      }
       // (On a phone, the camera it used last: front or back.)
       await me.setCameraEnabled(!me.isCameraEnabled, isPhone() && S.facing ? { facingMode: S.facing } : S.devices.cam ? { deviceId: S.devices.cam } : undefined);
       playControlSound(me.isCameraEnabled ? 'camera-on' : 'camera-off');
@@ -15106,6 +15208,7 @@ function teardown({ sendLeave, keepActive = false }) {
   S.inCall = false;
   S.onPhone = false;
   S.deafened = false;
+  finishCamPreview(false);
   setStageFull(false);
   S.mediaDropped = false;
   updateTitle(); // (and the corner glow)
@@ -15579,7 +15682,7 @@ async function init() {
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them (not the ones asking something that
   // needs an answer: 18+, an announcement, sharing what you're doing).
-  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog, el.recordDialog]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog, el.recordDialog, el.camPreview]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 
@@ -15800,6 +15903,18 @@ async function init() {
   el.micSelect.addEventListener('change', onMicChange);
   for (const input of [el.noiseInput, el.echoInput, el.gainInput]) input.addEventListener('change', onMicFxChange);
   el.camSelect.addEventListener('change', onCamChange);
+  el.camPreviewInput.addEventListener('change', () => store.set('camPreview', el.camPreviewInput.checked ? 'on' : 'off'));
+  el.camPreviewSelect.addEventListener('change', () => {
+    if (!camPeek) return;
+    camPeek.changed = true;
+    startCamPreview(el.camPreviewSelect.value);
+  });
+  el.camPreviewForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    finishCamPreview(true);
+  });
+  el.camPreviewCancel.addEventListener('click', () => finishCamPreview(false));
+  el.camPreview.addEventListener('close', () => finishCamPreview(false)); // (Escape, its X, or a click outside)
   el.speakerSelect.addEventListener('change', onSpeakerChange);
   el.volumeInput.addEventListener('input', onVolumeChange);
   el.soundsBtn.addEventListener('click', (e) => toggleSoundboard(el.soundsBtn, e.detail === 0));

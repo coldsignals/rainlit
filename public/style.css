@@ -736,6 +736,12 @@ li.suspended > .grow { color: var(--danger-text); }
 .mention-pick .emoji-img { width: 24px; height: 24px; }
 .emoji-btn { flex: none; align-self: center; }
 .record-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* Your camera, before it turns on: as in a mirror, like your own picture in a call. */
+.cam-preview-frame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #000; border-radius: 12px; }
+.cam-preview-frame video { display: block; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.cam-preview-status { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 16px; color: #fff; text-align: center; font-size: 14px; }
+.cam-preview-status[hidden] { display: none; }
+.cam-preview-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
 .emoji-admin-head { display: flex; align-items: center; gap: 12px; justify-content: space-between; color: var(--mist); }
 .emoji-admin { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
 .emoji-admin li { display: flex; align-items: center; gap: 10px; }

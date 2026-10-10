@@ -1083,6 +1083,23 @@
     </form>
   </dialog>
 
+  <!-- Your camera, before it turns on (on a computer): how you look, and which camera -->
+  <dialog id="cam-preview" class="settings space-dialog" aria-labelledby="cam-preview-title">
+    <form id="cam-preview-form" class="settings-inner" novalidate>
+      <div class="settings-head"><h2 id="cam-preview-title">Your camera</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <div class="cam-preview-frame">
+        <video id="cam-preview-video" autoplay playsinline muted></video>
+        <p id="cam-preview-status" class="cam-preview-status" role="status"></p>
+      </div>
+      <label class="field"><span>Camera</span><select id="cam-preview-select"></select></label>
+      <label class="toggle"><input id="cam-preview-always" type="checkbox" /><span>Show this each time my camera turns on</span></label>
+      <div class="cam-preview-row">
+        <button id="cam-preview-cancel" class="text-btn" type="button">Cancel</button>
+        <button id="cam-preview-go" class="primary-btn" type="submit">Turn camera on</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- A record of your calls with a friend, to keep, print or save as a PDF -->
   <dialog id="record-dialog" class="settings space-dialog" aria-labelledby="record-title">
     <form id="record-form" class="settings-inner" novalidate>
@@ -1448,6 +1465,10 @@
             <label class="field">
               <span>Camera</span>
               <select id="cam-select"></select>
+            </label>
+            <label id="cam-preview-field" class="toggle">
+              <input id="cam-preview-input" type="checkbox" />
+              <span>Show my camera before it turns on <small class="toggle-note">(how you look, and which camera, each time you turn it on in a call)</small></span>
             </label>
             <label class="field">
               <span>Screen share quality</span>
