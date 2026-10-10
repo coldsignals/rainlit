@@ -524,11 +524,14 @@ async function pickMic(android = Boolean(ANDROID)) {
   let mics = await list();
   if (S.devices.mic && mics.some((d) => d.deviceId === S.devices.mic)) return S.devices.mic;
   if (!mics.some((d) => d.label)) {
-    // (Their names come once a microphone's been opened: one opened for a moment, to see them.)
+    // (Their names are only given while a microphone's open, in Android's app: one opened for a
+    // moment, to see them.)
+    let open = null;
     try {
-      (await navigator.mediaDevices.getUserMedia({ audio: true })).getTracks().forEach((t) => t.stop());
+      open = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {}
     mics = await list();
+    if (open) open.getTracks().forEach((t) => t.stop());
   }
   if (S.devices.mic) {
     relabelDevice('mic', mics);
@@ -537,6 +540,14 @@ async function pickMic(android = Boolean(ANDROID)) {
   }
   const wired = android && mics.find((d) => /wired headset/i.test(d.label));
   return wired ? wired.deviceId : '';
+}
+
+// The name of the microphone that should be in use (see pickMic), from a list of devices: ''
+// for the default.
+function wantedMicLabel(devices, android = Boolean(ANDROID)) {
+  const mics = devices.filter((d) => d.kind === 'audioinput' && d.deviceId && d.label);
+  if (S.devices.mic) return (mics.find((d) => d.deviceId === S.devices.mic) || {}).label || '';
+  return android ? (mics.find((d) => /wired headset/i.test(d.label)) || {}).label || '' : '';
 }
 
 async function getMicTrack(deviceId) {
@@ -8220,6 +8231,15 @@ async function fillDeviceLists() {
   let devices = [];
   try { devices = await navigator.mediaDevices.enumerateDevices(); } catch {}
   for (const key of Object.keys(DEVICE_KINDS)) relabelDevice(key, devices);
+  // (A microphone in use that isn't the one picked, opened before its name could be found, say:
+  // the right one, now.)
+  const want = wantedMicLabel(devices);
+  if (want) {
+    if (S.local.mic && S.local.mic.label && S.local.mic.label !== want) restartMic();
+    const pub = S.voice && S.voice.room && VK && S.voice.room.localParticipant.getTrackPublication(VK.Track.Source.Microphone);
+    const voiceMic = pub && pub.track && pub.track.mediaStreamTrack;
+    if (voiceMic && voiceMic.label && voiceMic.label !== want) voiceDevicesChanged();
+  }
   const fill = (select, kind, current, fallbackLabel) => {
     select.innerHTML = '';
     const list = devices.filter((d) => d.kind === kind);
