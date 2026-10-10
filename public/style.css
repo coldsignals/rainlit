@@ -1125,7 +1125,9 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   --card-ink: #1d1a24; --card-mist: rgba(29, 26, 36, 0.72); --card-box: rgba(255, 255, 255, 0.42); --card-line: rgba(29, 26, 36, 0.16); --card-raise: rgba(255, 255, 255, 0.5);
   --danger-text: #a3261e;
 }
-.settings.carded, .card-preview.carded { background: linear-gradient(180deg, var(--card-c1), var(--card-c2)); }
+/* (From the very top of its border to the bottom: sized to the inside, the fade would start over in
+   the border, and the bottom colour show as a line along the top.) */
+.settings.carded, .card-preview.carded { background: linear-gradient(180deg, var(--card-c1), var(--card-c2)) border-box; }
 .carded > .settings-inner { position: relative; z-index: 1; }
 .card-banner {
   position: absolute; top: 0; left: 0; right: 0; height: 96px; overflow: hidden; pointer-events: none;
