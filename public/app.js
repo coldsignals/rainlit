@@ -6317,10 +6317,7 @@ const SOUNDBOARD = [
   { id: 'drums', name: 'Ba dum tss', emoji: '🥁' },
   { id: 'trombone', name: 'Sad trombone', emoji: '🎺' },
   { id: 'boop', name: 'Boop', emoji: '👉' },
-  { id: 'crickets', name: 'Crickets', emoji: '🦗' },
   { id: 'applause', name: 'Applause', emoji: '👏' },
-  { id: 'airhorn', name: 'Airhorn', emoji: '📯' },
-  { id: 'rain', name: 'Rain', emoji: '🌧️' },
 ];
 const SOUND_MAX_S = 5.2;
 const SOUND_GAP_MS = 3000; // (one every 3 seconds each, as the server lets through)
@@ -6480,7 +6477,7 @@ function hearPlain(sound, volume, from) {
 
 // Rainlit's own sounds, made rather than fetched: each one drawn the first time it's played.
 async function makeSound(id, rate = 48000) {
-  const seconds = { tada: 1.8, drums: 1.6, trombone: 2.9, boop: 0.5, crickets: 2.6, applause: 3, airhorn: 1.7, rain: 3.6 }[id];
+  const seconds = { tada: 1.8, drums: 1.6, trombone: 2.9, boop: 0.5, applause: 3 }[id];
   const ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, Math.ceil(rate * seconds), rate);
   const out = ctx.createGain();
   out.connect(ctx.destination);
@@ -6588,14 +6585,6 @@ async function makeSound(id, rate = 48000) {
       tone(330, 0, 0.05, { level: 0.5, attack: 0.005, release: 0.2, to: 880, glide: 0.07 });
       tone(660, 0, 0.05, { level: 0.1, attack: 0.005, release: 0.12, to: 1760, glide: 0.07 });
       break;
-    case 'crickets':
-      // Two crickets, a little out of step, each chirp three quick pulses.
-      for (const [f, pan, start, every] of [[4300, -0.45, 0.05, 0.62], [4750, 0.45, 0.33, 0.7]]) {
-        for (let at = start; at < 2.3; at += every) {
-          for (let k = 0; k < 3; k++) tone(f, at + k * 0.045, 0.012, { level: 0.22, attack: 0.004, release: 0.02, pan });
-        }
-      }
-      break;
     case 'applause': {
       // A crowd clapping, building up, then dying away.
       const swell = (t) => Math.min(1, t / 0.35) * (t > 1.9 ? Math.max(0.08, 1 - (t - 1.9) / 0.9) : 1);
@@ -6605,37 +6594,6 @@ async function makeSound(id, rate = 48000) {
       }
       hiss(0, 1.5, { level: 0.035, freq: 1500, q: 0.5, attack: 0.35, release: 1.2, pan: -0.3 });
       hiss(0, 1.5, { level: 0.035, freq: 1700, q: 0.5, attack: 0.35, release: 1.2, pan: 0.3 });
-      break;
-    }
-    case 'airhorn': {
-      // Short, short, looong.
-      const grit = ctx.createWaveShaper();
-      const curve = new Float32Array(1024);
-      for (let i = 0; i < curve.length; i++) curve[i] = Math.tanh(2.5 * (i / 511.5 - 1));
-      grit.curve = curve;
-      grit.connect(filter('lowpass', 3600));
-      for (const [at, hold] of [[0, 0.12], [0.2, 0.12], [0.42, 1.02]]) {
-        for (const [mult, level] of [[1, 0.22], [1.26, 0.16], [1.5, 0.12], [2.01, 0.06]]) {
-          tone(440 * mult * 0.96, at, hold, { type: 'sawtooth', level, attack: 0.012, release: 0.07, to: 440 * mult, glide: 0.05, dest: grit });
-        }
-      }
-      break;
-    }
-    case 'rain': {
-      // Rainlit's own: a soft shower, drops landing close by, and a little bell as it clears.
-      for (const pan of [-0.5, 0.5]) {
-        hiss(0, 2.2, { level: 0.09, type: 'lowpass', freq: 2400, q: 0.3, attack: 0.6, release: 0.9, pan });
-        hiss(0, 2.2, { level: 0.03, type: 'highpass', freq: 5000, q: 0.3, attack: 0.6, release: 0.9, pan: -pan });
-      }
-      for (let i = 0; i < 28; i++) {
-        const at = rnd(0.25, 2.7);
-        const f = rnd(700, 1500);
-        tone(f, at, 0.004, { level: rnd(0.08, 0.18), attack: 0.002, release: 0.06, to: f * 1.9, glide: 0.035, pan: rnd(-0.7, 0.7) });
-      }
-      for (const [f, at] of [[1318.51, 2.55], [1975.53, 2.68]]) {
-        tone(f, at, 0.01, { level: 0.09, attack: 0.008, release: 0.85 });
-        tone(f * 2.76, at, 0.01, { level: 0.02, attack: 0.008, release: 0.3 });
-      }
       break;
     }
   }

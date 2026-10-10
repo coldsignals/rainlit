@@ -347,7 +347,7 @@ at the top closes it (on a phone, the back arrow).
   and react with them. A message that's only emoji shows them big.
 - **Soundboard:** in a call or a voice channel, press **Sounds** and pick one,
   and everyone there hears it: Rainlit's own (tada, ba dum tss, sad trombone,
-  crickets, applause and more) or your spaces' own. A space's owner and admins
+  boop and applause) or your spaces' own. A space's owner and admins
   (and roles with "Manage soundboard") add up to 24 in its settings: MP3, OGG,
   WAV, M4A, FLAC or WebM, up to 5 seconds and 1 MB. Its members can play them in
   any call or voice channel (on Discord that takes Nitro). Each app plays them
