@@ -1079,6 +1079,9 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .badge-tip small { display: block; margin-top: 4px; color: var(--mist); font-size: 12px; }
 .user-badge.show .badge-tip, .user-badge:focus-visible .badge-tip { display: block; }
 @media (hover: hover) { .user-badge:hover .badge-tip { display: block; } }
+/* (A card's boxes let its colours through, but this one's over words: filled in, with the card's
+   own colour about where it is under the same box colour.) */
+.carded .badge-tip { background: linear-gradient(var(--card-box), var(--card-box)), color-mix(in srgb, var(--card-c1) 70%, var(--card-c2)); }
 .mp-presence { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .mp-presence::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--offline); }
 .mp-presence[data-presence="online"]::before { background: var(--online); }
