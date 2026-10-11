@@ -16,7 +16,6 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
-import android.os.Looper;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -89,11 +88,16 @@ public class RainlitPlugin extends Plugin {
 
     @PluginMethod
     public void callStarted(PluginCall call) {
-        Intent intent = new Intent(getContext(), CallService.class).putExtra(CallService.EXTRA_NAME, call.getString("name", ""));
-        try {
-            ContextCompat.startForegroundService(getContext(), intent);
-        } catch (RuntimeException e) {
-            // Android refused (for example the app wasn't on screen); the call still works while it is.
+        String name = call.getString("name", "");
+        if (CallService.running) {
+            CallService.update(getContext(), name); // (the page started over and joined again)
+        } else {
+            Intent intent = new Intent(getContext(), CallService.class).putExtra(CallService.EXTRA_NAME, name);
+            try {
+                ContextCompat.startForegroundService(getContext(), intent);
+            } catch (RuntimeException e) {
+                // Android refused (for example the app wasn't on screen); the call still works while it is.
+            }
         }
         AudioRoute.start(getContext(), call.getBoolean("echo", true), () -> notifyListeners("audioroutes", routes()));
         keepPageAwake(true);
@@ -107,7 +111,7 @@ public class RainlitPlugin extends Plugin {
     // An ordinary phone call during a Rainlit call: the page puts the Rainlit call on hold, so
     // the person on the phone doesn't hear your friend (and your friend doesn't hear the phone
     // call). Android's audio mode says when there's one, with no extra permission needed.
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Handler handler = AudioRoute.background(); // (off the main thread: see AudioRoute)
     private boolean onPhone = false;
     private final Runnable watchPhone = new Runnable() {
         @Override

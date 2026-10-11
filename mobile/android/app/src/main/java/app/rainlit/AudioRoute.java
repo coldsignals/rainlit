@@ -8,7 +8,7 @@ import android.media.AudioManager;
 import android.media.audiofx.AcousticEchoCanceler;
 import android.os.Build;
 import android.os.Handler;
-import android.os.Looper;
+import android.os.HandlerThread;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +33,19 @@ final class AudioRoute {
     private AudioRoute() {}
 
     private static AudioDeviceCallback callback;
+
+    // Where questions to Android about sound are asked during a call (a headset plugged in, a
+    // phone call), off the app's main thread: on a phone short of memory, an answer can be slow,
+    // and Android calls an app frozen whose main thread waits too long.
+    private static HandlerThread thread;
+
+    static synchronized Handler background() {
+        if (thread == null) {
+            thread = new HandlerThread("rainlit-audio");
+            thread.start();
+        }
+        return new Handler(thread.getLooper());
+    }
     // Whether this call's sound plays as a call (true) or like music (false).
     private static boolean callSound = true;
 
@@ -77,7 +90,7 @@ final class AudioRoute {
                 listener.changed();
             }
         };
-        am.registerAudioDeviceCallback(callback, new Handler(Looper.getMainLooper()));
+        am.registerAudioDeviceCallback(callback, background());
     }
 
     static void stop(Context context) {

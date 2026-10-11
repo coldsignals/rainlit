@@ -30,14 +30,12 @@ public class CallService extends Service {
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        String name = intent != null ? intent.getStringExtra(EXTRA_NAME) : null;
+    // The ongoing notification: "In a call with Alex".
+    private static Notification notification(Context context, String name) {
         String text = name != null && !name.isEmpty() ? "In a call with " + name : "In a call";
-
-        Intent open = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent tap = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification notification = new NotificationCompat.Builder(this, Notifications.CHANNEL_CALL)
+        Intent open = new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent tap = PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        return new NotificationCompat.Builder(context, Notifications.CHANNEL_CALL)
             .setSmallIcon(R.drawable.ic_stat_rainlit)
             .setContentTitle(text)
             .setContentText("Tap to go back to the call")
@@ -46,9 +44,25 @@ public class CallService extends Service {
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build();
+    }
 
-        // Already going (the page started over and joined the call again): just update the
-        // notification. Starting it again with the phone locked isn't allowed, and would stop it.
+    /**
+     * Already going (the page started over and joined the call again): its notification, updated
+     * without starting it again. A start is handled on the app's main thread, and Android calls
+     * the app frozen if it waits there too long, which it can while the page is starting over on
+     * a phone short of memory ("isn't responding": executing service CallService).
+     */
+    static void update(Context context, String name) {
+        context.getSystemService(android.app.NotificationManager.class).notify(NOTIFICATION_ID, notification(context, name));
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        String name = intent != null ? intent.getStringExtra(EXTRA_NAME) : null;
+        Notification notification = notification(this, name);
+
+        // Already going: just update the notification. Starting it again with the phone locked
+        // isn't allowed, and would stop it.
         if (running) {
             getSystemService(android.app.NotificationManager.class).notify(NOTIFICATION_ID, notification);
             return START_NOT_STICKY;
