@@ -6759,20 +6759,22 @@ function renderSoundboard() {
   renderSoundboardVolume();
 }
 
-// Above its button (or below, if there's more room there), as tall as fits.
+// Above its button (or below, if there's more room there), as tall as fits, and never off the
+// edge of the window. (Worked out in the window's pixels, then set in the page's own: with
+// Settings > Size, those are bigger or smaller.)
 function placeSoundboard() {
   const a = S.soundboardAnchor;
   const box = el.soundboard;
   if (!a || box.hidden) return;
+  const z = uiZoom();
   const r = a.getBoundingClientRect();
   const above = r.top - 18;
   const below = innerHeight - r.bottom - 18;
   const up = above >= 300 || above >= below;
-  box.style.maxHeight = `${Math.max(150, Math.min(470, up ? above : below))}px`;
-  const w = box.offsetWidth;
-  const h = box.offsetHeight;
-  box.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`;
-  box.style.top = `${Math.max(8, up ? r.top - h - 10 : r.bottom + 10)}px`;
+  box.style.maxHeight = `${Math.max(150, Math.min(400 * z, up ? above : below)) / z}px`;
+  const { width: w, height: h } = box.getBoundingClientRect();
+  box.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) / z}px`;
+  box.style.top = `${Math.max(8, up ? r.top - h - 10 : r.bottom + 10) / z}px`;
 }
 
 // The soundboard buttons: there while you can play sounds, lit while it's open.
