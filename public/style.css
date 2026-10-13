@@ -986,6 +986,19 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .me-btn:hover { background: var(--dusk); }
 .me-btn .face[data-presence]::after { border-color: color-mix(in srgb, var(--dusk) 50%, var(--deep)); }
 .me-text { min-width: 0; display: grid; }
+/* Your card, small, in the corner (dressCard): its colours, its pattern along the top and its
+   weather, like the full one, all smaller. */
+.me-card.carded {
+  position: relative; overflow: hidden;
+  margin: 6px; padding: 6px 6px 7px;
+  border: 1px solid var(--card-line); border-radius: 14px;
+  background: linear-gradient(180deg, var(--card-c1), var(--card-c2)) border-box;
+}
+.me-card.carded > :not(.card-banner, .card-sky) { position: relative; z-index: 1; }
+.me-card > .card-banner { right: auto; width: calc(100% / 0.6); transform: scale(0.6); transform-origin: 0 0; }
+.me-card > .card-sky { inset: auto; left: 0; top: 0; width: calc(100% / 0.6); height: calc(100% / 0.6); transform: scale(0.6); transform-origin: 0 0; border-radius: 0; }
+.me-card.carded :is(.me-btn, .icon-btn.ghost):hover { background: var(--card-raise); }
+.me-card.carded .me-btn .face[data-presence]::after { border-color: color-mix(in srgb, var(--card-c1) 45%, var(--card-c2)); }
 .me-name { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .me-status { color: var(--mist); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

@@ -150,7 +150,8 @@ and released is in [desktop/README.md](desktop/README.md).
   weather over it (rain, snow, sparkles, floating hearts, autumn leaves). Glow
   adds the moving patterns and its weather (fireflies, an aurora, a
   thunderstorm, cherry blossoms, embers), to try on there first. **Make it plain
-  again** puts it back as it was.
+  again** puts it back as it was. It's in the corner by your name too (bottom
+  left), smaller: its colours, pattern, font and weather.
 - **Your email:** new accounts get a link to confirm their email address (your
   profile says whether it's confirmed, and sends another). Forgot your password?
   **Forgot your password?** on the sign-in screen emails a link, good for an

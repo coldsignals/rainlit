@@ -163,7 +163,7 @@ for (const id of [
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
-  'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
+  'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -8974,6 +8974,7 @@ function renderMe() {
   renderFace(el.meFace, S.me, myPresence());
   partyFace(el.meFace, S.me);
   el.meName.textContent = S.me.displayName;
+  dressCard(el.meCard, S.me.card || null, el.meName, 14); // (your card, small, in the corner)
   el.meStatus.textContent = S.me.statusText || (S.me.presence === 'invisible' ? 'Appearing offline' : S.me.presence === 'dnd' ? 'Do not disturb' : `@${S.me.username}`);
   el.adminBtn.hidden = !S.me.isAdmin;
   el.homeTitle.textContent = `Hi, ${S.me.displayName}`;
