@@ -324,6 +324,15 @@ at the top closes it (on a phone, the back arrow).
 
 - **Messages stay.** Send them any time, even when your friend is offline;
   they'll see them next time they open Rainlit. Scroll up for older ones.
+- **Search:** the magnifying glass at the top of a conversation (or Ctrl+F)
+  looks through it, or in a space, through every channel you can see. A word
+  finds the words it starts ("pizz" finds pizza), whatever their case or
+  accents; "words in quotes" are found together. Pick who said it, which
+  channel, what it has (a link, a picture, a video, a sound, a file or a GIF),
+  who it mentions, and when; newest, oldest or best match first. Files are
+  found by their names, GIFs by their titles. Click a result to go to it, however
+  long ago it was: the messages around it load, and a bar takes you back to
+  the newest. Only what's saved can be found.
 - **Unread messages:** a yellow number on your friend in the list, and a yellow
   "new messages" line above the first one you haven't seen. A soft chime (two
   raindrops) plays when a message arrives in a conversation you don't have open.
@@ -357,6 +366,12 @@ at the top closes it (on a phone, the back arrow).
   stops them at 5 seconds. One every 3 seconds each, and "Use the soundboard"
   is a permission (everyone has it to start with). Set how loud they are for
   you, or turn them off, in settings.
+- **Someone's menu:** right-click someone in a space (in its members, by their
+  messages, or in a voice channel; on a phone, press and hold) for their
+  profile, **Mention**, **Message** and **Call** (or **Add friend**), their
+  **Roles** to tick on and off, **Time out**, **Kick** and **Ban**, **Report**,
+  **Block** and **Copy username**. Only what your roles let you do shows, and
+  only on people below you.
 - **A space's picture:** its owner and admins (and roles with "Manage space")
   give it one under **General** in its settings. Everyone sees it in their
   list of spaces down the side, and on its invites, instead of its initials.

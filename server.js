@@ -26,6 +26,7 @@ const accounts = require('./lib/accounts');
 const emojis = require('./lib/emoji');
 const sounds = require('./lib/sounds');
 const callrecord = require('./lib/callrecord');
+const search = require('./lib/search');
 const records = require('./lib/record');
 const homepages = require('./lib/homepages');
 const pets = require('./lib/pets');
@@ -1564,10 +1565,55 @@ function readFloor(req) {
 }
 
 api.get(conv('/messages'), needUser, needConv, (req, res) => {
-  if (req.query.after) return res.json({ messages: dms.since(req.dm.id, Number(req.query.after) || 0) });
+  // What was missed while disconnected; or, with a limit, the next page down from older messages
+  // (after jumping to one), and whether there are newer ones still.
+  if (req.query.after) {
+    const limit = Math.min(200, Math.max(1, Math.floor(Number(req.query.limit)) || 200));
+    const list = dms.since(req.dm.id, Number(req.query.after) || 0, limit + 1);
+    return res.json({ messages: list.slice(0, limit), newer: list.length > limit });
+  }
+  // The messages around one (a search result): where a jump to it lands.
+  if (req.query.around) return res.json({ ...dms.around(req.dm.id, Number(req.query.around) || 0), save: Boolean(req.dm.save), readAt: readFloor(req) });
   const page = dms.history(req.dm.id, Number(req.query.before) || 0);
   const notes = req.notes ? { ...dms.notesUsage(req.dm.id), max: notesMaxFor(req.user) } : undefined;
   res.json({ ...page, save: Boolean(req.dm.save), readAt: readFloor(req), notes });
+});
+
+// ----- Searching messages (lib/search.js) -----
+// In a DM (or your notes), or across a space's channels: the ones you can see (an 18+ one only once
+// you've said you're 18 or older). Messages from people you've blocked are left out, unless
+// they're who you're looking for.
+
+const searchedAt = new Map(); // user id -> when they last searched (a few, to keep it to 30 a minute)
+function searchTooFast(req, res) {
+  const now = Date.now();
+  const times = (searchedAt.get(req.user.id) || []).filter((t) => now - t < 60_000);
+  if (times.length >= 30) {
+    fail(res, 429, "That's a lot of searching: try again in a minute.");
+    return true;
+  }
+  times.push(now);
+  searchedAt.set(req.user.id, times);
+  return false;
+}
+setInterval(() => {
+  for (const [id, times] of searchedAt) if (Date.now() - times.at(-1) > 60_000) searchedAt.delete(id);
+}, 60_000).unref();
+
+api.get('/dms/:friendId/search', needUser, needFriend, (req, res) => {
+  const opts = search.optionsOf(req.query, safety.blockedBy(req.user.id));
+  if (!search.anything(opts)) return res.json({ total: 0, messages: [], more: false });
+  if (searchTooFast(req, res)) return;
+  res.json(search.run([req.dm.id], opts));
+});
+
+api.get('/spaces/:spaceId/search', needUser, needMember, (req, res) => {
+  const opts = search.optionsOf(req.query, safety.blockedBy(req.user.id));
+  if (!search.anything(opts)) return res.json({ total: 0, messages: [], more: false });
+  let convs = spaces.channelsOf(req.space.id).filter((c) => c.kind !== 'voice' && (spaces.channelAccess(c, req.member) || {}).see).map((c) => c.id);
+  if (req.query.in) convs = convs.filter((id) => id === String(req.query.in));
+  if (searchTooFast(req, res)) return;
+  res.json(search.run(convs, opts));
 });
 
 api.post(conv('/messages'), needUser, needConv, (req, res) => {

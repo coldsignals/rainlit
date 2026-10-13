@@ -1011,8 +1011,98 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .panel-member-status { color: var(--mist); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-member.offline { opacity: 0.4; }
 .panel-member.offline:hover { opacity: 0.75; }
-.members-toggle.on { color: var(--text); background: var(--dusk-hi); }
+.members-toggle.on, .search-btn.on { color: var(--text); background: var(--dusk-hi); }
 @media (max-width: 760px) { .member-panel { display: none !important; } }
+
+/* ================= Searching messages ================= */
+/* Beside the conversation (in place of the members) when there's room, else over it. */
+.search-panel {
+  order: 3;
+  flex: none; width: 380px; min-height: 0;
+  display: flex; flex-direction: column;
+  background: var(--deep); border-left: 1px solid var(--line);
+}
+.search-panel[hidden] { display: none; }
+.search-panel.over { position: absolute; inset: 0; z-index: 30; width: auto; border-left: 0; }
+.search-form {
+  display: flex; align-items: center; gap: 6px;
+  margin: 12px 12px 8px; padding: 0 3px 0 12px;
+  background: var(--dusk); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.search-form:focus-within { border-color: var(--lamp); }
+.search-form > .icon { width: 17px; height: 17px; flex: none; color: var(--mist); }
+.search-form input { flex: 1; min-width: 0; padding: 10px 0; background: none; border: 0; font: inherit; font-size: 15px; outline: none; }
+.search-form input::placeholder { color: var(--faint); }
+.search-form input::-webkit-search-cancel-button { display: none; } /* (the panel's own button closes it) */
+.search-form .icon-btn { width: 34px; height: 34px; flex: none; }
+.search-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
+.search-chip {
+  display: inline-flex; align-items: center; gap: 2px; max-width: 100%;
+  height: 30px; padding: 0 2px 0 11px;
+  background: var(--dusk); border: 1px solid var(--line); border-radius: 999px;
+  color: var(--mist); font-size: 13px; font-weight: 600;
+}
+.search-chip[hidden] { display: none; }
+.search-chip.set { background: color-mix(in srgb, var(--lamp) 15%, var(--dusk)); border-color: color-mix(in srgb, var(--lamp) 50%, transparent); }
+.search-chip select, .search-sort {
+  appearance: none; -webkit-appearance: none;
+  min-width: 0; max-width: 170px; height: 100%;
+  padding: 0 24px 0 4px;
+  background: transparent var(--select-arrow) no-repeat right 5px center / 14px;
+  border: 0; border-radius: 999px;
+  color: var(--text); font: inherit; font-weight: 700; text-overflow: ellipsis; cursor: pointer;
+}
+.search-chip select:focus-visible, .search-sort:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
+.search-chip select option, .search-sort option { background: var(--pop); color: var(--text); font-weight: 500; }
+.search-chip:has(> select:first-child) { padding-left: 4px; }
+.search-date {
+  height: 26px; margin-right: 2px; padding: 0 6px;
+  background: var(--deep); border: 1px solid var(--line); border-radius: 999px;
+  color: var(--text); font: inherit; font-size: 13px;
+}
+.search-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 0 10px 6px 16px; border-bottom: 1px solid var(--line); }
+.search-count { color: var(--mist); font-size: 13px; font-weight: 650; }
+.search-sort { height: 30px; font-size: 13px; color: var(--mist); }
+.search-results { flex: 1; min-height: 0; margin: 0; padding: 8px 10px 18px; overflow-y: auto; overscroll-behavior: contain; list-style: none; }
+.search-place { margin: 12px 4px 6px; color: var(--mist); font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-place:first-child { margin-top: 2px; }
+.search-hit {
+  margin-bottom: 6px; padding: 8px 10px 9px;
+  background: var(--night); border: 1px solid var(--line); border-radius: 10px;
+  cursor: pointer;
+}
+.search-hit:hover { background: var(--dusk); }
+.search-hit:focus-visible { outline: 2px solid var(--lamp); outline-offset: 1px; }
+.search-hit.here { border-color: color-mix(in srgb, var(--lamp) 60%, transparent); }
+.hit-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hit-head .face { width: 24px; height: 24px; font-size: 11px; flex: none; }
+.hit-name { min-width: 0; font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hit-head time { flex: none; margin-left: auto; color: var(--mist); font-size: 12px; }
+.hit-body {
+  margin: 4px 0 0 32px;
+  font-size: 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hit-body mark { background: color-mix(in srgb, var(--lamp) 38%, transparent); color: inherit; border-radius: 3px; }
+.hit-body a { color: var(--lamp-text); }
+.hit-pic { display: block; max-width: min(200px, 100%); max-height: 150px; margin-top: 2px; border-radius: 8px; object-fit: cover; }
+.hit-file { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; color: var(--text); }
+.hit-file .icon { width: 16px; height: 16px; flex: none; color: var(--mist); }
+.hit-file small { color: var(--mist); white-space: nowrap; }
+.search-note { padding: 28px 18px; color: var(--mist); font-size: 14px; text-align: center; line-height: 1.45; }
+.search-more { display: block; margin: 6px auto 0; }
+
+/* Looking at older messages (jumped to one): back to the newest. */
+.jump-present {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 2px 14px 6px; padding: 5px 6px 5px 14px;
+  background: color-mix(in srgb, var(--lamp) 12%, var(--dusk));
+  border: 1px solid color-mix(in srgb, var(--lamp) 35%, transparent); border-radius: 10px;
+  font-size: 13px; color: var(--mist);
+}
+.jump-present[hidden] { display: none; }
+.jump-present .text-btn { display: inline-flex; align-items: center; gap: 4px; color: var(--lamp-text); font-weight: 700; white-space: nowrap; }
+.jump-present .icon { width: 15px; height: 15px; }
 
 .home { height: 100%; overflow-y: auto; display: grid; place-items: center; padding: 24px; }
 .home-inner { width: min(460px, 100%); text-align: center; }
@@ -2318,6 +2408,27 @@ button.person.open { background: var(--dusk-hi); }
 .menu button:disabled { opacity: 0.45; cursor: not-allowed; background: none; }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
 .menu .danger { color: var(--danger-text); }
+/* Someone's menu: its groups apart, a line between each two that have something to do. */
+.person-menu { max-width: min(260px, calc(100vw / var(--zoom) - 16px)); }
+.person-menu [role="group"][hidden] { display: none; }
+.person-menu [role="group"]:not([hidden]) ~ [role="group"]:not([hidden]) { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+.person-menu button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-menu button[hidden] { display: none; }
+.person-menu .pm-more { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.person-menu .pm-more::after { content: ""; width: 7px; height: 7px; margin-right: 3px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); opacity: 0.7; }
+.person-menu .pm-more[aria-expanded="true"] { background: var(--dusk); }
+.pm-role-menu { min-width: 170px; max-width: min(240px, calc(100vw / var(--zoom) - 16px)); max-height: min(340px, calc(100vh / var(--zoom) - 16px)); overflow-y: auto; }
+.pm-role-menu button { display: flex; align-items: center; gap: 9px; }
+.pm-role-dot { width: 12px; height: 12px; flex: none; border-radius: 50%; background: var(--mist); }
+.pm-role-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-role-menu button::after {
+  content: ""; display: grid; place-items: center; width: 17px; height: 17px; flex: none; box-sizing: border-box;
+  border: 2px solid var(--line); border-radius: 5px; font-size: 11px; font-weight: 800; line-height: 1;
+}
+.pm-role-menu button[aria-checked="true"]::after { content: "✓"; border-color: var(--lamp); background: var(--lamp); color: var(--lamp-ink); }
+.pm-role-empty { padding: 8px 10px; color: var(--mist); font-size: 13px; }
+/* (Whoever's menu is open, marked where they were right-clicked.) */
+:is(.panel-member, .member-row, .voice-person).menu-open { background: var(--dusk); border-radius: 8px; }
 
 /* "Still here?", after a while alone in a voice channel (lib/realtime.js). */
 .voice-alone {

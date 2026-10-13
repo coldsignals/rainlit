@@ -64,6 +64,7 @@
       <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
       <symbol id="i-crown" viewBox="0 0 24 24"><path d="M3.5 8.5 8 12l4-6.5 4 6.5 4.5-3.5-1.6 10H5.1Z" fill="currentColor"/></symbol>
       <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></symbol>
       <symbol id="i-reply" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
       <symbol id="i-react" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-7.5-8.9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/><path d="M19 2v6M16 5h6"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
@@ -340,6 +341,45 @@
       <div id="voice-audio" hidden></div>
       <!-- Who's in the space, beside its channels -->
       <aside id="member-panel" class="member-panel" aria-label="Members" hidden></aside>
+      <!-- Searching messages: this conversation's, or its whole space's (beside it, or over it) -->
+      <aside id="search-panel" class="search-panel" aria-label="Search messages" hidden>
+        <form id="search-form" class="search-form" role="search">
+          <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="search-input" type="search" placeholder="Search" aria-label="Search for" autocomplete="off" enterkeyhint="search" maxlength="200" />
+          <button id="search-close" class="icon-btn ghost" type="button" aria-label="Close search" title="Close search (Esc)">
+            <svg class="icon"><use href="#i-close"/></svg>
+          </button>
+        </form>
+        <div class="search-filters" role="group" aria-label="Filters">
+          <label id="search-from-field" class="search-chip"><span>From</span><select id="search-from"></select></label>
+          <label id="search-in-field" class="search-chip"><span>In</span><select id="search-in"></select></label>
+          <label class="search-chip"><span>Has</span><select id="search-has">
+            <option value="">anything</option>
+            <option value="link">a link</option>
+            <option value="image">a picture</option>
+            <option value="video">a video</option>
+            <option value="audio">a sound</option>
+            <option value="file">a file</option>
+            <option value="gif">a GIF</option>
+          </select></label>
+          <label id="search-mentions-field" class="search-chip"><span>Mentions</span><select id="search-mentions"></select></label>
+          <label class="search-chip"><select id="search-when" aria-label="When">
+            <option value="">Any time</option>
+            <option value="on">On</option>
+            <option value="before">Before</option>
+            <option value="after">After</option>
+          </select><input id="search-date" class="search-date" type="date" aria-label="Day" hidden /></label>
+        </div>
+        <div class="search-bar">
+          <span id="search-count" class="search-count" role="status"></span>
+          <select id="search-sort" class="search-sort" aria-label="Sort">
+            <option value="new">Newest first</option>
+            <option value="old">Oldest first</option>
+            <option value="best">Best match</option>
+          </select>
+        </div>
+        <ol id="search-results" class="search-results" aria-label="What was found"></ol>
+      </aside>
 
       <!-- ============ A conversation, with the call on top while you're in one ============ -->
       <div id="dm" class="dm" hidden>
@@ -360,6 +400,9 @@
           </button>
           <button id="channel-mute" class="icon-btn ghost channel-mute" type="button" aria-pressed="false" hidden>
             <svg class="icon"><use href="#i-bell"/></svg>
+          </button>
+          <button id="search-btn" class="icon-btn ghost search-btn" type="button" aria-label="Search messages" title="Search messages (Ctrl+F)" aria-expanded="false" hidden>
+            <svg class="icon"><use href="#i-search"/></svg>
           </button>
           <button id="members-toggle" class="icon-btn ghost members-toggle" type="button" aria-label="Members" title="Members" hidden>
             <svg class="icon"><use href="#i-users"/></svg>
@@ -517,6 +560,10 @@
             </div>
           </div>
           <ol id="chat-log" class="chat-log"></ol>
+          <div id="jump-present" class="jump-present" hidden>
+            <span>You're looking at older messages</span>
+            <button id="jump-present-btn" class="text-btn" type="button">Jump to the newest <svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+          </div>
           <p id="dm-notice" class="dm-notice" hidden></p>
           <div id="typing" class="typing" aria-live="polite"></div>
           <div id="gif-panel" class="gif-panel" role="dialog" aria-label="GIFs" hidden>
@@ -611,6 +658,33 @@
     <button id="menu-remove" class="danger" type="button" role="menuitem">Remove friend</button>
     <button id="menu-block" class="danger" type="button" role="menuitem">Block</button>
   </div>
+
+  <!-- Someone's menu: right-click them (on a phone, press and hold): a space's member, a name or
+       picture by a message, someone in a voice channel. Only what you can do to them shows. -->
+  <div id="person-menu" class="menu person-menu" role="menu" hidden>
+    <div role="group">
+      <button id="pm-profile" type="button" role="menuitem">Profile</button>
+      <button id="pm-mention" type="button" role="menuitem">Mention</button>
+      <button id="pm-message" type="button" role="menuitem">Message</button>
+      <button id="pm-call" type="button" role="menuitem">Call</button>
+      <button id="pm-add" type="button" role="menuitem">Add friend</button>
+    </div>
+    <div role="group">
+      <button id="pm-roles" class="pm-more" type="button" role="menuitem" aria-haspopup="menu" aria-expanded="false">Roles</button>
+      <button id="pm-timeout" type="button" role="menuitem">Time out</button>
+      <button id="pm-kick" class="danger" type="button" role="menuitem">Kick</button>
+      <button id="pm-ban" class="danger" type="button" role="menuitem">Ban</button>
+    </div>
+    <div role="group">
+      <button id="pm-report" type="button" role="menuitem">Report</button>
+      <button id="pm-block" class="danger" type="button" role="menuitem">Block</button>
+    </div>
+    <div role="group">
+      <button id="pm-copy" type="button" role="menuitem">Copy username</button>
+    </div>
+  </div>
+  <!-- (Its roles, beside it: each one theirs or not, to give or take away.) -->
+  <div id="pm-role-menu" class="menu pm-role-menu" role="menu" aria-label="Roles" hidden></div>
 
   <!-- A channel's menu: right-click it in the list (on a phone, press and hold it). -->
   <div id="channel-menu" class="menu" role="menu" hidden>

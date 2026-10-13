@@ -161,6 +161,9 @@ for (const id of [
   'sound-trim', 'sound-trim-form', 'sound-trim-file', 'sound-trim-all', 'sound-trim-all-canvas', 'sound-trim-all-view', 'sound-trim-wave', 'sound-trim-canvas',
   'sound-trim-pick', 'sound-trim-playhead', 'sound-trim-play', 'sound-trim-times', 'sound-trim-hint', 'sound-trim-emoji', 'sound-trim-name', 'sound-trim-error', 'sound-trim-save',
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
+  'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
+  'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
+  'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -3851,7 +3854,7 @@ function removedText(by, byName, was, author, authorName) {
 // Messages that arrived while you were disconnected (they weren't pushed to you then).
 async function catchUp() {
   for (const dm of S.dms.values()) {
-    if (!dm.loaded || !dm.save || !dm.newestSeq) continue;
+    if (!dm.loaded || !dm.save || !dm.newestSeq || dm.detached) continue; // (one looking at older messages gets them when it's back)
     try {
       const { messages } = await api('GET', `${convPath(dm.friendId)}/messages?after=${dm.newestSeq}`);
       for (const m of messages) onDmMessage(m);
@@ -4069,7 +4072,7 @@ function replyQuote(r) {
   q.snapshot = r;
   q.addEventListener('click', (e) => {
     e.stopPropagation();
-    jumpToMessage(r.id);
+    jumpToMessage(r.id, r.seq || 0);
   });
   fillQuote(q);
   return q;
@@ -4111,19 +4114,27 @@ function refreshQuotes(id) {
   }
 }
 
-// Scrolls to a message (loading older ones if it's further up) and makes it glow for a moment.
-async function jumpToMessage(id) {
+// Scrolls to a message and makes it glow for a moment. Further back than what's shown (or, looking
+// at older messages, further on), the messages around it are loaded (seq: where it is); without
+// knowing where it is, the older pages, up to it.
+async function jumpToMessage(id, seq = 0) {
   if (!S.openDm) return;
   const dm = dmFor(S.openDm);
   const find = () => dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
   let li = find();
-  for (let i = 0; !li && dm.more && i < 30; i++) {
+  const shown = (!dm.more || seq >= dm.oldestSeq) && (!dm.detached || seq <= dm.lastShownSeq);
+  const around = !li && seq && !shown;
+  if (around) {
+    await loadAround(dm, seq);
+    li = find();
+  }
+  for (let i = 0; !li && !seq && dm.more && i < 30; i++) {
     if (dm.loading) await new Promise((r) => setTimeout(r, 250));
     else await loadOlder(dm);
     li = find();
   }
   if (!li) return toast("That message isn't here any more.");
-  li.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  li.scrollIntoView({ block: 'center', behavior: around ? 'instant' : 'smooth' }); // (just loaded around it: straight there)
   li.classList.remove('flash');
   void li.offsetWidth; // (so it glows again if it just did)
   li.classList.add('flash');
@@ -4164,7 +4175,7 @@ async function saveEdit() {
 
 // Your last message in this conversation that you could edit (the Up arrow edits it).
 function lastEditable() {
-  if (!S.openDm) return null;
+  if (!S.openDm || dmFor(S.openDm).detached) return null;
   const mine = dmFor(S.openDm).log.querySelectorAll('li[data-from="me"][data-kind="text"]:not(.removed)');
   return mine.length ? mine[mine.length - 1] : null;
 }
@@ -4291,7 +4302,10 @@ function dmFor(friendId) {
       firstDay: '', lastDay: '', // for the "Today" / "Yesterday" headings
       divider: null, // the "new messages" line: { el, count, seen }
     };
-    log.addEventListener('scroll', () => { if (log.scrollTop < 120) loadOlder(dm); });
+    log.addEventListener('scroll', () => {
+      if (log.scrollTop < 120) loadOlder(dm);
+      else if (dm.detached && log.scrollHeight - log.scrollTop - log.clientHeight < 300) loadNewer(dm);
+    });
     // A name above messages (or the picture beside them) opens that person's profile.
     log.addEventListener('click', (e) => {
       const li = ((e.target.closest('.msg-name') && !e.target.closest('time')) || e.target.closest('.msg-face')) && e.target.closest('li[data-author]');
@@ -4354,7 +4368,8 @@ function scrollChat(log = el.chatLog) {
   log.scrollTop = log.scrollHeight;
 }
 
-async function openDm(friendId) {
+// (at: a message's seq, to open around it rather than at the newest: see jumpToResult.)
+async function openDm(friendId, at = 0) {
   if (!convExists(friendId)) return;
   const dm = dmFor(friendId);
   // The sidebar follows: Home for a DM, the space for one of its channels.
@@ -4381,9 +4396,11 @@ async function openDm(friendId) {
   // A channel marked 18+ that you haven't said you're old enough for: asked, instead of it.
   const gated = renderAgeGate(dm);
   if (gated) return;
-  if (!dm.loaded) await loadDmHistory(dm);
+  if (!dm.loaded) await (at ? loadAround(dm, at) : loadDmHistory(dm));
+  else if (dm.detached && !at) await jumpToNewest(dm); // (opened again, not for a jump: at the newest, as ever)
   if (S.openDm !== friendId) return;
-  markDmSeen(dm);
+  if (!dm.detached) markDmSeen(dm);
+  renderJumpBar();
   if (matchMedia('(pointer: fine)').matches) el.chatInput.focus();
 }
 
@@ -4987,6 +5004,86 @@ async function loadOlder(dm) {
   }
 }
 
+// ----- Older messages, away from the newest -----
+// Jumping to a message from long ago (a search result, or what a reply answers) loads the messages
+// around it, not everything since: the conversation's then "detached" from its newest messages
+// until you scroll back down to them, or jump there (a bar says so). New ones wait meanwhile
+// (onDmMessage).
+
+// (Once nothing else is loading into it: a page of older ones, say.)
+async function whenIdle(dm) {
+  for (let i = 0; dm.loading && i < 100; i++) await new Promise((r) => setTimeout(r, 50));
+}
+
+async function loadAround(dm, seq) {
+  await whenIdle(dm);
+  const was = dm.detached;
+  dm.loading = true;
+  dm.detached = true; // (anything arriving meanwhile waits)
+  try {
+    const page = await api('GET', `${convPath(dm.friendId)}/messages?around=${seq}`);
+    dm.save = page.save;
+    dm.readAt = page.readAt;
+    dm.log.replaceChildren();
+    dm.firstDay = dm.lastDay = '';
+    dm.divider = null;
+    dm.more = page.more;
+    dm.oldestSeq = page.messages.length ? page.messages[0].seq : 0;
+    dm.lastShownSeq = page.messages.length ? page.messages.at(-1).seq : seq;
+    if (!dm.more) dm.log.append(startLine(dm));
+    for (const m of page.messages) appendMessage(dm, m);
+    dm.loaded = true;
+    if (!page.newer) reachedNewest(dm); // (it got to the newest after all)
+    regroup(dm.log);
+  } catch (err) {
+    dm.detached = was;
+    toast(err.message);
+  } finally {
+    dm.loading = false;
+  }
+  renderJumpBar();
+}
+
+// Scrolled down, looking at older messages: the next ones (until the newest).
+async function loadNewer(dm) {
+  if (!dm.detached || dm.loading) return;
+  dm.loading = true;
+  try {
+    const page = await api('GET', `${convPath(dm.friendId)}/messages?after=${dm.lastShownSeq}&limit=50`);
+    for (const m of page.messages) appendMessage(dm, m);
+    if (page.messages.length) dm.lastShownSeq = page.messages.at(-1).seq;
+    if (!page.newer) reachedNewest(dm);
+  } catch {} finally {
+    dm.loading = false;
+  }
+  renderJumpBar();
+}
+
+// At the newest again: what waited is shown, and (open, and looked at) it's all read.
+function reachedNewest(dm) {
+  dm.detached = false;
+  for (const m of dm.early) appendMessage(dm, m);
+  dm.early = [];
+  if (S.openDm === dm.friendId && !lookingAway()) markRead(dm);
+}
+
+// Straight back to the newest messages (the bar's button, or sending something).
+async function jumpToNewest(dm) {
+  await whenIdle(dm); // (a page of older ones, or the jump that made it look at older ones, still coming)
+  if (!dm.detached) return scrollChat(dm.log);
+  dm.detached = false;
+  dm.loaded = false;
+  dm.log.replaceChildren(); // (the older ones go: the newest page comes instead)
+  await loadDmHistory(dm);
+  renderJumpBar();
+  if (S.openDm === dm.friendId) markDmSeen(dm);
+}
+
+function renderJumpBar() {
+  const dm = S.openDm && S.dms.get(S.openDm);
+  el.jumpPresent.hidden = !(dm && dm.detached && !dm.log.hidden);
+}
+
 // Adds something to the end of a conversation, with a day heading if it's a new day.
 function appendItem(dm, li, at) {
   if (dayKey(at) !== dm.lastDay) {
@@ -5192,6 +5289,7 @@ function markSendFailed(li, err, retrySend) {
 
 async function sendText(friendId, text, replyTo = null) {
   const dm = dmFor(friendId);
+  if (dm.detached) await jumpToNewest(dm); // (it goes at the end, with the newest)
   const id = randomId();
   const li = appendMessage(dm, { id, dm: '', author: S.clientId, kind: 'text', text, replyTo: replyTo && { id: replyTo }, at: Date.now() });
   li.classList.add('pending');
@@ -5325,6 +5423,7 @@ function gifTile(item) {
 async function sendGif(friendId, item, q, replyTo = null) {
   const gif = gifSizes(item).send;
   const dm = dmFor(friendId);
+  if (dm.detached) await jumpToNewest(dm);
   const id = randomId();
   const li = appendMessage(dm, { id, dm: '', author: S.clientId, kind: 'gif', meta: gif, replyTo: replyTo && { id: replyTo }, at: Date.now() });
   li.classList.add('pending');
@@ -5412,6 +5511,20 @@ function onDmMessage(m) {
       renderFriends();
       updateTitle();
       if (S.sounds && !dm.channelId) playChime();
+    }
+    return;
+  }
+  if (dm.detached) {
+    // (Looking at older messages: it's there when you're back at the newest. One that isn't saved
+    // wouldn't be, so it waits here.)
+    if (!m.saved) dm.early.push(m);
+    if (fromThem) {
+      dm.unread++;
+      if (dm.channelId && mentionsMe(m)) dm.mentions = (dm.mentions || 0) + 1;
+      noteUnread(dm, m.at, Boolean(dm.channelId && mentionsMe(m)));
+      renderFriends();
+      updateTitle();
+      if (S.sounds && !dm.channelId && (S.openDm !== friendId || lookingAway())) playChime();
     }
     return;
   }
@@ -7468,6 +7581,7 @@ function sendFiles(list, replyTo = null) {
   const friendId = S.openDm;
   if (!files.length || !friendId) return;
   const dm = dmFor(friendId);
+  if (dm.detached) return void jumpToNewest(dm).then(() => sendFiles(files, replyTo));
   if (dm.save) {
     files.forEach((file, i) => uploadFile(dm, file, i === 0 ? replyTo : null)); // (the first one answers it)
     return;
@@ -9835,6 +9949,10 @@ function memberRow(space, m) {
   }
   btn.append(partyFace(makeFace(m, null), m), text);
   li.append(btn);
+  li.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    openPersonMenu(m.id, space.id, e.clientX, e.clientY, li);
+  });
   const giveable = canManageMemberIn(space, m) ? space.roles.filter((r) => canManageRoleIn(space, r)) : [];
   const mods = ['timeout', 'kick', 'ban'].filter((perm) => canModerateIn(space, m, perm));
   const open = S.rolesPanelFor === m.id;
@@ -10409,11 +10527,13 @@ function presenceIn(m) {
 }
 
 function renderMemberPanel() {
+  syncSearch();
+  renderJumpBar();
   const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
   const space = c && S.spaces.get(c.spaceId);
   const wide = widePanel.matches;
   panelWide = wide;
-  const show = Boolean(space) && wide && S.showMembers;
+  const show = Boolean(space) && wide && S.showMembers && !searchBeside();
   el.membersToggle.hidden = !space || !wide;
   el.membersToggle.classList.toggle('on', show);
   el.membersToggle.setAttribute('aria-pressed', String(show));
@@ -10470,7 +10590,375 @@ function memberPanelRow(space, m, dim) {
   }
   b.append(partyFace(makeFace(m, dim ? null : presenceIn(m)), m), text);
   b.addEventListener('click', () => openMiniProfile(m.id));
+  b.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    openPersonMenu(m.id, space.id, e.clientX, e.clientY, b);
+  });
   return b;
+}
+
+// ---------------- Searching messages ----------------
+// From a conversation's head: what was said there (a DM, your notes, a group), or anywhere in its
+// space (a channel's); who said it, where, what it has, mentioning whom, and when; newest, oldest or
+// best match first (lib/search.js). Beside the conversation when there's room, over it when not. A
+// result opens where it was said, around it (jumpToResult).
+
+const search = { scope: '', path: '', offset: 0, more: false, ticket: 0, terms: [], place: '' };
+const searchRoom = { get matches() { return innerWidth / uiZoom() >= 1180; } };
+const searchBeside = () => !el.searchPanel.hidden && !el.searchPanel.classList.contains('over');
+
+// What a conversation's search looks through: its space (a channel's, or a group's), or the DM.
+function searchScopeOf(key) {
+  if (!key) return null;
+  if (isChannelKey(key)) {
+    const c = S.channels.get(channelIdOf(key));
+    const space = c && S.spaces.get(c.spaceId);
+    return space ? { id: `space:${space.id}`, path: `/spaces/${space.id}/search`, space, group: isGroupSpace(space) } : null;
+  }
+  return convExists(key) ? { id: `dm:${key}`, path: `/dms/${key}/search`, friendId: key, notes: isNotes(key) } : null;
+}
+
+function openSearch() {
+  const scope = !el.dm.hidden && searchScopeOf(S.openDm);
+  if (!scope || el.searchBtn.hidden) return;
+  if (search.scope !== scope.id) resetSearch(scope);
+  el.searchPanel.hidden = false;
+  el.searchBtn.classList.add('on');
+  el.searchBtn.setAttribute('aria-expanded', 'true');
+  placeSearch();
+  renderMemberPanel();
+  el.searchInput.focus();
+  el.searchInput.select();
+}
+
+function hideSearch() {
+  el.searchPanel.hidden = true;
+  el.searchBtn.classList.remove('on');
+  el.searchBtn.setAttribute('aria-expanded', 'false');
+}
+
+function closeSearch() {
+  if (el.searchPanel.hidden) return;
+  hideSearch();
+  renderMemberPanel();
+}
+
+function placeSearch() {
+  el.searchPanel.classList.toggle('over', !searchRoom.matches);
+}
+
+// It follows the conversation: still open for another channel of the same space, closed for
+// anywhere else. (And its button, for what's open: not a channel you've still to say you're 18 for.)
+function syncSearch() {
+  const scope = !el.dm.hidden && searchScopeOf(S.openDm);
+  const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
+  el.searchBtn.hidden = !scope || Boolean(c && c.gated);
+  if (!el.searchPanel.hidden && (el.searchBtn.hidden || scope.id !== search.scope)) hideSearch();
+}
+
+function resetSearch(scope) {
+  search.scope = scope.id;
+  search.path = scope.path;
+  search.offset = 0;
+  search.more = false;
+  search.ticket++; // (anything still on its way was for the last one)
+  search.scopeInfo = scope;
+  el.searchInput.value = '';
+  el.searchInput.placeholder = scope.space ? `Search ${scope.group ? groupTitle(scope.space) : scope.space.name}`
+    : scope.notes ? 'Search your notes' : `Search your messages with ${friendName(scope.friendId)}`;
+  el.searchHas.value = el.searchWhen.value = el.searchDate.value = '';
+  el.searchSort.value = 'new';
+  el.searchDate.hidden = true;
+  fillSearchFilters(scope);
+  if (scope.space && !scope.space.members) {
+    loadMembers(scope.space.id).then(() => { if (search.scope === scope.id) fillSearchFilters(scope, true); });
+  }
+  renderSearchNote();
+}
+
+// Who (everyone in the space or group, or the two of you) and where (the space's text channels).
+function fillSearchFilters(scope, keep = false) {
+  const option = (value, text) => {
+    const o = document.createElement('option');
+    o.value = value;
+    o.textContent = text;
+    return o;
+  };
+  const people = scope.space ? (scope.space.members || scope.space.people || []).map((m) => ({ id: m.id, name: m.id === S.clientId ? S.me.displayName : m.displayName || friendName(m.id) }))
+    : scope.notes ? [] : [{ id: S.clientId, name: S.me.displayName }, { id: scope.friendId, name: friendName(scope.friendId) }];
+  people.sort((a, b) => a.name.localeCompare(b.name));
+  for (const select of [el.searchFrom, el.searchMentions]) {
+    const was = keep ? select.value : '';
+    select.replaceChildren(option('', 'anyone'), ...people.map((p) => option(p.id, p.id === S.clientId ? `${p.name} (you)` : p.name)));
+    select.value = people.some((p) => p.id === was) ? was : '';
+  }
+  el.searchFromField.hidden = !people.length;
+  el.searchMentionsField.hidden = !scope.space;
+  const channels = scope.space && !scope.group ? scope.space.channels.filter((c) => c.kind !== 'voice' && !c.gated) : [];
+  const wasIn = keep ? el.searchIn.value : '';
+  el.searchIn.replaceChildren(option('', 'any channel'), ...channels.map((c) => option(c.id, `#${c.name}`)));
+  el.searchIn.value = channels.some((c) => c.id === wasIn) ? wasIn : '';
+  el.searchInField.hidden = channels.length < 2;
+  markSearchChips();
+}
+
+function markSearchChips() {
+  for (const select of el.searchPanel.querySelectorAll('.search-chip select')) select.closest('.search-chip').classList.toggle('set', Boolean(select.value));
+  el.searchDate.hidden = !el.searchWhen.value;
+}
+
+// What's asked for, as the server takes it.
+function searchQuery() {
+  const q = { q: el.searchInput.value.trim() };
+  if (el.searchFrom.value && !el.searchFromField.hidden) q.from = el.searchFrom.value;
+  if (el.searchIn.value && !el.searchInField.hidden) q.in = el.searchIn.value;
+  if (el.searchHas.value) q.has = el.searchHas.value;
+  if (el.searchMentions.value && !el.searchMentionsField.hidden) q.mentions = el.searchMentions.value;
+  const day = el.searchWhen.value && /^\d{4}-\d\d-\d\d$/.test(el.searchDate.value) ? el.searchDate.value.split('-').map(Number) : null;
+  if (day) {
+    // (That day, here: from its first moment to the next day's.)
+    const start = new Date(day[0], day[1] - 1, day[2]).getTime();
+    const end = new Date(day[0], day[1] - 1, day[2] + 1).getTime();
+    if (el.searchWhen.value === 'on') Object.assign(q, { after: start, before: end });
+    else if (el.searchWhen.value === 'before') q.before = start;
+    else q.after = end;
+  }
+  if (el.searchSort.value !== 'new') q.sort = el.searchSort.value;
+  if (!q.q) delete q.q;
+  return q;
+}
+const searchAsked = (q) => Object.keys(q).some((k) => k !== 'sort');
+
+// Before anything's asked (or when nothing's found): a few words about it.
+function renderSearchNote(text = '') {
+  const scope = search.scopeInfo;
+  const dm = scope && scope.friendId && !scope.notes ? S.dms.get(scope.friendId) : null;
+  const li = document.createElement('li');
+  li.className = 'search-note';
+  li.textContent = text || 'Look for words, or pick who said something, where, what it has, or when.';
+  if (dm && !dm.save) li.textContent += " Saving's off here, so only what was said while it was on can be found.";
+  el.searchCount.textContent = '';
+  el.searchResults.replaceChildren(li);
+  search.more = false;
+}
+
+async function runSearch(more = false) {
+  markSearchChips();
+  const q = searchQuery();
+  if (!searchAsked(q)) {
+    search.ticket++;
+    return renderSearchNote();
+  }
+  const ticket = ++search.ticket;
+  if (!more) el.searchCount.textContent = 'Searching…';
+  q.offset = more ? search.offset : 0;
+  let r;
+  try {
+    r = await api('GET', `${search.path}?${new URLSearchParams(q)}`);
+  } catch (err) {
+    if (ticket !== search.ticket) return;
+    if (more) {
+      toast(err.message);
+      const b = el.searchResults.querySelector('.search-more');
+      if (b) b.disabled = false;
+    } else {
+      renderSearchNote(err.message);
+    }
+    return;
+  }
+  if (ticket !== search.ticket) return; // (asked again since)
+  search.terms = searchPatterns(q.q || '');
+  search.more = r.more;
+  search.offset = q.offset + r.messages.length;
+  el.searchCount.textContent = r.total ? `${r.total.toLocaleString()} result${r.total === 1 ? '' : 's'}` : '';
+  if (!r.total) return renderSearchNote('Nothing found. Try other words, or fewer filters.');
+  renderSearchResults(r.messages, more);
+}
+
+function renderSearchResults(messages, more) {
+  const list = el.searchResults;
+  list.querySelector('.search-more')?.closest('li').remove();
+  if (!more) {
+    list.replaceChildren();
+    list.scrollTop = 0;
+    search.place = '';
+  }
+  // (In a space, each channel's name above its results.)
+  const headings = Boolean(search.scopeInfo && search.scopeInfo.space && !search.scopeInfo.group);
+  for (const m of messages) {
+    const c = S.channels.get(m.dm);
+    if (headings && c && m.dm !== search.place) {
+      search.place = m.dm;
+      const h = document.createElement('li');
+      h.className = 'search-place';
+      h.textContent = `#${c.name}`;
+      list.append(h);
+    }
+    list.append(searchHit(m));
+  }
+  if (search.more) {
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'text-btn search-more';
+    b.textContent = 'Show more';
+    b.addEventListener('click', () => {
+      b.disabled = true;
+      runSearch(true);
+    });
+    li.append(b);
+    list.append(li);
+  }
+}
+
+// "Today at 4:12 PM", "Yesterday at 9:03 AM", "Oct 3 at 4:12 PM", "Oct 3, 2025 at 4:12 PM".
+function hitWhen(at) {
+  const d = new Date(at);
+  const now = new Date();
+  const day = d.toDateString() === now.toDateString() ? 'Today'
+    : d.toDateString() === new Date(Date.now() - 86_400_000).toDateString() ? 'Yesterday'
+    : d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(d.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }) });
+  return `${day} at ${fmtTime(at)}`;
+}
+
+// One result: who, when, and what they said (the words looked for marked), or sent.
+function searchHit(m) {
+  const li = document.createElement('li');
+  li.className = 'search-hit';
+  li.tabIndex = 0;
+  li.dataset.id = m.id;
+  const c = S.channels.get(m.dm);
+  const space = c ? S.spaces.get(c.spaceId) : null;
+  const head = document.createElement('div');
+  head.className = 'hit-head';
+  const name = document.createElement('span');
+  name.className = 'hit-name';
+  name.textContent = m.author === S.clientId ? S.me.displayName : friendName(m.author);
+  if (space && !isGroupSpace(space)) name.style.color = tint(memberColor(space, m.author));
+  const time = document.createElement('time');
+  time.textContent = hitWhen(m.at);
+  time.title = new Date(m.at).toLocaleString();
+  head.append(makeFace(profileOf(m.author) || { id: m.author, displayName: friendName(m.author) }, null), name, time);
+  const body = document.createElement('div');
+  body.className = 'hit-body';
+  if (m.kind === 'text') {
+    appendLinked(body, m.text, space, Boolean(m.everyone));
+  } else if (m.kind === 'gif') {
+    const meta = m.meta || {};
+    const src = meta.poster || meta.img;
+    if (src && KLIPY_LINK.test(src)) {
+      const img = document.createElement('img');
+      img.className = 'hit-pic';
+      img.loading = 'lazy';
+      img.alt = meta.title || 'GIF';
+      img.src = src;
+      body.append(img);
+    }
+    if (meta.title) body.append(`GIF: ${meta.title}`);
+  } else if (m.kind === 'file' && m.file) {
+    if (/^image\//.test(m.file.type || '')) {
+      const img = document.createElement('img');
+      img.className = 'hit-pic';
+      img.loading = 'lazy';
+      img.alt = '';
+      img.src = m.file.preview || m.file.url;
+      body.append(img);
+    }
+    const file = document.createElement('span');
+    file.className = 'hit-file';
+    file.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>';
+    const size = document.createElement('small');
+    size.textContent = fmtBytes(m.file.size || 0);
+    file.append(m.file.name, size);
+    body.append(file);
+  }
+  markSearchWords(body, search.terms);
+  li.append(head, body);
+  li.addEventListener('click', (e) => {
+    if (e.target.closest('a, button')) return; // (a link in it, or a mention)
+    jumpToResult(m);
+  });
+  li.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target === li) jumpToResult(m);
+  });
+  return li;
+}
+
+// Where a result was said, around it. (On a phone, the search makes way.)
+async function jumpToResult(m) {
+  const key = convOf(m.dm);
+  if (!convExists(key)) return toast("That conversation isn't here any more.");
+  if (el.searchPanel.classList.contains('over')) closeSearch();
+  if (S.openDm !== key) await openDm(key, m.seq);
+  if (S.openDm !== key) return;
+  await jumpToMessage(m.id, m.seq);
+  for (const hit of el.searchResults.querySelectorAll('.search-hit.here')) hit.classList.remove('here');
+  el.searchResults.querySelector(`.search-hit[data-id="${CSS.escape(m.id)}"]`)?.classList.add('here');
+}
+
+// ----- Marking the words looked for -----
+// As the server finds them (lib/search.js): a word, and the longer words it starts; "words in
+// quotes", together; anything else (an emoji) as it is. Case and accents don't matter.
+
+const foldText = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function searchPatterns(q) {
+  const out = [];
+  for (const m of String(q).matchAll(/"([^"]*)"?|(\S+)/g)) {
+    const quoted = m[1] !== undefined;
+    const part = foldText((quoted ? m[1] : m[2]).trim());
+    if (!part) continue;
+    const words = part.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    if (!words.length) {
+      out.push(new RegExp(escapeRe(part), 'gu'));
+      continue;
+    }
+    const end = quoted || [...part].length < 2 ? '(?![\\p{L}\\p{N}])' : '[\\p{L}\\p{N}]*';
+    out.push(new RegExp(`(?<![\\p{L}\\p{N}])${words.map(escapeRe).join('[^\\p{L}\\p{N}]+')}${end}`, 'gu'));
+  }
+  return out;
+}
+
+function markSearchWords(node, patterns) {
+  if (!patterns.length) return;
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  const texts = [];
+  while (walker.nextNode()) texts.push(walker.currentNode);
+  for (const t of texts) {
+    const raw = t.data;
+    // (The text folded, and where in the text each folded character came from.)
+    let folded = '';
+    const from = [];
+    for (let i = 0; i < raw.length;) {
+      const ch = String.fromCodePoint(raw.codePointAt(i));
+      const f = foldText(ch);
+      for (let k = 0; k < f.length; k++) from.push(i);
+      folded += f;
+      i += ch.length;
+    }
+    from.push(raw.length);
+    const hits = [];
+    for (const re of patterns) {
+      re.lastIndex = 0;
+      for (const x of folded.matchAll(re)) if (x[0]) hits.push([from[x.index], from[x.index + x[0].length]]);
+    }
+    if (!hits.length) continue;
+    hits.sort((a, b) => a[0] - b[0]);
+    const frag = document.createDocumentFragment();
+    let at = 0;
+    for (const [a, b] of hits) {
+      if (b <= at) continue;
+      const start = Math.max(a, at);
+      if (start > at) frag.append(raw.slice(at, start));
+      const mark = document.createElement('mark');
+      mark.textContent = raw.slice(start, b);
+      frag.append(mark);
+      at = b;
+    }
+    frag.append(raw.slice(at));
+    t.replaceWith(frag);
+  }
 }
 
 function openSpaceSettings() {
@@ -11906,6 +12394,10 @@ function voiceChannelItem(c) {
       if (m.deafened) row.insertAdjacentHTML('beforeend', '<svg class="icon off" aria-label="Deafened"><use href="#i-headphones-off"/></svg>');
       else if (m.muted) row.insertAdjacentHTML('beforeend', '<svg class="icon off" aria-label="Muted"><use href="#i-mic-off"/></svg>');
       row.addEventListener('click', () => openMiniProfile(m.id));
+      row.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        openPersonMenu(m.id, (S.channels.get(c.id) || {}).spaceId, e.clientX, e.clientY, row);
+      });
       return row;
     }));
     li.append(list);
@@ -12638,6 +13130,204 @@ async function onMenuRemove() {
   try {
     await api('DELETE', `/friends/${f.id}`);
     toast(`Removed ${f.displayName} from your friends.`);
+    await refreshFriends();
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+// ---------------- Someone's menu ----------------
+// Right-click someone (press and hold on a phone): a space's member (its members panel or list), a
+// name or picture by a message, someone in a voice channel. What you can do: see their profile,
+// mention them (in the space's channel that's open), message or call a friend (or ask to be
+// friends), give or take away roles, time them out, kick or ban them (each as your roles let you,
+// and only on people below you), report or block them, and copy their username.
+
+let personMenu = null; // { id, spaceId, opener }
+
+// The person whose name (or picture) by a message this is, and the space it was said in, if any.
+function personAt(target) {
+  const li = ((target.closest('.msg-name') && !target.closest('time')) || target.closest('.msg-face')) && target.closest('.chat-log > li[data-author]');
+  if (!li || !li.dataset.author) return null;
+  const c = li.dataset.channel && S.channels.get(li.dataset.channel);
+  return { id: li.dataset.author, spaceId: c ? c.spaceId : '' };
+}
+
+function openPersonMenu(userId, spaceId, x, y, opener = null) {
+  closePersonMenu();
+  closeFriendMenu();
+  closeChannelMenu();
+  closeMessageMenu();
+  if (!profileOf(userId)) return;
+  personMenu = { id: userId, spaceId: spaceId || '', opener };
+  if (opener) opener.classList.add('menu-open');
+  // (In a box that's open, like the space's members: in it, or the box would cover it.)
+  const host = (opener && opener.closest('dialog[open]')) || document.body;
+  if (el.personMenu.parentNode !== host) host.append(el.personMenu, el.pmRoleMenu);
+  renderPersonMenu();
+  el.personMenu.hidden = false;
+  placeMenu(el.personMenu, x, y);
+  personMenu.at = { x, y };
+  el.personMenu.querySelector('button:not([hidden])')?.focus({ preventScroll: true });
+  // A space's members not here yet: what you can do to them comes once they are.
+  const space = personMenu.spaceId && S.spaces.get(personMenu.spaceId);
+  if (space && !isGroupSpace(space) && !space.members) {
+    loadMembers(space.id).then(() => {
+      if (!personMenu || personMenu.id !== userId || el.personMenu.hidden) return;
+      renderPersonMenu();
+      placeMenu(el.personMenu, x, y);
+    });
+  }
+}
+
+function closePersonMenu() {
+  closePersonRoles();
+  if (el.personMenu.hidden) return;
+  el.personMenu.hidden = true;
+  if (personMenu && personMenu.opener) personMenu.opener.classList.remove('menu-open');
+  personMenu = null;
+}
+
+// Next to the pointer, but never off the edge of the window.
+function placeMenu(menu, x, y) {
+  const r = menu.getBoundingClientRect();
+  const z = uiZoom();
+  menu.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8)) / z}px`;
+  menu.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8)) / z}px`;
+}
+
+// Who it's for, where, and what you can do to them there (a space's member's roles and what their
+// place lets you do: lib/spaces.js checks it all again).
+function personMenuFor() {
+  if (!personMenu) return null;
+  const { id, spaceId } = personMenu;
+  const p = profileOf(id);
+  const space = spaceId ? S.spaces.get(spaceId) : null;
+  const m = space && !isGroupSpace(space) && space.members ? space.members.find((x) => x.id === id) || null : null;
+  return p && { id, p, space, m, self: id === S.clientId, f: S.friends.get(id) };
+}
+
+function renderPersonMenu() {
+  const t = personMenuFor();
+  if (!t) return closePersonMenu();
+  const { id, p, space, m, self, f } = t;
+  const blocked = Boolean(S.blocked && S.blocked.has(id));
+  const show = (b, on) => {
+    b.hidden = !on;
+    return on;
+  };
+  // Mention: in the message box, when one of this space's channels is open (and you can write there).
+  const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
+  show(el.pmMention, Boolean(space && c && c.spaceId === space.id && !el.dm.hidden && !el.chatInput.disabled && p.username));
+  show(el.pmMessage, Boolean(f));
+  if (show(el.pmCall, Boolean(f))) {
+    const here = S.inCall && S.callWith === id;
+    el.pmCall.textContent = here ? 'Back to the call' : 'Call';
+    el.pmCall.disabled = S.inCall && !here;
+    el.pmCall.title = el.pmCall.disabled ? 'Leave your current call first' : '';
+  }
+  if (show(el.pmAdd, !self && !f && !blocked && Boolean(p.username))) {
+    const sent = S.outgoing.some((u) => u.id === id);
+    el.pmAdd.textContent = sent ? 'Friend request sent' : S.incoming.some((u) => u.id === id) ? 'Accept friend request' : 'Add friend';
+    el.pmAdd.disabled = sent;
+  }
+  const giveable = m && canManageMemberIn(space, m) ? space.roles.filter((r) => canManageRoleIn(space, r)) : [];
+  show(el.pmRoles, giveable.length > 0);
+  if (show(el.pmTimeout, Boolean(m && canModerateIn(space, m, 'timeout')))) {
+    el.pmTimeout.textContent = m.timeoutUntil > Date.now() ? `End ${p.displayName}'s timeout` : `Time out ${p.displayName}`;
+  }
+  if (show(el.pmKick, Boolean(m && canModerateIn(space, m, 'kick')))) el.pmKick.textContent = `Kick ${p.displayName}`;
+  if (show(el.pmBan, Boolean(m && canModerateIn(space, m, 'ban')))) el.pmBan.textContent = `Ban ${p.displayName}`;
+  show(el.pmReport, !self);
+  if (show(el.pmBlock, !self)) {
+    el.pmBlock.textContent = blocked ? 'Unblock' : 'Block';
+    el.pmBlock.classList.toggle('danger', !blocked);
+  }
+  show(el.pmCopy, Boolean(p.username));
+  for (const g of el.personMenu.querySelectorAll('[role="group"]')) g.hidden = ![...g.children].some((b) => !b.hidden);
+}
+
+// Runs one of its choices for whoever it's for (the menu closes first).
+function personAction(fn) {
+  return () => {
+    const t = personMenuFor();
+    closePersonMenu();
+    if (t) fn(t);
+  };
+}
+
+// "@bea " where the message box's cursor is.
+function insertMention(username) {
+  const box = el.chatInput;
+  const start = box.selectionStart ?? box.value.length;
+  const end = box.selectionEnd ?? start;
+  const before = box.value.slice(0, start);
+  const text = `${before && !/\s$/.test(before) ? ' ' : ''}@${username} `;
+  setChatText(before + text + box.value.slice(end));
+  box.focus();
+  box.setSelectionRange(before.length + text.length, before.length + text.length);
+}
+
+// ----- Its roles, beside it -----
+
+function openPersonRoles(focus = false) {
+  const t = personMenuFor();
+  if (!t || !t.m) return;
+  const { space, m } = t;
+  const roles = space.roles.filter((r) => canManageRoleIn(space, r));
+  el.pmRoleMenu.replaceChildren(...roles.map((r) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'menuitemcheckbox');
+    b.setAttribute('aria-checked', String(m.roles.includes(r.id)));
+    const dot = document.createElement('span');
+    dot.className = 'pm-role-dot';
+    if (r.color) dot.style.background = r.color;
+    const name = document.createElement('span');
+    name.className = 'pm-role-name';
+    name.textContent = r.name;
+    b.append(dot, name);
+    b.addEventListener('click', () => toggleMemberRole(space, m, r, b));
+    return b;
+  }));
+  el.pmRoleMenu.hidden = false;
+  el.pmRoles.setAttribute('aria-expanded', 'true');
+  // Beside the menu, on whichever side there's room, level with "Roles".
+  const menu = el.personMenu.getBoundingClientRect();
+  const item = el.pmRoles.getBoundingClientRect();
+  const sub = el.pmRoleMenu.getBoundingClientRect();
+  const z = uiZoom();
+  const x = menu.right + 4 + sub.width <= innerWidth - 8 ? menu.right + 4 : Math.max(8, menu.left - 4 - sub.width);
+  const y = Math.max(8, Math.min(item.top - 6, innerHeight - sub.height - 8));
+  el.pmRoleMenu.style.left = `${x / z}px`;
+  el.pmRoleMenu.style.top = `${y / z}px`;
+  if (focus) el.pmRoleMenu.querySelector('button')?.focus({ preventScroll: true });
+}
+
+function closePersonRoles() {
+  if (el.pmRoleMenu.hidden) return;
+  el.pmRoleMenu.hidden = true;
+  el.pmRoles.setAttribute('aria-expanded', 'false');
+}
+
+async function toggleMemberRole(space, m, r, b) {
+  const on = b.getAttribute('aria-checked') !== 'true';
+  b.setAttribute('aria-checked', String(on));
+  b.disabled = true;
+  try {
+    await api(on ? 'PUT' : 'DELETE', `/spaces/${space.id}/members/${m.id}/roles/${r.id}`);
+    m.roles = on ? [...new Set([...m.roles, r.id])] : m.roles.filter((x) => x !== r.id); // (the space's news brings the rest)
+  } catch (err) {
+    b.setAttribute('aria-checked', String(!on));
+    toast(err.message);
+  }
+  b.disabled = false;
+}
+
+async function askToBeFriends(p) {
+  try {
+    const { status } = await api('POST', '/friends', { username: p.username });
+    toast(status === 'friends' ? `You and ${p.displayName} are friends now.` : `Friend request sent to ${p.displayName}.`);
     await refreshFriends();
   } catch (err) {
     toast(err.message);
@@ -15803,6 +16493,61 @@ async function init() {
     if (f && confirm(`Block ${f.displayName}? You won't be friends any more, they can't message you or ask to be friends, and their messages in spaces fold away.`)) setBlocked(id, true, f.displayName);
   }));
   el.menuRemove.addEventListener('click', onMenuRemove);
+  // ----- Someone's menu -----
+  el.pmProfile.addEventListener('click', personAction((t) => openMiniProfile(t.id)));
+  el.pmMention.addEventListener('click', personAction((t) => insertMention(t.p.username)));
+  el.pmMessage.addEventListener('click', personAction((t) => openDm(t.id)));
+  el.pmCall.addEventListener('click', personAction((t) => (S.inCall && S.callWith === t.id ? openDm(t.id) : startCall(t.id))));
+  el.pmAdd.addEventListener('click', personAction((t) => askToBeFriends(t.p)));
+  el.pmTimeout.addEventListener('click', personAction((t) => (t.m.timeoutUntil > Date.now() ? endTimeout(t.space, t.m) : openModDialog('timeout', t.space, t.m))));
+  el.pmKick.addEventListener('click', personAction((t) => openModDialog('kick', t.space, t.m)));
+  el.pmBan.addEventListener('click', personAction((t) => openModDialog('ban', t.space, t.m)));
+  el.pmReport.addEventListener('click', personAction((t) => openReportDialog({ userId: t.id, name: t.p.displayName, spaceId: t.space ? t.space.id : null })));
+  el.pmBlock.addEventListener('click', personAction((t) => {
+    if (S.blocked.has(t.id)) setBlocked(t.id, false, t.p.displayName);
+    else if (confirm(`Block ${t.p.displayName}? ${t.f ? "You won't be friends any more, they" : 'They'} can't message you or ask to be friends, and their messages in spaces fold away.`)) setBlocked(t.id, true, t.p.displayName);
+  }));
+  el.pmCopy.addEventListener('click', personAction((t) => copyText(t.p.username, `Copied ${t.p.username}.`)));
+  // Roles: beside it, on hover (or a click, or the right arrow key); the other choices hide them again.
+  el.pmRoles.addEventListener('click', () => (el.pmRoleMenu.hidden ? openPersonRoles(true) : closePersonRoles()));
+  el.pmRoles.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') openPersonRoles(); });
+  for (const b of el.personMenu.querySelectorAll('button:not(#pm-roles)')) b.addEventListener('pointerenter', closePersonRoles);
+  el.personMenu.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' && e.target === el.pmRoles) {
+      e.preventDefault();
+      openPersonRoles(true);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const items = [...el.personMenu.querySelectorAll('button')].filter((b) => !b.hidden && !b.closest('[hidden]'));
+      const i = items.indexOf(document.activeElement);
+      items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+    }
+  });
+  el.pmRoleMenu.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closePersonRoles();
+      el.pmRoles.focus();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const items = [...el.pmRoleMenu.querySelectorAll('button')];
+      const i = items.indexOf(document.activeElement);
+      items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
+    }
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (!el.personMenu.hidden && !el.personMenu.contains(e.target) && !el.pmRoleMenu.contains(e.target)) closePersonMenu();
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || el.personMenu.hidden) return;
+    e.preventDefault(); // (not the box it's in, as well)
+    const opener = personMenu && personMenu.opener;
+    closePersonMenu();
+    if (opener && opener.focus) opener.focus({ preventScroll: true });
+  }, true);
+  window.addEventListener('blur', closePersonMenu);
+  window.addEventListener('resize', closePersonMenu);
   // ----- The message menu -----
   el.msgReply.addEventListener('click', () => startReply(msgMenuLi));
   // Spaces.
@@ -15831,7 +16576,42 @@ async function init() {
     store.set('showMembers', S.showMembers ? 'on' : 'off');
     renderMemberPanel();
   });
-  addEventListener('resize', () => { if (widePanel.matches !== panelWide) renderMemberPanel(); });
+  addEventListener('resize', () => {
+    const beside = searchBeside();
+    placeSearch();
+    if (widePanel.matches !== panelWide || beside !== searchBeside()) renderMemberPanel();
+  });
+  // ----- Searching messages -----
+  el.searchBtn.addEventListener('click', () => (el.searchPanel.hidden ? openSearch() : closeSearch()));
+  el.searchClose.addEventListener('click', closeSearch);
+  el.searchForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    runSearch();
+  });
+  for (const select of [el.searchFrom, el.searchIn, el.searchHas, el.searchMentions, el.searchSort]) select.addEventListener('change', () => runSearch());
+  el.searchWhen.addEventListener('change', () => {
+    markSearchChips();
+    if (!el.searchWhen.value || el.searchDate.value) runSearch();
+    else el.searchDate.focus();
+  });
+  el.searchDate.addEventListener('change', () => runSearch());
+  el.searchPanel.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    e.preventDefault();
+    closeSearch();
+    if (matchMedia('(pointer: fine)').matches) el.chatInput.focus();
+  });
+  // Ctrl+F (⌘F on a Mac), with a conversation open: its search.
+  document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'f') return;
+    if (el.dm.hidden || el.searchBtn.hidden || document.querySelector('dialog[open]')) return;
+    e.preventDefault();
+    openSearch();
+  });
+  el.jumpPresentBtn.addEventListener('click', () => {
+    const dm = S.openDm && S.dms.get(S.openDm);
+    if (dm) jumpToNewest(dm);
+  });
   el.addVoiceBtn.addEventListener('click', () => startNewChannel('voice'));
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-voice]');
@@ -15938,10 +16718,12 @@ async function init() {
   el.dm.addEventListener('pointerdown', (e) => {
     const li = e.pointerType === 'touch' && e.target.closest('.chat-log > li');
     if (!li || e.target.closest('a, button, video, audio, input')) return;
-    press = { x: e.clientX, y: e.clientY, timer: setTimeout(() => {
+    const who = personAt(e.target);
+    press = { x: e.clientX, y: e.clientY, who, timer: setTimeout(() => {
       press.fired = true;
       if (navigator.vibrate) navigator.vibrate(10);
-      openMessageMenu(li, press.x, press.y);
+      if (who) openPersonMenu(who.id, who.spaceId, press.x, press.y);
+      else openMessageMenu(li, press.x, press.y);
     }, 450) };
   });
   const endPress = () => { if (press) clearTimeout(press.timer); };
@@ -15952,15 +16734,17 @@ async function init() {
   });
   el.dm.addEventListener('contextmenu', (e) => {
     const li = e.target.closest('.chat-log > li');
-    if (!li || (!messageActions(li).length && !canReact(li))) return;
+    const who = press ? press.who : personAt(e.target);
+    if (!li || (!who && !messageActions(li).length && !canReact(li))) return;
     if (e.target.closest('a') && !press) return; // a link's own menu (copy the address, and so on)
     e.preventDefault();
-    if (!press) return openMessageMenu(li, e.clientX, e.clientY);
+    const open = (x, y) => (who ? openPersonMenu(who.id, who.spaceId, x, y) : openMessageMenu(li, x, y));
+    if (!press) return open(e.clientX, e.clientY);
     // A phone's own long-press event, maybe before ours: open it now (once).
     if (!press.fired) {
       clearTimeout(press.timer);
       press.fired = true;
-      openMessageMenu(li, press.x, press.y);
+      open(press.x, press.y);
     }
   });
   el.dm.addEventListener('click', (e) => {
