@@ -10577,7 +10577,10 @@ function memberPanelRow(space, m, dim) {
   const name = document.createElement('span');
   name.className = 'panel-member-name';
   name.textContent = m.displayName;
-  name.style.color = tint(memberColor(space, m.id));
+  // On their card (dressCard, below): their role's colour, if it reads on it, or else the card's.
+  const card = (profileOf(m.id) || m).card || null;
+  const color = memberColor(space, m.id);
+  name.style.color = !color ? '' : !card ? tint(color) : readsOn(color, card) ? color : '';
   if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
   if (birthdayNow(m)) name.append(birthdayWords());
   text.append(name);
@@ -10590,6 +10593,7 @@ function memberPanelRow(space, m, dim) {
     text.append(status);
   }
   b.append(partyFace(makeFace(m, dim ? null : presenceIn(m)), m), text);
+  if (card) dressCard(b, card, name, 15); // (small, as in your corner)
   b.addEventListener('click', () => openMiniProfile(m.id));
   b.addEventListener('contextmenu', (e) => {
     e.preventDefault();
@@ -13954,6 +13958,19 @@ function dressCard(node, card, name, size = 22) {
     }
     node.prepend(banner);
   }
+}
+
+// Whether a colour (a role's) reads on a card, against its colours half-way down: 3 to 1, as the
+// web's guidelines ask of big words.
+function readsOn(color, card) {
+  const light = (hex) => {
+    const n = parseInt(String(hex).slice(1), 16) || 0;
+    const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255].map((v) => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const a = light(color);
+  const b = light(mixColor(card.c1, card.c2, 0.5));
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) >= 3;
 }
 
 // ----- Your card -----

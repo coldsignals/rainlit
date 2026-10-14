@@ -1024,6 +1024,16 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .panel-member-status { color: var(--mist); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-member.offline { opacity: 0.4; }
 .panel-member.offline:hover { opacity: 0.75; }
+/* Someone's card behind them, small, as in your corner (dressCard): its colours, its pattern along
+   the top and its weather, and their name in its font (app.js: in their role's colour where that
+   reads on it, else in the card's). */
+.panel-member.carded { position: relative; overflow: hidden; isolation: isolate; margin: 2px 0; }
+.panel-member.carded::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, var(--card-c1), var(--card-c2)); }
+.panel-member.carded:hover::before { filter: brightness(1.12); }
+.panel-member > :is(.card-banner, .card-sky) { z-index: -1; }
+.panel-member > .card-banner { right: auto; width: calc(100% / 0.5); transform: scale(0.5); transform-origin: 0 0; }
+.panel-member > .card-sky { inset: auto; left: 0; top: 0; width: calc(100% / 0.5); height: calc(100% / 0.5); transform: scale(0.5); transform-origin: 0 0; border-radius: 0; }
+.panel-member.carded .face[data-presence]::after { border-color: color-mix(in srgb, var(--card-c1) 45%, var(--card-c2)); }
 .members-toggle.on, .search-btn.on { color: var(--text); background: var(--dusk-hi); }
 @media (max-width: 760px) { .member-panel { display: none !important; } }
 

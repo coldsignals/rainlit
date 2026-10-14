@@ -151,7 +151,9 @@ and released is in [desktop/README.md](desktop/README.md).
   adds the moving patterns and its weather (fireflies, an aurora, a
   thunderstorm, cherry blossoms, embers), to try on there first. **Make it plain
   again** puts it back as it was. It's in the corner by your name too (bottom
-  left), smaller: its colours, pattern, font and weather.
+  left), smaller: its colours, pattern, font and weather; and behind your name in
+  your spaces' members, the same (your name in your role's colour, where that
+  reads on it).
 - **Your email:** new accounts get a link to confirm their email address (your
   profile says whether it's confirmed, and sends another). Forgot your password?
   **Forgot your password?** on the sign-in screen emails a link, good for an
