@@ -10079,7 +10079,10 @@ function memberRow(space, m) {
   const name = document.createElement('span');
   name.className = 'member-name';
   name.textContent = m.id === S.clientId ? `${m.displayName} (you)` : m.displayName;
-  name.style.color = tint(memberColor(space, m.id));
+  // On their card (below, as in the members panel): their role's colour where it reads on it.
+  const card = (profileOf(m.id) || m).card || null;
+  const color = memberColor(space, m.id);
+  name.style.color = !color ? '' : !card ? tint(color) : readsOn(color, card) ? color : '';
   if (m.owner) name.insertAdjacentHTML('beforeend', '<svg class="icon crown" aria-label="Owner"><title>Owner</title><use href="#i-crown"/></svg>');
   if (birthdayNow(m)) name.append(birthdayWords());
   const user = document.createElement('span');
@@ -10101,6 +10104,7 @@ function memberRow(space, m) {
   }
   btn.append(partyFace(makeFace(m, null), m), text);
   li.append(btn);
+  if (card) dressCard(li, card, name, 16);
   li.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     openPersonMenu(m.id, space.id, e.clientX, e.clientY, li);

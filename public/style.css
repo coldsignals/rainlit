@@ -495,6 +495,14 @@ button { cursor: pointer; }
 .member-row { display: flex; align-items: center; gap: 6px; }
 .member-row .member { flex: 1; min-width: 0; }
 .member-roles-btn { flex: none; }
+/* Each person's card behind them, as in the members panel (and your corner): its colours, pattern
+   along the top and weather, smaller; their name in its font. */
+.member-row.carded { position: relative; overflow: hidden; isolation: isolate; margin: 3px 0; padding-right: 8px; border-radius: 12px; }
+.member-row.carded::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, var(--card-c1), var(--card-c2)); }
+.member-row > :is(.card-banner, .card-sky) { z-index: -1; }
+.member-row > .card-banner { right: auto; width: calc(100% / 0.6); transform: scale(0.6); transform-origin: 0 0; }
+.member-row > .card-sky { inset: auto; left: 0; top: 0; width: calc(100% / 0.6); height: calc(100% / 0.6); transform: scale(0.6); transform-origin: 0 0; border-radius: 0; }
+.member-list .member-row.carded .member:hover { background: var(--card-raise); }
 .member-roles-panel { display: grid; gap: 8px; padding: 4px 12px 10px 58px; }
 .crown { width: 14px; height: 14px; margin-left: 5px; color: var(--lamp-text); vertical-align: -1px; }
 .role-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
