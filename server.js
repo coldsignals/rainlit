@@ -1945,6 +1945,15 @@ api.post(conv('/read'), needUser, needConv, (req, res) => {
   res.json({ ok: true });
 });
 
+// Unread again, from a message on (its menu's Mark unread), on your other devices too.
+api.post(conv('/unread'), needUser, needConv, (req, res) => {
+  const row = dms.getRow(String((req.body || {}).id || ''));
+  if (!row || row.dm_id !== req.dm.id) return fail(res, 404, "That message isn't there any more.");
+  const state = dms.markUnreadFrom(req.dm.id, req.user.id, row);
+  realtime.sendToUser(req.user.id, { type: 'dm-unread', dm: req.dm.id, ...state });
+  res.json(state);
+});
+
 // Turn saving on or off. Either person can, and a note saying who goes in the conversation.
 api.patch('/dms/:friendId', needUser, needFriend, (req, res) => {
   if (req.notes) return fail(res, 400, 'Your notes are always kept.');

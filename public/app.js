@@ -163,7 +163,7 @@ for (const id of [
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
-  'call-panel', 'call-panel-where', 'call-panel-name', 'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
+  'msg-unread', 'call-panel', 'call-panel-where', 'call-panel-name', 'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
   'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
@@ -1620,6 +1620,8 @@ function handleServerMessage(msg) {
       return onDmSaving(msg);
     case 'dm-read':
       return onDmRead(msg);
+    case 'dm-unread':
+      return onDmUnread(msg);
   }
   if (!S.inCall) return; // everything below is about the call you're in
   if (TRACED_MSGS.has(msg.type)) {
@@ -3692,6 +3694,7 @@ function messageActions(li) {
   if (media) actions.push('save');
   if (media && !media.url.startsWith('blob:')) actions.push('open');
   if (kind === 'text' || (kind === 'gif' && li.dataset.copy)) actions.push('copy');
+  if (li.dataset.saved === '1' && !isNotes(S.openDm)) actions.push('unread');
   if (!mine && li.dataset.saved === '1') actions.push('report');
   if (mine || canModerateMessages(li)) actions.push('delete');
   return actions;
@@ -3733,6 +3736,7 @@ function openMessageMenu(li, x, y) {
   el.msgReply.hidden = !actions.includes('reply');
   el.msgEdit.hidden = !actions.includes('edit');
   el.msgCopy.hidden = !actions.includes('copy');
+  el.msgUnread.hidden = !actions.includes('unread');
   el.msgSave.hidden = !actions.includes('save');
   el.msgSave.textContent = li.dataset.kind === 'gif' ? 'Save GIF' : 'Save';
   el.msgOpen.hidden = !actions.includes('open');
@@ -4403,6 +4407,7 @@ function scrollChat(log = el.chatLog) {
 async function openDm(friendId, at = 0) {
   if (!convExists(friendId)) return;
   const dm = dmFor(friendId);
+  dm.heldUnread = false; // (back to it: read, as ever)
   // The sidebar follows: Home for a DM, the space for one of its channels.
   S.view = dm.channelId && !groupOfChannel(dm.channelId) ? S.channels.get(dm.channelId).spaceId : 'home';
   if (dm.channelId && S.view !== 'home') rememberChannel(dm.channelId);
@@ -5322,6 +5327,10 @@ function markSendFailed(li, err, retrySend) {
 
 async function sendText(friendId, text, replyTo = null) {
   const dm = dmFor(friendId);
+  if (dm.heldUnread) {
+    dm.heldUnread = false; // (saying something: you've read it)
+    markRead(dm);
+  }
   if (dm.detached) await jumpToNewest(dm); // (it goes at the end, with the newest)
   const id = randomId();
   const li = appendMessage(dm, { id, dm: '', author: S.clientId, kind: 'text', text, replyTo: replyTo && { id: replyTo }, at: Date.now() });
@@ -5636,7 +5645,7 @@ function notifyChannel(dm, m) {
 // new messages start. The chime only plays when their conversation isn't open.
 function notifyIncoming(dm, li) {
   const open = S.openDm === dm.friendId;
-  if (open && !lookingAway()) return markRead(dm);
+  if (open && !lookingAway() && !dm.heldUnread) return markRead(dm);
   markNew(dm, li);
   dm.unread++;
   if (li.classList.contains('mentioned')) dm.mentions = (dm.mentions || 0) + 1;
@@ -5652,6 +5661,7 @@ let readTimers = new Map();
 // It says up to when: a message that comes in after you've left the conversation, in the second
 // before this goes, stays unread (on all your devices: onDmRead).
 function markRead(dm) {
+  if (dm.heldUnread) return; // (marked unread: see markUnreadFrom)
   dm.seenUpTo = Math.max(Math.round(serverNow()), dm.lastAt || 0);
   dm.unreadAt = [];
   if (dm.unread || dm.mentions) {
@@ -5665,6 +5675,52 @@ function markRead(dm) {
     readTimers.delete(dm.friendId);
     api('POST', `${convPath(dm.friendId)}/read`, { at: dm.seenUpTo }).catch(() => {});
   }, 1000));
+}
+
+// ----- Mark unread -----
+// From a message on (its menu): unread again, on all your devices. The "new messages" line goes
+// above it, the conversation's count comes back, and it stays that way while you're in it, until
+// you come back to it (from another conversation) or send something.
+async function markUnreadFrom(li) {
+  const key = S.openDm;
+  if (!key || !li.dataset.id) return;
+  const dm = dmFor(key);
+  clearTimeout(readTimers.get(key)); // (a read on its way would undo it)
+  readTimers.delete(key);
+  dm.heldUnread = true;
+  let r;
+  try {
+    r = await api('POST', `${convPath(key)}/unread`, { id: li.dataset.id });
+  } catch (err) {
+    dm.heldUnread = false;
+    return toast(err.message);
+  }
+  applyUnread(dm, r);
+}
+
+// Its other devices, told so.
+function onDmUnread(msg) {
+  const key = convOf(msg.dm);
+  if (!key || !convExists(key)) return;
+  applyUnread(dmFor(key), msg);
+}
+
+function applyUnread(dm, r) {
+  dm.readAt = r.at;
+  dm.seenUpTo = r.at;
+  dm.unread = r.unread;
+  dm.mentions = r.mentions;
+  dm.unreadAt = r.unreadAt || [];
+  clearNewDivider(dm);
+  const first = [...dm.log.querySelectorAll('li[data-id]')].find((li) => Number(li.dataset.at) > r.at && !li.classList.contains('sys'));
+  if (first) {
+    markNew(dm, first);
+    dm.divider.count = r.unread;
+    dm.divider.el.textContent = r.unread ? `${r.unread} new message${r.unread === 1 ? '' : 's'}` : 'Unread from here';
+  }
+  renderFriends();
+  renderSpaces();
+  updateTitle();
 }
 
 // When each unread message came, and whether it mentions you, so a read (from another of your
@@ -5708,8 +5764,9 @@ function placeUnreadLine(dm) {
   dm.divider.el.textContent = `${dm.unread} new message${dm.unread === 1 ? '' : 's'}`;
 }
 
-// You're looking at the conversation now.
+// You're looking at the conversation now. (Not while it's marked unread, until you come back to it.)
 function markDmSeen(dm) {
+  if (dm.heldUnread) return;
   markRead(dm);
   scrollChat(dm.log);
   if (!dm.divider || dm.divider.seen) return;
@@ -17114,6 +17171,11 @@ async function init() {
   el.msgEdit.addEventListener('click', () => startEdit(msgMenuLi));
   el.replyCancel.addEventListener('click', () => { stopReply(); el.chatInput.focus(); });
   el.msgCopy.addEventListener('click', onMessageMenuCopy);
+  el.msgUnread.addEventListener('click', () => {
+    const li = msgMenuLi;
+    closeMessageMenu();
+    if (li) markUnreadFrom(li);
+  });
   el.msgSave.addEventListener('click', onMessageMenuSave);
   el.msgOpen.addEventListener('click', onMessageMenuOpen);
   el.routeBtn.addEventListener('click', nextRoute);

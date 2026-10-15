@@ -436,6 +436,9 @@ at the top closes it (on a phone, the back arrow).
     Enter saves, Esc cancels, and both of you see "(edited)". In an empty
     message box, the Up arrow edits your last message.
   - **Copy:** copies the text, or a GIF's link.
+  - **Mark unread:** it and everything after it count as unread again, on all
+    your devices (the "new messages" line goes above it), until you come back
+    to the conversation or reply.
   - **Delete:** asks once to be sure. It disappears for both of you, and a
     file is deleted from the server, leaving "You removed a message" for you
     and "Alice removed a message" for your friend.
