@@ -456,6 +456,9 @@ at the top closes it (on a phone, the back arrow).
   ring again.
 - **The call shows above the conversation,** so you can keep chatting and
   sending files. If you open another conversation, a bar leads back to it.
+  Anywhere else in Rainlit, your friend's row in the list is green with
+  **Open**, and a panel above your name says who you're with and for how long,
+  with mute, deafen, camera, screen and leave, and **Open** to go back.
 - **The call starts** as soon as both of you are in it. The timer at the top
   shows how long it's been going.
 - **If someone's internet cuts out,** the other person stays in the call. They

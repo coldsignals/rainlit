@@ -257,6 +257,23 @@
       </div>
 
       <!-- In a voice channel: where, and your buttons -->
+      <!-- In a call with a friend: who with, how long, its main buttons, and back to it from anywhere -->
+      <div id="call-panel" class="voice-panel call-panel" hidden>
+        <button id="call-panel-where" class="voice-where" type="button" title="Back to the call">
+          <span class="voice-where-text">
+            <span class="voice-status">In a call</span>
+            <span id="call-panel-name" class="voice-name"></span>
+          </span>
+          <span class="voice-open call-open"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg>Open</span>
+        </button>
+        <div class="voice-buttons">
+          <button class="icon-btn ghost" type="button" data-call="mic"><svg class="icon"><use href="#i-mic"/></svg></button>
+          <button class="icon-btn ghost" type="button" data-call="deafen"><svg class="icon"><use href="#i-headphones"/></svg></button>
+          <button class="icon-btn ghost" type="button" data-call="cam"><svg class="icon"><use href="#i-cam-off"/></svg></button>
+          <button class="icon-btn ghost" type="button" data-call="screen"><svg class="icon"><use href="#i-screen"/></svg></button>
+          <button class="icon-btn ghost voice-leave" type="button" data-call="leave"><svg class="icon"><use href="#i-leave"/></svg></button>
+        </div>
+      </div>
       <div id="voice-panel" class="voice-panel" hidden>
         <button id="voice-panel-where" class="voice-where" type="button" title="Open the voice channel, to see everyone in it">
           <span class="voice-where-text">

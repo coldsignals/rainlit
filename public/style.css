@@ -597,6 +597,12 @@ button { cursor: pointer; }
 .voice-open .icon { width: 12px; height: 12px; }
 :is(.voice-channel, .voice-where):hover .voice-open { background: color-mix(in srgb, var(--online) 24%, transparent); }
 .app:has(#voice-view:not([hidden])) .voice-open { display: none; }
+/* (A call with a friend: gone while it's in sight, at the top of your conversation with them.) */
+.app:has(#dm:not([hidden]) #call:not([hidden])) .call-open { display: none; }
+/* Your friend, in the list, while you're in a call together: green, and Open while it's out of sight. */
+.person.in-call { background: color-mix(in srgb, var(--online) 11%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--online) 38%, transparent); }
+button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, transparent); }
+.person.in-call .person-sub { color: var(--online); font-weight: 650; }
 .voice-status { color: var(--online); font-size: 13px; font-weight: 750; }
 .voice-status[data-state="connecting"], .voice-status[data-state="reconnecting"] { color: var(--away); }
 .voice-name { color: var(--mist); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -604,8 +610,9 @@ button { cursor: pointer; }
 .voice-buttons { display: flex; gap: 2px; }
 .voice-buttons .icon-btn { width: 36px; height: 36px; }
 .voice-buttons .icon { width: 19px; height: 19px; }
-[data-voice].on { color: var(--danger); }
-[data-voice="camera"].on, [data-voice="screen"].on { color: var(--online); }
+[data-voice].on, [data-call].on { color: var(--danger); }
+[data-voice="camera"].on, [data-voice="screen"].on, [data-call="cam"].on, [data-call="screen"].on { color: var(--online); }
+.call-panel[hidden] { display: none; }
 .voice-buttons .voice-leave { margin-left: auto; color: var(--danger); }
 .voice-view { position: relative; height: 100%; min-height: 0; display: flex; flex-direction: column; }
 .voice-head-text { display: grid; min-width: 0; }

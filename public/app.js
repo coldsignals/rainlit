@@ -163,7 +163,7 @@ for (const id of [
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
-  'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
+  'call-panel', 'call-panel-where', 'call-panel-name', 'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
   'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
@@ -2636,6 +2636,7 @@ function renderTick() {
   const now = serverNow();
   el.callTimer.hidden = !S.call;
   if (S.call) el.callTimer.textContent = fmtClock(now - S.call.startedAt);
+  if (!el.callPanel.hidden) renderCallPanel(); // (its timer)
   if (S.peer && S.peer.away && S.peer.awaySince) el.peerAwayTime.textContent = fmtClock(now - S.peer.awaySince);
   el.offlineBanner.hidden = !(S.wsDownSince && Date.now() - S.wsDownSince > 3000);
   checkSocketHealth();
@@ -2791,6 +2792,34 @@ function renderControls() {
   el.screenBtn.querySelector('.ctl-label').textContent = sharing ? 'Stop sharing' : 'Share screen';
   el.screenSwitchBtn.hidden = !sharing;
   renderSoundButtons();
+  renderCallPanel();
+}
+
+// ----- In a call with a friend, from anywhere -----
+// While it's out of sight (Home, another conversation, a space), the panel above your name says
+// who it's with and for how long, with its main buttons (they're the call's own: the same as
+// pressing those), and takes you back to it; so does your friend's row in the list (friendRow).
+function renderCallPanel() {
+  const on = Boolean(S.inCall && S.callWith);
+  el.callPanel.hidden = !on;
+  if (!on) return;
+  const name = friendName(S.callWith);
+  el.callPanelName.textContent = S.call ? `with ${name} · ${fmtClock(serverNow() - S.call.startedAt)}` : `Calling ${name}…`;
+  const set = (act, lit, icon, label) => {
+    const b = el.callPanel.querySelector(`[data-call="${act}"]`);
+    b.classList.toggle('on', lit);
+    b.setAttribute('aria-pressed', String(lit));
+    if (icon) b.querySelector('use').setAttribute('href', `#${icon}`);
+    b.title = label;
+    b.setAttribute('aria-label', label);
+  };
+  const micReady = Boolean(S.micOn && S.local.mic && !S.deafened);
+  set('mic', !micReady, micReady ? 'i-mic' : 'i-mic-off', S.ptt ? `Push to talk (hold ${S.pttKeyName})` : micReady ? 'Mute' : 'Unmute');
+  set('deafen', Boolean(S.deafened), S.deafened ? 'i-headphones-off' : 'i-headphones', S.deafened ? 'Undeafen' : 'Deafen');
+  set('cam', Boolean(S.local.cam), S.local.cam ? 'i-cam' : 'i-cam-off', S.local.cam ? 'Turn camera off' : 'Turn camera on');
+  set('screen', Boolean(S.local.screen), null, S.local.screen ? 'Stop sharing' : 'Share your screen');
+  el.callPanel.querySelector('[data-call="screen"]').hidden = !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+  set('leave', false, null, 'Leave the call');
 }
 
 // The tab's title shows who you're in a call with and how many messages you haven't read.
@@ -4807,8 +4836,10 @@ function renderDmHead() {
   el.chatInput.placeholder = `Message ${f.displayName}`;
 }
 
-// The call shows at the top of the conversation it's with. Anywhere else, a bar leads back to it.
+// The call shows at the top of the conversation it's with. Anywhere else, a bar leads back to it
+// (and the panel above your name: renderCallPanel).
 function renderCallPlacement() {
+  renderCallPanel();
   const here = S.inCall && S.callWith === S.openDm;
   el.call.hidden = !here;
   el.callResize.hidden = !here;
@@ -13221,6 +13252,9 @@ function friendRow(f) {
   else if (doing) markDoing(text.querySelector('.person-sub'), doing);
   if (birthdayNow(f)) text.querySelector('.person-name').append(birthdayWords());
   btn.append(partyFace(makeFace(f, f.presence), f), text);
+  // (In a call together: green, and Open, while the call's out of sight.)
+  btn.classList.toggle('in-call', Boolean(inCallWith));
+  if (inCallWith) btn.insertAdjacentHTML('beforeend', '<span class="voice-open call-open"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg>Open</span>');
   if (waiting) {
     const w = document.createElement('span');
     w.className = 'waiting-call';
@@ -17345,6 +17379,12 @@ async function init() {
   });
   el.screenSwitchBtn.addEventListener('click', switchScreen);
   el.leaveBtn.addEventListener('click', onLeaveClick);
+  el.callPanelWhere.addEventListener('click', () => { if (S.inCall && S.callWith) openDm(S.callWith); });
+  el.callPanel.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-call]');
+    const to = b && { mic: el.micBtn, deafen: el.deafenBtn, cam: el.camBtn, screen: el.screenBtn, leave: el.leaveBtn }[b.dataset.call];
+    if (to) to.click(); // (and its own sound: see the click sounds, below)
+  });
   el.fullscreenBtn.addEventListener('click', () => setStageFull(!stageFull()));
   watchStagePointer();
   el.flipBtn.addEventListener('click', flipCam);
@@ -17695,7 +17735,7 @@ async function init() {
   // Pressing anything clickable makes a soft click (if that's on in settings).
   document.addEventListener('click', (e) => {
     const target = e.target.closest && e.target.closest(CLICKABLE);
-    if (target && !target.disabled && e.target !== el.clicksInput && !target.closest('[data-sound], [data-voice]:not([data-voice="hear"]):not([data-voice="sounds"])')) playClick();
+    if (target && !target.disabled && e.target !== el.clicksInput && !target.closest('[data-sound], [data-call], [data-voice]:not([data-voice="hear"]):not([data-voice="sounds"])')) playClick();
   }, true);
   el.soundsInput.addEventListener('change', () => {
     S.sounds = el.soundsInput.checked;
