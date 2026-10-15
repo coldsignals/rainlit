@@ -163,7 +163,7 @@ for (const id of [
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
-  'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
+  'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -8375,6 +8375,7 @@ async function fillDeviceLists() {
     select.value = [...select.options].some((o) => o.value === current) ? current : '';
   };
   fill(el.micSelect, 'audioinput', S.devices.mic, 'Microphone');
+  if (!micTest) renderMicTest();
   fill(el.camSelect, 'videoinput', S.devices.cam, 'Camera');
   renderCamPreviewSetting();
   const canPickSpeaker = 'setSinkId' in HTMLMediaElement.prototype;
@@ -8422,7 +8423,154 @@ async function restartMic() {
 // (Its name too, to find it again: see relabelDevice.)
 const pickedLabel = (select) => (select.selectedOptions[0] && select.selectedOptions[0].dataset.label) || '';
 
+// ----- The mic test (Settings) -----
+// Your microphone as it's picked, with the clean-up that's on, as a call has it: a bar shows it
+// hearing you while it records a few seconds, then what it heard plays back, through the speaker
+// that's picked, so you hear yourself as others will. (Played back after, not as you talk: live,
+// through speakers or a phone's, it would ring.) Not during a call: that has the mic already.
+
+const MIC_TEST_MS = 5000;
+const MIC_TEST_HINT = "Say something for a few seconds: the bar shows your mic hearing you, then you'll hear yourself as others will.";
+let micTest = null; // { state: starting | listening | playing, track, meter, recorder, chunks, audio, loudest }
+
+async function startMicTest() {
+  if (micTest || S.inCall || S.voice) return;
+  unlockSounds();
+  const t = (micTest = { state: 'starting', loudest: 0, chunks: [] });
+  renderMicTest();
+  let track;
+  try {
+    track = await getMicTrack(await pickMic());
+  } catch (err) {
+    if (micTest === t) micTest = null;
+    return renderMicTest(mediaErrorText(err, 'Microphone'), 'bad');
+  }
+  if (micTest !== t) return track.stop(); // (stopped meanwhile)
+  t.track = track;
+  if (S.soundCtx && S.soundCtx.state === 'suspended') S.soundCtx.resume().catch(() => {});
+  t.meter = makeMeter(track, S.soundCtx);
+  try {
+    t.recorder = new MediaRecorder(new MediaStream([track]));
+    t.recorder.ondataavailable = (e) => { if (e.data.size) t.chunks.push(e.data); };
+    t.recorder.onstop = () => playMicTest(t);
+    t.recorder.start();
+  } catch {
+    t.recorder = null; // (no recording in this browser: the bar alone)
+  }
+  t.state = 'listening';
+  t.started = Date.now();
+  t.timer = setTimeout(() => finishMicTest(t), MIC_TEST_MS);
+  t.tick = setInterval(() => {
+    if (S.inCall || S.voice) return stopMicTest(); // (a call's begun: it has the mic now)
+    const level = t.meter ? t.meter.read() : 0;
+    t.loudest = Math.max(t.loudest, level);
+    drawMicMeter(level);
+    renderMicTest();
+  }, 50);
+  renderMicTest();
+}
+
+// Done listening (its time's up, or Stop): what it heard plays back.
+function finishMicTest(t) {
+  if (micTest !== t || t.state !== 'listening') return;
+  clearTimeout(t.timer);
+  clearInterval(t.tick);
+  t.state = 'playing';
+  drawMicMeter(0);
+  if (t.recorder && t.recorder.state !== 'inactive') t.recorder.stop(); // (then playMicTest)
+  else playMicTest(t);
+  renderMicTest();
+}
+
+function playMicTest(t) {
+  if (t.track) t.track.stop();
+  if (t.meter) t.meter.disconnect();
+  if (micTest !== t) return;
+  const name = (t.track && t.track.label) || 'your microphone';
+  const end = (note, tone) => {
+    micTest = null;
+    renderMicTest(note, tone);
+  };
+  // (Next to nothing, under -60 dB, with something said: it's off, muted, or blocked. A muted mic
+  // sends silence, but the browser's clean-up can leave a whisper of something in it.)
+  if (t.loudest < 0.001) return end(`Nothing came through from ${name}. It may be muted or switched off, or your computer may not be letting Rainlit use it.`, 'bad');
+  const quiet = t.loudest < 0.008;
+  const quietNote = 'It barely heard you: is that the right mic? Try speaking up, or closer to it.';
+  if (!t.chunks.length) return end(quiet ? quietNote : "It hears you. (This browser can't play it back.)", quiet ? 'bad' : '');
+  const url = URL.createObjectURL(new Blob(t.chunks, { type: (t.recorder && t.recorder.mimeType) || 'audio/webm' }));
+  const audio = (t.audio = new Audio(url));
+  if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).catch(() => {});
+  const done = (note, tone) => {
+    clearInterval(t.tick);
+    if (t.playMeter) t.playMeter.disconnect();
+    URL.revokeObjectURL(url);
+    if (micTest === t) end(note, tone);
+  };
+  audio.onended = () => done(quiet ? quietNote : "That's how you sound to others.", quiet ? 'bad' : '');
+  audio.onerror = () => done("It hears you, but couldn't play it back here.");
+  // (The bar follows it as it plays.)
+  audio.onplaying = () => {
+    try {
+      t.playMeter = makeMeter(audio.captureStream().getAudioTracks()[0], S.soundCtx);
+    } catch {}
+    clearInterval(t.tick);
+    t.tick = setInterval(() => drawMicMeter(t.playMeter ? t.playMeter.read() : 0), 50);
+  };
+  audio.play().catch(() => done("It hears you, but couldn't play it back here."));
+  renderMicTest();
+}
+
+// Stopped altogether (Settings closed, another mic picked): nothing more's played.
+function stopMicTest() {
+  const t = micTest;
+  if (!t) return;
+  micTest = null;
+  clearTimeout(t.timer);
+  clearInterval(t.tick);
+  if (t.recorder && t.recorder.state !== 'inactive') {
+    t.recorder.onstop = null;
+    try { t.recorder.stop(); } catch {}
+  }
+  if (t.track) t.track.stop();
+  if (t.meter) t.meter.disconnect();
+  if (t.playMeter) t.playMeter.disconnect();
+  if (t.audio) {
+    t.audio.onended = t.audio.onerror = null;
+    t.audio.pause();
+    URL.revokeObjectURL(t.audio.src);
+  }
+  renderMicTest();
+}
+
+// How loud, across the bar: -60 dB to the top.
+function drawMicMeter(level) {
+  const pct = level > 0 ? Math.max(0, Math.min(100, ((20 * Math.log10(level) + 60) / 60) * 100)) : 0;
+  el.micMeterBar.style.width = `${pct}%`;
+  el.micMeter.setAttribute('aria-valuenow', String(Math.round(pct)));
+}
+
+function renderMicTest(note = null, tone = '') {
+  const t = micTest;
+  const busy = !t && Boolean(S.inCall || S.voice);
+  el.micTestBtn.disabled = busy || Boolean(t && t.state === 'starting');
+  el.micTestBtn.textContent = t ? 'Stop' : note ? 'Test again' : 'Test your mic';
+  el.micTest.classList.toggle('testing', Boolean(t));
+  el.micTest.classList.toggle('playing', Boolean(t && t.state === 'playing'));
+  if (!t) drawMicMeter(0);
+  if (note !== null) {
+    el.micTestHint.textContent = note;
+    el.micTestHint.dataset.tone = tone;
+    return;
+  }
+  el.micTestHint.dataset.tone = '';
+  el.micTestHint.textContent = !t ? (busy ? "Not during a call: your mic's already on (the mic button glows as you talk)." : MIC_TEST_HINT)
+    : t.state === 'starting' ? 'Opening your mic…'
+    : t.state === 'listening' ? `Listening… say something (${Math.max(1, Math.ceil((MIC_TEST_MS - (Date.now() - t.started)) / 1000))})`
+    : 'Playing it back…';
+}
+
 function onMicChange() {
+  stopMicTest(); // (the next test is with the new one)
   S.devices.mic = el.micSelect.value;
   store.set('mic', S.devices.mic);
   store.set('micLabel', pickedLabel(el.micSelect));
@@ -8431,6 +8579,7 @@ function onMicChange() {
 }
 
 function onMicFxChange() {
+  stopMicTest();
   S.micFx = {
     noiseSuppression: el.noiseInput.checked,
     echoCancellation: el.echoInput.checked,
@@ -17182,6 +17331,12 @@ async function init() {
     stopPickingKey();
   }, true);
   el.settings.addEventListener('close', () => { if (pickingKey) stopPickingKey(); });
+  el.settings.addEventListener('close', stopMicTest); // (and the mic's let go)
+  el.micTestBtn.addEventListener('click', () => {
+    if (!micTest) return startMicTest();
+    if (micTest.state === 'listening') return finishMicTest(micTest); // (what it's heard so far, played back)
+    stopMicTest();
+  });
   el.settings.addEventListener('close', () => {
     S.glowTold = false; // (the next time Settings opens, trying one on shows Glow's box again)
     if (!S.themeTry) return;

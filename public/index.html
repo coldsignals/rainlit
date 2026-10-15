@@ -1564,6 +1564,14 @@
               </label>
               <small class="hint">Built into the browser. Only turn echo cancellation off if you wear headphones, or your friend will hear themselves.</small>
             </div>
+            <div id="mic-test" class="field mic-test">
+              <span>Mic test</span>
+              <div class="mic-test-row">
+                <button id="mic-test-btn" class="primary-btn ghost-btn small" type="button">Test your mic</button>
+                <div id="mic-meter" class="mic-meter" role="meter" aria-label="How loud your mic hears you" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="mic-meter-bar"></i></div>
+              </div>
+              <small id="mic-test-hint" class="hint" aria-live="polite"></small>
+            </div>
             <label class="field" id="speaker-field">
               <span>Speaker</span>
               <select id="speaker-select"></select>
