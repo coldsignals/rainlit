@@ -376,6 +376,9 @@ at the top closes it (on a phone, the back arrow).
   cameras and shared screens, big when you click them). Off looking at a text
   channel, **Open** by it (and in the "Voice connected" panel) takes you back.
   Who's in each shows under it, with **LIVE** by anyone sharing their screen.
+  Closing the tab or quitting Rainlit takes you out at once (a dropped
+  connection gets 20 seconds to come back first). Closing the Windows app's
+  window doesn't: it keeps going in the tray, so quit from there to leave.
 - **Someone's menu:** right-click someone in a space (in its members, by their
   messages, or in a voice channel; on a phone, press and hold) for their
   profile, **Mention**, **Message** and **Call** (or **Add friend**), their

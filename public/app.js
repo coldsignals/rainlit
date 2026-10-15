@@ -3873,6 +3873,7 @@ const MY_BUILD = (document.querySelector('meta[name="rainlit-build"]') || {}).co
 function onHello(msg) {
   trace('hello', { build: String(msg.build || '').slice(0, 12) });
   setWaiting(msg.waiting);
+  leftVoiceLastTime();
   if (activity.doing) wsSend({ type: 'doing', doing: activity.doing }); // (what you're doing, again)
   loadAnnouncements(); // (anything announced while this was closed or offline)
   if (S.voice && S.voice.state === 'connected') {
@@ -11858,6 +11859,7 @@ async function joinVoice(channelId) {
     if (S.voice !== v) return room.disconnect();
     v.state = 'connected';
     v.joinedAt = Date.now(); // (if the server restarts, the call carries on from here)
+    rememberVoiceTab(true); // (for the next start, if this page goes without leaving: see voiceBeacon)
     if (v.speak && !v.muted) {
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
@@ -11885,11 +11887,42 @@ async function joinVoice(channelId) {
   }
 }
 
+// ----- Leaving when Rainlit closes -----
+// Closing Rainlit (or the page) in a voice channel takes you out of it at once: a beacon as it
+// goes, which still gets there as the page does. And the apps (one page at a time, so a new one
+// means the last has gone) say at their next start if the last page was in one when it went (it
+// crashed, or the beacon didn't make it), so nobody sees you there, not there, for 20 seconds.
+function rememberVoiceTab(on) {
+  try {
+    if (on) localStorage.setItem('rainlit.voiceTab', TAB_ID);
+    else if (localStorage.getItem('rainlit.voiceTab') === TAB_ID) localStorage.removeItem('rainlit.voiceTab');
+  } catch {}
+}
+
+function leftVoiceLastTime() {
+  if (!(DESKTOP || ANDROID) || S.voice || S.voiceGoneSent) return;
+  S.voiceGoneSent = true; // (once, when this page first connects)
+  const old = store.get('voiceTab');
+  if (!old || old === TAB_ID) return;
+  wsSend({ type: 'voice-gone', tab: old });
+  try { localStorage.removeItem('rainlit.voiceTab'); } catch {}
+}
+
+// (Kept by the browser to come back to, too: a page that's been put away isn't in voice any more.)
+function voiceBeacon() {
+  const v = S.voice;
+  if (!v) return;
+  const q = new URLSearchParams({ tab: TAB_ID });
+  if (v.room && v.room.session) q.set('session', v.room.session);
+  try { navigator.sendBeacon(`/api/voice/leave?${q}`); } catch {}
+}
+
 async function leaveVoice({ quiet = false } = {}) {
   finishCamPreview(false);
   const v = S.voice;
   if (!v) return;
   S.voice = null;
+  rememberVoiceTab(false);
   hideVoiceAlone();
   clearInterval(v.meterTimer);
   for (const m of v.meters.values()) m.disconnect();
@@ -17115,7 +17148,7 @@ async function init() {
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them (not the ones asking something that
   // needs an answer: 18+, an announcement, sharing what you're doing).
-  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim]) {
+  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 
@@ -17641,7 +17674,10 @@ async function init() {
   window.addEventListener('pagehide', () => {
     trace('pagehide');
     sendTrace({ leaving: true });
+    voiceBeacon();
   });
+  // (Back from the browser's back-forward cache, after the beacon took you out: out here too.)
+  window.addEventListener('pageshow', (e) => { if (e.persisted && S.voice) leaveVoice({ quiet: true }); });
   if (navigator.connection) navigator.connection.addEventListener('change', () => trace('network', { net: netInfo() }));
 
   renderControls();

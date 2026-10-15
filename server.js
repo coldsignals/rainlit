@@ -1457,6 +1457,13 @@ api.post('/homepages/:who/pet', (req, res) => {
   res.json({ pet: pets.onHomepage(found.owner.id) });
 });
 
+// Leaving a voice channel as Rainlit closes: its last word, a beacon (app.js), sent even as the
+// page goes. (Only the tab that's in it can: lib/realtime.js voiceQuit.)
+api.post('/voice/leave', needUser, (req, res) => {
+  realtime.voiceQuit(req.user.id, String(req.query.tab || ''), String(req.query.session || ''));
+  res.status(204).end();
+});
+
 // ----- Your pet -----
 // (lib/pets.js) Adopting one (or changing its kind, name, colours, and whether it's on your
 // homepage), letting it go, and looking after it: feeding it, playing with it, petting it. And
