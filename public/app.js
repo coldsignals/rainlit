@@ -6499,7 +6499,8 @@ const SOUNDBOARD = [
   { id: 'applause', name: 'Applause', emoji: '👏' },
 ];
 const SOUND_MAX_S = 5.2;
-const SOUND_GAP_MS = 3000; // (one every 3 seconds each, as the server lets through)
+const SOUND_BURST = 5; // (five in any five seconds each, as the server lets through; then a wait)
+const SOUND_WINDOW_MS = 5000;
 const SOUND_LIMIT = { threshold: -14, knee: 0, ratio: 20, attack: 0.003, release: 0.25 };
 const SOUND_AFTER = 0.51; // (takes back what the limiter adds: see homepage.js)
 const soundBuffers = new Map(); // sound id -> a promise of its AudioBuffer (null: it wouldn't load)
@@ -6534,17 +6535,23 @@ function soundboardHere() {
   return S.inCall && S.call && S.peer ? { call: S.call } : null;
 }
 
-// What you pressed: everyone there hears it (you too, when the server passes it back).
+// What you pressed: everyone there hears it (you too, when the server passes it back). Five in any
+// five seconds; the fifth starts a wait for the next (the line along the panel's top counts it down).
 function playBoardSound(id) {
-  if (Date.now() - (S.soundSentAt || 0) < SOUND_GAP_MS || !soundboardHere()) return;
-  S.soundSentAt = Date.now();
+  const now = Date.now();
+  const recent = (S.soundTimes || []).filter((t) => now - t < SOUND_WINDOW_MS);
+  if (recent.length >= SOUND_BURST || !soundboardHere()) return;
+  S.soundTimes = [...recent, now];
   unlockSounds();
   wsSend({ type: 'sound', sound: id });
+  if (S.soundTimes.length < SOUND_BURST) return;
+  const wait = S.soundTimes[0] + SOUND_WINDOW_MS - now;
+  el.soundboard.style.setProperty('--sb-wait', `${wait}ms`);
   el.soundboard.classList.remove('cooling');
   void el.soundboard.offsetWidth; // (so its little countdown starts again)
   el.soundboard.classList.add('cooling');
   clearTimeout(S.soundCoolTimer);
-  S.soundCoolTimer = setTimeout(() => el.soundboard.classList.remove('cooling'), SOUND_GAP_MS);
+  S.soundCoolTimer = setTimeout(() => el.soundboard.classList.remove('cooling'), wait);
 }
 
 // Someone played one (maybe you), where you are.
@@ -9360,7 +9367,8 @@ const myTop = (space) => (space.top === null || space.top === undefined ? Infini
 const topOf = (space, m) => (m.owner ? Infinity : space.roles.reduce((top, r) => (m.roles.includes(r.id) ? Math.max(top, r.position) : top), 0));
 // Roles below your own highest; and people below you (or you), never the owner.
 const canManageRoleIn = (space, role) => canIn(space, 'manageRoles') && role.position < myTop(space);
-const canManageMemberIn = (space, m) => canIn(space, 'manageRoles') && !m.owner
+// (The owner's roles are only theirs to change: a colour, a place in the members list.)
+const canManageMemberIn = (space, m) => canIn(space, 'manageRoles') && (!m.owner || m.id === S.clientId)
   && (space.role === 'owner' || m.id === S.clientId || topOf(space, m) < myTop(space));
 // A timeout, kick or ban: only on people below you, never the owner or yourself, and never
 // a timeout on an administrator.

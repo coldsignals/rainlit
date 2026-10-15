@@ -369,8 +369,9 @@ at the top closes it (on a phone, the back arrow).
   hear it, and name it; only that part's uploaded. Its members can play them in
   any call or voice channel (on Discord that takes Nitro). Each app plays them
   through a limiter, so none is louder than about where most things play, and
-  stops them at 5 seconds. One every 3 seconds each, and "Use the soundboard"
-  is a permission (everyone has it to start with). Set how loud they are for
+  stops them at 5 seconds. Five in any 5 seconds each (then a moment's wait; each
+  one stops your last), and "Use the soundboard" is a permission (everyone has
+  it to start with). Set how loud they are for
   you, or turn them off, in settings.
 - **Voice channels:** click one to join it and see everyone there (their
   cameras and shared screens, big when you click them). Off looking at a text
