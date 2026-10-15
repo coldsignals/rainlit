@@ -11711,12 +11711,32 @@ function loadCfVoice() {
   return cfVoiceLoading;
 }
 
-// What the server's told when you're in a voice channel. (With Cloudflare: your session there,
-// and what you're sending, so that after the server restarts it can check and carry on.)
+// What everyone sees by your name in a voice channel's list: muted or deafened, camera on, sharing.
+function voiceStateOf(v) {
+  const me = v.room && v.room.localParticipant;
+  return { muted: v.muted || !v.speak, deafened: v.deafened, video: Boolean(me && me.isCameraEnabled), screen: Boolean(me && me.isScreenShareEnabled) };
+}
+
+// Told whenever it changes, however it changed: a share stopped from the browser's own "Stop
+// sharing", or a camera that went away, too (or the list would say LIVE after the share was over).
+function sendVoiceState(v) {
+  if (S.voice !== v) return;
+  const state = voiceStateOf(v);
+  const key = JSON.stringify(state);
+  if (v.sentState === key) return;
+  v.sentState = key;
+  wsSend({ type: 'voice-update', ...state });
+}
+
+// What the server's told when you're in a voice channel (your state too, as after a reconnect it
+// may already have changed). (With Cloudflare: your session there, and what you're sending, so
+// that after the server restarts it can check and carry on.)
 function voiceJoinMsg(v, more = {}) {
   const r = v.room;
+  const state = voiceStateOf(v);
+  v.sentState = JSON.stringify(state);
   return {
-    type: 'voice-join', channel: v.channelId, muted: v.muted || !v.speak, deafened: v.deafened, tab: TAB_ID,
+    type: 'voice-join', channel: v.channelId, ...state, tab: TAB_ID,
     ...(r && r.session ? { session: r.session, sub: r.subSession, pub: { ...r.names } } : {}), ...more,
   };
 }
@@ -11914,7 +11934,9 @@ function wireVoiceRoom(room, v) {
     if (m && m.track === track.mediaStreamTrack) unmeterVoice(v, participant.identity);
     again();
   });
-  for (const e of [E.TrackMuted, E.TrackUnmuted, E.LocalTrackPublished, E.LocalTrackUnpublished]) room.on(e, again);
+  for (const e of [E.TrackMuted, E.TrackUnmuted]) room.on(e, again);
+  // (Yours starting or stopping, however: the list everyone sees follows.)
+  for (const e of [E.LocalTrackPublished, E.LocalTrackUnpublished]) room.on(e, () => { sendVoiceState(v); again(); });
   room.on(E.ParticipantConnected, () => { playCallSound(true); again(); });
   room.on(E.ParticipantDisconnected, (participant) => {
     dropAudio(`[data-who="${CSS.escape(participant.identity)}"]`);
@@ -12195,7 +12217,7 @@ async function onVoiceControl(act) {
     if (err && err.name === 'NotAllowedError' && sharing) return; // (they cancelled the picker)
     toast(mediaErrorText(err, act === 'camera' ? 'Camera' : sharing ? 'Screen share' : 'Microphone'));
   }
-  wsSend({ type: 'voice-update', muted: v.muted || !v.speak, deafened: v.deafened, video: Boolean(me && me.isCameraEnabled), screen: Boolean(me && me.isScreenShareEnabled) });
+  sendVoiceState(v);
   renderVoice();
 }
 
@@ -12528,7 +12550,9 @@ function voiceChannelItem(c) {
   name.textContent = c.name;
   b.append(name);
   if (c.adult) b.append(ageTag());
-  b.title = here ? 'Open the voice channel' : `Join #${c.name}`;
+  b.title = here ? 'Open the voice channel, to see everyone in it' : `Join #${c.name}`;
+  // (In it, and looking at something else: a way back to it, plain to see.)
+  if (here) b.insertAdjacentHTML('beforeend', '<span class="voice-open"><svg class="icon" aria-hidden="true"><use href="#i-expand"/></svg>Open</span>');
   b.addEventListener('click', () => joinVoice(c.id));
   li.append(b);
   const members = S.voiceStates.get(c.id) || c.voice || [];

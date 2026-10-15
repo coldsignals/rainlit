@@ -372,6 +372,10 @@ at the top closes it (on a phone, the back arrow).
   stops them at 5 seconds. One every 3 seconds each, and "Use the soundboard"
   is a permission (everyone has it to start with). Set how loud they are for
   you, or turn them off, in settings.
+- **Voice channels:** click one to join it and see everyone there (their
+  cameras and shared screens, big when you click them). Off looking at a text
+  channel, **Open** by it (and in the "Voice connected" panel) takes you back.
+  Who's in each shows under it, with **LIVE** by anyone sharing their screen.
 - **Someone's menu:** right-click someone in a space (in its members, by their
   messages, or in a voice channel; on a phone, press and hold) for their
   profile, **Mention**, **Message** and **Call** (or **Add friend**), their

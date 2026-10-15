@@ -559,7 +559,19 @@ button { cursor: pointer; }
 .voice-person .icon.off { color: var(--danger); }
 .live-tag { flex: none; padding: 0 5px; border-radius: 4px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; }
 .voice-panel { display: grid; gap: 6px; padding: 10px 10px 8px; border-top: 1px solid var(--line); background: var(--deep); }
-.voice-where { display: grid; gap: 1px; padding: 2px 4px; border: 0; background: none; text-align: left; }
+.voice-where { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border: 0; background: none; text-align: left; }
+.voice-where-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+/* "Open": the voice channel you're in, while you're looking at something else (gone while you're
+   looking at it). */
+.voice-open {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 3px 8px 3px 6px;
+  border: 1px solid color-mix(in srgb, var(--online) 45%, transparent); border-radius: 999px;
+  background: color-mix(in srgb, var(--online) 14%, transparent); color: var(--online);
+  font-size: 11.5px; font-weight: 750; line-height: 1;
+}
+.voice-open .icon { width: 12px; height: 12px; }
+:is(.voice-channel, .voice-where):hover .voice-open { background: color-mix(in srgb, var(--online) 24%, transparent); }
+.app:has(#voice-view:not([hidden])) .voice-open { display: none; }
 .voice-status { color: var(--online); font-size: 13px; font-weight: 750; }
 .voice-status[data-state="connecting"], .voice-status[data-state="reconnecting"] { color: var(--away); }
 .voice-name { color: var(--mist); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

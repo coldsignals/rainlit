@@ -258,9 +258,12 @@
 
       <!-- In a voice channel: where, and your buttons -->
       <div id="voice-panel" class="voice-panel" hidden>
-        <button id="voice-panel-where" class="voice-where" type="button" title="Open the voice channel">
-          <span id="voice-panel-status" class="voice-status"></span>
-          <span id="voice-panel-name" class="voice-name"></span>
+        <button id="voice-panel-where" class="voice-where" type="button" title="Open the voice channel, to see everyone in it">
+          <span class="voice-where-text">
+            <span id="voice-panel-status" class="voice-status"></span>
+            <span id="voice-panel-name" class="voice-name"></span>
+          </span>
+          <span class="voice-open"><svg class="icon" aria-hidden="true"><use href="#i-expand"/></svg>Open</span>
         </button>
         <div class="voice-buttons">
           <button class="icon-btn ghost" type="button" data-voice="mute"><svg class="icon"><use href="#i-mic"/></svg></button>
