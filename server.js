@@ -1491,6 +1491,29 @@ api.post('/pet/pet', needUser, petRoute((req) => {
   return pets.get(req.user.id);
 }));
 
+// Someone else's pet, in its room: for anyone who can see their profile (their friends, and people
+// in a space with them), unless either has blocked the other. To look in on, and pet, as on their
+// homepage.
+function petOwnerFor(req, res) {
+  const u = people.userById(req.params.id);
+  const f = u && u.id !== req.user.id && people.friendship(req.user.id, u.id);
+  const sees = Boolean(u) && u.id !== req.user.id && ((f && f.status === 'accepted') || spaces.shareSpace(req.user.id, u.id))
+    && !safety.hasBlocked(u.id, req.user.id) && !safety.hasBlocked(req.user.id, u.id);
+  if (!sees) fail(res, 404, 'Not found.');
+  return sees ? u : null;
+}
+api.get('/users/:id/pet', needUser, (req, res) => {
+  const u = petOwnerFor(req, res);
+  if (u) res.json({ pet: pets.visiting(u.id), room: pets.roomOf(u.id) });
+});
+api.post('/users/:id/pet', needUser, (req, res) => {
+  const u = petOwnerFor(req, res);
+  if (!u) return;
+  if (!pets.visiting(u.id)) return fail(res, 404, "They don't have a pet.");
+  pets.petIt(u.id, req.user.id);
+  res.json({ pet: pets.visiting(u.id) });
+});
+
 // ----- Conversations -----
 //
 // A conversation is a DM between two friends, or a channel in a space. Either way,

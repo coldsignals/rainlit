@@ -163,6 +163,7 @@ for (const id of [
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
+  'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
   'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
@@ -14019,6 +14020,7 @@ function renderMiniProfile() {
   el.mpEdit.hidden = !self;
   el.mpHomepageText.textContent = self ? 'Your homepage' : `${p.displayName}'s homepage`;
   el.mpHomepage.hidden = blocked;
+  renderProfilePet(id, self, blocked);
   if (f) {
     const here = S.inCall && S.callWith === f.id;
     el.mpCall.textContent = here ? 'Back to the call' : 'Call';
@@ -14658,6 +14660,76 @@ function renderPet() {
   renderPetKinds();
   renderPetAbout();
   renderPetTabs();
+}
+
+// ----- Visiting someone's pet -----
+// From their profile card: their pet, in its room, as they've done it up, to look in on and pet
+// (anyone who can see their profile can: server.js). Not how full or happy it is: that's theirs to
+// see to. (What's known of each person's pet is kept a few minutes, for their card.)
+
+const visitPets = new Map(); // user id -> { at, pet, room } (pet null: they haven't one)
+
+async function visitPetOf(id, fresh = false) {
+  const known = visitPets.get(id);
+  if (known && !fresh && Date.now() - known.at < 5 * 60_000) return known;
+  try {
+    const d = await api('GET', `/users/${id}/pet`);
+    const v = { at: Date.now(), pet: d.pet || null, room: d.room || null };
+    visitPets.set(id, v);
+    return v;
+  } catch {
+    return known || null;
+  }
+}
+
+// The card's pet button: theirs, still, to visit; yours, to look after; none, none.
+function renderProfilePet(id, self, blocked) {
+  const show = (pet, words) => {
+    el.mpPet.hidden = !pet;
+    if (!pet) return;
+    el.mpPetFace.style.backgroundImage = Homepage.petSheet(pet.kind, pet.coat);
+    el.mpPetText.textContent = words;
+    el.mpPet.title = words;
+  };
+  if (!window.Homepage || !Homepage.petSheet || blocked) return show(null);
+  if (self) return show(S.pet, S.pet ? `Your pet: ${petName(S.pet)}` : '');
+  const known = visitPets.get(id);
+  show(known && known.pet, known && known.pet ? `Visit ${theirPetName(known.pet, profileOf(id))}` : '');
+  if (!known || Date.now() - known.at >= 5 * 60_000) {
+    visitPetOf(id).then((v) => {
+      if (miniProfileId === id && el.miniProfile.open && v) show(v.pet, v.pet ? `Visit ${theirPetName(v.pet, profileOf(id))}` : '');
+    });
+  }
+}
+
+// Its name, or (it hasn't one) "Bea's cat".
+const theirPetName = (pet, owner) => pet.name || `${owner ? owner.displayName : 'their'}'s ${Homepage.PETS[pet.kind] ? Homepage.PETS[pet.kind].label.toLowerCase() : 'pet'}`;
+
+async function openPetVisit(id) {
+  const owner = profileOf(id);
+  const v = await visitPetOf(id, true);
+  if (!owner || !v || !v.pet) return toast(v ? "They don't have a pet right now." : "Couldn't get to their pet's room. Try again in a moment.");
+  el.petVisit.dataset.who = id;
+  el.petVisitTitle.textContent = `${owner.displayName}'s ${Homepage.PETS[v.pet.kind] ? Homepage.PETS[v.pet.kind].label.toLowerCase() : 'pet'}`;
+  if (!el.petVisit.open) el.petVisit.showModal();
+  Homepage.furnish(el.petVisitRoom, v.room || {});
+  Homepage.petRoom(el.petVisitRoom, v.pet, {
+    mine: false,
+    petUrl: `/api/users/${encodeURIComponent(id)}/pet`,
+    onInfo: (info) => {
+      Object.assign(v.pet, info);
+      renderPetVisit(v.pet, owner);
+    },
+  });
+  renderPetVisit(v.pet, owner);
+}
+
+function renderPetVisit(pet, owner) {
+  el.petVisitName.textContent = theirPetName(pet, owner);
+  const days = Math.max(1, Math.ceil((Date.now() - pet.since) / 86_400_000));
+  el.petVisitSince.textContent = `${owner.displayName}'s for ${days} ${days === 1 ? 'day' : 'days'}`;
+  const n = Number(pet.pets) || 0;
+  el.petVisitNote.textContent = `Click to pet ${pet.name || 'it'}.${n ? ` Petted ${n.toLocaleString()} ${n === 1 ? 'time' : 'times'} so far.` : ''}`;
 }
 
 // Its box's tabs: Care (once you've a pet), Decorate, and Pet. (Your pet's care and details are
@@ -16620,6 +16692,13 @@ async function init() {
     el.miniProfile.close();
     openProfile();
   });
+  el.mpPet.addEventListener('click', () => {
+    const id = miniProfileId;
+    el.miniProfile.close();
+    if (id === S.clientId) openPet();
+    else openPetVisit(id);
+  });
+  el.petVisit.addEventListener('close', () => { if (el.petVisitRoom.hpPet) el.petVisitRoom.hpPet.stop(); });
   el.mpHomepage.addEventListener('click', () => {
     el.miniProfile.close();
     Homepage.open(miniProfileId);

@@ -289,6 +289,9 @@ the window (anyone can try them all on in the room). It's all just for fun: noth
 not see the pet button at all, Settings > Look hides it. Letting your pet go
 (its room's **Pet** tab, once you've said you're sure) deletes it, and
 everything about it; its room stays as you did it up, for the next one.
+Visit other people's pets too: their profile card says **Visit** and its name,
+and opens its room as they've done it up, where you can pet it (their friends
+and people in a space with them can; how full or happy it is stays theirs).
 
 ## Feedback
 
@@ -513,6 +516,10 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
 - **Pick a headset or webcam:** the settings button. You can also turn your
   friend's volume down there, and switch the browser's noise suppression, echo
   cancellation and automatic mic volume on or off.
+- **Test your mic:** in settings, under the microphone. Say something: a bar
+  shows it hearing you for a few seconds, then what it heard plays back (with
+  the clean-up that's on, as in a call), so you hear yourself as others will. If
+  it heard nothing, it says so, and why that might be.
 - **Full screen:** the button at the top right of your friend's video, or
   double-click the video.
 

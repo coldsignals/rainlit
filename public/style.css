@@ -2742,6 +2742,18 @@ button.person.open { background: var(--dusk-hi); }
 .pet-kind[aria-pressed="true"] { color: var(--text); border-color: var(--lamp); }
 .pet-kind.trying { border-style: dashed; border-color: #b77bff; }
 .pet-dialog .perk-box { border-radius: 0; }
+/* Someone's pet, from their profile card: it, still, and its name, to visit its room. */
+.mp-pet {
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: -6px; padding: 8px 12px;
+  background: var(--deep); border: 2px solid var(--line); border-radius: 0; color: var(--text);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  font: 400 13px/1.2 Silkscreen, var(--font, sans-serif); letter-spacing: 0.02em;
+}
+.mp-pet:hover { border-color: var(--mist); }
+.mp-pet:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3); }
+.mp-pet[hidden] { display: none; }
+.mp-pet .pet-btn-face { flex: none; }
+.mp-pet span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pet-perks { margin-top: 8px; }
 .pet-about { display: grid; gap: 14px; }
 .pet-about .field input { width: 100%; }

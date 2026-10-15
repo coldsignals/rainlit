@@ -781,6 +781,7 @@
         <button id="mp-remove" class="text-btn danger" type="button">Remove friend</button>
       </div>
       <button id="mp-homepage" class="primary-btn homepage-btn" type="button"><img class="homepage-btn-icon" alt="" /><span id="mp-homepage-text">Homepage</span></button>
+      <button id="mp-pet" class="mp-pet" type="button" hidden><i id="mp-pet-face" class="pet-btn-face" aria-hidden="true"></i><span id="mp-pet-text"></span></button>
       <p id="mp-blocked" class="mp-blocked" hidden>You've blocked them. They can't message you or ask to be friends, and their messages in spaces fold away.</p>
       <div id="mp-safety" class="mp-safety">
         <button id="mp-report" class="text-btn" type="button">Report</button>
@@ -1686,6 +1687,21 @@
   <!-- (Its room, in pixels, where it wanders about; then tabs: looking after it, doing up its room,
        and which pet it is, its name and colours, and whether it lives on your homepage too. Glow's
        pets and things are there to try on.) -->
+  <!-- ============ Someone else's pet, in its room: to look in on, and pet ============ -->
+  <dialog id="pet-visit" class="settings pet-dialog pet-visit" aria-labelledby="pet-visit-title">
+    <div class="settings-inner">
+      <div class="settings-head">
+        <h2 id="pet-visit-title"></h2>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <div id="pet-visit-room" class="pet-room" aria-label="Their pet's room"></div>
+      <div class="pet-care">
+        <div class="pet-care-head"><strong id="pet-visit-name"></strong><span id="pet-visit-since" class="pet-since"></span></div>
+        <p id="pet-visit-note" class="pet-note"></p>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="pet" class="settings pet-dialog" aria-labelledby="pet-title">
     <div class="settings-inner">
       <div class="settings-head">
