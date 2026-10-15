@@ -163,7 +163,7 @@ for (const id of [
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
-  'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
+  'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
   'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
@@ -9310,6 +9310,7 @@ async function onSpaceChanged(spaceId) {
   if (el.spaceMembers.open) renderMembers();
   if (el.spaceSettings.open) renderSpaceSettings();
   if (el.groupInfo.open) renderGroupInfo();
+  if (el.miniProfile.open) renderMiniProfile(); // (their roles there, as they are now)
   if (!el.soundboard.hidden) renderSoundboard(); // (its sounds, or whether you can play them, changed)
   renderSoundButtons();
 }
@@ -13486,11 +13487,14 @@ function insertMention(username) {
 
 // ----- Its roles, beside it -----
 
-function openPersonRoles(focus = false) {
-  const t = personMenuFor();
-  if (!t || !t.m) return;
-  const { space, m } = t;
+// Someone's roles in a space, each ticked on or off (the roles you can give): beside their menu, or
+// below the + on their profile card (`place` puts it there; `changed`, after each).
+let rolePicker = null; // { space, m, anchor, changed }
+
+function openRolePicker(space, m, place, { focus = false, anchor = null, changed = null } = {}) {
+  m = memberNow(space, m);
   const roles = space.roles.filter((r) => canManageRoleIn(space, r));
+  rolePicker = { space, m, anchor, changed };
   el.pmRoleMenu.replaceChildren(...roles.map((r) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -13507,37 +13511,133 @@ function openPersonRoles(focus = false) {
     return b;
   }));
   el.pmRoleMenu.hidden = false;
-  el.pmRoles.setAttribute('aria-expanded', 'true');
-  // Beside the menu, on whichever side there's room, level with "Roles".
-  const menu = el.personMenu.getBoundingClientRect();
-  const item = el.pmRoles.getBoundingClientRect();
+  if (anchor) anchor.setAttribute('aria-expanded', 'true');
   const sub = el.pmRoleMenu.getBoundingClientRect();
+  const [x, y] = place(sub);
   const z = uiZoom();
-  const x = menu.right + 4 + sub.width <= innerWidth - 8 ? menu.right + 4 : Math.max(8, menu.left - 4 - sub.width);
-  const y = Math.max(8, Math.min(item.top - 6, innerHeight - sub.height - 8));
   el.pmRoleMenu.style.left = `${x / z}px`;
   el.pmRoleMenu.style.top = `${y / z}px`;
   if (focus) el.pmRoleMenu.querySelector('button')?.focus({ preventScroll: true });
 }
 
+function openPersonRoles(focus = false) {
+  const t = personMenuFor();
+  if (!t || !t.m) return;
+  // Beside the menu, on whichever side there's room, level with "Roles".
+  openRolePicker(t.space, t.m, (sub) => {
+    const menu = el.personMenu.getBoundingClientRect();
+    const item = el.pmRoles.getBoundingClientRect();
+    const x = menu.right + 4 + sub.width <= innerWidth - 8 ? menu.right + 4 : Math.max(8, menu.left - 4 - sub.width);
+    return [x, Math.max(8, Math.min(item.top - 6, innerHeight - sub.height - 8))];
+  }, { focus, anchor: el.pmRoles });
+}
+
 function closePersonRoles() {
   if (el.pmRoleMenu.hidden) return;
   el.pmRoleMenu.hidden = true;
-  el.pmRoles.setAttribute('aria-expanded', 'false');
+  if (rolePicker && rolePicker.anchor) rolePicker.anchor.setAttribute('aria-expanded', 'false');
+  rolePicker = null;
 }
 
 async function toggleMemberRole(space, m, r, b) {
   const on = b.getAttribute('aria-checked') !== 'true';
   b.setAttribute('aria-checked', String(on));
   b.disabled = true;
-  try {
-    await api(on ? 'PUT' : 'DELETE', `/spaces/${space.id}/members/${m.id}/roles/${r.id}`);
-    m.roles = on ? [...new Set([...m.roles, r.id])] : m.roles.filter((x) => x !== r.id); // (the space's news brings the rest)
-  } catch (err) {
+  if (await setMemberRole(space, m, r, on)) {
+    if (rolePicker && rolePicker.changed) rolePicker.changed();
+  } else {
     b.setAttribute('aria-checked', String(!on));
-    toast(err.message);
   }
   b.disabled = false;
+}
+
+// Someone as the space's list has them now (it's fetched again whenever the space changes).
+const memberNow = (space, m) => ((S.spaces.get(space.id) || space).members || []).find((x) => x.id === m.id) || m;
+
+// Giving someone a role, or taking it away (true: done).
+async function setMemberRole(space, m, r, on) {
+  try {
+    await api(on ? 'PUT' : 'DELETE', `/spaces/${space.id}/members/${m.id}/roles/${r.id}`);
+    for (const x of new Set([m, memberNow(space, m)])) x.roles = on ? [...new Set([...x.roles, r.id])] : x.roles.filter((y) => y !== r.id); // (the space's news brings the rest)
+    return true;
+  } catch (err) {
+    toast(err.message);
+    return false;
+  }
+}
+
+// ----- Their roles, on their profile card -----
+// Opened in a space (from its members, its channels, its voice channel): their roles there, as
+// Discord shows them. For whoever may give and take them away (lib/spaces.js checks again): an x
+// on each, and + for the list of them all, below it.
+function renderProfileRoles(id) {
+  const spaceId = currentSpaceId();
+  const space = spaceId && S.spaces.get(spaceId);
+  el.mpRoles.hidden = true;
+  if (!space || isGroupSpace(space)) return;
+  if (!space.members) {
+    loadMembers(space.id).then(() => { if (el.miniProfile.open && miniProfileId === id && space.members) renderMiniProfile(); });
+    return;
+  }
+  const m = space.members.find((x) => x.id === id);
+  if (!m) return;
+  const giveable = canManageMemberIn(space, m) ? space.roles.filter((r) => canManageRoleIn(space, r)) : [];
+  const theirs = space.roles.filter((r) => m.roles.includes(r.id));
+  if (!theirs.length && !giveable.length) return;
+  el.mpRoles.hidden = false;
+  const chips = theirs.map((r) => {
+    const chip = roleChip(r);
+    if (giveable.includes(r)) {
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'role-chip-x';
+      x.textContent = '×';
+      x.title = `Take ${r.name} away`;
+      x.setAttribute('aria-label', x.title);
+      x.addEventListener('click', async () => {
+        x.disabled = true;
+        if (await setMemberRole(space, m, r, false)) renderMiniProfile();
+        else x.disabled = false;
+      });
+      chip.append(x);
+    }
+    return chip;
+  });
+  if (giveable.length) {
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'role-chip-add';
+    add.textContent = '+';
+    add.title = 'Give a role';
+    add.setAttribute('aria-label', `Give ${profileOf(id) ? profileOf(id).displayName : 'them'} a role`);
+    add.setAttribute('aria-haspopup', 'menu');
+    add.setAttribute('aria-expanded', 'false');
+    add.addEventListener('click', () => {
+      if (!el.pmRoleMenu.hidden && rolePicker && rolePicker.anchor === add) return closePersonRoles();
+      openProfileRoles(add, space, m);
+    });
+    chips.push(add);
+  }
+  // (Kept open across a redraw: its + is new, so it's that one now.)
+  if (rolePicker && rolePicker.profile && !el.pmRoleMenu.hidden) {
+    const add = chips.find((c) => c.classList.contains('role-chip-add'));
+    if (add) {
+      rolePicker.anchor = add;
+      add.setAttribute('aria-expanded', 'true');
+    }
+  }
+  el.mpRoleChips.replaceChildren(...chips);
+}
+
+// The list of roles, below the + (in the card: a box that's open would cover it otherwise).
+function openProfileRoles(add, space, m) {
+  if (el.pmRoleMenu.parentNode !== el.miniProfile) el.miniProfile.append(el.pmRoleMenu);
+  openRolePicker(space, m, (sub) => {
+    const a = add.getBoundingClientRect();
+    const x = Math.max(8, Math.min(a.left, innerWidth - sub.width - 8));
+    return [x, a.bottom + 6 + sub.height <= innerHeight - 8 ? a.bottom + 6 : Math.max(8, a.top - 6 - sub.height)];
+  }, { anchor: add, changed: () => { if (el.miniProfile.open) renderMiniProfile(); } });
+  rolePicker.profile = true;
 }
 
 async function askToBeFriends(p) {
@@ -14072,6 +14172,7 @@ function renderMiniProfile() {
   }
   el.mpStatus.textContent = p.statusText || '';
   renderMpDoing(id);
+  renderProfileRoles(id);
   el.mpBlocked.hidden = !blocked;
   el.mpSafety.hidden = self;
   el.mpBlock.textContent = blocked ? 'Unblock' : el.mpBlock.dataset.confirm ? `Yes, block ${p.displayName}` : 'Block';
@@ -16834,8 +16935,9 @@ async function init() {
     if (e.key === 'ArrowLeft' || e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
+      const anchor = (rolePicker && rolePicker.anchor) || el.pmRoles; // (someone's menu's Roles, or a card's +)
       closePersonRoles();
-      el.pmRoles.focus();
+      anchor.focus();
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const items = [...el.pmRoleMenu.querySelectorAll('button')];
@@ -16845,7 +16947,18 @@ async function init() {
   });
   document.addEventListener('pointerdown', (e) => {
     if (!el.personMenu.hidden && !el.personMenu.contains(e.target) && !el.pmRoleMenu.contains(e.target)) closePersonMenu();
+    // (The list of roles on its own, from a profile card's +: a click anywhere else closes it.)
+    else if (el.personMenu.hidden && !el.pmRoleMenu.hidden && !el.pmRoleMenu.contains(e.target)
+      && !(rolePicker && rolePicker.anchor && rolePicker.anchor.contains(e.target))) closePersonRoles();
   }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !el.personMenu.hidden || el.pmRoleMenu.hidden) return;
+    e.preventDefault(); // (not the card it's on, as well)
+    const anchor = rolePicker && rolePicker.anchor;
+    closePersonRoles();
+    if (anchor) anchor.focus({ preventScroll: true });
+  }, true);
+  el.miniProfile.addEventListener('close', closePersonRoles);
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || el.personMenu.hidden) return;
     e.preventDefault(); // (not the box it's in, as well)

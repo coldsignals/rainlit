@@ -379,6 +379,9 @@ at the top closes it (on a phone, the back arrow).
   Closing the tab or quitting Rainlit takes you out at once (a dropped
   connection gets 20 seconds to come back first). Closing the Windows app's
   window doesn't: it keeps going in the tray, so quit from there to leave.
+- **Roles on profiles:** someone's profile, opened in a space, shows their roles
+  there. Anyone who can give roles gets an x on each to take it away, and + to
+  tick roles on and off.
 - **Someone's menu:** right-click someone in a space (in its members, by their
   messages, or in a voice channel; on a phone, press and hold) for their
   profile, **Mention**, **Message** and **Call** (or **Add friend**), their

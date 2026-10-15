@@ -511,6 +511,23 @@ button { cursor: pointer; }
   background: var(--deep); border-radius: 999px; color: var(--text); font-size: 12px; font-weight: 600;
 }
 .role-chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--role-color, var(--mist)); }
+/* Someone's profile card, opened in a space: their roles there (an x on each, for whoever may take
+   it away, and + to give more). */
+.mp-roles { display: grid; gap: 6px; }
+.mp-roles[hidden] { display: none; }
+.mp-roles-title { margin: 0; color: var(--mist); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.mp-role-chips { margin-top: 0; align-items: center; }
+.mp-role-chips .role-chip { padding: 2px 9px 2px 7px; font-size: 12.5px; }
+.role-chip-x {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; margin: 0 -4px 0 0; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: var(--mist); font-size: 14px; line-height: 1; cursor: pointer;
+}
+.role-chip-x:hover { background: var(--line); color: var(--text); }
+.role-chip-add {
+  display: inline-grid; place-items: center; width: 24px; height: 22px; padding: 0;
+  border: 1px dashed var(--mist); border-radius: 999px; background: none; color: var(--mist); font-size: 15px; font-weight: 700; line-height: 1; cursor: pointer;
+}
+.role-chip-add:hover, .role-chip-add[aria-expanded="true"] { border-style: solid; color: var(--text); }
 
 /* Space settings: tabs, roles, and who a channel is for. */
 .settings.space-settings { width: min(520px, calc(100vw / var(--zoom) - 32px)); }
