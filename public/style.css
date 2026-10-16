@@ -1078,7 +1078,28 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .panel-member > .card-banner { right: auto; width: calc(100% / 0.5); transform: scale(0.5); transform-origin: 0 0; }
 .panel-member > .card-sky { inset: auto; left: 0; top: 0; width: calc(100% / 0.5); height: calc(100% / 0.5); transform: scale(0.5); transform-origin: 0 0; border-radius: 0; }
 .panel-member.carded .face[data-presence]::after { border-color: color-mix(in srgb, var(--card-c1) 45%, var(--card-c2)); }
-.members-toggle.on, .search-btn.on { color: var(--text); background: var(--dusk-hi); }
+.members-toggle.on, .search-btn.on, .pins-btn.on { color: var(--text); background: var(--dusk-hi); }
+/* A conversation's pinned messages: below its pin button, each as a search's result is. */
+.pins-panel {
+  position: fixed; z-index: 66;
+  width: min(420px, calc(100vw / var(--zoom) - 16px));
+  max-height: min(560px, calc(75vh / var(--zoom)));
+  display: flex; flex-direction: column;
+  background: var(--pop); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.45); overflow: hidden;
+}
+.pins-panel[hidden] { display: none; }
+.pins-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 4px 16px; }
+.pins-head strong { font-size: 15px; }
+.pins-list { padding-top: 4px; }
+.pin-item .pin-off { width: 24px; height: 24px; margin: -4px -6px -4px 0; flex: none; opacity: 0.6; }
+.pin-item .pin-off .icon { width: 14px; height: 14px; }
+.pin-item:hover .pin-off, .pin-off:focus-visible { opacity: 1; }
+/* "Ava pinned a message. See all pinned messages", in the conversation. */
+.chat-log .pin-note { display: flex; align-items: center; flex-wrap: wrap; gap: 0 6px; }
+.chat-log .pin-note .icon { width: 16px; height: 16px; color: var(--mist); }
+.chat-log .pin-note button { padding: 0; border: 0; background: none; color: var(--text); font: inherit; font-weight: 650; cursor: pointer; }
+.chat-log .pin-note button:hover { text-decoration: underline; }
 @media (max-width: 760px) { .member-panel { display: none !important; } }
 
 /* ================= Searching messages ================= */

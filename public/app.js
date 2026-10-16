@@ -163,7 +163,7 @@ for (const id of [
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
-  'msg-unread', 'call-panel', 'call-panel-where', 'call-panel-name', 'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
+  'msg-unread', 'msg-pin', 'pins-btn', 'pins-panel', 'pins-close', 'pins-list', 'call-panel', 'call-panel-where', 'call-panel-name', 'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
   'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
@@ -1622,6 +1622,8 @@ function handleServerMessage(msg) {
       return onDmRead(msg);
     case 'dm-unread':
       return onDmUnread(msg);
+    case 'dm-pin':
+      return onDmPin(msg);
   }
   if (!S.inCall) return; // everything below is about the call you're in
   if (TRACED_MSGS.has(msg.type)) {
@@ -3694,6 +3696,7 @@ function messageActions(li) {
   if (media) actions.push('save');
   if (media && !media.url.startsWith('blob:')) actions.push('open');
   if (kind === 'text' || (kind === 'gif' && li.dataset.copy)) actions.push('copy');
+  if (li.dataset.saved === '1' && ['text', 'file', 'gif'].includes(kind) && canPinHere()) actions.push('pin');
   if (li.dataset.saved === '1' && !isNotes(S.openDm)) actions.push('unread');
   if (!mine && li.dataset.saved === '1') actions.push('report');
   if (mine || canModerateMessages(li)) actions.push('delete');
@@ -3737,6 +3740,8 @@ function openMessageMenu(li, x, y) {
   el.msgEdit.hidden = !actions.includes('edit');
   el.msgCopy.hidden = !actions.includes('copy');
   el.msgUnread.hidden = !actions.includes('unread');
+  el.msgPin.hidden = !actions.includes('pin');
+  el.msgPin.textContent = S.openDm && dmFor(S.openDm).pins && dmFor(S.openDm).pins.has(li.dataset.id) ? 'Unpin message' : 'Pin message';
   el.msgSave.hidden = !actions.includes('save');
   el.msgSave.textContent = li.dataset.kind === 'gif' ? 'Save GIF' : 'Save';
   el.msgOpen.hidden = !actions.includes('open');
@@ -4992,6 +4997,7 @@ async function loadDmHistory(dm) {
     dm.divider = null;
     dm.more = page.more;
     dm.oldestSeq = page.messages.length ? page.messages[0].seq : 0;
+    dm.pins = new Set(page.pins || []);
     if (!dm.more) dm.log.append(startLine(dm));
     for (const m of [...page.messages, ...dm.early]) appendMessage(dm, m);
     for (const li of live) if (!dm.log.querySelector(`li[data-id="${CSS.escape(li.dataset.id)}"]`)) appendItem(dm, li, Number(li.dataset.at) || Date.now());
@@ -5068,6 +5074,7 @@ async function loadAround(dm, seq) {
     dm.more = page.more;
     dm.oldestSeq = page.messages.length ? page.messages[0].seq : 0;
     dm.lastShownSeq = page.messages.length ? page.messages.at(-1).seq : seq;
+    dm.pins = new Set(page.pins || []);
     if (!dm.more) dm.log.append(startLine(dm));
     for (const m of page.messages) appendMessage(dm, m);
     dm.loaded = true;
@@ -5185,6 +5192,26 @@ function callLine(m) {
   return li;
 }
 
+// "Ava pinned a message. See all pinned messages": that message, to jump to, and the list.
+function pinLine(m) {
+  const meta = m.meta || {};
+  const li = sysLine('', m.at, 'pin-note');
+  li.replaceChildren(li.firstChild); // just the time
+  li.insertAdjacentHTML('beforeend', '<svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg>');
+  const one = document.createElement('button');
+  one.type = 'button';
+  one.textContent = 'a message';
+  one.addEventListener('click', () => jumpToMessage(String(meta.id || ''), Number(meta.seq) || 0));
+  const all = document.createElement('button');
+  all.type = 'button';
+  all.textContent = 'See all pinned messages';
+  all.addEventListener('click', () => openPins());
+  const said = document.createElement('span');
+  said.append(`${m.author === S.clientId ? 'You' : friendName(m.author)} pinned `, one, '.');
+  li.append(said, all);
+  return li;
+}
+
 // One message, as it appears in the conversation.
 function renderMessage(m) {
   const mine = m.author === S.clientId;
@@ -5215,6 +5242,8 @@ function renderMessage(m) {
     li.append(messageHead(who, m.at), gifElement(m.meta || {}));
   } else if (m.kind === 'call') {
     li = callLine(m);
+  } else if (m.kind === 'pinned') {
+    li = pinLine(m);
   } else if (m.kind === 'group') {
     li = sysLine(groupNoteText(m), m.at);
   } else {
@@ -10910,6 +10939,8 @@ function syncSearch() {
   const scope = !el.dm.hidden && searchScopeOf(S.openDm);
   const c = isChannelKey(S.openDm) && S.channels.get(channelIdOf(S.openDm));
   el.searchBtn.hidden = !scope || Boolean(c && c.gated);
+  el.pinsBtn.hidden = el.searchBtn.hidden;
+  if (!el.pinsPanel.hidden && (el.pinsBtn.hidden || el.pinsPanel.dataset.conv !== S.openDm)) closePins();
   if (!el.searchPanel.hidden && (el.searchBtn.hidden || scope.id !== search.scope)) hideSearch();
 }
 
@@ -11079,7 +11110,7 @@ function hitWhen(at) {
 }
 
 // One result: who, when, and what they said (the words looked for marked), or sent.
-function searchHit(m) {
+function searchHit(m, terms = search.terms) {
   const li = document.createElement('li');
   li.className = 'search-hit';
   li.tabIndex = 0;
@@ -11129,7 +11160,7 @@ function searchHit(m) {
     file.append(m.file.name, size);
     body.append(file);
   }
-  markSearchWords(body, search.terms);
+  markSearchWords(body, terms);
   li.append(head, body);
   li.addEventListener('click', (e) => {
     if (e.target.closest('a, button')) return; // (a link in it, or a mention)
@@ -11151,6 +11182,113 @@ async function jumpToResult(m) {
   await jumpToMessage(m.id, m.seq);
   for (const hit of el.searchResults.querySelectorAll('.search-hit.here')) hit.classList.remove('here');
   el.searchResults.querySelector(`.search-hit[data-id="${CSS.escape(m.id)}"]`)?.classList.add('here');
+}
+
+// ---------------- Pinned messages ----------------
+// A conversation's, kept in sight (50 at most): its head's pin button lists them, newest pinned
+// first, each opening where it was said. Pinned and unpinned from a message's menu (lib/dms.js); in
+// a space's channel, by those who may manage its messages (anyone, in a DM, your notes or a group).
+
+function canPinHere(key = S.openDm) {
+  const c = isChannelKey(key) && S.channels.get(channelIdOf(key));
+  return !c || Boolean(groupOfChannel(c.id)) || canIn(S.spaces.get(c.spaceId), 'manageMessages');
+}
+
+async function togglePin(li) {
+  const key = S.openDm;
+  if (!key || !li.dataset.id) return;
+  const dm = dmFor(key);
+  const on = !(dm.pins && dm.pins.has(li.dataset.id));
+  try {
+    await api(on ? 'PUT' : 'DELETE', `${convPath(key)}/pins/${encodeURIComponent(li.dataset.id)}`);
+  } catch (err) {
+    return toast(err.message);
+  }
+  (dm.pins ||= new Set())[on ? 'add' : 'delete'](li.dataset.id);
+  if (!on) toast('Unpinned.'); // (a pin says so in the conversation)
+}
+
+// Pinned or unpinned (by you, elsewhere, or someone else in it).
+function onDmPin({ dm: dmId, id, on }) {
+  const key = convOf(dmId);
+  const dm = key && S.dms.get(key);
+  if (dm) (dm.pins ||= new Set())[on ? 'add' : 'delete'](id);
+  if (!el.pinsPanel.hidden && el.pinsPanel.dataset.conv === key) renderPins();
+}
+
+function openPins() {
+  const key = S.openDm;
+  if (!key) return;
+  el.pinsPanel.dataset.conv = key;
+  el.pinsPanel.hidden = false;
+  el.pinsBtn.classList.add('on');
+  el.pinsBtn.setAttribute('aria-expanded', 'true');
+  const li = document.createElement('li');
+  li.className = 'search-note';
+  li.textContent = 'Getting them…';
+  el.pinsList.replaceChildren(li);
+  placePins();
+  renderPins();
+}
+
+function closePins() {
+  if (el.pinsPanel.hidden) return;
+  el.pinsPanel.hidden = true;
+  el.pinsBtn.classList.remove('on');
+  el.pinsBtn.setAttribute('aria-expanded', 'false');
+}
+
+// Below its button, its right edge with the button's (never off the window: Settings > Size too).
+function placePins() {
+  const z = uiZoom();
+  const r = el.pinsBtn.getBoundingClientRect();
+  const box = el.pinsPanel.getBoundingClientRect();
+  const x = Math.max(8, Math.min(r.right - box.width, innerWidth - box.width - 8));
+  const y = Math.max(8, Math.min(r.bottom + 6, innerHeight - box.height - 8));
+  el.pinsPanel.style.left = `${x / z}px`;
+  el.pinsPanel.style.top = `${y / z}px`;
+}
+
+async function renderPins() {
+  const key = el.pinsPanel.dataset.conv;
+  const note = (text) => {
+    const li = document.createElement('li');
+    li.className = 'search-note';
+    li.textContent = text;
+    el.pinsList.replaceChildren(li);
+    placePins();
+  };
+  let d;
+  try {
+    d = await api('GET', `${convPath(key)}/pins`);
+  } catch (err) {
+    return note(err.message);
+  }
+  if (el.pinsPanel.hidden || el.pinsPanel.dataset.conv !== key) return;
+  dmFor(key).pins = new Set(d.pins.map((m) => m.id));
+  if (!d.pins.length) return note("Nothing's pinned here yet. Pin a message from its menu (right-click it, or press and hold) to keep it here.");
+  el.pinsList.replaceChildren(...d.pins.map((m) => {
+    const hit = searchHit(m, []);
+    hit.classList.add('pin-item');
+    hit.addEventListener('click', (e) => { if (!e.target.closest('a, button')) closePins(); }); // (it opens where it was said)
+    if (d.canPin) {
+      const off = smallButton('i-close', 'Unpin', async (e) => {
+        e.stopPropagation();
+        off.disabled = true;
+        try {
+          await api('DELETE', `${convPath(key)}/pins/${encodeURIComponent(m.id)}`);
+          dmFor(key).pins.delete(m.id);
+          renderPins();
+        } catch (err) {
+          off.disabled = false;
+          toast(err.message);
+        }
+      }, 'ghost pin-off');
+      hit.querySelector('.hit-head').append(off);
+    }
+    return hit;
+  }));
+  placePins();
 }
 
 // ----- Marking the words looked for -----
@@ -17171,6 +17309,22 @@ async function init() {
   el.msgEdit.addEventListener('click', () => startEdit(msgMenuLi));
   el.replyCancel.addEventListener('click', () => { stopReply(); el.chatInput.focus(); });
   el.msgCopy.addEventListener('click', onMessageMenuCopy);
+  el.msgPin.addEventListener('click', () => {
+    const li = msgMenuLi;
+    closeMessageMenu();
+    if (li) togglePin(li);
+  });
+  el.pinsBtn.addEventListener('click', () => (el.pinsPanel.hidden ? openPins() : closePins()));
+  el.pinsClose.addEventListener('click', closePins);
+  document.addEventListener('pointerdown', (e) => {
+    if (!el.pinsPanel.hidden && !el.pinsPanel.contains(e.target) && !el.pinsBtn.contains(e.target) && !e.target.closest('.pin-note')) closePins();
+  }, true);
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || el.pinsPanel.hidden || e.defaultPrevented) return;
+    e.preventDefault();
+    closePins();
+  });
+  addEventListener('resize', () => { if (!el.pinsPanel.hidden) placePins(); });
   el.msgUnread.addEventListener('click', () => {
     const li = msgMenuLi;
     closeMessageMenu();

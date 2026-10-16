@@ -1603,10 +1603,10 @@ api.get(conv('/messages'), needUser, needConv, (req, res) => {
     return res.json({ messages: list.slice(0, limit), newer: list.length > limit });
   }
   // The messages around one (a search result): where a jump to it lands.
-  if (req.query.around) return res.json({ ...dms.around(req.dm.id, Number(req.query.around) || 0), save: Boolean(req.dm.save), readAt: readFloor(req) });
+  if (req.query.around) return res.json({ ...dms.around(req.dm.id, Number(req.query.around) || 0), save: Boolean(req.dm.save), readAt: readFloor(req), pins: dms.pinnedIds(req.dm.id) });
   const page = dms.history(req.dm.id, Number(req.query.before) || 0);
   const notes = req.notes ? { ...dms.notesUsage(req.dm.id), max: notesMaxFor(req.user) } : undefined;
-  res.json({ ...page, save: Boolean(req.dm.save), readAt: readFloor(req), notes });
+  res.json({ ...page, save: Boolean(req.dm.save), readAt: readFloor(req), notes, pins: dms.pinnedIds(req.dm.id) });
 });
 
 // ----- Searching messages (lib/search.js) -----
@@ -1942,6 +1942,36 @@ api.post(conv('/read'), needUser, needConv, (req, res) => {
   const at = Math.min(Number((req.body || {}).at) || Date.now(), Date.now());
   dms.markRead(req.dm.id, req.user.id, at);
   realtime.sendToUser(req.user.id, { type: 'dm-read', dm: req.dm.id, at }); // clears the unread count on your other devices
+  res.json({ ok: true });
+});
+
+// ----- Pinned messages (lib/dms.js) -----
+// A conversation's, to keep in sight (its head's pin button lists them). In a DM, your notes or a
+// group: either of you, anyone in it. In a space's channel: those who may manage its messages.
+// Pinning one says so in the conversation ("Ava pinned a message").
+const canPin = (req) => !req.channel || spaces.isGroup(spaces.getSpace(req.channel.space_id)) || spaces.can(req.member, 'manageMessages');
+
+api.get(conv('/pins'), needUser, needConv, (req, res) => {
+  res.json({ pins: dms.pinsOf(req.dm.id), canPin: canPin(req), max: dms.PINS_MAX });
+});
+
+api.put(conv('/pins/:id'), needUser, needConv, (req, res) => {
+  if (!canPin(req)) return fail(res, 403, "You don't have permission to pin messages here.");
+  const row = dms.getRow(req.params.id);
+  if (!row || row.dm_id !== req.dm.id || !['text', 'file', 'gif'].includes(row.kind)) return fail(res, 404, "That message isn't there any more.");
+  const done = dms.pin(req.dm.id, row.id, req.user.id);
+  if (done === 'full') return fail(res, 409, `A conversation can have up to ${dms.PINS_MAX} pinned messages. Unpin one first.`);
+  if (done === 'pinned') {
+    tell(req, { type: 'dm-pin', dm: req.dm.id, id: row.id, on: true });
+    const fields = { id: auth.newId(), dm: req.dm.id, author: req.user.id, kind: 'pinned', meta: { id: row.id, seq: row.rowid } };
+    tell(req, { type: 'dm-message', message: req.dm.save ? dms.addMessage(fields) : dms.passing(fields) });
+  }
+  res.json({ ok: true });
+});
+
+api.delete(conv('/pins/:id'), needUser, needConv, (req, res) => {
+  if (!canPin(req)) return fail(res, 403, "You don't have permission to unpin messages here.");
+  if (dms.unpin(req.dm.id, String(req.params.id))) tell(req, { type: 'dm-pin', dm: req.dm.id, id: String(req.params.id), on: false });
   res.json({ ok: true });
 });
 

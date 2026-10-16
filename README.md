@@ -436,6 +436,10 @@ at the top closes it (on a phone, the back arrow).
     Enter saves, Esc cancels, and both of you see "(edited)". In an empty
     message box, the Up arrow edits your last message.
   - **Copy:** copies the text, or a GIF's link.
+  - **Pin message:** keeps it in the conversation's pinned messages (the pin
+    button at the top lists them, and opens each where it was said), up to 50.
+    In a DM, your notes or a group, anyone can; in a space's channel, people
+    who can manage its messages. "Ava pinned a message" shows in the chat.
   - **Mark unread:** it and everything after it count as unread again, on all
     your devices (the "new messages" line goes above it), until you come back
     to the conversation or reply.
