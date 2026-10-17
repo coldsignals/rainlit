@@ -1355,22 +1355,28 @@ function stopAllLocal() {
 }
 
 // ---------------- Speaking detection ----------------
+// Someone's glow (yours too) while there's sound from their mic: it lights at any sound at all,
+// faint and small, and grows brighter and bigger the louder it is and the longer they keep
+// talking. Talking itself (SPEAKING_LEVEL, a voice's level) is what marks you as here and lights
+// the Windows app's tray icon: a fan or a breath doesn't.
 
 function makeMeter(track, ctx = S.audioCtx) {
   if (!ctx) return null;
   const src = ctx.createMediaStreamSource(new MediaStream([track]));
   const an = ctx.createAnalyser();
-  an.fftSize = 512;
+  an.fftSize = 4096; // (about the last tenth of a second: a short sound between two looks isn't missed)
   src.connect(an);
   const buf = new Float32Array(an.fftSize);
   return {
     level: 0,
+    rms: 0, // (how loud just now)
     read() {
       an.getFloatTimeDomainData(buf);
       let sum = 0;
       for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-      // Rise instantly, fall slowly, so the glow doesn't flicker between words.
-      this.level = Math.max(Math.sqrt(sum / buf.length), this.level * 0.8);
+      this.rms = Math.sqrt(sum / buf.length);
+      // (Talking: rises at once, falls slowly, so it doesn't stop between words.)
+      this.level = Math.max(this.rms, this.level * 0.8);
       return this.level;
     },
     // Pure digital silence: what Android hands over from a mic it has shut off. A working mic
@@ -1384,14 +1390,44 @@ function makeMeter(track, ctx = S.audioCtx) {
   };
 }
 
+const GLOW_FLOOR = 0.001; // (about -60 dB: any sound above a mic's own silence)
+const GLOW_FULL = 0.1; // (-20 dB: talking up close)
+
+// How bright someone's glow is, 0 (none) to 1, from their meter just read (none: off at once).
+// g keeps how it's been: it rises at once, fades out over most of a second, and builds up a
+// little while they keep talking. ms: since the last time.
+function glowOf(meter, g, ms) {
+  if (!meter) {
+    g.now = g.held = 0;
+    return 0;
+  }
+  const k = meter.rms > GLOW_FLOOR ? Math.min(1, Math.log10(meter.rms / GLOW_FLOOR) / Math.log10(GLOW_FULL / GLOW_FLOOR)) : 0;
+  g.now = Math.max(k, g.now - ms / 800);
+  g.held += (g.now - g.held) * Math.min(1, ms / 1200);
+  return g.now > 0 ? Math.min(1, 0.7 * g.now + 0.45 * g.held) : 0;
+}
+
+// The glow on someone's picture (.speaking), that bright (--speak: the styles size it), or none.
+function showGlow(node, glow) {
+  node.classList.toggle('speaking', glow > 0);
+  const value = glow.toFixed(2);
+  if (glow > 0 && node.style.getPropertyValue('--speak') !== value) node.style.setProperty('--speak', value);
+}
+
+const myGlow = { now: 0, held: 0 };
+const peerGlow = { now: 0, held: 0 };
+
 function tickMeters() {
-  const meSpeaking = micLive() && S.localMeter && S.localMeter.read() > SPEAKING_LEVEL;
+  const mine = micLive() && S.localMeter ? S.localMeter : null;
+  const meSpeaking = Boolean(mine) && mine.read() > SPEAKING_LEVEL;
   if (meSpeaking) noteActivity(); // (talking: you're here)
-  el.micBtn.classList.toggle('speaking', Boolean(meSpeaking));
-  renderTrayIcon(Boolean(meSpeaking) || (S.ptt && micLive()));
-  const peerSpeaking = S.peer && S.peer.state.mic && S.remoteMeter && S.remoteMeter.read() > SPEAKING_LEVEL;
-  el.peerAvatar.classList.toggle('speaking', Boolean(peerSpeaking));
-  el.videoLabel.classList.toggle('speaking', Boolean(peerSpeaking));
+  showGlow(el.micBtn, glowOf(mine, myGlow, 100));
+  renderTrayIcon(meSpeaking || (S.ptt && micLive()));
+  const theirs = S.peer && S.peer.state.mic && S.remoteMeter ? S.remoteMeter : null;
+  if (theirs) theirs.read();
+  const glow = glowOf(theirs, peerGlow, 100);
+  showGlow(el.peerAvatar, glow);
+  showGlow(el.videoLabel, glow);
 }
 
 // The Windows app's tray icon: the drop as usual, dim while you're in a call, and glowing
@@ -12094,7 +12130,7 @@ async function joinVoice(channelId) {
   if (S.voice) await leaveVoice({ quiet: true });
   const v = S.voice = {
     channelId, spaceId: c.spaceId, room: null, state: 'connecting', speak: false,
-    muted: store.get('voiceMuted', 'off') === 'on', deafened: false, speaking: new Set(), tiles: new Map(),
+    muted: store.get('voiceMuted', 'off') === 'on', deafened: false, glows: new Map(), tiles: new Map(),
     meters: new Map(), meterCtx: null, meterTimer: 0,
   };
   showVoiceView();
@@ -12311,23 +12347,20 @@ function tickVoice(v) {
   const metered = v.meters.get(S.clientId);
   if (myTrack && (!metered || metered.track !== myTrack)) meterVoice(v, S.clientId, myTrack);
   else if (!myTrack && metered) unmeterVoice(v, S.clientId);
-  let changed = false;
+  // Each one's glow (see glowOf), and whether you're talking.
+  let talking = false;
   for (const [id, m] of v.meters) {
-    const on = m.read() > SPEAKING_LEVEL && (id !== S.clientId || !S.ptt || S.pttHeld);
-    if (on === v.speaking.has(id)) continue;
-    if (on) v.speaking.add(id);
-    else v.speaking.delete(id);
-    changed = true;
+    const level = m.read();
+    const live = id !== S.clientId || !S.ptt || S.pttHeld; // (yours, with push to talk: while it's held)
+    if (id === S.clientId && live && level > SPEAKING_LEVEL) talking = true;
+    if (!v.glows.has(id)) v.glows.set(id, { now: 0, held: 0, glow: 0 });
+    const g = v.glows.get(id);
+    g.glow = glowOf(live ? m : null, g, 50);
   }
-  for (const id of v.speaking) {
-    if (!v.meters.has(id)) {
-      v.speaking.delete(id);
-      changed = true;
-    }
-  }
-  if (changed) renderVoiceSpeaking();
-  if (v.speaking.has(S.clientId)) noteActivity(); // (talking: you're here)
-  renderTrayIcon(v.speaking.has(S.clientId));
+  for (const id of v.glows.keys()) if (!v.meters.has(id)) v.glows.delete(id);
+  renderVoiceSpeaking();
+  if (talking) noteActivity(); // (talking: you're here)
+  renderTrayIcon(talking);
 }
 
 // ----- Popping a video out, and keeping one on top -----
@@ -12836,11 +12869,17 @@ function renderTileSound(tile, p, source) {
   mute.setAttribute('aria-label', mute.title);
 }
 
+// (Someone's glow in the voice channel you're in, 0 if none: see tickVoice.)
+function voiceGlow(v, id) {
+  const g = v.glows && v.glows.get(id);
+  return g ? g.glow : 0;
+}
+
 function renderVoiceSpeaking() {
   const v = S.voice;
   if (!v) return;
-  for (const [key, tile] of v.tiles) tile.classList.toggle('speaking', key.endsWith(':cam') && v.speaking.has(tile.dataset.who));
-  for (const row of el.voiceList.querySelectorAll('.voice-person')) row.classList.toggle('speaking', v.speaking.has(row.dataset.who));
+  for (const [key, tile] of v.tiles) showGlow(tile, key.endsWith(':cam') ? voiceGlow(v, tile.dataset.who) : 0);
+  for (const row of el.voiceList.querySelectorAll('.voice-person')) showGlow(row, voiceGlow(v, row.dataset.who));
 }
 
 // A voice channel in the sidebar, and who's in it.
@@ -12867,8 +12906,9 @@ function voiceChannelItem(c) {
     list.className = 'voice-people';
     list.append(...members.map((m) => {
       const row = document.createElement('li');
-      row.className = `voice-person${S.voice && S.voice.speaking.has(m.id) ? ' speaking' : ''}`;
+      row.className = 'voice-person';
       row.dataset.who = m.id;
+      if (S.voice) showGlow(row, voiceGlow(S.voice, m.id));
       const person = profileOf(m.id) || { id: m.id, displayName: 'Someone', username: '' };
       const nm = document.createElement('span');
       nm.className = 'voice-person-name';

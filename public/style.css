@@ -572,12 +572,20 @@ button { cursor: pointer; }
 .role-picks { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 6px 0 0 28px; }
 .chat-form.locked { opacity: 0.55; }
 
+/* Someone speaking: the glow around them lights at any sound, brighter and bigger the louder
+   (and longer) it is: --speak, 0 to 1, set as they speak. Steady for those who'd rather less moved. */
+.speaking { --s: var(--speak, 1); }
+@media (prefers-reduced-motion: reduce) { .speaking { --s: 0.75; } }
+
 /* ================= Voice channels ================= */
 .voice-people { list-style: none; margin: 1px 0 4px 26px; padding: 0; display: grid; gap: 1px; }
 .voice-person { display: flex; align-items: center; gap: 9px; padding: 4px 8px; border-radius: 6px; color: var(--mist); font-size: 14px; cursor: pointer; }
 .voice-person:hover { background: var(--dusk); color: var(--text); }
 .voice-person .face { width: 30px; height: 30px; font-size: 13px; flex: none; transition: box-shadow 0.12s; }
-.voice-person.speaking .face { box-shadow: 0 0 0 2px var(--lamp), 0 0 10px var(--lamp-glow); }
+.voice-person.speaking .face {
+  box-shadow: 0 0 0 calc(1px + 1.5px * var(--s)) color-mix(in srgb, var(--lamp) calc(50% + 50% * var(--s)), transparent),
+    0 0 calc(3px + 9px * var(--s)) color-mix(in srgb, var(--lamp-glow) calc(40% + 60% * var(--s)), transparent);
+}
 .voice-person.speaking { color: var(--text); }
 .voice-person-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice-person .icon { width: 14px; height: 14px; flex: none; }
@@ -633,9 +641,15 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
   container-type: inline-size; cursor: zoom-in;
 }
 .voice-tile:focus-visible { outline: 2px solid var(--mist); outline-offset: 2px; }
-.voice-tile.speaking { box-shadow: inset 0 0 0 3px var(--lamp), 0 0 26px var(--lamp-glow); }
+.voice-tile.speaking {
+  box-shadow: inset 0 0 0 calc(1px + 2.5px * var(--s)) color-mix(in srgb, var(--lamp) calc(50% + 50% * var(--s)), transparent),
+    0 0 calc(6px + 24px * var(--s)) color-mix(in srgb, var(--lamp-glow) calc(40% + 60% * var(--s)), transparent);
+}
 .voice-tile .face { transition: box-shadow 0.1s; }
-.voice-tile.speaking .face { box-shadow: 0 0 0 4px var(--lamp), 0 0 44px 10px var(--lamp-glow); }
+.voice-tile.speaking .face {
+  box-shadow: 0 0 0 calc(1.5px + 3.5px * var(--s)) color-mix(in srgb, var(--lamp) calc(50% + 50% * var(--s)), transparent),
+    0 0 calc(14px + 38px * var(--s)) calc(2px + 10px * var(--s)) color-mix(in srgb, var(--lamp-glow) calc(35% + 65% * var(--s)), transparent);
+}
 .voice-tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .voice-tile.screen { background: #000; }
 .voice-tile.screen video { object-fit: contain; }
@@ -1562,8 +1576,9 @@ video.no-picture { background: url(/icons/drop-cam.svg) center / min(128px, 36%)
   transition: box-shadow 0.12s ease-out, border-color 0.12s;
 }
 .avatar.speaking {
-  border-color: var(--lamp);
-  box-shadow: 0 0 0 5px var(--lamp), 0 0 70px 18px var(--lamp-glow);
+  border-color: color-mix(in srgb, var(--lamp) calc(45% + 55% * var(--s)), var(--line));
+  box-shadow: 0 0 0 calc(1.5px + 4.5px * var(--s)) color-mix(in srgb, var(--lamp) calc(45% + 55% * var(--s)), transparent),
+    0 0 calc(16px + 64px * var(--s)) calc(2px + 18px * var(--s)) color-mix(in srgb, var(--lamp-glow) calc(30% + 70% * var(--s)), transparent);
 }
 .peer-name { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 600; }
 .mute-badge {
@@ -1595,7 +1610,10 @@ video.no-picture { background: url(/icons/drop-cam.svg) center / min(128px, 36%)
   font-size: 14px; font-weight: 600;
   transition: box-shadow 0.12s;
 }
-.video-label.speaking { box-shadow: 0 0 0 2px var(--lamp); }
+.video-label.speaking {
+  box-shadow: 0 0 0 calc(1px + 1.5px * var(--s)) color-mix(in srgb, var(--lamp) calc(50% + 50% * var(--s)), transparent),
+    0 0 calc(12px * var(--s)) var(--lamp-glow);
+}
 
 .stage-btn { position: absolute; top: 12px; right: 12px; z-index: 4; background: rgba(14, 18, 28, 0.6); color: var(--text); }
 .stage-btn.second { right: 60px; }
@@ -2377,7 +2395,10 @@ a.embed-author:hover .embed-name { text-decoration: underline; }
 
 .ctl.lit .ctl-icon { background: var(--text); color: var(--night); border-color: var(--text); }
 .ctl.off .ctl-icon { background: var(--danger-soft); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
-.ctl.speaking .ctl-icon { box-shadow: 0 0 0 3px var(--lamp); }
+.ctl.speaking .ctl-icon {
+  box-shadow: 0 0 0 calc(1px + 2.5px * var(--s)) color-mix(in srgb, var(--lamp) calc(50% + 50% * var(--s)), transparent),
+    0 0 calc(14px * var(--s)) var(--lamp-glow);
+}
 .ctl.leave .ctl-icon { background: var(--danger); border-color: var(--danger); color: #fff; }
 .ctl.leave:hover .ctl-icon { filter: brightness(1.08); }
 .ctl:disabled { opacity: 0.45; cursor: not-allowed; }
