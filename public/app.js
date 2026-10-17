@@ -1475,7 +1475,7 @@ function connectSocket() {
 
 function sendCallJoin() {
   wsSend({
-    type: 'call-join', with: S.callWith, state: myState(), trace: S.trace || undefined,
+    type: 'call-join', with: S.callWith, state: myState(), trace: S.trace || undefined, tab: TAB_ID,
     // Lets the server tell us if the call ended while we were disconnected, or, if the
     // server restarted and forgot the call, carry it on with the same start time.
     callId: S.call ? S.call.id : S.resumeCallId,
@@ -1666,6 +1666,7 @@ function handleServerMessage(msg) {
           S.failCount = 0;
           createPeer();
           playCallSound(true); // you've joined them
+          sayFresh();
         } else {
           // Back, and still talking all along: anything either of you offered meanwhile, again.
           resendOffer('back');
@@ -1735,6 +1736,7 @@ function handleServerMessage(msg) {
         if (!S.conn || S.conn.pc.connectionState !== 'connected') {
           playCallSound(true);
           createPeer();
+          sayFresh();
         } else {
           resendOffer('peer-back'); // (anything offered while they were gone never reached them)
         }
@@ -1961,6 +1963,24 @@ function resendOffer(why = 'asked') {
   sendSignal(conn, { description: pc.localDescription });
 }
 
+// Offers from this side now, rather than waiting for theirs: theirs is still offering to a
+// connection of ours that's gone (see handleSignal).
+function offerFresh(conn) {
+  if (!conn.waitingForOffer) return resendOffer('fresh');
+  trace('offer-fresh');
+  conn.waitingForOffer = false;
+  addLocalTracks(conn);
+  openFileChannel(conn);
+  if (!conn.pc.getTransceivers().length) conn.pc.addTransceiver('audio', { direction: 'recvonly' });
+}
+
+// A new connection on the side that waits for the other's offer, made by itself (back from a
+// blip with the old one gone, say): it says it's there, in case theirs is still tied to the old
+// one and would only find out when it fails, a while later (see handleSignal).
+function sayFresh() {
+  if (S.conn && S.conn.polite && wsOpen()) sendSignal(S.conn, { again: true });
+}
+
 function awaitAnswer(conn) {
   clearTimeout(conn.answerTimer);
   let wait = 4000;
@@ -1991,15 +2011,25 @@ function maybeShowConnectHint() {
   );
 }
 
+// (Each says which connection of theirs it's for, as far as this side knows: see handleSignal.)
 function sendSignal(conn, data) {
-  wsSend({ type: 'signal', data: { pcId: conn.pcId, ...JSON.parse(JSON.stringify(data)) } });
+  wsSend({ type: 'signal', data: { pcId: conn.pcId, to: conn.remotePcId || undefined, ...JSON.parse(JSON.stringify(data)) } });
 }
 
-async function handleSignal({ pcId, description, candidate, again }) {
+async function handleSignal({ pcId, to, description, candidate, again }) {
   if (!S.peer) return;
-  if (again) return resendOffer(); // (they're back: anything sent while they weren't goes again)
+  if (again && !S.conn) return;
   if (!S.conn) createPeer();
   let conn = S.conn;
+
+  // From a connection of theirs still tied to one of ours that's since been closed: ours was
+  // rebuilt (the server told this side they'd moved, say) and theirs never heard. It can't be
+  // carried over (its encryption was agreed with the old one), so nothing it sends is used: this
+  // side offers a fresh start instead, which theirs rebuilds to meet (below).
+  if (to && to !== conn.pcId) {
+    if (!conn.remotePcId && (again || (description && description.type === 'offer'))) offerFresh(conn);
+    return;
+  }
 
   if (conn.remotePcId && conn.remotePcId !== pcId) {
     // Friend rebuilt their side of the call. Rebuild ours to match; ignore leftovers from the old one.
@@ -2007,9 +2037,13 @@ async function handleSignal({ pcId, description, candidate, again }) {
       createPeer();
       conn = S.conn;
     } else {
+      // (Their new one saying it's there, while this side's is still tied to their old one: told
+      // so, theirs offers afresh, above.)
+      if (again) sendSignal(conn, { again: true });
       return;
     }
   }
+  if (again) return resendOffer(); // (they're back: anything sent while they weren't goes again)
   conn.remotePcId = pcId;
   const pc = conn.pc;
 
