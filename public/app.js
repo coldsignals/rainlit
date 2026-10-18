@@ -141,7 +141,7 @@ for (const id of [
   'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-idle', 'peer-away', 'peer-away-time', 'offline-banner',
   'video-label', 'video-muted', 'video-name', 'video-idle', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
-  'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
+  'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
   'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
@@ -3331,6 +3331,22 @@ function fromBoxText(text) {
   });
 }
 
+// As long as a message can be (the server's own, in server.js), counted as it's sent: a custom
+// emoji's :name: goes as its longer <:name:id>.
+const MESSAGE_MAX = 10_000;
+const tooLong = (over) => `That's ${over.toLocaleString()} character${over === 1 ? '' : 's'} too long: a message can have up to ${MESSAGE_MAX.toLocaleString()}.`;
+
+// Near the end of that, in the message box: how many characters are left, or (in red) how far
+// over it is, so a long paste isn't cut short without a word.
+function renderChatCount() {
+  const box = el.chatInput.value;
+  const left = box.length < 1000 ? MESSAGE_MAX : MESSAGE_MAX - fromBoxText(box.trim()).length;
+  el.chatCount.hidden = left > 500;
+  el.chatCount.textContent = left.toLocaleString();
+  el.chatCount.classList.toggle('over', left < 0);
+  el.chatCount.title = left < 0 ? tooLong(-left) : `${left.toLocaleString()} characters left`;
+}
+
 // The layer over the message box: the same text, laid out the same, invisible, except each
 // emoji's :name:, covered by its picture (on the box's own color). Only there while the box
 // has one.
@@ -4273,6 +4289,7 @@ async function saveEdit() {
   const editing = S.editing;
   const text = fromBoxText(el.chatInput.value.trim());
   if (!text) return toast('A message needs something in it. To remove it, use Delete instead.');
+  if (text.length > MESSAGE_MAX) return toast(tooLong(text.length - MESSAGE_MAX), 6000);
   const li = dmFor(editing.friendId).log.querySelector(`li[data-id="${CSS.escape(editing.id)}"]`);
   if (li && messageText(li) === text) return stopEdit(); // nothing changed
   stopEdit();
@@ -4468,6 +4485,7 @@ function setChatText(text) {
   el.chatInput.value = text;
   fitChatInput();
   renderChatMirror();
+  renderChatCount();
 }
 
 function nearBottom(log) {
@@ -17441,6 +17459,7 @@ async function init() {
   el.chatInput.addEventListener('blur', () => setTimeout(closeMentionPick, 150));
   el.chatInput.addEventListener('input', fitChatInput);
   el.chatInput.addEventListener('input', renderChatMirror);
+  el.chatInput.addEventListener('input', renderChatCount);
   el.chatInput.addEventListener('scroll', () => { el.chatMirror.scrollTop = el.chatInput.scrollTop; });
   if (window.ResizeObserver) new ResizeObserver(() => renderChatMirror()).observe(el.chatInput);
   el.chatInput.addEventListener('keydown', (e) => {
@@ -17747,6 +17766,7 @@ async function init() {
     const dm = dmFor(S.openDm);
     const text = fromBoxText(el.chatInput.value.trim());
     if (!text && !dm.pending.length) return;
+    if (text.length > MESSAGE_MAX) return toast(tooLong(text.length - MESSAGE_MAX), 6000);
     if (dm.pending.length && !canSendFiles(dm)) {
       toast(`Saving is off here, so files can only go straight to ${friendName(dm.friendId)} during a call.`, 6000);
       return; // keep the files and the message, in case the call's about to start

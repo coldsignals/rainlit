@@ -71,7 +71,7 @@ const CONFIRM_DAYS = 3;
 const NOTES_MAX = Number(process.env.NOTES_MAX) || 100;
 const notesMaxFor = (user) => (supporters.active(user) ? Math.max(NOTES_MAX, supporters.PERKS.notes) : NOTES_MAX);
 const notesFull = (user) => `Your notes are full (${notesMaxFor(user)} of ${notesMaxFor(user)}). Delete some to make room.`;
-const MESSAGE_MAX = 4000;
+const MESSAGE_MAX = 10_000; // (characters a message can have: the app's MESSAGE_MAX says so too)
 const ID_RE = /^[A-Za-z0-9-]{8,64}$/;
 // GIFs come from KLIPY (https://klipy.com). Browsers search it and load its GIFs directly,
 // as KLIPY requires; the server only keeps the link to what was sent.
@@ -270,7 +270,9 @@ app.post('/stripe/webhook', express.raw({ type: () => true, limit: '1mb' }), asy
 const api = express.Router();
 const smallJson = express.json({ limit: '32kb' });
 const pageJson = express.json({ limit: '400kb' }); // (a whole homepage, saved at once)
-api.use((req, res, next) => (req.path === '/homepages/me' ? pageJson : smallJson)(req, res, next));
+const messageJson = express.json({ limit: '64kb' }); // (a message as long as it can be, in any script)
+const MESSAGE_PATH = /^\/(dms|channels)\/[^/]+\/messages(\/[^/]+)?$/;
+api.use((req, res, next) => (req.path === '/homepages/me' ? pageJson : MESSAGE_PATH.test(req.path) ? messageJson : smallJson)(req, res, next));
 api.use((req, res, next) => {
   // Anything that changes something has to come from this site's own pages.
   if (!['GET', 'HEAD'].includes(req.method) && !auth.sameOrigin(req)) return fail(res, 403, 'Refused.');
