@@ -105,23 +105,18 @@ class WindowCapture {
 
   ~WindowCapture() { Stop(); }
 
-  // Starts on its own; frames go to onFrame, and "closed" (the window went away) to onEvent.
+  // Starts on its own; frames go to onFrame, and "closed" (the window or monitor went away) to
+  // onEvent. One of a window or a whole monitor (a screen); the rest is the same either way.
   bool Start(HWND hwnd, int maxW, int maxH, int fps, std::string& error) {
-    maxW_ = std::max(2, maxW);
-    maxH_ = std::max(2, maxH);
-    interval_ = fps > 0 ? 1000000 / fps : 33333;
-    bool ok = false;
-    InMta([&] {
-      try {
-        ok = Setup(hwnd, error);
-      } catch (winrt::hresult_error const& e) {
-        error = HrText("Starting the capture", e.code());
-      } catch (...) {
-        error = "Starting the capture failed";
-      }
-    });
-    if (!ok) Teardown();
-    return ok;
+    hwnd_ = hwnd;
+    mon_ = nullptr;
+    return StartInternal(maxW, maxH, fps, error);
+  }
+
+  bool StartMonitor(HMONITOR mon, int maxW, int maxH, int fps, std::string& error) {
+    mon_ = mon;
+    hwnd_ = nullptr;
+    return StartInternal(maxW, maxH, fps, error);
   }
 
   void Stop() {
@@ -146,6 +141,28 @@ class WindowCapture {
   }
 
  private:
+  // What's being captured: a window, or a whole monitor (mon_ set instead).
+  HWND hwnd_ = nullptr;
+  HMONITOR mon_ = nullptr;
+
+  bool StartInternal(int maxW, int maxH, int fps, std::string& error) {
+    maxW_ = std::max(2, maxW);
+    maxH_ = std::max(2, maxH);
+    interval_ = fps > 0 ? 1000000 / fps : 33333;
+    bool ok = false;
+    InMta([&] {
+      try {
+        ok = Setup(error);
+      } catch (winrt::hresult_error const& e) {
+        error = HrText("Starting the capture", e.code());
+      } catch (...) {
+        error = "Starting the capture failed";
+      }
+    });
+    if (!ok) Teardown();
+    return ok;
+  }
+
   std::mutex mutex_;
   bool stopped_ = false;
   int maxW_ = 1920, maxH_ = 1080;
@@ -171,13 +188,13 @@ class WindowCapture {
   int inW_ = 0, inH_ = 0, outW_ = 0, outH_ = 0;
   bool useNv12_ = true;
 
-  bool Setup(HWND hwnd, std::string& error) {
-    if (!IsWindow(hwnd)) {
+  bool Setup(std::string& error) {
+    if (hwnd_ && !IsWindow(hwnd_)) {
       error = "That window has closed";
       return false;
     }
     if (!wgc::GraphicsCaptureSession::IsSupported()) {
-      error = "Window capture isn't supported on this version of Windows";
+      error = "Screen capture isn't supported on this version of Windows";
       return false;
     }
     UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT;
@@ -204,9 +221,11 @@ class WindowCapture {
     device_ = inspectable.as<wdx::Direct3D11::IDirect3DDevice>();
 
     auto interop = winrt::get_activation_factory<wgc::GraphicsCaptureItem>().as<IGraphicsCaptureItemInterop>();
-    hr = interop->CreateForWindow(hwnd, winrt::guid_of<wgc::IGraphicsCaptureItem>(), winrt::put_abi(item_));
+    hr = mon_
+             ? interop->CreateForMonitor(mon_, winrt::guid_of<wgc::IGraphicsCaptureItem>(), winrt::put_abi(item_))
+             : interop->CreateForWindow(hwnd_, winrt::guid_of<wgc::IGraphicsCaptureItem>(), winrt::put_abi(item_));
     if (FAILED(hr) || !item_) {
-      error = HrText("Capturing that window", hr);
+      error = HrText(mon_ ? "Capturing that screen" : "Capturing that window", hr);
       return false;
     }
     poolSize_ = item_.Size();
@@ -475,15 +494,17 @@ class AppAudioCapture {
 
   ~AppAudioCapture() { Stop(); }
 
-  bool Start(DWORD pid, std::string& error) {
+  // pid: whose sound to capture. exclude = true: everything *but* that process tree (the whole
+  // system's sound except the app's own, for a screen share, so your friend's voice isn't echoed).
+  bool Start(DWORD pid, bool exclude, std::string& error) {
     std::mutex m;
     std::condition_variable cv;
     bool ready = false, ok = false;
     running_ = true;
-    thread_ = std::thread([&, pid] {
+    thread_ = std::thread([&, pid, exclude] {
       winrt::init_apartment(winrt::apartment_type::multi_threaded);
       std::string err;
-      bool started = Open(pid, err);
+      bool started = Open(pid, exclude, err);
       {
         std::lock_guard<std::mutex> lock(m);
         ok = started;
@@ -526,11 +547,12 @@ class AppAudioCapture {
   bool isFloat_ = true;
   int channels_ = 2;
 
-  bool Open(DWORD pid, std::string& error) {
+  bool Open(DWORD pid, bool exclude, std::string& error) {
     AUDIOCLIENT_ACTIVATION_PARAMS params{};
     params.ActivationType = AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK;
     params.ProcessLoopbackParams.TargetProcessId = pid;
-    params.ProcessLoopbackParams.ProcessLoopbackMode = PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
+    params.ProcessLoopbackParams.ProcessLoopbackMode =
+        exclude ? PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE : PROCESS_LOOPBACK_MODE_INCLUDE_TARGET_PROCESS_TREE;
     PROPVARIANT pv{};
     pv.vt = VT_BLOB;
     pv.blob.cbSize = sizeof params;
@@ -669,9 +691,53 @@ static Napi::Value Supported(const Napi::CallbackInfo& info) {
   });
   auto out = Napi::Object::New(info.Env());
   out.Set("window", window);
+  // A whole screen is captured the same way (Windows Graphics Capture), which reads what Windows
+  // paints to that monitor: a game filling it shows up even when a single-window grab can't see it.
+  out.Set("monitor", window);
   out.Set("audio", WindowsBuild() >= 19041);
   out.Set("borderless", borderless);
   out.Set("build", static_cast<double>(WindowsBuild()));
+  return out;
+}
+
+// A monitor handle passed from JavaScript (listMonitors gave it as a number).
+static HMONITOR MonitorOf(const Napi::Value& v) {
+  return reinterpret_cast<HMONITOR>(static_cast<intptr_t>(v.As<Napi::Number>().Int64Value()));
+}
+
+struct MonitorInfo {
+  HMONITOR handle = nullptr;
+  RECT rect{};
+  bool primary = false;
+};
+
+static BOOL CALLBACK EachMonitor(HMONITOR handle, HDC, LPRECT, LPARAM lp) {
+  MONITORINFO mi{};
+  mi.cbSize = sizeof mi;
+  if (GetMonitorInfoW(handle, &mi)) {
+    reinterpret_cast<std::vector<MonitorInfo>*>(lp)->push_back({handle, mi.rcMonitor, (mi.dwFlags & MONITORINFOF_PRIMARY) != 0});
+  }
+  return TRUE;
+}
+
+// listMonitors() -> [{ id, x, y, w, h, primary }]: the screens, each with its handle (id, for
+// startMonitor) and where it sits on the desktop, in real pixels.
+static Napi::Value ListMonitors(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+  std::vector<MonitorInfo> list;
+  EnumDisplayMonitors(nullptr, nullptr, EachMonitor, reinterpret_cast<LPARAM>(&list));
+  auto out = Napi::Array::New(env, list.size());
+  for (size_t i = 0; i < list.size(); i++) {
+    const auto& m = list[i];
+    auto o = Napi::Object::New(env);
+    o.Set("id", static_cast<double>(reinterpret_cast<intptr_t>(m.handle)));
+    o.Set("x", static_cast<int>(m.rect.left));
+    o.Set("y", static_cast<int>(m.rect.top));
+    o.Set("w", static_cast<int>(m.rect.right - m.rect.left));
+    o.Set("h", static_cast<int>(m.rect.bottom - m.rect.top));
+    o.Set("primary", m.primary);
+    out[static_cast<uint32_t>(i)] = o;
+  }
   return out;
 }
 
@@ -694,6 +760,28 @@ static Napi::Value StartWindow(const Napi::CallbackInfo& info) {
   int maxH = o.Has("maxHeight") ? o.Get("maxHeight").As<Napi::Number>().Int32Value() : 1080;
   int fps = o.Has("fps") ? o.Get("fps").As<Napi::Number>().Int32Value() : 30;
   if (!cap->Start(HwndOf(o.Get("hwnd")), maxW, maxH, fps, error)) {
+    cap->Stop();
+    throw Napi::Error::New(env, error);
+  }
+  std::lock_guard<std::mutex> lock(gLock);
+  int id = gNext++;
+  gWindows[id] = cap;
+  return Napi::Number::New(env, id);
+}
+
+// startMonitor({ id, maxWidth, maxHeight, fps }, onFrame(frame), onEvent(name)) -> id
+// (id: a monitor handle from listMonitors.) Stopped and tuned like a window (stopWindow/tuneWindow).
+static Napi::Value StartMonitor(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+  auto o = info[0].As<Napi::Object>();
+  auto cap = std::make_shared<WindowCapture>();
+  cap->onFrame = Napi::ThreadSafeFunction::New(env, info[1].As<Napi::Function>(), "rainlit-frame", 2, 1);
+  cap->onEvent = Napi::ThreadSafeFunction::New(env, info[2].As<Napi::Function>(), "rainlit-event", 0, 1);
+  std::string error;
+  int maxW = o.Has("maxWidth") ? o.Get("maxWidth").As<Napi::Number>().Int32Value() : 1920;
+  int maxH = o.Has("maxHeight") ? o.Get("maxHeight").As<Napi::Number>().Int32Value() : 1080;
+  int fps = o.Has("fps") ? o.Get("fps").As<Napi::Number>().Int32Value() : 30;
+  if (!cap->StartMonitor(MonitorOf(o.Get("id")), maxW, maxH, fps, error)) {
     cap->Stop();
     throw Napi::Error::New(env, error);
   }
@@ -738,7 +826,26 @@ static Napi::Value StartAudio(const Napi::CallbackInfo& info) {
   auto cap = std::make_shared<AppAudioCapture>();
   cap->onAudio = Napi::ThreadSafeFunction::New(env, info[1].As<Napi::Function>(), "rainlit-audio", 8, 1);
   std::string error;
-  if (!cap->Start(static_cast<DWORD>(o.Get("pid").As<Napi::Number>().Uint32Value()), error)) {
+  if (!cap->Start(static_cast<DWORD>(o.Get("pid").As<Napi::Number>().Uint32Value()), false, error)) {
+    cap->Stop();
+    throw Napi::Error::New(env, error);
+  }
+  std::lock_guard<std::mutex> lock(gLock);
+  int id = gNext++;
+  gAudio[id] = cap;
+  return Napi::Number::New(env, id);
+}
+
+// startSystemAudio({ excludePid }, onAudio(chunk)) -> id: all the computer's sound except the
+// given process tree (the app's own, so a screen share doesn't echo your friend back). Stopped
+// like any sound (stopAudio). Windows 10 2004 and newer.
+static Napi::Value StartSystemAudio(const Napi::CallbackInfo& info) {
+  auto env = info.Env();
+  auto o = info[0].As<Napi::Object>();
+  auto cap = std::make_shared<AppAudioCapture>();
+  cap->onAudio = Napi::ThreadSafeFunction::New(env, info[1].As<Napi::Function>(), "rainlit-audio", 8, 1);
+  std::string error;
+  if (!cap->Start(static_cast<DWORD>(o.Get("excludePid").As<Napi::Number>().Uint32Value()), true, error)) {
     cap->Stop();
     throw Napi::Error::New(env, error);
   }
@@ -919,9 +1026,12 @@ static Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set("supported", Napi::Function::New(env, Supported));
   exports.Set("windowProcess", Napi::Function::New(env, WindowProcess));
   exports.Set("startWindow", Napi::Function::New(env, StartWindow));
+  exports.Set("startMonitor", Napi::Function::New(env, StartMonitor));
+  exports.Set("listMonitors", Napi::Function::New(env, ListMonitors));
   exports.Set("tuneWindow", Napi::Function::New(env, TuneWindow));
   exports.Set("stopWindow", Napi::Function::New(env, StopWindow));
   exports.Set("startAudio", Napi::Function::New(env, StartAudio));
+  exports.Set("startSystemAudio", Napi::Function::New(env, StartSystemAudio));
   exports.Set("stopAudio", Napi::Function::New(env, StopAudio));
   exports.Set("listWindows", Napi::Function::New(env, ListWindows));
   exports.Set("mediaSessions", Napi::Function::New(env, MediaSessions));

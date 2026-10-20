@@ -846,7 +846,9 @@ function initWindowSharing() {
     const v = constraints.video && typeof constraints.video === 'object' ? constraints.video : {};
     const choice = await DESKTOP.pickShare({ audio: Boolean(constraints.audio), maxWidth: idealOf(v.width), maxHeight: idealOf(v.height), fps: mostOf(v.frameRate) });
     if (!choice) throw new DOMException('Nothing was picked to share.', 'NotAllowedError');
-    if (choice.kind !== 'window') return usual(constraints);
+    // A window or a whole screen the app captures itself comes through a port; anything else
+    // (an old app, or it couldn't) shares the usual way.
+    if (choice.kind !== 'window' && choice.kind !== 'monitor') return usual(constraints);
     const port = sharePorts.get(choice.share) || await new Promise((resolve) => {
       shareWaits.set(choice.share, resolve);
       setTimeout(() => { if (shareWaits.delete(choice.share)) resolve(null); }, 5000);
@@ -932,7 +934,8 @@ function windowShareStream(port, choice, fps) {
     };
   }
   const settings = video.getSettings.bind(video);
-  video.getSettings = () => ({ ...settings(), width: size.width, height: size.height, frameRate: fps, displaySurface: 'window' });
+  const surface = choice.kind === 'monitor' ? 'monitor' : 'window';
+  video.getSettings = () => ({ ...settings(), width: size.width, height: size.height, frameRate: fps, displaySurface: surface });
   video.applyConstraints = async (c = {}) => {
     fps = mostOf(c.frameRate) || fps;
     if (!over) port.postMessage({ t: 'tune', maxWidth: idealOf(c.width) || 1920, maxHeight: idealOf(c.height) || 1080, fps });

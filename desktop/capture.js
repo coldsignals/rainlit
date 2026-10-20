@@ -35,7 +35,9 @@ function stop(id) {
   setTimeout(() => { try { s.port.close(); } catch {} }, 500);
 }
 
-function start({ id, hwnd, audio, maxWidth, maxHeight, fps }, port) {
+// A window (hwnd) or a whole screen (monitor, a handle from listMonitors). A window's sound is
+// just its app's; a screen's is everything but Rainlit (excludePid), so your friend isn't echoed.
+function start({ id, hwnd, monitor, audio, excludePid, maxWidth, maxHeight, fps }, port) {
   if (!native || !port) return { id, ok: false, message: loadError || 'No port' };
   const s = { port, video: 0, audio: 0, watch: 0 };
   shares.set(id, s);
@@ -48,28 +50,30 @@ function start({ id, hwnd, audio, maxWidth, maxHeight, fps }, port) {
   });
   port.on('close', () => stop(id));
   port.start();
+  const onFrame = (f) => port.postMessage({ t: 'v', w: f.w, h: f.h, format: f.format, ts: f.ts, data: f.data });
+  const onEnd = (ev) => { if (ev === 'closed') stop(id); };
   try {
-    s.video = native.startWindow(
-      { hwnd, maxWidth, maxHeight, fps },
-      (f) => port.postMessage({ t: 'v', w: f.w, h: f.h, format: f.format, ts: f.ts, data: f.data }),
-      (ev) => { if (ev === 'closed') stop(id); },
-    );
+    s.video = monitor
+      ? native.startMonitor({ id: monitor, maxWidth, maxHeight, fps }, onFrame, onEnd)
+      : native.startWindow({ hwnd, maxWidth, maxHeight, fps }, onFrame, onEnd);
   } catch (err) {
     shares.delete(id);
     try { port.close(); } catch {}
     return { id, ok: false, message: err.message };
   }
-  // The window closing (or its app quitting, even suddenly) ends the sharing. (Windows says so,
-  // mostly; this makes sure.)
-  s.watch = setInterval(() => {
-    let alive = false;
-    try { alive = native.windowProcess(hwnd) > 0; } catch {}
-    if (!alive) stop(id);
-  }, 500);
-  // Only that app's sound (and what it started): where Windows can, and if it was asked for.
+  // A window closing (or its app quitting, even suddenly) ends the sharing. (Windows says so,
+  // mostly; this makes sure.) A monitor doesn't close like that: its own 'closed' (unplugged) does.
+  if (!monitor) {
+    s.watch = setInterval(() => {
+      let alive = false;
+      try { alive = native.windowProcess(hwnd) > 0; } catch {}
+      if (!alive) stop(id);
+    }, 500);
+  }
+  const onAudio = (c) => port.postMessage({ t: 'a', frames: c.frames, rate: c.rate, channels: c.channels, ts: c.ts, data: c.data });
   if (audio) {
     try {
-      s.audio = native.startAudio({ pid: native.windowProcess(hwnd) }, (c) => port.postMessage({ t: 'a', frames: c.frames, rate: c.rate, channels: c.channels, ts: c.ts, data: c.data }));
+      s.audio = monitor ? native.startSystemAudio({ excludePid }, onAudio) : native.startAudio({ pid: native.windowProcess(hwnd) }, onAudio);
     } catch {
       port.postMessage({ t: 'noaudio' });
     }
@@ -80,8 +84,12 @@ function start({ id, hwnd, audio, maxWidth, maxHeight, fps }, port) {
 process.parentPort.on('message', (e) => {
   const m = e.data || {};
   if (m.type === 'supported') {
-    const can = native ? native.supported() : { window: false, audio: false };
+    const can = native ? native.supported() : { window: false, monitor: false, audio: false };
     process.parentPort.postMessage({ id: m.id, ok: Boolean(native), ...can, message: loadError });
+  } else if (m.type === 'monitors') {
+    let monitors = [];
+    try { if (native && native.listMonitors) monitors = native.listMonitors(); } catch {}
+    process.parentPort.postMessage({ id: m.id, ok: true, monitors });
   } else if (m.type === 'start') {
     process.parentPort.postMessage(start(m, e.ports[0]));
   } else if (m.type === 'stop') {

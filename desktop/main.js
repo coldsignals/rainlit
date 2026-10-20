@@ -395,13 +395,38 @@ function askCapturer(msg, ports = []) {
   });
 }
 
-// What the app can capture itself here: { window, audio } (asked once).
+// What the app can capture itself here: { window, monitor, audio } (asked once).
 async function capturerCan() {
   if (!capturerAbility) {
     const r = await askCapturer({ type: 'supported', id: `supported-${++shareIds}` });
-    capturerAbility = r && r.ok ? { window: Boolean(r.window), audio: Boolean(r.audio) } : { window: false, audio: false };
+    capturerAbility = r && r.ok ? { window: Boolean(r.window), monitor: Boolean(r.monitor), audio: Boolean(r.audio) } : { window: false, monitor: false, audio: false };
   }
   return capturerAbility;
+}
+
+// The capturer's monitor handle for a chosen screen source: match the display it names (by where
+// it sits, in real pixels) to the monitors the capturer sees. 0 if none can be matched.
+async function monitorForSource(source) {
+  let monitors = [];
+  try {
+    const r = await askCapturer({ type: 'monitors', id: `monitors-${++shareIds}` });
+    if (r && r.ok) monitors = r.monitors || [];
+  } catch {}
+  if (!monitors.length) return 0;
+  if (monitors.length === 1) return monitors[0].id;
+  const disp = screen.getAllDisplays().find((d) => String(d.id) === String(source.display_id));
+  if (disp) {
+    const tx = Math.round(disp.bounds.x * disp.scaleFactor);
+    const ty = Math.round(disp.bounds.y * disp.scaleFactor);
+    let best = monitors[0];
+    let bestD = Infinity;
+    for (const m of monitors) {
+      const d = Math.abs(m.x - tx) + Math.abs(m.y - ty);
+      if (d < bestD) { bestD = d; best = m; }
+    }
+    return best.id;
+  }
+  return (monitors.find((m) => m.primary) || monitors[0]).id;
 }
 
 const whole = (n, fallback, max) => Math.min(max, Math.max(2, Math.round(Number(n) || fallback)));
@@ -514,21 +539,33 @@ ipcMain.handle('desktop:share-pick', async (e, opts = {}) => {
   if (!choice) return null;
   const { source } = choice;
   const hwnd = source.id.startsWith('window:') ? Number(source.id.split(':')[1]) : 0;
-  if (hwnd) {
-    const can = await capturerCan();
-    if (can.window) {
-      const id = ++shareIds;
-      const { port1, port2 } = new MessageChannelMain();
-      const r = await askCapturer({
-        type: 'start', id, hwnd, audio: Boolean(choice.audio && can.audio),
-        maxWidth: whole(opts.maxWidth, 1920, 3840), maxHeight: whole(opts.maxHeight, 1080, 2160), fps: whole(opts.fps, 30, 60),
-      }, [port1]);
-      if (r && r.ok) {
-        e.sender.postMessage('desktop:share-port', { share: id }, [port2]);
-        return { kind: 'window', share: id, audio: Boolean(r.audio), name: source.name };
-      }
+  const can = await capturerCan();
+  // A window, or a whole screen: both captured by the app itself (a screen too reads what Windows
+  // paints, so a fullscreen or borderless game shows up where a browser's screen grab freezes),
+  // sent to the page through a port. The size and frame rate are capped like a browser's share.
+  const start = async (extra) => {
+    const id = ++shareIds;
+    const { port1, port2 } = new MessageChannelMain();
+    const r = await askCapturer({
+      type: 'start', id, audio: Boolean(choice.audio && can.audio),
+      maxWidth: whole(opts.maxWidth, 1920, 3840), maxHeight: whole(opts.maxHeight, 1080, 2160), fps: whole(opts.fps, 30, 60),
+      ...extra,
+    }, [port1]);
+    if (!r || !r.ok) return null;
+    e.sender.postMessage('desktop:share-port', { share: id }, [port2]);
+    return { share: id, audio: Boolean(r.audio), name: source.name };
+  };
+  if (hwnd && can.window) {
+    const done = await start({ hwnd });
+    if (done) return { kind: 'window', ...done };
+  } else if (!hwnd && can.monitor) {
+    const monitor = await monitorForSource(source);
+    if (monitor) {
+      const done = await start({ monitor, excludePid: process.pid });
+      if (done) return { kind: 'monitor', ...done };
     }
   }
+  // Couldn't capture it ourselves (an old Windows, or no monitor matched): the usual way, no re-ask.
   pendingShare = { choice, at: Date.now() };
   return { kind: hwnd ? 'window-plain' : 'screen' };
 });
