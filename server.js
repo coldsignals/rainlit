@@ -3028,9 +3028,11 @@ app.use((err, req, res, _next) => {
 const server = http.createServer(app);
 realtime.attach(server, { build: BUILD });
 
-// Render stops the old server when an update goes live. Note it in the call debug log, so a
-// call that dropped then shows why.
+// Render stops the old server when an update goes live. Calls carry on after it (lib/realtime.js
+// notes when each was last known to be going), and the call debug log says so, so a call that
+// dropped then shows why.
 process.once('SIGTERM', () => {
+  realtime.stopping();
   try { traces.add({ pair: '*', kind: 'server-stop' }); } catch {}
   process.exit(0);
 });

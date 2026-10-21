@@ -485,7 +485,10 @@ at the top closes it (on a phone, the back arrow).
   drops or leaves. Turn them off in settings.
 - **Server updates don't end calls.** While the server restarts, you keep
   talking directly; you'll see "Reconnecting to Rainlit" for a few seconds,
-  and then the call carries on with the same timer.
+  and then the call carries on with the same timer, however long it's been
+  going (the server keeps a note of each call going on). If neither of you
+  comes back after an update, the call ended when it was last going, and the
+  conversation says how long it was.
 - **Nor do blips on the way to the server.** Your app's link to the server
   can be cut now and then (by something in between, without either end
   hearing); the app connects again straight away, and since your voices go
