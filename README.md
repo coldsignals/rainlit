@@ -565,8 +565,12 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
   Rainlit keeps, just for you, when each of your calls started and ended and
   who rang, even where a conversation isn't saving its messages, and your time
   in voice channels and group calls with each person. Records of time with a
-  friend include it. Delete it there any time. It's in **Download my data**
-  too (calls.json).
+  friend include it. It also keeps your own side when something goes without
+  you asking: your messages and files with a friend who deletes their account
+  (theirs go), and yours in a channel or space someone deletes: they're in Your
+  files, and a record of your calls with them (from the list in that panel).
+  Delete it there any time. It's in **Download my data** too (calls.json, and
+  what it kept in messages.json).
 
 ## What it can't do yet
 

@@ -953,12 +953,15 @@
             <input id="call-record-input" type="checkbox" />
             <span>Keep a record of my calls <small class="toggle-note">(just for you: when each call and voice channel visit started and
               ended, who rang, and who was there with you and for how long, even where a conversation isn't saving its messages.
-              Never what's said.)</small></span>
+              Never what's said on a call. It also keeps your own side when something goes without you asking: your messages and
+              files with a friend who deletes their account, and yours in a channel or space someone deletes. Theirs still go.)</small></span>
           </label>
           <p class="hint">To save a record of your calls with a friend (when, how long, who rang, and your messages if you like), as a
             page to keep, print or save as a PDF, open their menu (right-click them in your friends, or press and hold) and choose
             <b>Save a record of your calls</b>. It has the calls from your conversation with them either way, and the rest from your
             own record if you keep one.</p>
+          <!-- (Conversations it kept from friends whose accounts are gone: each to save a record of. See renderKept.) -->
+          <div id="call-record-kept" class="kept-list" hidden></div>
           <p id="call-record-note" class="hint" role="status" hidden></p>
           <button id="call-record-delete" class="text-btn danger" type="button">Delete my call record</button>
         </div>

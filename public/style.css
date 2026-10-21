@@ -1410,6 +1410,10 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .pw-details summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--mist); }
 .pw-fields { display: grid; gap: 12px; margin-top: 12px; }
 .pw-fields .primary-btn { justify-self: start; }
+.kept-list { display: grid; gap: 4px; }
+.kept-list .hint { margin: 0; }
+.kept-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--mist); }
+.kept-row[hidden], .kept-list[hidden] { display: none; }
 .signout { justify-self: start; padding-left: 0; }
 
 .settings.admin { width: min(560px, calc(100vw / var(--zoom) - 32px)); }

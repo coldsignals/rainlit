@@ -28,6 +28,7 @@ const sounds = require('./lib/sounds');
 const callrecord = require('./lib/callrecord');
 const search = require('./lib/search');
 const records = require('./lib/record');
+const keep = require('./lib/keep');
 const homepages = require('./lib/homepages');
 const pets = require('./lib/pets');
 const announcements = require('./lib/announcements');
@@ -815,7 +816,16 @@ api.put('/me/call-record', needUser, (req, res) => {
   res.json({ user: people.selfUser(people.userById(req.user.id)) });
 });
 api.delete('/me/call-record', needUser, (req, res) => {
-  res.json({ deleted: callrecord.clear(req.user.id) });
+  // (And what it kept of yours from conversations and channels that are gone, files too.)
+  const kept = keep.clear(req.user.id);
+  for (const file of kept.files) dms.removeFile(file);
+  res.json({ deleted: callrecord.clear(req.user.id) + kept.n });
+});
+
+// Conversations your record kept from friends whose accounts are gone (lib/keep.js), for Your
+// profile: each to save a record of, as with a friend.
+api.get('/me/kept', needUser, (req, res) => {
+  res.json({ former: keep.formerFriends(req.user.id) });
 });
 
 // A record of your time with a friend (lib/record.js), as a page to keep or print: ?from= and
@@ -823,15 +833,17 @@ api.delete('/me/call-record', needUser, (req, res) => {
 // for how times are written. (Not twice in a row.)
 const recordedAt = new Map();
 api.get('/friends/:friendId/record', needUser, (req, res) => {
-  const friend = people.userById(String(req.params.friendId));
+  const friendId = String(req.params.friendId);
+  const friend = people.userById(friendId);
   const q = req.query;
-  if (!friend || friend.id === req.user.id) return fail(res, 404, "There's no one like that.");
-  const talked = db.prepare('SELECT 1 FROM dms WHERE id = ?').get(dms.dmIdOf(req.user.id, friend.id)) || callrecord.hasAny(req.user.id, friend.id);
-  if (!talked) return fail(res, 404, `You haven't talked with ${friend.display_name} on Rainlit yet.`);
+  if (friendId === req.user.id || !ID_RE.test(friendId)) return fail(res, 404, "There's no one like that.");
+  // (A friend whose account is gone too: your calls in your record, and what it kept of your side.)
+  const talked = db.prepare('SELECT 1 FROM dms WHERE id = ?').get(dms.dmIdOf(req.user.id, friendId)) || callrecord.hasAny(req.user.id, friendId) || keep.hasAny(req.user.id, friendId);
+  if (!talked) return fail(res, 404, friend ? `You haven't talked with ${friend.display_name} on Rainlit yet.` : "There's no one like that.");
   if (Date.now() - (recordedAt.get(req.user.id) || 0) < 2000) return fail(res, 429, 'One moment: you just saved one.');
   recordedAt.set(req.user.id, Date.now());
   const ms = (v) => (v !== undefined && Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
-  const out = records.build(req.user.id, friend.id, { from: ms(q.from), to: ms(q.to), withMessages: q.messages === '1', tz: q.tz, locale: q.locale });
+  const out = records.build(req.user.id, friendId, { from: ms(q.from), to: ms(q.to), withMessages: q.messages === '1', tz: q.tz, locale: q.locale });
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.set('Content-Disposition', `attachment; filename="${out.name}"`);
   res.set('Cache-Control', 'no-store');
@@ -914,13 +926,25 @@ api.get('/me/files', needUser, (req, res) => {
     id: r.id, name: r.file_name, size: r.file_size, type: r.file_type, at: r.created_at,
     url: dms.fileUrl(r.id, r.file_name), where: whereSent(req.user, r.dm_id),
   }));
-  res.json({ ...storage.of(req.user), files });
+  // (And those your record kept, their conversation or channel gone: lib/keep.js.)
+  const kept = keep.filesOf(req.user.id).map((r) => ({
+    id: r.id, name: r.file_name, size: r.file_size, type: r.file_type, at: r.created_at,
+    url: dms.fileUrl(r.id, r.file_name), where: keep.placeText(r), kept: true,
+  }));
+  res.json({ ...storage.of(req.user), files: [...files, ...kept].sort((a, b) => b.size - a.size).slice(0, 1000) });
 });
 
 // Deleting one: like deleting it in its conversation (those who can see it are told).
 api.delete('/me/files/:id', needUser, (req, res) => {
   const r = dms.getRow(req.params.id);
-  if (!r || r.kind !== 'file' || r.author_id !== req.user.id) return fail(res, 404, "That file isn't there any more.");
+  // (One your record kept, its conversation or channel gone: from your record, and gone.)
+  if (!r) {
+    const file = keep.removeFile(req.user.id, String(req.params.id));
+    if (!file) return fail(res, 404, "That file isn't there any more.");
+    dms.removeFile(file);
+    return res.json({ ok: true, storage: storage.of(people.userById(req.user.id)) });
+  }
+  if (r.kind !== 'file' || r.author_id !== req.user.id) return fail(res, 404, "That file isn't there any more.");
   if (r.dm_id === `${req.user.id}:${req.user.id}`) {
     dms.deleteMessage(r.id);
     realtime.sendToUser(req.user.id, { type: 'dm-gone', dm: r.dm_id, ids: [r.id], notes: dms.notesUsage(r.dm_id) });
@@ -1855,7 +1879,8 @@ function fileLinkOk(id, link) {
 // see the channel.
 function fileFor(user, id) {
   const r = dms.getRow(id);
-  if (!r || r.kind !== 'file') return null;
+  if (!r) return keep.fileOf(user.id, String(id)); // (one your record kept, its conversation or channel gone)
+  if (r.kind !== 'file') return null;
   if (r.author_id === user.id) return r; // (your own, wherever you sent it: see Your files)
   if (!r.dm_id.includes(':')) {
     const channel = spaces.channel(r.dm_id);
@@ -2976,7 +3001,7 @@ app.get('/files/:id/:name', async (req, res) => {
   if (req.query.link) {
     // A short-lived link (see /api/files/:id/link).
     if (!fileLinkOk(req.params.id, req.query.link)) return res.sendStatus(404);
-    r = dms.getRow(req.params.id);
+    r = dms.getRow(req.params.id) || keep.anyFile(req.params.id);
     if (!r || r.kind !== 'file') return res.sendStatus(404);
   } else {
     const user = auth.userForToken(auth.tokenFrom(req));

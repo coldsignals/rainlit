@@ -155,7 +155,7 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
-  'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete',
+  'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
   'cam-preview-field', 'cam-preview-input',
   'sound-trim', 'sound-trim-form', 'sound-trim-file', 'sound-trim-all', 'sound-trim-all-canvas', 'sound-trim-all-view', 'sound-trim-wave', 'sound-trim-canvas',
@@ -15839,6 +15839,36 @@ function fillCallRecord() {
   el.callRecordInput.checked = Boolean(since);
   el.callRecordNote.hidden = !since;
   if (since) el.callRecordNote.textContent = `On since ${new Date(since).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}.`;
+  renderKept();
+}
+
+// Conversations your record kept from friends whose accounts are gone (lib/keep.js): each to save
+// a record of, as with a friend (they have no menu to save one from any more).
+async function renderKept() {
+  let former = [];
+  try { ({ former } = await api('GET', '/me/kept')); } catch {}
+  el.callRecordKept.hidden = !former.length;
+  if (!former.length) return el.callRecordKept.replaceChildren();
+  const day = (ms) => new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const head = document.createElement('p');
+  head.className = 'hint';
+  head.textContent = `Kept from ${former.length === 1 ? 'a friend whose account is' : 'friends whose accounts are'} gone:`;
+  el.callRecordKept.replaceChildren(head, ...former.map((f) => {
+    const row = document.createElement('div');
+    row.className = 'kept-row';
+    const what = document.createElement('span');
+    const parts = [];
+    if (f.messages) parts.push(`${f.messages.toLocaleString()} message${f.messages === 1 ? '' : 's'} of yours`);
+    if (f.calls) parts.push(`${f.calls.toLocaleString()} call${f.calls === 1 ? '' : 's'}`);
+    what.textContent = `${parts.join(', ') || 'Your conversation'}, ${day(f.first)} to ${day(f.last)}`;
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'text-btn';
+    save.textContent = 'Save a record';
+    save.addEventListener('click', () => openRecord(f.friend, 'a friend whose account is gone'));
+    row.append(what, save);
+    return row;
+  }));
 }
 
 async function onCallRecordToggle() {
@@ -15852,11 +15882,12 @@ async function onCallRecordToggle() {
 }
 
 async function onCallRecordDelete() {
-  if (!confirm('Delete your call record? Calls stay in your conversations (where they save): only your own record of them goes.')) return;
+  if (!confirm('Delete your call record? Calls stay in your conversations (where they save): only your own record of them goes, with what it kept of yours from conversations and channels that are gone (files too).')) return;
   try {
     const { deleted } = await api('DELETE', '/me/call-record');
     el.callRecordNote.hidden = false;
     el.callRecordNote.textContent = (deleted ? 'Deleted.' : "There wasn't anything in it yet.") + (S.me.callRecordSince ? ' It\'s still on: calls from now on are kept.' : '');
+    renderKept();
   } catch (err) {
     showProfileError(err.message);
   }
@@ -15866,12 +15897,14 @@ async function onCallRecordDelete() {
 // to keep, print or save as a PDF. From and to are whole days, on this device's clock.
 let recordFor = null;
 
-function openRecord(friendId) {
+// (gone: who it was with, for a friend whose account is gone, kept in your record.)
+function openRecord(friendId, gone = '') {
   const f = S.friends.get(friendId);
-  if (!f) return;
+  const name = f ? f.displayName : gone;
+  if (!name) return;
   recordFor = friendId;
-  el.recordTitle.textContent = `Your calls with ${f.displayName}`;
-  el.recordAbout.textContent = `A page with every call you and ${f.displayName} have had on Rainlit (when, how long, and who rang), and how many and how long altogether, to keep, print or save as a PDF.`;
+  el.recordTitle.textContent = `Your calls with ${name}`;
+  el.recordAbout.textContent = `A page with every call you and ${name} have had on Rainlit (when, how long, and who rang), and how many and how long altogether, to keep, print or save as a PDF.`;
   el.recordFrom.value = '';
   el.recordTo.value = '';
   el.recordMessages.checked = false;
