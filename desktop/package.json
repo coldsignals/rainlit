@@ -1,7 +1,7 @@
 {
   "name": "rainlit-desktop",
   "productName": "Rainlit",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "license": "AGPL-3.0-or-later",
   "description": "Rainlit for Windows: calls, chat and files with your friends.",
   "author": "Rainlit",
@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --server=http://localhost:3000",
-    "native": "node-gyp rebuild --directory=native --target=44.4.5 --arch=x64 --dist-url=https://electronjs.org/headers",
+    "native": "node-gyp rebuild --directory=native --target=44.9.3 --arch=x64 --dist-url=https://electronjs.org/headers",
     "dist": "npm run native && electron-builder --win",
     "release": "npm run native && electron-builder --win --publish always"
   },
@@ -19,7 +19,7 @@
     "uiohook-napi": "^1.5.5"
   },
   "devDependencies": {
-    "electron": "^44.4.5",
+    "electron": "^44.9.3",
     "electron-builder": "^26.15.3",
     "node-addon-api": "^8.9.2",
     "node-gyp": "^12.4.0"
