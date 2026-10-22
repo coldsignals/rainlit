@@ -1,7 +1,7 @@
 {
   "name": "rainlit-desktop",
   "productName": "Rainlit",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "license": "AGPL-3.0-or-later",
   "description": "Rainlit for Windows: calls, chat and files with your friends.",
   "author": "Rainlit",
@@ -27,6 +27,13 @@
   "build": {
     "appId": "app.rainlit.desktop",
     "productName": "Rainlit",
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    },
     "copyright": "Rainlit",
     "files": [
       "main.js",

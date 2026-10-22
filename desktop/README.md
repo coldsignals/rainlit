@@ -36,6 +36,12 @@ reinstall. On top of the website it adds:
   taskbar button while there are unread messages.
 - **Updates.** The app checks GitHub for a new version every few hours and installs
   it the next time it restarts.
+- **Other servers ask first.** On a server that isn't rainlit.app, the app asks you,
+  in a box of Windows' own that the server's page can't press, before that server
+  can use your mic and camera, see your activity, or hear your talk key in other
+  apps; and before any page moves the app onto another server. Your answers are
+  kept (`trust.json`, in the app's data folder); the tray icon's **Ask again what
+  this server may use** forgets them. Nothing gets to read what you've copied.
 
 ## Working on it
 
@@ -49,7 +55,9 @@ npm run dist     # builds dist/Rainlit-Setup.exe (the add-on too)
 ```
 
 `main.js` is the app itself: the window, tray, screen chooser, talk key and
-notifications. `preload.js` is what the page can use (`window.rainlitDesktop`),
+notifications. The installer's Electron is locked down with fuses (`electronFuses` in
+`package.json`): it can't be run as plain Node, takes no Node options or inspector
+from outside, and loads only its own `app.asar`, checked against what was built. `preload.js` is what the page can use (`window.rainlitDesktop`),
 and `public/app.js` on the website checks for it.
 
 Window sharing: `native/src/capture.cc` is a small add-on (C++, with Windows Graphics

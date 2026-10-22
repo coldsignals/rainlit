@@ -10,7 +10,7 @@
 // - Away when you're away from your computer (not just from Rainlit's window).
 
 const {
-  app, BrowserWindow, Tray, Menu, Notification, desktopCapturer, ipcMain, nativeImage, screen, session, shell,
+  app, BrowserWindow, Tray, Menu, Notification, desktopCapturer, dialog, ipcMain, nativeImage, screen, session, shell,
   utilityProcess, MessageChannelMain, powerMonitor,
 } = require('electron');
 const path = require('node:path');
@@ -50,6 +50,60 @@ const fromApp = (url) => {
     return false;
   }
 };
+
+// ================= Other servers =================
+// rainlit.app (or a server named on the command line, as `npm run dev` does) has the mic and
+// camera, your activity, and your talk key in other apps, as it always has. Any other server is
+// asked about each, the first time it wants it, in a box of Windows' own that its page can't
+// press; the answer's kept (trust.json) until you ask for the questions again (the tray icon's
+// menu). A server someone else runs could otherwise listen in, or look at what you have open.
+
+const OFFICIAL = new URL(servers.DEFAULT_SERVER).origin;
+const isOfficial = (origin) => origin === OFFICIAL || origin === OFFICIAL.replace('://', '://www.');
+const TRUSTED = isOfficial(ORIGIN) || Boolean(ARG_SERVER);
+const TRUST_FILE = path.join(app.getPath('userData'), 'trust.json');
+const ASKS = {
+  media: ['wants to use your microphone and camera', 'For calls and voice channels on that server.'],
+  activity: ["wants to see what you're playing and listening to", 'To show your friends there, if you turn it on in its Settings. It looks at which programs have windows open, and at what Windows says is playing.'],
+  keys: ["wants to hear your talk key while you're in other apps", "So push to talk works while you're in a game. It hears only the key you chose."],
+};
+
+let trust = null; // every server's answers: { origin: { media, activity, keys } }
+function trustHere() {
+  if (!trust) {
+    try { trust = JSON.parse(fs.readFileSync(TRUST_FILE, 'utf8')) || {}; } catch { trust = {}; }
+  }
+  return trust[ORIGIN] || {};
+}
+function saveTrust(answers) {
+  trustHere();
+  if (answers) trust[ORIGIN] = answers;
+  else delete trust[ORIGIN];
+  try { fs.writeFileSync(TRUST_FILE, JSON.stringify(trust)); } catch {}
+}
+
+// Whether this server may have `kind` (media, activity or keys), asking the first time. (Only with
+// the window showing: tucked away in the tray, it's no for now, and asked another time.)
+const asking = new Map(); // kind -> the answer, while it's being asked
+function allowed(kind) {
+  if (TRUSTED) return Promise.resolve(true);
+  const said = trustHere()[kind];
+  if (typeof said === 'boolean') return Promise.resolve(said);
+  if (asking.has(kind)) return asking.get(kind);
+  if (!win || win.isDestroyed() || !win.isVisible()) return Promise.resolve(false);
+  const [what, why] = ASKS[kind];
+  const answer = dialog.showMessageBox(win, {
+    type: 'question', title: 'Rainlit', noLink: true,
+    buttons: ['Allow', "Don't allow"], defaultId: 1, cancelId: 1,
+    message: `${new URL(ORIGIN).host} ${what}`,
+    detail: `${why}\n\nRainlit asks because this server isn't rainlit.app. Only allow one you trust.`,
+  }).then(({ response }) => {
+    saveTrust({ ...trustHere(), [kind]: response === 0 });
+    return response === 0;
+  }, () => false).finally(() => asking.delete(kind));
+  asking.set(kind, answer);
+  return answer;
+}
 
 // ================= The window =================
 
@@ -201,25 +255,31 @@ function refreshTray() {
     { type: 'separator' },
     { label: `Server: ${new URL(SERVER).host}`, enabled: false },
     ...(SERVER !== servers.DEFAULT_SERVER && !ARG_SERVER ? [{ label: 'Go back to rainlit.app', click: () => switchServer('') }] : []),
+    ...(!TRUSTED ? [{ label: 'Ask again what this server may use', click: () => { saveTrust(null); setPushToTalk(false, ''); } }] : []),
     { type: 'separator' },
     { label: 'Quit Rainlit', click: () => { quitting = true; app.quit(); } },
   ]));
 }
 
 // ================= Safety =================
-// Only rainlit.app gets the mic, camera and screen. Links anywhere else open in your browser.
+// Only the app's own server gets the mic, camera and screen (one that isn't rainlit.app asks you
+// first: see Other servers). Nothing gets to read what you've copied (Rainlit doesn't need to).
+// Links anywhere else open in your browser.
 
 const ALLOWED = new Set([
-  'media', 'display-capture', 'notifications', 'clipboard-read', 'clipboard-sanitized-write',
+  'media', 'display-capture', 'notifications', 'clipboard-sanitized-write',
   'fullscreen', 'speaker-selection',
 ]);
 
 function lockDown() {
   const ses = session.defaultSession;
   ses.setPermissionRequestHandler((wc, permission, callback, details) => {
-    callback(ALLOWED.has(permission) && fromApp(details.requestingUrl || wc.getURL()));
+    if (!ALLOWED.has(permission) || !fromApp(details.requestingUrl || wc.getURL())) return callback(false);
+    if (permission === 'media') return allowed('media').then(callback);
+    callback(true);
   });
-  ses.setPermissionCheckHandler((_wc, permission, origin) => ALLOWED.has(permission) && fromApp(origin));
+  ses.setPermissionCheckHandler((_wc, permission, origin) => ALLOWED.has(permission) && fromApp(origin)
+    && (permission !== 'media' || TRUSTED || trustHere().media === true));
 
   ses.setDisplayMediaRequestHandler((request, callback) => {
     if (!fromApp(request.securityOrigin)) return callback({});
@@ -478,7 +538,7 @@ async function openWindows(media) {
 }
 
 ipcMain.handle('desktop:activity', async (e) => {
-  if (!fromPage(e)) return null;
+  if (!fromPage(e) || !(await allowed('activity'))) return null;
   const r = await openWindows(true);
   if (!r) return null;
   const exes = new Set();
@@ -511,7 +571,7 @@ const NOT_GAMES = new Set(['explorer.exe', 'applicationframehost.exe', 'textinpu
   'searchhost.exe', 'startmenuexperiencehost.exe', 'lockapp.exe', 'rainlit.exe', 'electron.exe', 'steamwebhelper.exe', 'cmd.exe',
   'windowsterminal.exe', 'conhost.exe', 'taskmgr.exe']);
 ipcMain.handle('desktop:activity-programs', async (e) => {
-  if (!fromPage(e)) return [];
+  if (!fromPage(e) || !(await allowed('activity'))) return [];
   const r = await openWindows(false);
   if (!r) return [];
   const seen = new Map();
@@ -626,7 +686,14 @@ uIOhook.on('keyup', (e) => {
 
 const fromPage = (e) => fromApp(e.senderFrame ? e.senderFrame.url : '');
 
-ipcMain.handle('desktop:ptt', (e, { on, code } = {}) => (fromPage(e) ? setPushToTalk(Boolean(on), String(code || '')) : false));
+let pttAsks = 0;
+ipcMain.handle('desktop:ptt', async (e, { on, code } = {}) => {
+  if (!fromPage(e)) return false;
+  const ask = ++pttAsks;
+  const yes = !on || (await allowed('keys'));
+  if (ask !== pttAsks) return pttKeycode !== null; // (asked again meanwhile: that one counts)
+  return setPushToTalk(Boolean(on) && yes, String(code || ''));
+});
 ipcMain.handle('desktop:ptt-check', (e, code) => fromPage(e) && hookKeycode(String(code || '')) !== null);
 // How long since you last touched your computer (a key or the mouse, in any program), in seconds:
 // after a while, the page shows you as away.
@@ -659,11 +726,26 @@ function switchServer(url) {
 
 ipcMain.handle('desktop:server-get', (e) => (fromPage(e) ? { url: SERVER, custom: SERVER !== servers.DEFAULT_SERVER } : null));
 ipcMain.handle('desktop:server-check', (e, url) => (fromPage(e) ? servers.checkServer(url) : { error: 'Not allowed.' }));
+let switching = false;
 ipcMain.handle('desktop:server-set', async (e, url) => {
   if (!fromPage(e)) return { error: 'Not allowed.' };
   const found = await servers.checkServer(url);
   if (found.error) return found;
-  setTimeout(() => switchServer(found.url === servers.DEFAULT_SERVER ? '' : found.url), 100);
+  // (To a server that isn't rainlit.app: you say so yourself, in a box of Windows' own that the
+  // page can't press, so no page can move the app onto a server of its choosing.)
+  if (!isOfficial(found.url)) {
+    if (switching) return { error: 'Already asking.' };
+    switching = true;
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'question', title: 'Rainlit', noLink: true,
+      buttons: ['Switch', 'Cancel'], defaultId: 1, cancelId: 1,
+      message: `Switch Rainlit to ${new URL(found.url).host}?`,
+      detail: `Rainlit starts again on that server, instead of ${new URL(ORIGIN).host}. Only switch to a server you trust. You can go back to rainlit.app from the tray icon, by the clock.`,
+    }).catch(() => ({ response: 1 }));
+    switching = false;
+    if (response !== 0) return { error: `Staying on ${new URL(ORIGIN).host}.` };
+  }
+  setTimeout(() => switchServer(isOfficial(found.url) ? '' : found.url), 100);
   return found;
 });
 ipcMain.handle('desktop:server-reset', (e) => {
