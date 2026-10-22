@@ -144,7 +144,8 @@ folder: the Render disk, or the Docker volume. Keep a copy now and then:
 - **Render:** on your fork's GitHub page, press **Sync fork**. Render sees the change and
   updates your Rainlit by itself. (Calls in progress carry on.)
 - **Docker:** in the folder, `git pull` (or download the new ZIP over the old folder),
-  then `docker compose up -d --build`.
+  then `docker compose build --pull` (which brings the newest Node.js 24 too, with its
+  security fixes) and `docker compose up -d`.
 
 When an update needs to change the database, Rainlit first saves a copy of it as it was
 in the `backups` folder inside the data folder. The newest three copies are kept.

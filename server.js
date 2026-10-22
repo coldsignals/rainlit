@@ -139,6 +139,15 @@ app.use((_req, res, next) => {
   next();
 });
 
+// Nothing Rainlit's pages and apps send up is compressed (nor anything Stripe sends), so a
+// compressed body is turned away before anything unpacks it: unpacking is where a bug in the
+// unpacking itself (like Node's Brotli one of October 2026) would go off.
+app.use((req, res, next) => {
+  const packed = String(req.get('content-encoding') || '').trim().toLowerCase();
+  if (packed && packed !== 'identity') return fail(res, 415, "Compressed uploads aren't accepted.");
+  next();
+});
+
 app.get('/healthz', (_req, res) => res.type('text').send('ok'));
 // The apps live on GitHub; these keep the links short: rainlit.app/download and rainlit.app/android
 // Android has its own repo, tagged with its own version numbers, so Obtainium can follow it.
@@ -3062,9 +3071,22 @@ process.once('SIGTERM', () => {
   process.exit(0);
 });
 
+// The oldest Node.js that's safe to run this on (package.json's engines.node: Render goes by it).
+// On an older one, the logs say so.
+const SAFE_NODE = (/>=\s*(\d+\.\d+\.\d+)/.exec(require('./package.json').engines?.node || '') || [])[1];
+function oldNode() {
+  if (!SAFE_NODE) return false;
+  const have = process.versions.node.split('.').map(Number);
+  const safe = SAFE_NODE.split('.').map(Number);
+  for (let i = 0; i < 3; i++) if (have[i] !== safe[i]) return have[i] < safe[i];
+  return false;
+}
+
 server.listen(PORT, () => {
   console.log(`Rainlit${SERVER_NAME ? ` (${SERVER_NAME})` : ''} is running on http://localhost:${PORT}`);
   console.log(`Data is kept in ${DATA_DIR}`);
+  console.log(`On Node.js ${process.version}`);
+  if (oldNode()) console.warn(`This Node.js is older than ${SAFE_NODE}, which fixed security holes in it that anyone could reach: update Node.js.`);
   if (process.env.CF_TURN_KEY_ID) console.log('Using Cloudflare TURN relay.');
   else if (process.env.TURN_URLS) console.log('Using custom TURN relay.');
   else console.log('No TURN relay configured (direct connections only).');

@@ -19,7 +19,7 @@ it's headed (free accounts on rainlit.app, voice channels, one account everywher
 
 ## 1. Try it on your own computer
 
-1. Install Node.js (version 24 or newer) from https://nodejs.org
+1. Install Node.js 24 (24.22.1 or later) from https://nodejs.org
 2. Open a terminal in this folder and run:
    ```
    npm install
