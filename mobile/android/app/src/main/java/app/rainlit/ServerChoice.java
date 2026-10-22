@@ -37,6 +37,30 @@ final class ServerChoice {
         return url != null && url.matches("^https://[^/]+$") ? url : null;
     }
 
+    /** rainlit.app itself (or its www). */
+    static boolean isDefault(String url) {
+        return DEFAULT.equals(url) || "https://www.rainlit.app".equals(url);
+    }
+
+    // Another server's page gets the mic and camera once you've said so (kept for that server);
+    // "Don't allow" lasts until the app's started again (asked again then).
+    private static final java.util.Set<String> refused = new java.util.HashSet<>();
+
+    private static SharedPreferences trust(Context context) {
+        return context.getSharedPreferences("rainlit.trust", Context.MODE_PRIVATE);
+    }
+
+    /** True or false if you've said, for this server; null if it hasn't been asked. */
+    static Boolean mediaAnswer(Context context, String server) {
+        if (trust(context).getBoolean(server + " media", false)) return true;
+        return refused.contains(server) ? false : null;
+    }
+
+    static void answerMedia(Context context, String server, boolean yes) {
+        if (yes) trust(context).edit().putBoolean(server + " media", true).apply();
+        else refused.add(server);
+    }
+
     static void pick(Context context, String url) {
         SharedPreferences.Editor e = prefs(context).edit();
         if (url == null || DEFAULT.equals(url)) e.remove("url");

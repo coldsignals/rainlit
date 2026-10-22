@@ -6329,7 +6329,8 @@ async function onServerConnect(e) {
   el.serverConnectBtn.disabled = true;
   showServerMessage('Checking…', true);
   try {
-    const info = await S.server.bridge.checkServer({ url: url.origin });
+    // (confirm: the Android app asks you first, before this phone's notifications here are stopped.)
+    const info = await S.server.bridge.checkServer({ url: url.origin, confirm: true });
     if (info.url === S.server.url) return el.serverDialog.close(); // already here
     showServerMessage(`Found ${info.name || 'a Rainlit server'}. Switching…`, true);
     await leaveThisServer();

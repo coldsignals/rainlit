@@ -3,16 +3,23 @@ package app.rainlit;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
 import androidx.activity.OnBackPressedCallback;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebChromeClient;
 import com.getcapacitor.WebViewListener;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
 
 public class MainActivity extends BridgeActivity {
 
@@ -51,6 +58,30 @@ public class MainActivity extends BridgeActivity {
             });
         }
 
+        // Another server than rainlit.app gets the mic and camera only once you've said so, in a box
+        // of Android's own that its page can't press (as the Windows app asks), and only for the
+        // server itself, not something it shows inside it. (rainlit.app: as it always was.)
+        String server = ServerChoice.picked(this);
+        if (getBridge() != null && server != null) {
+            getBridge().getWebView().setWebChromeClient(new BridgeWebChromeClient(getBridge()) {
+                @Override
+                public void onPermissionRequest(PermissionRequest request) {
+                    Uri from = request.getOrigin();
+                    if (from == null || !server.equals(from.getScheme() + "://" + from.getAuthority())) {
+                        request.deny();
+                        return;
+                    }
+                    Boolean said = ServerChoice.mediaAnswer(MainActivity.this, server);
+                    if (Boolean.FALSE.equals(said)) request.deny();
+                    else if (Boolean.TRUE.equals(said)) super.onPermissionRequest(request);
+                    else askAboutMedia(server, (yes) -> {
+                        if (yes) super.onPermissionRequest(request);
+                        else request.deny();
+                    });
+                }
+            });
+        }
+
         // Android 13 and up ask before an app can show notifications (calls, messages).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
             && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -81,5 +112,29 @@ public class MainActivity extends BridgeActivity {
                 });
             }
         });
+    }
+
+    // Asking about the mic and camera (once at a time: whatever else asks meanwhile gets the same answer).
+    private final List<Consumer<Boolean>> waitingForMedia = new ArrayList<>();
+
+    private void askAboutMedia(String server, Consumer<Boolean> answer) {
+        waitingForMedia.add(answer);
+        if (waitingForMedia.size() > 1) return;
+        final boolean[] done = { false };
+        Consumer<Boolean> said = (yes) -> {
+            if (done[0]) return;
+            done[0] = true;
+            ServerChoice.answerMedia(this, server, yes);
+            List<Consumer<Boolean>> all = new ArrayList<>(waitingForMedia);
+            waitingForMedia.clear();
+            for (Consumer<Boolean> c : all) c.accept(yes);
+        };
+        new AlertDialog.Builder(this)
+            .setTitle(Uri.parse(server).getAuthority() + " wants to use your microphone and camera")
+            .setMessage("For calls and voice channels on that server. Rainlit asks because this server isn't rainlit.app. Only allow one you trust.")
+            .setPositiveButton("Allow", (d, w) -> said.accept(true))
+            .setNegativeButton("Don't allow", (d, w) -> said.accept(false))
+            .setOnCancelListener((d) -> said.accept(false))
+            .show();
     }
 }

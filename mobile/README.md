@@ -6,6 +6,9 @@ Rainlit server instead (**Use a different Rainlit server** on the sign-in screen
 `ServerChoice.java` checks it's a Rainlit server, remembers it, and starts the app with
 that server's address in place of rainlit.app, so everything below works there too. If
 that server can't be reached, its "can't reach" page offers the way back to rainlit.app.
+Switching to a server that isn't rainlit.app is yours to say, in a box of Android's own
+that the page can't press, and such a server gets the mic and camera only once you've
+allowed it there (kept for that server; "Don't allow" lasts until the app starts again).
 On top of the website:
 
 - **Calls keep going** when you switch apps or turn the screen off. An ongoing

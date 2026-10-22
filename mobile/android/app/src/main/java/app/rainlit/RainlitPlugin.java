@@ -16,6 +16,7 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -217,7 +218,56 @@ public class RainlitPlugin extends Plugin {
         call.resolve(result);
     }
 
-    /** Is there a Rainlit server at this address? Resolves with { url, name }. */
+    // Switching to a server that isn't rainlit.app is yours to say, in a box of Android's own that
+    // the page can't press: when the page checks the server just before switching ({ confirm:
+    // true }, so nothing's undone yet if you say no), or else when it asks to switch. (Said yes to
+    // just now, for that server, it isn't asked twice.)
+    private volatile String confirmedUrl = null;
+    private volatile long confirmedAt = 0;
+
+    private static String here(Context context) {
+        String picked = ServerChoice.picked(context);
+        return Uri.parse(picked != null ? picked : ServerChoice.DEFAULT).getAuthority();
+    }
+
+    private void confirmSwitch(PluginCall call, String to, Runnable yes) {
+        Activity activity = getActivity();
+        String stay = "Staying on " + here(getContext()) + ".";
+        if (activity == null) {
+            call.reject(stay);
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            final boolean[] done = { false };
+            new AlertDialog.Builder(activity)
+                .setTitle("Switch Rainlit to " + Uri.parse(to).getAuthority() + "?")
+                .setMessage("Rainlit starts again on that server, instead of " + here(getContext())
+                    + ". Only switch to a server you trust. You can come back to rainlit.app from Settings, or its sign-in screen.")
+                .setPositiveButton("Switch", (d, w) -> {
+                    if (done[0]) return;
+                    done[0] = true;
+                    confirmedUrl = to;
+                    confirmedAt = System.currentTimeMillis();
+                    yes.run();
+                })
+                .setNegativeButton("Cancel", (d, w) -> {
+                    if (done[0]) return;
+                    done[0] = true;
+                    call.reject(stay);
+                })
+                .setOnCancelListener((d) -> {
+                    if (done[0]) return;
+                    done[0] = true;
+                    call.reject(stay);
+                })
+                .show();
+        });
+    }
+
+    /**
+     * Is there a Rainlit server at this address? Resolves with { url, name }. With { confirm: true }
+     * (the page's about to switch to it), it's yours to say first, if it isn't rainlit.app.
+     */
     @PluginMethod
     public void checkServer(PluginCall call) {
         String url = ServerChoice.clean(call.getString("url"));
@@ -225,9 +275,15 @@ public class RainlitPlugin extends Plugin {
             call.reject("That doesn't look like a web address. Rainlit servers use https://.");
             return;
         }
+        boolean confirm = Boolean.TRUE.equals(call.getBoolean("confirm", false));
         new Thread(() -> {
             try {
-                call.resolve(JSObject.fromJSONObject(ServerChoice.check(url)));
+                JSObject found = JSObject.fromJSONObject(ServerChoice.check(url));
+                String to = found.getString("url");
+                String current = ServerChoice.picked(getContext());
+                boolean same = to.equals(current != null ? current : ServerChoice.DEFAULT);
+                if (!confirm || same || ServerChoice.isDefault(to)) call.resolve(found);
+                else confirmSwitch(call, to, () -> call.resolve(found));
             } catch (Exception e) {
                 call.reject(e.getMessage());
             }
@@ -245,9 +301,16 @@ public class RainlitPlugin extends Plugin {
         new Thread(() -> {
             try {
                 JSObject found = JSObject.fromJSONObject(ServerChoice.check(url));
-                ServerChoice.pick(getContext(), found.getString("url"));
-                call.resolve(found);
-                startOver();
+                String to = found.getString("url");
+                Runnable go = () -> {
+                    confirmedUrl = null;
+                    ServerChoice.pick(getContext(), to);
+                    call.resolve(found);
+                    startOver();
+                };
+                boolean justSaidYes = to.equals(confirmedUrl) && System.currentTimeMillis() - confirmedAt < 120_000;
+                if (ServerChoice.isDefault(to) || justSaidYes) go.run();
+                else confirmSwitch(call, to, go);
             } catch (Exception e) {
                 call.reject(e.getMessage());
             }
