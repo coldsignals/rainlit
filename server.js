@@ -100,6 +100,11 @@ const loginTries = auth.limiter(8, 15 * 60_000); // per person being signed in t
 const ipTries = auth.limiter(40, 15 * 60_000); // per visitor, across everyone
 const forgotTries = auth.limiter(5, 3600_000); // "Forgot your password?", per visitor
 const openSignupTries = auth.limiter(3, 86_400_000); // accounts made without an invite, per visitor a day
+// Quick, but not a flood: so many messages a person can send, ten seconds at a time (SEND_PACE; 0
+// for no limit), and twice as many files (a few dozen photos dropped in at once still go).
+const SEND_PACE = process.env.SEND_PACE === undefined ? 30 : Number(process.env.SEND_PACE) || 0;
+const sendPace = auth.limiter(SEND_PACE, 10_000);
+const uploadPace = auth.limiter(SEND_PACE * 2, 10_000);
 
 // ---------- HTTP ----------
 
@@ -129,6 +134,7 @@ const CSP = [
   `img-src 'self' blob: data: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`, // (R2: files, if they're kept there)
   `media-src 'self' blob: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`,
   `connect-src 'self' blob: https://api.klipy.com${LIVEKIT_SRC}${blobs.origin ? ` ${blobs.origin}` : ''}`, // (blob: something made here to save, read back to hand to the Android app; R2: soundboard sounds)
+  "object-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'none'",
   "form-action 'self'",
@@ -201,7 +207,7 @@ app.get('/sounds/:id', (req, res) => {
 // page itself fetches it from /api/homepages/@name), and the pictures on them.
 const HOMEPAGE_HTML = fs.readFileSync(path.join(PUBLIC_DIR, 'homepage.html'), 'utf8');
 app.get('/@:username', (req, res) => {
-  const owner = people.userByUsername(req.params.username);
+  const owner = homepages.ownerFor(`@${req.params.username}`);
   // What a link to it shows elsewhere (like in a Discord message), if its owner has made it public.
   const open = owner && homepages.get(owner.id).visibility === 'everyone';
   const title = open ? `${owner.display_name}'s homepage` : 'A homepage on Rainlit';
@@ -217,7 +223,7 @@ const homepageViewer = (req) => auth.userForToken(auth.tokenFrom(req));
 
 app.get('/homepage-files/:id', (req, res) => {
   const f = /^[a-f0-9]{24}$/.test(req.params.id) && homepages.fileById(req.params.id);
-  const owner = f && people.userById(f.user_id);
+  const owner = f && homepages.ownerFor(f.user_id); // (none, if they're suspended)
   if (!owner || !homepages.canView(homepageViewer(req), owner, homepages.get(owner.id).visibility)) return res.sendStatus(404);
   abuse.noteOut(f.bytes);
   sendHomepageFile(res, 'homepages', f.file);
@@ -225,7 +231,7 @@ app.get('/homepage-files/:id', (req, res) => {
 
 // The owner's picture, on their homepage (for visitors who aren't signed in, too, if it's public).
 app.get('/homepage-avatar/:userId/:file', (req, res) => {
-  const owner = people.userById(req.params.userId);
+  const owner = homepages.ownerFor(req.params.userId);
   if (!owner || !owner.avatar || owner.avatar !== req.params.file) return res.sendStatus(404);
   if (!homepages.canView(homepageViewer(req), owner, homepages.get(owner.id).visibility)) return res.sendStatus(404);
   sendHomepageFile(res, 'avatars', owner.avatar);
@@ -293,6 +299,14 @@ api.use((req, res, next) => {
 
 function fail(res, status, error) {
   return res.status(status).json({ error });
+}
+
+// Whether someone's sending too fast for this one to go (if not, it counts toward their pace).
+function tooFast(pace, userId) {
+  if (!SEND_PACE) return false;
+  if (pace.blocked(userId)) return true;
+  pace.fail(userId);
+  return false;
 }
 
 const needUser = (req, res, next) => (req.user ? next() : fail(res, 401, 'Please sign in.'));
@@ -1092,6 +1106,13 @@ function reportHandlers(spaceId) {
   return ids;
 }
 
+// An urgent report's email only brings the admin to Rainlit, where they see them all: so each admin's
+// emailed once about each kind (a child, an intimate picture) until they've looked at the reports,
+// and again only if six hours go by without them looking. A flood of reports can't use up the day's
+// emails, which password resets need too.
+const urgentEmailed = new Map(); // admin's id -> { reason: when they were emailed about one }
+const UNSEEN_AGAIN_MS = 6 * 3600_000;
+
 api.post('/reports', needUser, async (req, res) => {
   const b = req.body || {};
   if (!safety.REASONS.includes(b.reason)) return fail(res, 400, 'Pick what the problem is.');
@@ -1158,6 +1179,9 @@ api.post('/reports', needUser, async (req, res) => {
     // (These can't wait for the admin to open Rainlit: an email too, never saying what it is.)
     if (adminOnly && mail.enabled) {
       for (const a of db.prepare('SELECT * FROM users WHERE is_admin = 1 AND email IS NOT NULL').all()) {
+        const told = urgentEmailed.get(a.id) || {};
+        if (Date.now() - (told[r.reason] || 0) < UNSEEN_AGAIN_MS) continue;
+        urgentEmailed.set(a.id, { ...told, [r.reason]: Date.now() });
         mail.sendLater(mail.urgentReportEmail(a, r.reason, publicUrl(req), Date.now() + safety.INTIMATE_MS), 'an urgent report');
       }
     }
@@ -1184,7 +1208,9 @@ api.get('/spaces/:spaceId/reports', needUser, needMember, needReportHandler, (re
 function resolveRoute(scope) {
   return (req, res) => {
     const r = safety.reportById(req.params.reportId);
-    if (!r || (scope === 'space' && r.space_id !== req.space.id)) return fail(res, 404, "That report isn't there any more.");
+    // (The ones only the admin handles, a child or an intimate picture, aren't the space's to settle.)
+    const notTheirs = scope === 'space' && (r?.space_id !== req.space.id || safety.ADMIN_ONLY.includes(r?.reason));
+    if (!r || notTheirs) return fail(res, 404, "That report isn't there any more.");
     const resolved = (req.body || {}).resolved !== false;
     safety.setResolved(r.id, req.user.id, resolved);
     // (A copy kept for a report about a child, that the admin didn't find was one: it goes.)
@@ -1199,7 +1225,8 @@ function resolveRoute(scope) {
   };
 }
 api.post('/spaces/:spaceId/reports/:reportId/resolve', needUser, needMember, needReportHandler, resolveRoute('space'));
-api.get('/admin/reports', needAdmin, (_req, res) => {
+api.get('/admin/reports', needAdmin, (req, res) => {
+  urgentEmailed.delete(req.user.id); // (they've looked)
   const cases = evidence.byReport();
   // (Whether a reported message is still there, for taking it down.)
   const there = (id) => { const row = dms.getRow(id); return row ? ['text', 'file', 'gif'].includes(row.kind) : Boolean(dms.passingMessage(id)); };
@@ -1285,8 +1312,12 @@ api.get('/users/:id', needUser, (req, res) => {
   const u = people.userById(req.params.id);
   const f = u && people.friendship(req.user.id, u.id);
   if (!u || (!f && u.id !== req.user.id && !spaces.shareSpace(req.user.id, u.id))) return fail(res, 404, 'Not found.');
-  const presence = f && f.status === 'accepted' ? realtime.presenceOf(u.id) : null;
-  res.json({ user: { ...people.publicUser(u), presence, doing: realtime.doingOf(u.id) } });
+  const friends = Boolean(f && f.status === 'accepted');
+  const presence = friends ? realtime.presenceOf(u.id) : null;
+  // (What they're doing, for their friends and the people in their spaces: not for someone whose
+  // friend request is still waiting, as it'd say they're online.)
+  const doing = friends || u.id === req.user.id || spaces.shareSpace(req.user.id, u.id) ? realtime.doingOf(u.id) : null;
+  res.json({ user: { ...people.publicUser(u), presence, doing } });
 });
 
 // ----- Homepages -----
@@ -1697,8 +1728,10 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     const again = { id, dm: passed.dm, author: passed.author, kind: passed.kind, text: String(b.text || ''), meta: b.gif || null, file: null, at: passed.at, replyTo: passed.replyTo ? { id: passed.replyTo } : null, seq: null, saved: false };
     return res.json({ message: dms.withReplies([again])[0] });
   }
+  if (keep.idTaken(id)) return fail(res, 400, "That message didn't make sense.");
   if (req.access && !req.access.send) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send messages in this channel.");
   if (req.notes && dms.notesUsage(req.dm.id).count >= notesMaxFor(req.user)) return fail(res, 409, notesFull(req.user));
+  if (tooFast(sendPace, req.user.id)) return fail(res, 429, "You're sending messages very fast. Wait a moment, then try again.");
   let fields;
   // Answering an earlier message in this conversation (anything else is just ignored).
   const replyTo = dms.replyTarget(req.dm.id, b.replyTo);
@@ -1784,7 +1817,8 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
   if (req.access && !req.access.files) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send files in this channel.");
   if (!req.dm.save) return fail(res, 409, 'Saving is off in this conversation, so files can only be sent during a call.');
   const id = String(req.get('x-message-id') || '');
-  if (!ID_RE.test(id) || dms.getRow(id)) return fail(res, 400, "That upload didn't make sense.");
+  if (!ID_RE.test(id) || dms.getRow(id) || keep.idTaken(id)) return fail(res, 400, "That upload didn't make sense.");
+  if (tooFast(uploadPace, req.user.id)) return fail(res, 429, "You're sending files very fast. Wait a moment, then try again.");
   const declared = Number(req.get('content-length') || 0);
   if (declared > maxBytes) return fail(res, 413, tooBig);
   // Room: theirs (all their files together), and the disk's (never let fill up).

@@ -292,6 +292,7 @@ account, gifts some months of supporting.
 | `NEW_ACCOUNT_DAYS`, `NEW_ACCOUNT_DAILY_MB` | How long an account counts as new (7 days), and how much it can send in files a day meanwhile, in MB (250). A flagged account has the same pace until the admin says it's fine. |
 | `MIN_AGE` | How old someone has to be to make an account (13, and never less). Sign-up asks for a birthday without saying what age it takes; someone younger is told they can't make an account. Some countries' laws want 14, 15 or 16. |
 | `NOTES_MAX` | How many notes each person's Notes holds (100; supporters, 1,000). Their files count toward their room for files. |
+| `SEND_PACE` | How many messages someone can send in ten seconds (30), and twice as many files; past that, they're asked to wait a moment. `0` turns it off. |
 | `PRIVACY_URL`, `TERMS_URL` | Links to your own privacy policy and terms. Without them, /privacy and /terms show rainlit.app's, which say they're for rainlit.app. |
 | `LINK_PREVIEWS` | `off` turns off link previews (an X post, a video, or a page's title and picture under links in messages). They're on to start with: your server fetches the links people send, and passes their pictures along. |
 | `VOICE_ALONE_MINUTES` | How long someone can be alone in a voice channel before they're asked if they're still there (15). If they don't say so within two minutes, they're taken out, so a channel isn't left open overnight by accident (on LiveKit Cloud, that uses up its free minutes). `0` turns it off. |
