@@ -1549,43 +1549,28 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   object-fit: contain;
   background: #000;
 }
-/* Your friend's camera and screen at once ("both"): side by side, each its own video, neither
-   over the other. The one they share is the big one; the other has a column of its own, under the
-   stage's buttons and above your own tile (clicked, they swap: cam-big). On a tall screen (a phone,
-   upright), the other's above, and the big one below. */
-.remote-cam { background: #000; object-fit: contain; }
-.stage.both {
-  grid-template-columns: minmax(0, 1fr) clamp(150px, 27%, 320px);
-  grid-template-rows: minmax(0, 1fr);
-  place-items: stretch;
+/* A call with two videos or more (cameras or screens, yours or theirs): a tile for each of you and
+   each screen, as in a voice channel (its tiles and strip: see .voice-grid), in place of the one
+   big video; side by side, as big as the call's room lets them be (app.js: fitCallGrid), or one
+   made big with the rest in a strip below. */
+.call-grid { display: none; }
+.stage.grid .call-grid { display: grid; position: absolute; inset: 0; overflow: hidden; }
+.stage.grid .call-grid:not(.focused) {
+  grid-template-columns: repeat(var(--across, 2), var(--tile, minmax(0, 1fr)));
+  justify-content: center; align-content: center;
 }
-.stage.both .remote-video, .stage.both .remote-cam {
-  position: relative; inset: auto;
-  grid-area: 1 / 1;
-  width: 100%; height: 100%;
-  min-width: 0; min-height: 0;
-}
-.stage.both:not(.cam-big) .remote-cam, .stage.both.cam-big .remote-video {
-  grid-area: 1 / 2;
-  align-self: start;
-  width: auto; height: auto;
-  aspect-ratio: 16 / 9;
-  margin: 60px 14px 0 10px;
-  border: 1px solid var(--line); border-radius: var(--radius);
-  cursor: pointer;
-}
-.stage.both:not(.cam-big) .remote-cam { object-fit: cover; }
-@media (orientation: portrait) {
-  .stage.both { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  .stage.both .remote-video, .stage.both .remote-cam { grid-area: 2 / 1; }
-  .stage.both:not(.cam-big) .remote-cam, .stage.both.cam-big .remote-video {
-    grid-area: 1 / 1;
-    justify-self: start;
-    width: calc(50% - 21px);
-    margin: 14px 14px 6px;
-  }
-  /* (Your own tile, beside it in that top row: not over the big one.) */
-  .stage.both .self-view { top: 14px; right: 14px; bottom: auto; width: calc(50% - 21px); aspect-ratio: 16 / 9; }
+.stage.grid .call-grid.focused { display: flex; }
+.stage.grid > .remote-video, .stage.grid > .self-view, .stage.grid > .video-label, .stage.grid > .peer-card,
+.stage.grid > #popout-btn, .stage.grid > #pin-btn { display: none !important; }
+.stage.grid > #fullscreen-btn { top: auto; bottom: 12px; }
+.call-grid .voice-strip > .voice-tile { width: 150px; }
+.call-grid .voice-tile.mirror video { transform: scaleX(-1); }
+/* (Their screen's sound, in its tile: top left, as in a voice channel.) */
+.voice-tile .stream-audio { left: 8px; top: 8px; bottom: auto; }
+.voice-strip .stream-audio input, .voice-strip .stream-audio output { display: none; }
+@media (max-width: 700px) {
+  .call-grid { padding: 8px; gap: 8px; }
+  .call-grid .voice-strip > .voice-tile { width: 120px; }
 }
 /* A call's video before its picture comes (app.js: watchPicture): Rainlit's drop, rippling. */
 video.no-picture { background: url(/icons/drop-cam.svg) center / min(128px, 36%) auto no-repeat, #000; }
@@ -1680,14 +1665,6 @@ video.no-picture { background: url(/icons/drop-cam.svg) center / min(128px, 36%)
 }
 .self-view video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .self-view.mirror video { transform: scaleX(-1); }
-/* Your camera, while your screen's shared too: in the corner of your own tile. */
-.self-view .local-cam {
-  position: absolute; top: 6px; right: 6px;
-  width: 34%; height: auto;
-  aspect-ratio: 16 / 9;
-  border: 1px solid var(--line); border-radius: 6px;
-}
-.self-view.mirror-cam .local-cam { transform: scaleX(-1); }
 .self-view { cursor: pointer; }
 
 /* Your own camera or screen, big: it fills the stage and your friend moves to the corner. */

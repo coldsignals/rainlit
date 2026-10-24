@@ -138,9 +138,9 @@ for (const id of [
   'activity-ask', 'activity-ask-mark', 'activity-ask-title', 'activity-ask-text',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-resize', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
-  'stage', 'remote-video', 'remote-cam', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
+  'stage', 'remote-video', 'call-grid', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-idle', 'peer-away', 'peer-away-time', 'offline-banner',
-  'video-label', 'video-muted', 'video-name', 'video-idle', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video', 'local-cam',
+  'video-label', 'video-muted', 'video-name', 'video-idle', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
@@ -257,6 +257,8 @@ const S = {
 
   remoteAudio: new Map(), // track id -> <audio>
   remoteVideos: new Map(), // your friend's videos in a call: track id -> { track, stream (its id) }
+  callTiles: new Map(), // a call's tiles, with two videos or more (see renderCallGrid): key -> tile
+  callFocus: null, // (the tile made big)
   boosts: new Map(), // track id -> { source, gain } while your friend is turned up past 100%
   audioCtx: null,
   localMeter: null,
@@ -610,14 +612,21 @@ async function routeVideo() {
   if (conn.senders.video) {
     if (conn.senders.video.track !== main) await conn.senders.video.replaceTrack(main);
   } else if (main) {
-    conn.senders.video = conn.pc.addTrack(main, S.localStream);
+    conn.senders.video = sendOnItsOwn(conn, main, S.localStream);
   }
   if (conn.senders.screen) {
     if (conn.senders.screen.track !== side) await conn.senders.screen.replaceTrack(side);
   } else if (side) {
-    conn.senders.screen = conn.pc.addTrack(side, S.shareStream);
+    conn.senders.screen = sendOnItsOwn(conn, side, S.shareStream);
   }
   tuneVideoSender();
+}
+
+// A video started mid-call goes out on a line of its own. (Put on the line bringing your friend's
+// video, as a browser would by itself, it changes that line's direction, and a browser can then
+// carry on taking in their video without showing it: their picture freezes.)
+function sendOnItsOwn(conn, track, stream) {
+  return conn.pc.addTransceiver(track, { direction: 'sendonly', streams: [stream] }).sender;
 }
 
 // The one sending your screen (on its own, or in your camera's place), if it's being shared.
@@ -1458,13 +1467,19 @@ function tickMeters() {
   const mine = micLive() && S.localMeter ? S.localMeter : null;
   const meSpeaking = Boolean(mine) && mine.read() > SPEAKING_LEVEL;
   if (meSpeaking) noteActivity(); // (talking: you're here)
-  showGlow(el.micBtn, glowOf(mine, myGlow, 100));
+  const myLevel = glowOf(mine, myGlow, 100);
+  showGlow(el.micBtn, myLevel);
   renderTrayIcon(meSpeaking || (S.ptt && micLive()));
   const theirs = S.peer && S.peer.state.mic && S.remoteMeter ? S.remoteMeter : null;
   if (theirs) theirs.read();
   const glow = glowOf(theirs, peerGlow, 100);
   showGlow(el.peerAvatar, glow);
   showGlow(el.videoLabel, glow);
+  // (A call's tiles: theirs and yours.)
+  const theirTile = S.callTiles.get('peer:cam');
+  const myTile = S.callTiles.get('me:cam');
+  if (theirTile) showGlow(theirTile, glow);
+  if (myTile) showGlow(myTile, myLevel);
 }
 
 // The Windows app's tray icon: the drop as usual, dim while you're in a call, and glowing
@@ -2162,8 +2177,7 @@ async function handleSignal({ pcId, to, description, candidate, again }) {
 function onRemoteTrack(track, streams = []) {
   if (track.kind === 'video') {
     S.remoteVideos.set(track.id, { track, stream: streams[0] ? streams[0].id : '' });
-    if (S.peer) renderPeer(); // (where it goes, and whether the tile shows)
-    else placeRemoteVideos();
+    renderPeer(); // (where it goes: the one big video, or a tile)
     return;
   }
   if (S.remoteAudio.has(track.id)) return;
@@ -2194,13 +2208,14 @@ function onRemoteTrack(track, streams = []) {
   if (!S.remoteMeter) S.remoteMeter = makeMeter(track);
 }
 
-// Your friend's video: their camera, and their screen when they share it too. An app that can send
+// Your friend's videos: their camera, and their screen when they share it. An app that can send
 // both says which stream its screen goes out on (state.share), and whether it's going there now
 // (state.apart); otherwise it's in their camera's place, as an app from before sends it: one video
-// at a time, whichever it is (state.screen says which).
-function placeRemoteVideos() {
+// at a time, whichever it is (state.screen says which). { cam, screen }: each a track, or null.
+function peerVideos() {
   const p = S.peer;
-  const share = p && p.state && p.state.share;
+  if (!p) return { cam: null, screen: null };
+  const share = p.state && p.state.share;
   let screen = null;
   let cam = null;
   for (const v of S.remoteVideos.values()) {
@@ -2208,9 +2223,24 @@ function placeRemoteVideos() {
     if (share && v.stream === share) screen = v.track;
     else cam = v.track;
   }
-  const sharing = Boolean(p && p.state.screen && p.state.apart && screen);
-  showTrack(el.remoteVideo, sharing ? screen : cam);
-  showTrack(el.remoteCam, sharing && p.state.cam ? cam : null);
+  if (p.state.screen && p.state.apart && screen) return { cam: p.state.cam ? cam : null, screen };
+  if (p.state.screen) return { cam: null, screen: cam };
+  return { cam: p.state.cam ? cam : null, screen: null };
+}
+
+// Yours: your camera (while it goes out: not to an app from before, in your screen's place) and screen.
+function myVideos() {
+  const camOut = Boolean(S.local.cam) && (!S.local.screen || !S.peer || peerShowsBoth());
+  return { cam: camOut ? S.local.cam : null, screen: S.local.screen || null };
+}
+
+// The call's one big video (their screen, if they share it, or their camera), and your own in the
+// corner (yours, or your camera): only while there aren't tiles, which are then all that show them.
+// (A video kept on a track, out of sight, can leave another of the same track without a picture.)
+function placeCallVideos(tiles) {
+  const { cam, screen } = peerVideos();
+  showTrack(el.remoteVideo, tiles ? null : screen || cam);
+  showTrack(el.localVideo, tiles ? null : S.local.screen || S.local.cam || null);
 }
 
 // A video showing this track (or nothing), playing.
@@ -2273,7 +2303,7 @@ function replayVideos() {
 // offered that didn't arrive. Once each time.
 function checkPicture() {
   const v = el.remoteVideo;
-  if (v.hidden || v.videoWidth > 0) {
+  if (v.hidden || v.videoWidth > 0 || el.stage.classList.contains('grid')) {
     S.noPicture = null;
     return;
   }
@@ -2587,7 +2617,8 @@ function videoFigures(conn, stats) {
   const v = { out: null, inb: null, remoteIn: null, captured: null, encodeMs: null, held: '' };
   // (With a camera and a screen both going, the screen's: yours, and the big one you see.)
   const sender = screenSender(conn) || conn.senders.video;
-  const shown = el.remoteVideo.srcObject && el.remoteVideo.srcObject.getVideoTracks()[0];
+  const theirs = peerVideos();
+  const shown = theirs.screen || theirs.cam;
   const midOf = (test) => { try { const t = conn.pc.getTransceivers().find(test); return t ? t.mid : null; } catch { return null; } };
   const sentMid = sender ? midOf((t) => t.sender === sender) : null;
   const shownMid = shown ? midOf((t) => t.receiver.track === shown) : null;
@@ -2678,7 +2709,6 @@ function closePeer() {
   pc.close();
   fileChannelLost();
   el.remoteVideo.srcObject = null;
-  el.remoteCam.srcObject = null;
   S.remoteVideos.clear();
   for (const a of S.remoteAudio.values()) { a.srcObject = null; a.remove(); }
   S.remoteAudio.clear();
@@ -2715,7 +2745,6 @@ function renderPeer() {
   const p = S.peer;
   // (Their app shows both videos at once now, or no longer does: what goes out changes to suit.)
   if (S.conn && S.conn.routedBoth !== undefined && S.conn.routedBoth !== peerShowsBoth()) routeVideo().then(sendState, () => {});
-  placeRemoteVideos();
   const mediaUp = Boolean(S.conn && S.conn.pc.connectionState === 'connected');
   const awayView = Boolean(p && p.away && !mediaUp);
 
@@ -2739,11 +2768,10 @@ function renderPeer() {
     el.ringAgainBtn.hidden = Boolean(left) || !(S.callAnswer || S.resumeCallId);
     el.peerCard.hidden = true;
     el.remoteVideo.hidden = true;
-    el.remoteCam.hidden = true;
-    el.stage.classList.remove('cam-big', 'both');
     el.videoLabel.hidden = true;
     el.fullscreenBtn.hidden = true;
     el.popoutBtn.hidden = el.pinBtn.hidden = true;
+    renderCallGrid();
     updateTitle();
     return;
   }
@@ -2751,16 +2779,6 @@ function renderPeer() {
   const showVideo = !awayView && Boolean(p.state.cam || p.state.screen);
   el.remoteVideo.hidden = !showVideo;
   if (showVideo && el.remoteVideo.paused && el.remoteVideo.srcObject) el.remoteVideo.play().catch(() => {});
-  // (Their camera and their screen, side by side: the one clicked is the big one. Not while your
-  // own's big: then it's theirs in the corner, as ever.)
-  const camToo = showVideo && Boolean(el.remoteCam.srcObject) && !el.stage.classList.contains('self-big');
-  el.remoteCam.hidden = !camToo;
-  el.stage.classList.toggle('both', camToo);
-  if (!camToo) el.stage.classList.remove('cam-big');
-  if (camToo && el.remoteCam.paused) el.remoteCam.play().catch(() => {});
-  const camBig = el.stage.classList.contains('cam-big');
-  el.remoteCam.title = camBig ? '' : 'Click to see it big';
-  el.remoteVideo.title = camBig ? 'Click to see it big' : '';
   el.peerCard.hidden = showVideo;
   el.peerCard.classList.toggle('away', awayView);
   el.peerAway.hidden = !awayView;
@@ -2769,7 +2787,7 @@ function renderPeer() {
   el.pinBtn.hidden = !showVideo || !canPin();
   if (el.fullscreenBtn.hidden && stageFull()) setStageFull(false);
   el.videoLabel.hidden = !showVideo;
-  el.videoName.textContent = p.state.screen && !camBig ? `${p.name}'s screen` : p.name;
+  el.videoName.textContent = p.state.screen ? `${p.name}'s screen` : p.name;
   el.videoMuted.hidden = Boolean(p.state.mic);
   // (Deafened: headphones crossed out, rather than a mic.)
   for (const badge of [el.peerMuted, el.videoMuted]) {
@@ -2786,6 +2804,7 @@ function renderPeer() {
   const stepped = !awayView && (S.friends.get(p.id) || {}).presence === 'away';
   el.peerIdle.hidden = !stepped;
   el.videoIdle.hidden = !stepped;
+  renderCallGrid();
   renderStreamAudio();
   updateTitle();
 }
@@ -2820,6 +2839,30 @@ function renderTick() {
   checkSocketHealth();
   vouchForPeer();
   checkPicture();
+  nudgeStuckVideos();
+}
+
+// A call's video with no picture for a couple of seconds while its track's live and coming in, put
+// on it afresh (three times at most): a browser can leave one blank that was given its track while
+// the call's connection was being changed (as a camera's turned on, say), though the video's
+// arriving all the while.
+function nudgeStuckVideos() {
+  const videos = [el.remoteVideo, el.localVideo, ...[...S.callTiles.values()].map((t) => t.querySelector('video')).filter(Boolean)];
+  for (const v of videos) {
+    const track = v.srcObject && v.srcObject.getVideoTracks()[0];
+    if (!track || track.readyState !== 'live' || track.muted || v.readyState > 0) {
+      v.stuckSince = 0;
+      if (!track) v.nudges = 0;
+      continue;
+    }
+    if (!v.stuckSince) v.stuckSince = Date.now();
+    if (Date.now() - v.stuckSince < 2000 || (v.nudges || 0) >= 3) continue;
+    v.stuckSince = 0;
+    v.nudges = (v.nudges || 0) + 1;
+    trace('video-nudged', { n: v.nudges });
+    v.srcObject = new MediaStream([track]);
+    v.play().catch(() => {});
+  }
 }
 
 // Your friend's page has gone quiet to the server (a phone that's been locked a while freezes
@@ -2918,25 +2961,177 @@ function renderSelf() {
   if (!v) el.stage.classList.remove('self-big');
   el.selfView.title = el.stage.classList.contains('self-big') ? 'Click to make it small again' : 'Click to see it big';
   el.selfView.classList.toggle('mirror', Boolean(S.local.cam && !S.local.screen && S.facing !== 'environment'));
-  if (v) {
-    const current = el.localVideo.srcObject && el.localVideo.srcObject.getVideoTracks()[0];
-    if (current !== v) el.localVideo.srcObject = new MediaStream([v]);
-  } else {
-    el.localVideo.srcObject = null;
-  }
-  // (Your camera too, while it goes out beside your screen: in the corner of your own tile.)
-  const inset = S.local.screen && S.local.cam && (!S.peer || peerShowsBoth()) ? S.local.cam : null;
-  el.localCam.hidden = !inset;
-  el.selfView.classList.toggle('mirror-cam', Boolean(inset && S.facing !== 'environment'));
-  showTrack(el.localCam, inset);
+  renderCallGrid(); // (and your video in the corner: placeCallVideos)
 }
 
 // Swaps what's big on the stage: your friend (usually), or your own camera or screen.
 function toggleSelfBig(big = !el.stage.classList.contains('self-big')) {
   el.stage.classList.toggle('self-big', big && !el.selfView.hidden);
-  if (el.stage.classList.contains('self-big')) el.stage.classList.remove('cam-big');
   renderSelf();
   renderPeer();
+}
+
+// A call with two videos or more (cameras or screens, yours or theirs): a tile for each of you
+// (your camera, or your picture) and for each screen being shared, as in a voice channel, in place
+// of the one big video. A tile clicked is made big, with the rest in a strip below it; clicked
+// again (or Esc), they're all side by side. (One video, or none: the call as it's always been.)
+function renderCallGrid() {
+  const p = S.peer;
+  const mediaUp = Boolean(S.conn && S.conn.pc.connectionState === 'connected');
+  const theirs = peerVideos();
+  const mine = myVideos();
+  const videos = [theirs.cam, theirs.screen, mine.cam, mine.screen].filter(Boolean).length;
+  const on = Boolean(S.inCall && p && !(p.away && !mediaUp) && videos >= 2);
+  el.stage.classList.toggle('grid', on);
+  placeCallVideos(on);
+  if (!on) {
+    S.callFocus = null;
+    for (const t of S.callTiles.values()) t.remove();
+    S.callTiles.clear();
+    if (el.streamAudio.parentElement !== el.stage) el.stage.append(el.streamAudio);
+    return;
+  }
+  el.stage.classList.remove('self-big');
+  el.fullscreenBtn.hidden = false; // (the whole call; each video has its own too)
+  const friend = profileOf(p.id) || { id: p.id, displayName: p.name };
+  const me = myState();
+  const tiles = [
+    theirs.screen && { key: 'peer:screen', track: theirs.screen, name: `${p.name}'s screen`, screen: true },
+    { key: 'peer:cam', track: theirs.cam, person: friend, name: p.name, muted: !p.state.mic, deaf: p.state.deaf, away: (S.friends.get(p.id) || {}).presence === 'away' },
+    { key: 'me:cam', track: mine.cam, person: profileOf(S.me.id) || S.me, name: 'You', muted: !me.mic, deaf: me.deaf, mirror: S.facing !== 'environment' },
+    mine.screen && { key: 'me:screen', track: mine.screen, name: 'Your screen', screen: true },
+  ].filter(Boolean);
+  const keep = new Set();
+  for (const t of tiles) {
+    keep.add(t.key);
+    let tile = S.callTiles.get(t.key);
+    if (!tile) {
+      tile = document.createElement('div');
+      tile.className = `voice-tile${t.screen ? ' screen' : ''}`;
+      tile.dataset.key = t.key;
+      tile.tabIndex = 0;
+      S.callTiles.set(t.key, tile);
+    }
+    tile.classList.toggle('mirror', Boolean(t.mirror && t.track));
+    // Its video, or the person's picture.
+    let video = tile.querySelector('video');
+    if (t.track) {
+      if (!video) {
+        video = watchPicture(document.createElement('video'));
+        video.muted = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        tile.prepend(video);
+      }
+      showTrack(video, t.track);
+    } else if (video) {
+      video.remove();
+    }
+    let face = tile.querySelector('.face');
+    if (!t.track && t.person) {
+      if (!face) {
+        face = makeFace(t.person, null);
+        tile.prepend(face);
+      }
+    } else if (face) {
+      face.remove();
+    }
+    // Its name, and whether they're muted (or deafened) or away.
+    let label = tile.querySelector('.voice-tile-name');
+    if (!label) {
+      label = document.createElement('span');
+      label.className = 'voice-tile-name';
+      tile.append(label);
+    }
+    label.replaceChildren(t.name);
+    if (!t.screen && (t.muted || t.deaf)) label.insertAdjacentHTML('beforeend', `<svg class="icon" aria-label="${t.deaf ? 'Deafened' : 'Muted'}"><use href="#${t.deaf ? 'i-headphones-off' : 'i-mic-off'}"/></svg>`);
+    if (!t.screen && t.away) label.insertAdjacentHTML('beforeend', '<span class="tile-away">Away</span>');
+    // A video's own buttons: full screen, pop out, keep on top.
+    let tools = tile.querySelector('.tile-tools');
+    if (t.track && (canPopOut() || canPin() || canFullscreen())) {
+      if (!tools) {
+        tools = document.createElement('span');
+        tools.className = 'tile-tools';
+        tools.innerHTML = '<button type="button" class="tile-full" title="Full screen" aria-label="Full screen"><svg class="icon"><use href="#i-expand"/></svg></button>'
+          + '<button type="button" class="tile-pop" title="Pop out into its own window" aria-label="Pop out into its own window"><svg class="icon"><use href="#i-popout"/></svg></button>'
+          + '<button type="button" class="tile-pin" title="Keep on top of other windows" aria-label="Keep on top of other windows"><svg class="icon"><use href="#i-pin"/></svg></button>';
+        tile.append(tools);
+      }
+      tools.querySelector('.tile-full').hidden = !canFullscreen();
+      tools.querySelector('.tile-pop').hidden = !canPopOut();
+      tools.querySelector('.tile-pin').hidden = !canPin();
+    } else if (tools) {
+      tools.remove();
+    }
+  }
+  for (const [key, tile] of S.callTiles) {
+    if (!keep.has(key)) {
+      tile.remove();
+      S.callTiles.delete(key);
+    }
+  }
+  // Their screen's sound: its volume and mute, on its tile.
+  const soundHome = S.callTiles.get('peer:screen') || el.stage;
+  if (el.streamAudio.parentElement !== soundHome) soundHome.append(el.streamAudio);
+  // Side by side, or one big with the rest in a strip below it. (In place: nothing already where
+  // it should be is moved, so a slider being dragged in one isn't let go of.)
+  if (S.callFocus && !S.callTiles.has(S.callFocus)) S.callFocus = null;
+  const all = tiles.map((t) => S.callTiles.get(t.key));
+  const place = (parent, nodes) => {
+    nodes.forEach((node, i) => { if (parent.children[i] !== node) parent.insertBefore(node, parent.children[i] || null); });
+    for (const extra of [...parent.children].slice(nodes.length)) extra.remove();
+  };
+  if (S.callFocus) {
+    if (!S.callStrip) {
+      S.callStrip = document.createElement('div');
+      S.callStrip.className = 'voice-strip';
+    }
+    place(S.callStrip, all.filter((t) => t.dataset.key !== S.callFocus));
+    place(el.callGrid, [S.callTiles.get(S.callFocus), S.callStrip]);
+  } else {
+    place(el.callGrid, all);
+  }
+  el.callGrid.classList.toggle('focused', Boolean(S.callFocus));
+  for (const t of S.callTiles.values()) {
+    t.classList.toggle('focus', t.dataset.key === S.callFocus);
+    t.title = t.dataset.key === S.callFocus ? 'Click to see everyone' : 'Click to see it big';
+  }
+  fitCallGrid();
+}
+
+function focusCallTile(key) {
+  S.callFocus = S.callFocus === key ? null : key;
+  renderCallGrid();
+}
+
+const callTileVideo = (key) => {
+  const t = S.callTiles.get(key);
+  return (t && t.querySelector('video')) || null;
+};
+const callTileTitle = (key) => {
+  const t = S.callTiles.get(key);
+  const n = t && t.querySelector('.voice-tile-name');
+  return n ? n.textContent : 'Your call';
+};
+
+// Side by side, the tiles as big as the call's room lets them be: how many across, for this many.
+function fitCallGrid() {
+  const grid = el.callGrid;
+  if (!el.stage.classList.contains('grid') || grid.classList.contains('focused')) return;
+  const n = grid.children.length;
+  const cs = getComputedStyle(grid);
+  const gap = parseFloat(cs.columnGap) || 0;
+  const w = grid.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  const h = grid.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+  if (!n || w <= 0 || h <= 0) return;
+  let best = { across: 1, width: 0 };
+  for (let across = 1; across <= n; across++) {
+    const down = Math.ceil(n / across);
+    const width = Math.min((w - gap * (across - 1)) / across, ((h - gap * (down - 1)) / down) * (16 / 9));
+    if (width > best.width) best = { across, width };
+  }
+  grid.style.setProperty('--across', String(best.across));
+  grid.style.setProperty('--tile', `${Math.max(60, Math.floor(best.width))}px`);
 }
 
 function renderControls() {
@@ -17896,21 +18091,46 @@ async function init() {
     }
   });
   watchPicture(el.remoteVideo);
-  watchPicture(el.remoteCam);
   watchPicture(el.localVideo);
   el.remoteVideo.addEventListener('dblclick', () => el.fullscreenBtn.click());
-  el.remoteCam.addEventListener('dblclick', () => el.fullscreenBtn.click());
   // Click your own camera or screen to see it big; click it (or your friend) again to swap back.
   el.selfView.addEventListener('click', () => toggleSelfBig());
-  el.remoteVideo.addEventListener('click', () => {
-    el.stage.classList.remove('cam-big'); // (their screen, big again)
-    toggleSelfBig(false);
-  });
-  el.remoteCam.addEventListener('click', () => {
-    el.stage.classList.toggle('cam-big', !el.stage.classList.contains('cam-big') || el.stage.classList.contains('self-big'));
-    toggleSelfBig(false);
-  });
+  el.remoteVideo.addEventListener('click', () => toggleSelfBig(false));
   el.peerCard.addEventListener('click', () => toggleSelfBig(false));
+  // A call's tiles (two videos or more): one clicked is made big, or they're all side by side
+  // again; and a video's own buttons.
+  el.callGrid.addEventListener('click', (e) => {
+    const tile = e.target.closest('.voice-tile');
+    const key = tile && tile.dataset.key;
+    if (!key) return;
+    const b = e.target.closest('.tile-pop, .tile-pin, .tile-full');
+    if (!b) {
+      if (!e.target.closest('.stream-audio') && document.fullscreenElement !== tile) focusCallTile(key);
+      return;
+    }
+    e.stopPropagation();
+    if (b.classList.contains('tile-full')) return toggleTileFullscreen(tile);
+    if (b.classList.contains('tile-pin')) {
+      const v = callTileVideo(key);
+      if (v) pinVideo(v);
+      return;
+    }
+    popOut(`call-${key}`, () => callTileTitle(key), () => {
+      const v = callTileVideo(key);
+      return v && v.srcObject ? v.srcObject.getVideoTracks() : [];
+    });
+  });
+  el.callGrid.addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('voice-tile')) {
+      e.preventDefault();
+      focusCallTile(e.target.dataset.key);
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !S.callFocus || !el.stage.classList.contains('grid') || document.fullscreenElement || document.querySelector('dialog[open]')) return;
+    focusCallTile(S.callFocus);
+  });
+  new ResizeObserver(() => fitCallGrid()).observe(el.stage);
 
   el.chatForm.addEventListener('submit', (e) => {
     e.preventDefault();

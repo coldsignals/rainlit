@@ -460,7 +460,7 @@
     <div class="main">
       <section id="stage" class="stage" aria-label="Call">
         <video id="remote-video" class="remote-video" autoplay playsinline muted hidden></video>
-        <video id="remote-cam" class="remote-cam" autoplay playsinline muted hidden></video>
+        <div id="call-grid" class="voice-grid call-grid" aria-label="Everyone's video"></div>
         <pre id="stream-stats" class="stream-stats" aria-label="Stream stats" hidden></pre>
         <div id="stream-audio" class="stream-audio" hidden>
           <button id="stream-mute" class="icon-btn ghost" type="button" aria-label="Mute the stream" title="Mute the stream">
@@ -514,7 +514,6 @@
 
         <div id="self-view" class="self-view" hidden>
           <video id="local-video" autoplay playsinline muted></video>
-          <video id="local-cam" class="local-cam" autoplay playsinline muted hidden></video>
           <span class="self-label">You</span>
         </div>
       </section>
