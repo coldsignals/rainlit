@@ -111,7 +111,7 @@ for (const id of [
   'signup-form', 'setup-note', 'code-label', 'signup-code', 'signup-email', 'signup-username', 'signup-name', 'signup-password',
   'signup-month', 'signup-day', 'signup-year',
   'reset-form', 'reset-password', 'auth-error',
-  'signup-spots', 'signup-spots-text', 'signup-full', 'signup-waitlist', 'waitlist-form', 'waitlist-email', 'waitlist-send', 'waitlist-sent', 'waitlist-back', 'signups-open', 'signups-more', 'signups-cap', 'signups-state', 'waitlist-release',
+  'signup-spots', 'signup-spots-text', 'signup-full', 'signup-waitlist', 'waitlist-form', 'waitlist-email', 'waitlist-send', 'waitlist-sent', 'waitlist-back', 'signups-open', 'signups-more', 'signups-cap', 'signups-state', 'waitlist-release', 'signups-everyone', 'invite-someone', 'my-invites', 'my-invites-about', 'my-invites-make', 'my-invites-list',
   'forgot-btn', 'forgot-hint', 'forgot-form', 'forgot-login', 'forgot-send', 'forgot-sent', 'forgot-back',
   'email-row', 'email-state', 'email-confirm-btn', 'email-next', 'email-password', 'email-btn',
   'app', 'add-friend-form', 'add-friend-input', 'requests', 'request-list', 'friends-title', 'friend-list', 'friends-empty', 'notes-row',
@@ -9493,6 +9493,7 @@ async function signedIn(user) {
   connectSocket();
   syncAndroidPush();
   followJoinLink();
+  refreshMyInvites(); // (whether you can invite people: the button under Add a friend)
   followDeleteLink();
   followHomepageLink();
   followSupportLink();
@@ -16464,7 +16465,7 @@ async function renderAdmin() {
     code.textContent = inv.code;
     const note = document.createElement('span');
     note.className = 'grow muted';
-    note.textContent = inv.usedBy ? `Used by @${inv.usedBy}` : `Made ${fmtWhen(inv.createdAt)}`;
+    note.textContent = `${inv.usedBy ? `Used by @${inv.usedBy}` : `Made ${fmtWhen(inv.createdAt)}`}${inv.madeBy ? ` · @${inv.madeBy}'s invite` : ''}`;
     li.append(code, note);
     if (!inv.usedBy) {
       li.append(
@@ -16813,6 +16814,8 @@ async function renderSignups(state) {
     return;
   }
   el.signupsOpen.checked = state.open;
+  el.signupsEveryone.checked = Boolean(state.everyone);
+  el.inviteSomeone.hidden = !state.everyone; // (yours too, at once)
   el.signupsMore.hidden = !state.open;
   if (document.activeElement !== el.signupsCap) el.signupsCap.value = String(state.cap);
   el.signupsState.textContent = `Room for ${state.room} more today. ${state.waiting} on the waitlist.${state.mail ? '' : " (This Rainlit can't send emails, so the waitlist can't be invited.)"}`;
@@ -16861,7 +16864,63 @@ async function adminSuspend(u, on, reason = '') {
 }
 
 function copyInvite(code) {
-  copyText(`Come hang out on Rainlit! ${SERVER}\nSign up with this invite code: ${code}`, 'Invite copied. Paste it to your friend.');
+  copyText(`Come hang out on Rainlit! Sign up here: ${SERVER}/?invite=${encodeURIComponent(code)}\n(Or with this invite code: ${code})`, 'Invite copied. Paste it to your friend.');
+}
+
+// ----- Inviting someone to Rainlit (when the admin lets everyone: a few a month each) -----
+
+async function refreshMyInvites() {
+  try {
+    renderMyInvites(await api('GET', '/invites'));
+  } catch {}
+}
+
+function renderMyInvites(data) {
+  S.myInvites = data;
+  el.inviteSomeone.hidden = !data.on;
+  const next = data.next ? new Date(data.next).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }) : '';
+  el.myInvitesAbout.textContent = !data.on ? 'Only the admin can invite people to this Rainlit right now.'
+    : data.left ? `Each invite lets one person make an account. You can make ${data.perMonth} a month: ${data.left} left right now.`
+    : `You've made your ${data.perMonth} for this month. You can make another on ${next}.`;
+  el.myInvitesMake.disabled = !data.on || !data.left;
+  el.myInvitesList.replaceChildren(...(data.invites || []).map((inv) => {
+    const li = document.createElement('li');
+    const code = document.createElement('code');
+    code.textContent = inv.code;
+    const note = document.createElement('span');
+    note.className = 'grow muted';
+    note.textContent = inv.usedBy ? `Used by @${inv.usedBy}` : `Not used yet · made ${fmtWhen(inv.createdAt)}`;
+    li.append(code, note);
+    if (!inv.usedBy) {
+      li.append(
+        smallButton('i-copy', 'Copy invite', () => copyInvite(inv.code), 'ghost'),
+        smallButton('i-trash', 'Delete this invite', async () => {
+          try {
+            renderMyInvites(await api('DELETE', `/invites/${encodeURIComponent(inv.code)}`));
+          } catch (err) {
+            toast(err.message);
+          }
+        }, 'ghost'));
+    }
+    return li;
+  }));
+}
+
+async function openMyInvites() {
+  await refreshMyInvites();
+  if (!el.myInvites.open) el.myInvites.showModal();
+}
+
+async function onMakeMyInvite() {
+  el.myInvitesMake.disabled = true;
+  try {
+    const data = await api('POST', '/invites', {});
+    copyInvite(data.code);
+    renderMyInvites(data);
+  } catch (err) {
+    toast(err.message);
+    refreshMyInvites();
+  }
 }
 
 async function onMakeInvite() {
@@ -17449,6 +17508,9 @@ async function init() {
   el.adminBtn.addEventListener('click', openAdmin);
   el.inviteBtn.addEventListener('click', onMakeInvite);
   el.signupsOpen.addEventListener('change', () => saveSignups({ open: el.signupsOpen.checked }));
+  el.signupsEveryone.addEventListener('change', () => saveSignups({ everyone: el.signupsEveryone.checked }));
+  el.inviteSomeone.addEventListener('click', openMyInvites);
+  el.myInvitesMake.addEventListener('click', onMakeMyInvite);
   el.voiceStay.addEventListener('click', () => {
     wsSend({ type: 'voice-stay' });
     hideVoiceAlone();
@@ -17955,7 +18017,7 @@ async function init() {
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them (not the ones asking something that
   // needs an answer: 18+, an announcement, sharing what you're doing).
-  for (const d of [el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim]) {
+  for (const d of [el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 

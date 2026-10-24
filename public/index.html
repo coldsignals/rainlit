@@ -234,6 +234,7 @@
           <svg class="icon"><use href="#i-user-plus"/></svg>
         </button>
       </form>
+      <button id="invite-someone" class="text-btn invite-someone" type="button" hidden><svg class="icon"><use href="#i-link"/></svg>Invite someone to Rainlit</button>
 
       <div class="side-scroll">
         <ol id="notes-row" class="people notes-row" aria-label="Notes"></ol>
@@ -1267,6 +1268,16 @@
     </form>
   </dialog>
 
+  <!-- Inviting someone to Rainlit (when the admin lets everyone) -->
+  <dialog id="my-invites" class="settings space-dialog" aria-labelledby="my-invites-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="my-invites-title">Invite someone to Rainlit</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p id="my-invites-about" class="mod-text"></p>
+      <button id="my-invites-make" class="primary-btn" type="button">Make an invite</button>
+      <ol id="my-invites-list" class="admin-list"></ol>
+    </div>
+  </dialog>
+
   <!-- A timeout, kick or ban -->
   <dialog id="mod-dialog" class="settings space-dialog" aria-labelledby="mod-title">
     <form id="mod-form" class="settings-inner" novalidate>
@@ -1398,6 +1409,10 @@
           <p id="signups-state" class="hint"></p>
           <button id="waitlist-release" class="small-btn" type="button">Invite the next 10 on the waitlist</button>
         </div>
+        <label class="toggle">
+          <input id="signups-everyone" type="checkbox" />
+          <span>Everyone can invite people <small class="toggle-note">(5 invites a month each, from "Invite someone to Rainlit" under Add a friend; an invite they make works like yours, and the invites below say whose they are)</small></span>
+        </label>
       </section>
 
       <section class="admin-section">

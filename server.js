@@ -367,11 +367,11 @@ setInterval(() => {
 }, 600_000).unref();
 
 // The admin's side: open sign-ups or not, the daily cap, and the waitlist.
-const signupState = () => ({ open: signups.isOpen(), cap: signups.dailyCap(), room: signups.roomToday(), waiting: signups.waiting(), mail: mail.enabled });
+const signupState = () => ({ open: signups.isOpen(), cap: signups.dailyCap(), room: signups.roomToday(), waiting: signups.waiting(), mail: mail.enabled, everyone: signups.everyoneInvites() });
 api.get('/admin/signups', needAdmin, (_req, res) => res.json(signupState()));
 api.put('/admin/signups', needAdmin, (req, res) => {
   const b = req.body || {};
-  signups.configure({ open: typeof b.open === 'boolean' ? b.open : undefined, cap: b.cap });
+  signups.configure({ open: typeof b.open === 'boolean' ? b.open : undefined, cap: b.cap, everyone: typeof b.everyone === 'boolean' ? b.everyone : undefined });
   res.json(signupState());
 });
 api.post('/admin/waitlist/release', needAdmin, (req, res) => {
@@ -2827,6 +2827,42 @@ api.delete('/spaces/:spaceId/bans/:userId', needUser, needMember, needPerm('ban'
 
 api.get('/spaces/:spaceId/log', needUser, needMember, needPerm('viewLog'), (req, res) => {
   res.json({ entries: spaces.logOf(req.space.id, Number(req.query.before) || 0) });
+});
+
+// ----- Inviting someone to Rainlit -----
+// When the admin lets everyone (Admin > Sign-ups), anyone (whose email's confirmed, if they signed
+// up without an invite) can make invites: a few in any 30 days. One that isn't used can go, and
+// then doesn't count. An invite someone makes works as the admin's does.
+
+const INVITES_A_MONTH = 5;
+const MONTH_MS = 30 * 86_400_000;
+
+function myInvites(user) {
+  const invites = db.prepare(`
+    SELECT i.code, i.created_at AS createdAt, i.used_at AS usedAt, u.username AS usedBy
+    FROM invites i LEFT JOIN users u ON u.id = i.used_by
+    WHERE i.created_by = ? ORDER BY i.created_at DESC LIMIT 50
+  `).all(user.id);
+  const recent = invites.filter((i) => i.createdAt > Date.now() - MONTH_MS);
+  const left = Math.max(0, INVITES_A_MONTH - recent.length);
+  // (None left: when the next one can be, the month's first one a month on.)
+  const next = left ? null : Math.min(...recent.map((i) => i.createdAt)) + MONTH_MS;
+  return { on: signups.everyoneInvites(), perMonth: INVITES_A_MONTH, left, next, invites };
+}
+
+api.get('/invites', needUser, (req, res) => res.json(myInvites(req.user)));
+
+api.post('/invites', needUser, needConfirmed, (req, res) => {
+  if (!signups.everyoneInvites()) return fail(res, 403, 'Only the admin can invite people to this Rainlit right now.');
+  const mine = myInvites(req.user);
+  if (!mine.left) return res.status(429).json({ error: `You've made ${INVITES_A_MONTH} invites this month. You can make another soon.`, ...mine });
+  const code = people.createInvite(req.user.id);
+  res.json({ code, ...myInvites(req.user) });
+});
+
+api.delete('/invites/:code', needUser, (req, res) => {
+  db.prepare('DELETE FROM invites WHERE code = ? AND created_by = ? AND used_by IS NULL').run(people.normalizeCode(req.params.code), req.user.id);
+  res.json(myInvites(req.user));
 });
 
 // ----- Admin: invites and accounts -----

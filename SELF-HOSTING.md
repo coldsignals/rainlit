@@ -67,10 +67,17 @@ Open your Rainlit, press **Sign up**, and use that code. After that, the code is
 
 ## 4. Invite people
 
-Press the key button next to your name, then **Make an invite**. A message with your
-Rainlit's address and a one-time code is copied, ready to paste to a friend. They sign up
-with it, then add each other (or you) by username. If someone forgets their password, the
-same panel makes them a reset link.
+Press the key button next to your name, then **Make an invite**. A message with a link to
+sign up on your Rainlit (and its one-time code) is copied, ready to paste to a friend. They
+sign up with it, then add each other (or you) by username. If someone forgets their
+password, the same panel makes them a reset link.
+
+**Or let everyone invite people.** Under **Sign-ups** in the same panel, **Everyone can invite
+people** lets anyone with an account make invites too: 5 a month each, from **Invite someone
+to Rainlit** under Add a friend (someone who signed up without an invite confirms their email
+first). Their invites work like yours, and the panel's list of invites says whose each one is.
+Turning it off stops new ones being made; ones already made still work until they're used, or
+you delete them.
 
 **Or let anyone sign up.** Under **Sign-ups** in the same panel, you can let people make an
 account without an invite. To keep bots and floods out: there's a bot check (a small puzzle

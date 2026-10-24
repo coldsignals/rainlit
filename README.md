@@ -64,6 +64,9 @@ laws want 14, 15 or 16).
 **Open sign-ups:** the same panel can let anyone sign up without an invite, with a
 bot check, a daily limit and a waitlist (see [SELF-HOSTING.md](SELF-HOSTING.md#4-invite-people)).
 
+**Everyone inviting:** the same panel can let everyone make invites too, 5 a month each,
+from **Invite someone to Rainlit** under Add a friend.
+
 **Forgot password:** in the same panel, press **Reset link** next to their
 account and send them the link. It works once, for 24 hours, and signs them
 out everywhere else.

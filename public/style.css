@@ -1572,6 +1572,11 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   .call-grid { padding: 8px; gap: 8px; }
   .call-grid .voice-strip > .voice-tile { width: 120px; }
 }
+/* Under Add a friend: inviting someone to Rainlit (when the admin lets everyone). */
+.invite-someone { display: flex; align-items: center; gap: 7px; margin: -4px 12px 6px; padding: 4px 2px; font-size: 13px; }
+.invite-someone .icon { width: 15px; height: 15px; }
+.invite-someone[hidden] { display: none; }
+#my-invites-list:empty { display: none; }
 /* A call's video before its picture comes (app.js: watchPicture): Rainlit's drop, rippling. */
 video.no-picture { background: url(/icons/drop-cam.svg) center / min(128px, 36%) auto no-repeat, #000; }
 
