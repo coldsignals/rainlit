@@ -1704,6 +1704,8 @@ function handleServerMessage(msg) {
       return onSound(msg);
     case 'dm-edited':
       return onDmEdited(msg);
+    case 'file-poster': // (a video's still, from the app that sent it)
+      return showPoster(String(msg.id || ''), String(msg.poster || ''));
     case 'dm-reactions':
       return onDmReactions(msg);
     case 'typing':
@@ -8181,8 +8183,10 @@ function startUpload(dm, t, file, xhr, done) {
     let data = {};
     try { data = JSON.parse(xhr.responseText); } catch {}
     if (data.storage) noteStorage(data.storage);
-    if (xhr.status === 200 && data.message) appendMessage(dm, data.message);
-    else endTransfer(t, 'failed', data.error || 'Upload failed. Try again.');
+    if (xhr.status === 200 && data.message) {
+      appendMessage(dm, data.message);
+      if (/^video\//.test((data.message.file && data.message.file.type) || '')) sendStill(dm, data.message, file);
+    } else endTransfer(t, 'failed', data.error || 'Upload failed. Try again.');
   };
   xhr.onerror = () => {
     done();
@@ -8193,6 +8197,103 @@ function startUpload(dm, t, file, xhr, done) {
     endTransfer(t, 'cancelled', 'Cancelled.');
   };
   xhr.send(file);
+}
+
+// A video's still (a moment in), as a small picture: what everyone sees before it plays. Made
+// here, from the file being sent, or from one sent before (its address: see stillLater), and kept
+// with it by the server. (null: this browser can't show that video, or isn't let look at it.)
+function videoStill(src) {
+  return new Promise((resolve) => {
+    const url = typeof src === 'string' ? src : URL.createObjectURL(src);
+    const v = document.createElement('video');
+    let done = false;
+    let stuck = 0;
+    const finish = (still) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      clearTimeout(stuck);
+      v.removeAttribute('src');
+      v.load();
+      if (url !== src) URL.revokeObjectURL(url);
+      resolve(still || null);
+    };
+    const timer = setTimeout(() => finish(null), 15_000);
+    // (A moment in, or wherever it is, if it can't get there: a file that can't be jumped about in.)
+    const draw = () => {
+      v.onseeked = null;
+      clearTimeout(stuck);
+      if (!done) frameOf(v).then(finish);
+    };
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = 'metadata'; // (no more of it than it takes)
+    v.crossOrigin = 'anonymous'; // (one in R2 is read from there, as the bucket's CORS rules let it be)
+    v.onerror = () => finish(null);
+    v.onloadedmetadata = () => {
+      v.onseeked = draw;
+      stuck = setTimeout(draw, 5000);
+      v.currentTime = Math.min(0.5, (Number.isFinite(v.duration) ? v.duration : 1) / 10);
+    };
+    v.src = url;
+  });
+}
+
+// The frame a video's at, as a small picture. (null: none yet, no picture to it (only sound),
+// nothing but black, or one this page isn't let look at.)
+function frameOf(v) {
+  return new Promise((resolve) => {
+    if (v.readyState < 2 || !v.videoWidth || !v.videoHeight) return resolve(null);
+    try {
+      const scale = Math.min(1, 960 / Math.max(v.videoWidth, v.videoHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(v.videoWidth * scale));
+      c.height = Math.max(1, Math.round(v.videoHeight * scale));
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      const peek = document.createElement('canvas');
+      peek.width = peek.height = 16;
+      const g = peek.getContext('2d', { willReadFrequently: true });
+      g.drawImage(c, 0, 0, 16, 16);
+      if (g.getImageData(0, 0, 16, 16).data.every((x, i) => i % 4 === 3 || x < 12)) return resolve(null);
+      c.toBlob(resolve, 'image/jpeg', 0.85);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+async function sendStill(dm, message, file) {
+  await putStill(dm.friendId, message.id, await videoStill(file));
+}
+
+// A video's still, to the server (which takes one only from whoever sent it), and on it here.
+async function putStill(key, id, still) {
+  if (!still) return;
+  try {
+    const { poster } = await api('PUT', `${convPath(key)}/files/${encodeURIComponent(id)}/poster`, still);
+    if (poster) showPoster(id, poster);
+  } catch {}
+}
+
+// A video's still, now it's come: on it, wherever it shows.
+function showPoster(id, poster) {
+  for (const v of document.querySelectorAll(`li[data-id="${CSS.escape(id)}"] video.file-video`)) v.poster = poster;
+}
+
+// A video of yours with no still (sent before videos had them, or from somewhere that couldn't
+// make one): one's made here, from the video, once it's showing. One at a time, each once. Not one
+// that's only just been sent: the app it was sent from is making its own.
+const stilled = new Set(); // (message ids)
+let stilling = Promise.resolve();
+function stillLater(m) {
+  if (stilled.has(m.id) || Date.now() - m.at < 120_000) return;
+  stilled.add(m.id);
+  stilling = stilling.then(async () => {
+    await new Promise((r) => setTimeout(r, 1000)); // (the conversation first)
+    const v = document.querySelector(`li[data-id="${CSS.escape(m.id)}"] video.file-video`);
+    if (!v || (v.poster && !v.poster.startsWith('data:'))) return; // (gone, or it's had one meanwhile)
+    await putStill(convOf(m.dm), m.id, await videoStill(`${m.file.url}?still=1`));
+  }).catch(() => {});
 }
 
 // Resolves once there's room in the channel's outgoing buffer, or after a moment
@@ -8398,10 +8499,11 @@ function addFileCard(t) {
 
 // A file kept in a saved conversation.
 function savedFileItem(m, who) {
-  const t = { id: m.id, name: m.file.name, size: m.file.size, type: m.file.type, preview: m.file.preview, dir: 'saved', state: 'done' };
+  const t = { id: m.id, name: m.file.name, size: m.file.size, type: m.file.type, preview: m.file.preview, poster: m.file.poster, dir: 'saved', state: 'done' };
   const li = fileCard(t, who, m.at);
   t.ui.save.href = m.file.url;
   showPreview(t.ui.card, t, m.file.url);
+  if (!m.file.poster && m.author === S.clientId && previewKind(m.file.type) === 'video') stillLater(m);
   renderTransfer(t);
   return li;
 }
@@ -8424,6 +8526,9 @@ function showPreview(card, f, url) {
     media.controls = kind === 'audio'; // (a video gets them once it's started)
     media.preload = 'metadata';
     media.playsInline = true;
+    // (A video's still, from the app that sent it. Without one, nothing, rather than the big grey
+    // play button an Android phone draws: Rainlit's own is over it either way.)
+    if (kind === 'video' && (f.poster || ANDROID)) media.poster = f.poster || NO_POSTER;
     if (S.devices.speaker && media.setSinkId) media.setSinkId(S.devices.speaker).catch(() => {});
   }
   const shown = kind === 'audio' ? media : mediaFrame(card, media, kind, f, url);

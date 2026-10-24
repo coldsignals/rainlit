@@ -1808,6 +1808,33 @@ function cleanGif(g) {
   return out;
 }
 
+// A video's still (what shows before it plays), from the app of whoever sent it, which makes it
+// from the file as it goes (or later, from the video: public/app.js, stillLater). Once, and only
+// theirs. Kept where a photo's smaller copy is (lib/dms.js), and gone with the video. Everyone
+// there is told, so theirs shows it at once.
+api.put(conv('/files/:messageId/poster'), needUser, needConv, express.raw({ type: () => true, limit: '4mb' }), async (req, res) => {
+  const row = dms.getRow(String(req.params.messageId));
+  if (!row || row.dm_id !== req.dm.id || row.author_id !== req.user.id || row.kind !== 'file' || !row.file_path || !/^video\//.test(row.file_type || '')) {
+    return fail(res, 404, "That video isn't there any more.");
+  }
+  const name = `${row.file_path}.webp`;
+  if (blobs.exists('previews', name)) return res.json({ poster: dms.fileJson(row).poster });
+  let buf;
+  try {
+    buf = await images.still(req.body);
+  } catch {
+    return fail(res, 400, "That isn't a picture.");
+  }
+  if (!dms.getRow(row.id)) return fail(res, 404, "That video isn't there any more."); // (deleted meanwhile)
+  const out = blobs.localPath('previews', name);
+  fs.writeFileSync(`${out}.part`, buf);
+  fs.renameSync(`${out}.part`, out);
+  blobs.offload('previews', name, 'image/webp'); // (to R2, if it's set up)
+  const { poster } = dms.fileJson(row);
+  tell(req, { type: 'file-poster', dm: req.dm.id, id: row.id, poster });
+  res.json({ poster });
+});
+
 // A file, sent as the raw request body with its name and type in headers. It's
 // written to disk as it arrives, so big files never have to fit in memory.
 api.post(conv('/files'), needUser, needConv, (req, res) => {
@@ -3095,10 +3122,13 @@ app.get('/files/:id/:name', async (req, res) => {
   // (?download: saving it, rather than showing it.)
   const shown = showable && !req.query.download;
   abuse.noteOut(small ? Math.min(r.file_size, 250 * 1024) : r.file_size);
-  // From here, or on to R2 (lib/blobs.js).
+  // From here, or on to R2 (lib/blobs.js). (?still: the app making a video's still from it, which
+  // reads it from R2 as the bucket's CORS rules let it (public/app.js: stillLater). A link of its
+  // own, kept nowhere, so a copy the chat's player kept, from without them, can't stand in for it.)
   blobs.send(res, small ? 'previews' : 'files', small || r.file_path, {
     type: small ? 'image/webp' : showable ? r.file_type : 'application/octet-stream',
     disposition: `${shown ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(r.file_name)}`,
+    cache: req.query.still && !small ? 'no-store' : undefined,
     headers: { 'Content-Security-Policy': "default-src 'none'; sandbox" },
   });
 });
