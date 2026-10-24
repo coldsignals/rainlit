@@ -138,9 +138,9 @@ for (const id of [
   'activity-ask', 'activity-ask-mark', 'activity-ask-title', 'activity-ask-text',
   'admin', 'invite-btn', 'invite-list', 'user-list', 'trace-list', 'report-list', 'report-dialog', 'report-form', 'report-title', 'report-text', 'report-danger', 'report-note', 'report-block-field', 'report-block', 'report-block-text', 'report-error', 'report-send',
   'call', 'call-resize', 'call-dot', 'room-label', 'call-timer', 'status-text', 'status-detail', 'settings-btn',
-  'stage', 'remote-video', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
+  'stage', 'remote-video', 'remote-cam', 'waiting', 'waiting-title', 'waiting-text', 'ring-again-btn',
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-idle', 'peer-away', 'peer-away-time', 'offline-banner',
-  'video-label', 'video-muted', 'video-name', 'video-idle', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
+  'video-label', 'video-muted', 'video-name', 'video-idle', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video', 'local-cam',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
@@ -246,6 +246,7 @@ const S = {
   failCount: 0,
 
   localStream: new MediaStream(),
+  shareStream: new MediaStream(), // (the stream your screen goes out on beside your camera: see routeVideo)
   local: { mic: null, cam: null, screen: null, screenAudio: null },
   micOn: true, // false when you've muted yourself
   deafened: false, // in a call: you hear nothing from it, and your mic's quiet too (toggleDeafen)
@@ -255,6 +256,7 @@ const S = {
   pttHeld: false,
 
   remoteAudio: new Map(), // track id -> <audio>
+  remoteVideos: new Map(), // your friend's videos in a call: track id -> { track, stream (its id) }
   boosts: new Map(), // track id -> { source, gain } while your friend is turned up past 100%
   audioCtx: null,
   localMeter: null,
@@ -590,13 +592,36 @@ async function setMicTrack(track) {
   S.localMeter = makeMeter(track);
 }
 
-async function setOutgoingVideo(track) {
+// What a call's video carries: your camera, and your screen beside it, as a video of its own on
+// a stream of its own (which your state names, so your friend's app can tell which is which).
+// For an app from before it could show both, your screen goes in your camera's place, as it did.
+const peerShowsBoth = () => Boolean(S.peer && S.peer.state && S.peer.state.both);
+
+function wantedVideo() {
+  const both = peerShowsBoth();
+  return { main: both ? S.local.cam : S.local.screen || S.local.cam, side: both ? S.local.screen : null, both };
+}
+
+async function routeVideo() {
   const conn = S.conn;
   if (!conn || conn.waitingForOffer) return; // picked up when we answer
-  if (conn.senders.video) await conn.senders.video.replaceTrack(track);
-  else if (track) conn.senders.video = conn.pc.addTrack(track, S.localStream);
+  const { main, side, both } = wantedVideo();
+  conn.routedBoth = both;
+  if (conn.senders.video) {
+    if (conn.senders.video.track !== main) await conn.senders.video.replaceTrack(main);
+  } else if (main) {
+    conn.senders.video = conn.pc.addTrack(main, S.localStream);
+  }
+  if (conn.senders.screen) {
+    if (conn.senders.screen.track !== side) await conn.senders.screen.replaceTrack(side);
+  } else if (side) {
+    conn.senders.screen = conn.pc.addTrack(side, S.shareStream);
+  }
   tuneVideoSender();
 }
+
+// The one sending your screen (on its own, or in your camera's place), if it's being shared.
+const screenSender = (conn) => (conn && [conn.senders.screen, conn.senders.video].find((s) => s && s.track && s.track === S.local.screen)) || null;
 
 // Screen sharing. A browser treats every video like a webcam: it lowers the quality to save
 // bandwidth and blurs detail to keep the motion smooth, which makes text in a shared screen
@@ -641,7 +666,7 @@ function screenCodec(params) {
 // twice running: as a share starts, and as it changes size, the stats can still be the last
 // encoder's (VP8's, in software) for a moment.
 function checkScreenEncoder(conn, out, stats) {
-  const sender = conn.senders.video;
+  const sender = screenSender(conn);
   const track = sender && sender.track;
   const codec = track && track === S.local.screen && S.screenAsVp8 !== track && !reseating(track) && sender.getParameters().encodings[0].codec;
   const sent = out && out.codecId && stats.get(out.codecId);
@@ -674,7 +699,7 @@ const reseating = (track) => Boolean(S.reseat && S.reseat.track === track && Dat
 // Why a screen's going as VP8, when it could have been H.264 on the graphics card: for the stream
 // stats, and the call debug log. ('' when it isn't, or couldn't have been.)
 function screenVp8Why(conn, out, stats) {
-  const sender = conn.senders.video;
+  const sender = screenSender(conn);
   const track = sender && sender.track;
   const sent = out && out.codecId && stats.get(out.codecId);
   if (!track || track !== S.local.screen || !sent || !/^video\/vp8$/i.test(sent.mimeType)) return '';
@@ -726,7 +751,8 @@ function evenScale(w, h, target) {
 
 // The step the screen being sent is at (conn.fit: for that one share).
 function screenFitStep(conn) {
-  const track = conn && conn.senders.video && conn.senders.video.track;
+  const sender = screenSender(conn);
+  const track = sender && sender.track;
   const fit = conn && conn.fit;
   return fit && track && fit.track === track && S.shareQuality === 'smooth' ? SCREEN_STEPS[fit.step] : SCREEN_STEPS[0];
 }
@@ -734,7 +760,8 @@ function screenFitStep(conn) {
 // (From the stats, every couple of seconds: pair.availableOutgoingBitrate, what the connection
 // carries now.)
 function fitScreenToConnection(conn, pair) {
-  const track = conn.senders.video && conn.senders.video.track;
+  const sender = screenSender(conn);
+  const track = sender && sender.track;
   if (!track || track !== S.local.screen || S.shareQuality !== 'smooth') {
     conn.fit = null;
     return;
@@ -775,12 +802,16 @@ function tuneVideoSender() {
 }
 
 async function tuneVideoSenderNow() {
-  const sender = S.conn && S.conn.senders.video;
-  if (!sender) return;
+  const conn = S.conn;
+  if (!conn) return;
+  for (const sender of [conn.senders.video, conn.senders.screen]) if (sender) await tuneSender(conn, sender);
+}
+
+async function tuneSender(conn, sender) {
   const params = sender.getParameters();
   if (!params.encodings || !params.encodings.length) return; // not connected yet; done when it is
   const q = S.local.screen && sender.track && sender.track === S.local.screen ? shareQuality() : null;
-  const step = screenFitStep(S.conn);
+  const step = screenFitStep(conn);
   const codec = q && S.screenAsVp8 !== sender.track && !reseating(sender.track) ? screenCodec(params) : null;
   // (Back from H.264: VP8, said outright, since a browser otherwise keeps the last codec, and
   // lists the one it's using first.)
@@ -806,9 +837,9 @@ async function tuneVideoSenderNow() {
     console.warn("[video] Couldn't set the quality:", err.message);
     if (codec) trace('screen-codec', { now: 'VP8', why: String(err.message).slice(0, 120) });
     // (The browser wouldn't send the screen as H.264: VP8, then. Unless the call's just ended.)
-    if (codec && S.conn && S.conn.senders.video === sender && S.conn.pc.connectionState !== 'closed') {
+    if (codec && S.conn === conn && screenSender(conn) === sender && conn.pc.connectionState !== 'closed') {
       S.screenAsVp8 = sender.track;
-      await tuneVideoSenderNow();
+      await tuneSender(conn, sender);
     }
   }
 }
@@ -1076,7 +1107,7 @@ async function toggleCam() {
     const t = S.local.cam;
     S.local.cam = null;
     playControlSound('camera-off');
-    if (!S.local.screen) await setOutgoingVideo(null);
+    await routeVideo();
     t.stop();
   } else {
     let shown = null;
@@ -1092,7 +1123,7 @@ async function toggleCam() {
       if (!S.inCall) { t.stop(); return; }
       useCamTrack(t);
       playControlSound('camera-on');
-      if (!S.local.screen) await setOutgoingVideo(t);
+      await routeVideo();
       countCameras();
     } catch (err) {
       toast(mediaErrorText(err, 'Camera'), 6000);
@@ -1237,11 +1268,11 @@ async function flipCam() {
     }
     if (!S.inCall || S.local.cam !== old) { t.stop(); return; }
     useCamTrack(t);
-    if (!S.local.screen) await setOutgoingVideo(t);
+    await routeVideo();
   } catch (err) {
     // Neither camera would open again: the camera's off.
     S.local.cam = null;
-    if (!S.local.screen) await setOutgoingVideo(null);
+    await routeVideo();
     toast(mediaErrorText(err, 'Camera'), 6000);
   } finally {
     S.flipping = false;
@@ -1285,7 +1316,7 @@ async function toggleScreen() {
   S.local.screen = vt;
   S.local.screenAudio = at;
   vt.onended = () => { if (S.local.screen === vt) stopScreen(); };
-  await setOutgoingVideo(vt);
+  await routeVideo();
   if (at && S.conn && !S.conn.waitingForOffer) {
     if (S.conn.senders.screenAudio) await S.conn.senders.screenAudio.replaceTrack(at);
     else S.conn.senders.screenAudio = S.conn.pc.addTrack(at, S.localStream);
@@ -1294,7 +1325,10 @@ async function toggleScreen() {
   renderControls();
   sendState();
   playShareSound(true);
-  if (!at) {
+  if (S.local.cam && S.peer && !peerShowsBoth()) {
+    // (Their app's from before a camera and a screen could show at once.)
+    toast(`${S.peer.name} sees your screen in place of your camera: their Rainlit shows both once it updates (when your call ends, or they reload it).`, 9000);
+  } else if (!at) {
     // Firefox never includes sound in a screen share (it's a long-standing Firefox gap), so no checkbox will help there.
     toast(/Firefox\//.test(navigator.userAgent)
       ? "Firefox can't include sound when sharing your screen. To share sound too, use Chrome or Edge."
@@ -1321,7 +1355,7 @@ async function switchScreen() {
     S.local.screen = vt;
     S.local.screenAudio = at;
     vt.onended = () => { if (S.local.screen === vt) stopScreen(); };
-    await setOutgoingVideo(vt);
+    await routeVideo();
     const conn = S.conn;
     if (conn && !conn.waitingForOffer) {
       if (conn.senders.screenAudio) await conn.senders.screenAudio.replaceTrack(at);
@@ -1342,7 +1376,7 @@ async function stopScreen() {
   const at = S.local.screenAudio;
   S.local.screen = null;
   S.local.screenAudio = null;
-  await setOutgoingVideo(S.local.cam || null);
+  await routeVideo();
   if (S.conn && S.conn.senders.screenAudio) await S.conn.senders.screenAudio.replaceTrack(null);
   if (vt) vt.stop();
   if (at) at.stop();
@@ -1454,7 +1488,11 @@ function wsSend(msg) {
 }
 
 function myState() {
-  return { mic: Boolean(S.micOn && S.local.mic && !S.onPhone && !S.deafened), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone), deaf: S.deafened };
+  return {
+    mic: Boolean(S.micOn && S.local.mic && !S.onPhone && !S.deafened), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone), deaf: S.deafened,
+    // (This app shows a camera and a screen at once; it sends its screen on this stream, and is now.)
+    both: true, share: S.shareStream.id, apart: Boolean(S.local.screen && S.conn && S.conn.routedBoth),
+  };
 }
 
 function sendState() {
@@ -1894,7 +1932,7 @@ function createPeer() {
     makingOffer: false,
     ignoreOffer: false,
     settingAnswer: false,
-    senders: { audio: null, video: null, screenAudio: null },
+    senders: { audio: null, video: null, screen: null, screenAudio: null },
     files: null, // data channel for sending files
     sendingFile: false,
     failTimer: null,
@@ -1954,10 +1992,10 @@ function createPeer() {
   pc.onsignalingstatechange = () => {
     if (S.conn !== conn) return;
     if (pc.signalingState === 'have-local-offer') awaitAnswer(conn);
-    if (pc.signalingState === 'stable' && conn.senders.video) tuneVideoSender();
+    if (pc.signalingState === 'stable' && (conn.senders.video || conn.senders.screen)) tuneVideoSender();
   };
-  pc.ontrack = ({ track }) => {
-    if (S.conn === conn) onRemoteTrack(track);
+  pc.ontrack = ({ track, streams }) => {
+    if (S.conn === conn) onRemoteTrack(track, streams);
   };
   pc.onconnectionstatechange = () => {
     if (S.conn !== conn) return;
@@ -2035,8 +2073,10 @@ function awaitAnswer(conn) {
 function addLocalTracks(conn) {
   const pc = conn.pc;
   if (S.local.mic && !conn.senders.audio) conn.senders.audio = pc.addTrack(S.local.mic, S.localStream);
-  const video = S.local.screen || S.local.cam;
-  if (video && !conn.senders.video) conn.senders.video = pc.addTrack(video, S.localStream);
+  const { main, side, both } = wantedVideo();
+  conn.routedBoth = both;
+  if (main && !conn.senders.video) conn.senders.video = pc.addTrack(main, S.localStream);
+  if (side && !conn.senders.screen) conn.senders.screen = pc.addTrack(side, S.shareStream);
   if (S.local.screenAudio && !conn.senders.screenAudio) conn.senders.screenAudio = pc.addTrack(S.local.screenAudio, S.localStream);
 }
 
@@ -2119,10 +2159,11 @@ async function handleSignal({ pcId, to, description, candidate, again }) {
   }
 }
 
-function onRemoteTrack(track) {
+function onRemoteTrack(track, streams = []) {
   if (track.kind === 'video') {
-    el.remoteVideo.srcObject = new MediaStream([track]);
-    el.remoteVideo.play().catch((err) => trace('video-blocked', { why: (err && err.name) || undefined }));
+    S.remoteVideos.set(track.id, { track, stream: streams[0] ? streams[0].id : '' });
+    if (S.peer) renderPeer(); // (where it goes, and whether the tile shows)
+    else placeRemoteVideos();
     return;
   }
   if (S.remoteAudio.has(track.id)) return;
@@ -2151,6 +2192,33 @@ function onRemoteTrack(track) {
   });
   // The first audio track is always your friend's microphone.
   if (!S.remoteMeter) S.remoteMeter = makeMeter(track);
+}
+
+// Your friend's video: their camera, and their screen when they share it too. An app that can send
+// both says which stream its screen goes out on (state.share), and whether it's going there now
+// (state.apart); otherwise it's in their camera's place, as an app from before sends it: one video
+// at a time, whichever it is (state.screen says which).
+function placeRemoteVideos() {
+  const p = S.peer;
+  const share = p && p.state && p.state.share;
+  let screen = null;
+  let cam = null;
+  for (const v of S.remoteVideos.values()) {
+    if (v.track.readyState !== 'live') continue;
+    if (share && v.stream === share) screen = v.track;
+    else cam = v.track;
+  }
+  const sharing = Boolean(p && p.state.screen && p.state.apart && screen);
+  showTrack(el.remoteVideo, sharing ? screen : cam);
+  showTrack(el.remoteCam, sharing && p.state.cam ? cam : null);
+}
+
+// A video showing this track (or nothing), playing.
+function showTrack(video, track) {
+  const now = (video.srcObject && video.srcObject.getVideoTracks()[0]) || null;
+  if (now === track) return;
+  video.srcObject = track ? new MediaStream([track]) : null;
+  if (track) video.play().catch((err) => trace('video-blocked', { why: (err && err.name) || undefined }));
 }
 
 // (For the call debug log: a player the device won't let play, noted once until it plays again.)
@@ -2517,13 +2585,29 @@ function startStats(conn) {
 // (over the last couple of seconds), and what's holding it back.
 function videoFigures(conn, stats) {
   const v = { out: null, inb: null, remoteIn: null, captured: null, encodeMs: null, held: '' };
+  // (With a camera and a screen both going, the screen's: yours, and the big one you see.)
+  const sender = screenSender(conn) || conn.senders.video;
+  const shown = el.remoteVideo.srcObject && el.remoteVideo.srcObject.getVideoTracks()[0];
+  const midOf = (test) => { try { const t = conn.pc.getTransceivers().find(test); return t ? t.mid : null; } catch { return null; } };
+  const sentMid = sender ? midOf((t) => t.sender === sender) : null;
+  const shownMid = shown ? midOf((t) => t.receiver.track === shown) : null;
+  let anyOut = null;
+  let anyIn = null;
   stats.forEach((r) => {
-    if (r.kind !== 'video') return;
-    if (r.type === 'outbound-rtp' && r.frameWidth) v.out = r;
-    if (r.type === 'inbound-rtp' && r.frameWidth) v.inb = r;
-    if (r.type === 'remote-inbound-rtp') v.remoteIn = r;
+    if (r.kind !== 'video' || !r.frameWidth) return;
+    if (r.type === 'outbound-rtp') {
+      anyOut = r;
+      if (r.mid && r.mid === sentMid) v.out = r;
+    }
+    if (r.type === 'inbound-rtp') {
+      anyIn = r;
+      if (r.mid && r.mid === shownMid) v.inb = r;
+    }
   });
-  if (!(conn.senders.video && conn.senders.video.track)) v.out = null; // (stopped: its figures stay behind)
+  v.out = v.out || anyOut;
+  v.inb = v.inb || anyIn;
+  if (v.out) stats.forEach((r) => { if (r.type === 'remote-inbound-rtp' && r.localId === v.out.id) v.remoteIn = r; });
+  if (!(sender && sender.track)) v.out = null; // (stopped: its figures stay behind)
   const out = v.out;
   const prev = conn.videoPrev || {};
   conn.videoPrev = {};
@@ -2594,6 +2678,8 @@ function closePeer() {
   pc.close();
   fileChannelLost();
   el.remoteVideo.srcObject = null;
+  el.remoteCam.srcObject = null;
+  S.remoteVideos.clear();
   for (const a of S.remoteAudio.values()) { a.srcObject = null; a.remove(); }
   S.remoteAudio.clear();
   for (const b of S.boosts.values()) { b.source.disconnect(); b.gain.disconnect(); }
@@ -2627,6 +2713,9 @@ function renderPeer() {
   updateRingback();
   renderSoundButtons(); // (the soundboard's there once your friend is)
   const p = S.peer;
+  // (Their app shows both videos at once now, or no longer does: what goes out changes to suit.)
+  if (S.conn && S.conn.routedBoth !== undefined && S.conn.routedBoth !== peerShowsBoth()) routeVideo().then(sendState, () => {});
+  placeRemoteVideos();
   const mediaUp = Boolean(S.conn && S.conn.pc.connectionState === 'connected');
   const awayView = Boolean(p && p.away && !mediaUp);
 
@@ -2650,6 +2739,8 @@ function renderPeer() {
     el.ringAgainBtn.hidden = Boolean(left) || !(S.callAnswer || S.resumeCallId);
     el.peerCard.hidden = true;
     el.remoteVideo.hidden = true;
+    el.remoteCam.hidden = true;
+    el.stage.classList.remove('cam-big');
     el.videoLabel.hidden = true;
     el.fullscreenBtn.hidden = true;
     el.popoutBtn.hidden = el.pinBtn.hidden = true;
@@ -2660,6 +2751,14 @@ function renderPeer() {
   const showVideo = !awayView && Boolean(p.state.cam || p.state.screen);
   el.remoteVideo.hidden = !showVideo;
   if (showVideo && el.remoteVideo.paused && el.remoteVideo.srcObject) el.remoteVideo.play().catch(() => {});
+  // (Their camera beside their screen: a tile, or the big one, clicked.)
+  const camToo = showVideo && Boolean(el.remoteCam.srcObject);
+  el.remoteCam.hidden = !camToo;
+  if (!camToo) el.stage.classList.remove('cam-big');
+  if (camToo && el.remoteCam.paused) el.remoteCam.play().catch(() => {});
+  const camBig = el.stage.classList.contains('cam-big');
+  el.remoteCam.title = camBig ? '' : 'Click to see it big';
+  el.remoteVideo.title = camBig ? 'Click to see it big' : '';
   el.peerCard.hidden = showVideo;
   el.peerCard.classList.toggle('away', awayView);
   el.peerAway.hidden = !awayView;
@@ -2668,7 +2767,7 @@ function renderPeer() {
   el.pinBtn.hidden = !showVideo || !canPin();
   if (el.fullscreenBtn.hidden && stageFull()) setStageFull(false);
   el.videoLabel.hidden = !showVideo;
-  el.videoName.textContent = p.state.screen ? `${p.name}'s screen` : p.name;
+  el.videoName.textContent = p.state.screen && !camBig ? `${p.name}'s screen` : p.name;
   el.videoMuted.hidden = Boolean(p.state.mic);
   // (Deafened: headphones crossed out, rather than a mic.)
   for (const badge of [el.peerMuted, el.videoMuted]) {
@@ -2823,11 +2922,17 @@ function renderSelf() {
   } else {
     el.localVideo.srcObject = null;
   }
+  // (Your camera too, while it goes out beside your screen: in the corner of your own tile.)
+  const inset = S.local.screen && S.local.cam && (!S.peer || peerShowsBoth()) ? S.local.cam : null;
+  el.localCam.hidden = !inset;
+  el.selfView.classList.toggle('mirror-cam', Boolean(inset && S.facing !== 'environment'));
+  showTrack(el.localCam, inset);
 }
 
 // Swaps what's big on the stage: your friend (usually), or your own camera or screen.
 function toggleSelfBig(big = !el.stage.classList.contains('self-big')) {
   el.stage.classList.toggle('self-big', big && !el.selfView.hidden);
+  if (el.stage.classList.contains('self-big')) el.stage.classList.remove('cam-big');
   renderSelf();
   renderPeer();
 }
@@ -8819,7 +8924,7 @@ async function onCamChange() {
     const old = S.local.cam;
     S.local.cam = t;
     t.onended = () => { if (S.local.cam === t) toggleCam(); };
-    if (!S.local.screen) await setOutgoingVideo(t);
+    await routeVideo();
     old.stop();
     renderSelf();
   } catch (err) {
@@ -17789,11 +17894,20 @@ async function init() {
     }
   });
   watchPicture(el.remoteVideo);
+  watchPicture(el.remoteCam);
   watchPicture(el.localVideo);
   el.remoteVideo.addEventListener('dblclick', () => el.fullscreenBtn.click());
+  el.remoteCam.addEventListener('dblclick', () => el.fullscreenBtn.click());
   // Click your own camera or screen to see it big; click it (or your friend) again to swap back.
   el.selfView.addEventListener('click', () => toggleSelfBig());
-  el.remoteVideo.addEventListener('click', () => toggleSelfBig(false));
+  el.remoteVideo.addEventListener('click', () => {
+    el.stage.classList.remove('cam-big'); // (their screen, big again)
+    toggleSelfBig(false);
+  });
+  el.remoteCam.addEventListener('click', () => {
+    el.stage.classList.toggle('cam-big', !el.stage.classList.contains('cam-big') || el.stage.classList.contains('self-big'));
+    toggleSelfBig(false);
+  });
   el.peerCard.addEventListener('click', () => toggleSelfBig(false));
 
   el.chatForm.addEventListener('submit', (e) => {
