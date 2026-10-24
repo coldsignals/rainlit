@@ -2740,7 +2740,7 @@ function renderPeer() {
     el.peerCard.hidden = true;
     el.remoteVideo.hidden = true;
     el.remoteCam.hidden = true;
-    el.stage.classList.remove('cam-big');
+    el.stage.classList.remove('cam-big', 'both');
     el.videoLabel.hidden = true;
     el.fullscreenBtn.hidden = true;
     el.popoutBtn.hidden = el.pinBtn.hidden = true;
@@ -2751,9 +2751,11 @@ function renderPeer() {
   const showVideo = !awayView && Boolean(p.state.cam || p.state.screen);
   el.remoteVideo.hidden = !showVideo;
   if (showVideo && el.remoteVideo.paused && el.remoteVideo.srcObject) el.remoteVideo.play().catch(() => {});
-  // (Their camera beside their screen: a tile, or the big one, clicked.)
-  const camToo = showVideo && Boolean(el.remoteCam.srcObject);
+  // (Their camera and their screen, side by side: the one clicked is the big one. Not while your
+  // own's big: then it's theirs in the corner, as ever.)
+  const camToo = showVideo && Boolean(el.remoteCam.srcObject) && !el.stage.classList.contains('self-big');
   el.remoteCam.hidden = !camToo;
+  el.stage.classList.toggle('both', camToo);
   if (!camToo) el.stage.classList.remove('cam-big');
   if (camToo && el.remoteCam.paused) el.remoteCam.play().catch(() => {});
   const camBig = el.stage.classList.contains('cam-big');
