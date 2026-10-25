@@ -1328,6 +1328,23 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .homepage-btn:hover { background-position: 100% 0; transform: translateY(-1px); filter: none; }
 .homepage-btn-icon { flex: none; width: 18px; height: 18px; image-rendering: pixelated; filter: drop-shadow(0 1px 0 rgba(40, 10, 60, 0.45)); }
 .mini-profile .homepage-btn { width: 100%; margin-top: -4px; }
+/* "Updated" (app.js: showPageNew): someone's homepage, changed in the last few days, with a dot
+   in the light, glowing. */
+.page-new {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  padding: 2px 8px 2px 6px; border-radius: 999px;
+  font: 700 11px/1.3 var(--font); letter-spacing: 0.01em; text-shadow: none;
+}
+.page-new[hidden] { display: none; }
+.page-new::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--lamp);
+  box-shadow: 0 0 5px 1px color-mix(in srgb, var(--lamp) 70%, transparent);
+  animation: page-new-glow 2.4s ease-in-out infinite;
+}
+@keyframes page-new-glow { 50% { box-shadow: 0 0 10px 3px color-mix(in srgb, var(--lamp) 55%, transparent); } }
+.homepage-btn .page-new { background: rgba(20, 8, 40, 0.28); color: #fff; }
+.menu .menu-homepage .page-new { background: color-mix(in srgb, var(--lamp) 14%, transparent); color: var(--lamp-text); }
+@media (prefers-reduced-motion: reduce) { .page-new::before { animation: none; } }
 
 /* ----- Cards (app.js: dressCard) -----
    Someone's profile in their colours (top to bottom), with everything on it in words that read on

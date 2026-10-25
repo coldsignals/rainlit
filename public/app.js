@@ -118,7 +118,7 @@ for (const id of [
   'me-btn', 'me-face', 'me-name', 'me-status', 'admin-btn', 'app-settings-btn',
   'home', 'home-title', 'home-text', 'rejoin', 'rejoin-text', 'rejoin-btn', 'history', 'history-list', 'clear-history-btn',
   'dm', 'dm-back', 'dm-who', 'dm-face', 'dm-name', 'dm-sub', 'dm-save', 'dm-call-btn', 'dm-close', 'dm-notice', 'dm-waiting', 'dm-waiting-text', 'dm-waiting-join', 'channel-mute', 'members-toggle', 'member-panel',
-  'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-homepage', 'menu-remove', 'menu-block', 'channel-menu', 'cm-mute',
+  'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-homepage', 'menu-homepage-new', 'menu-remove', 'menu-block', 'channel-menu', 'cm-mute',
   'profile-bday-month', 'profile-bday-day', 'profile-bday-shown', 'mp-birthday',
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'emoji-btn', 'space-emoji', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
   'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
@@ -128,7 +128,7 @@ for (const id of [
   'card-dialog', 'card-preview', 'card-preview-face', 'card-preview-name', 'card-preview-username', 'card-preview-status', 'card-c1', 'card-c2',
   'card-patterns', 'card-glow-patterns-box', 'card-glow-patterns', 'card-fonts', 'card-skies', 'card-glow-skies-box', 'card-glow-skies',
   'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain',
-  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
+  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-homepage-new', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'export-btn', 'export-note', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
@@ -1608,6 +1608,8 @@ function handleServerMessage(msg) {
       return onDoing(msg.id, msg.doing);
     case 'profile':
       return onProfile(msg.user);
+    case 'homepage-changed':
+      return onHomepageChanged(msg);
     case 'friends-changed':
       return refreshFriends();
     case 'call-waiting':
@@ -13487,6 +13489,22 @@ function onPresence(id, presence, doing) {
   if (el.miniProfile.open) renderMiniProfile();
 }
 
+// Someone's homepage, changed after a while unchanged: its buttons say it's just been updated.
+function onHomepageChanged(msg) {
+  const id = String(msg.id || '');
+  for (const p of [S.friends.get(id), S.people.get(id)]) if (p) p.homepageAt = Number(msg.at) || 0;
+  if (el.miniProfile.open && miniProfileId === id) renderMiniProfile();
+  if (!el.menu.hidden && menuFriendId === id) showPageNew(el.menuHomepageNew, S.friends.get(id));
+}
+
+// "Updated", with a glowing dot, on a button to someone's homepage, if it changed in the last 3
+// days (the server only says when, if it did: lib/homepages.js, recentFor).
+function showPageNew(node, p) {
+  const on = Boolean(p && p.homepageAt && Date.now() - p.homepageAt < 3 * 86_400_000);
+  node.hidden = !on;
+  node.title = on ? `Updated ${hitWhen(p.homepageAt).replace(/^(Today|Yesterday)/, (w) => w.toLowerCase())}` : '';
+}
+
 function onProfile(user) {
   const known = S.people.get(user.id);
   if (known) Object.assign(known, user);
@@ -14050,6 +14068,7 @@ function openFriendMenu(friendId, x, y, opener = null) {
   el.menuCall.title = el.menuCall.disabled ? 'Leave your current call first' : '';
   el.menuRemove.textContent = 'Remove friend';
   delete el.menuRemove.dataset.confirm;
+  showPageNew(el.menuHomepageNew, S.friends.get(friendId));
   el.menu.hidden = false;
   // Next to the pointer, but never off the edge of the screen.
   const r = el.menu.getBoundingClientRect();
@@ -14923,6 +14942,7 @@ function renderMiniProfile() {
   el.mpEdit.hidden = !self;
   el.mpHomepageText.textContent = self ? 'Your homepage' : `${p.displayName}'s homepage`;
   el.mpHomepage.hidden = blocked;
+  showPageNew(el.mpHomepageNew, self || blocked ? null : p);
   renderProfilePet(id, self, blocked);
   if (f) {
     const here = S.inCall && S.callWith === f.id;

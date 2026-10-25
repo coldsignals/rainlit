@@ -1035,7 +1035,8 @@ api.get('/friends', needUser, (req, res) => {
   for (const c of people.connectionsOf(req.user.id)) {
     const u = people.publicUser(c.user);
     if (c.kind === 'friend') {
-      out.friends.push({ ...u, presence: realtime.presenceOf(u.id), doing: realtime.doingOf(u.id), dm: convos[u.id] || { save: true, unread: 0, readAt: 0, lastAt: 0 } });
+      const pageAt = homepages.recentFor(req.user, c.user); // (their homepage, if it's just been updated)
+      out.friends.push({ ...u, presence: realtime.presenceOf(u.id), doing: realtime.doingOf(u.id), dm: convos[u.id] || { save: true, unread: 0, readAt: 0, lastAt: 0 }, ...(pageAt ? { homepageAt: pageAt } : {}) });
     } else {
       out[c.kind].push(u);
     }
@@ -1317,7 +1318,8 @@ api.get('/users/:id', needUser, (req, res) => {
   // (What they're doing, for their friends and the people in their spaces: not for someone whose
   // friend request is still waiting, as it'd say they're online.)
   const doing = friends || u.id === req.user.id || spaces.shareSpace(req.user.id, u.id) ? realtime.doingOf(u.id) : null;
-  res.json({ user: { ...people.publicUser(u), presence, doing } });
+  const pageAt = u.id !== req.user.id && homepages.recentFor(req.user, u); // (their homepage, if it's just been updated)
+  res.json({ user: { ...people.publicUser(u), presence, doing, ...(pageAt ? { homepageAt: pageAt } : {}) } });
 });
 
 // ----- Homepages -----
@@ -1343,10 +1345,20 @@ api.get('/homepages/:who', (req, res) => {
   res.json(homepages.forViewer(owner, page, req.user));
 });
 
-// Your page (the whole thing, each time it changes), and who can see it.
+// Your page (the whole thing, each time it changes), and who can see it. Changed after an hour or
+// more unchanged, everyone who can see it (and has Rainlit open) is told, so theirs says it's just
+// been updated (lib/homepages.js: recentFor).
 api.put('/homepages/me', needUser, (req, res) => {
   const b = req.body || {};
+  const was = homepages.changedAt(req.user.id);
   const page = homepages.save(req.user.id, b.doc, b.visibility);
+  if (page.doc && page.updatedAt - was > 3_600_000) {
+    const msg = { type: 'homepage-changed', id: req.user.id, at: page.updatedAt };
+    for (const id of new Set([...people.friendIdsOf(req.user.id), ...spaces.coMembersOf(req.user.id)])) {
+      const viewer = realtime.isOnline(id) && people.userById(id);
+      if (viewer && homepages.canView(viewer, req.user, page.visibility)) realtime.sendToUser(id, msg);
+    }
+  }
   res.json(homepages.forViewer(req.user, page, req.user));
 });
 
