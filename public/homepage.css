@@ -565,30 +565,37 @@ a.hp-piece:focus-visible, .hp-pops:focus-visible { outline: 3px solid #f5b94a; o
 .hp-music-plain .hp-play { width: 70cqh; height: 70cqh; }
 
 /* ----- Shelves ----- */
-/* Covers stand on the plank (its top is at 72% of the piece's height), their tags hang under it. */
+/* Covers stand on the plank (its top is at 72% of the piece's height), their tags hang under it.
+   Each one's as wide as its cover or its name, whichever's wider, while there's room; on a full
+   shelf the room's shared out evenly (what one doesn't need goes to the rest), covers get smaller
+   to fit, and names take two lines, then end in "...". */
 .hp-shelf, .hp-button { container-type: size; }
 .hp-shelf-row {
   position: absolute; left: 3cqw; right: 3cqw; top: 3cqh; bottom: 0;
-  display: flex; align-items: flex-start; justify-content: center; gap: 3cqw;
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, max-content);
+  align-items: start; justify-content: center; gap: 3cqw;
 }
 .hp-shelf-item { display: flex; flex-direction: column; align-items: center; min-width: 0; color: inherit; text-decoration: none; }
-.hp-cover { display: flex; align-items: flex-end; justify-content: center; height: 69cqh; }
+.hp-cover { display: flex; align-items: flex-end; justify-content: center; height: 69cqh; max-width: 100%; }
 .hp-cover img {
-  width: auto; height: auto; max-height: 100%; max-width: 24cqw;
+  width: auto; height: auto; max-height: 100%; max-width: min(24cqw, 100%);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 8px 14px -8px rgba(0, 0, 0, 0.7);
   border-radius: 2px;
 }
 a.hp-shelf-item:hover .hp-cover img { transform: translateY(-3px); transition: transform 0.15s; }
 .hp-tag {
-  width: 0; min-width: 100%; box-sizing: border-box;
-  margin-top: 10cqh; padding: 1.5cqh 1.5cqw;
+  position: relative; z-index: 1; /* (in front of the shelf's brackets) */
+  align-self: stretch; box-sizing: border-box;
+  margin-top: 9cqh; padding: 1.5cqh 1.5cqw;
   background: #fff4d2; color: #3b2f25;
   border-radius: 2px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  font: 400 max(9px, 8cqh)/1.1 "Pixelify Sans", sans-serif; text-align: center;
-  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font: 400 max(9px, 8cqh)/1 "Pixelify Sans", sans-serif; text-align: center;
+  overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
 }
-.hp-tag:empty, .hp-no-tags .hp-tag { visibility: hidden; }
+.hp-tag:empty { visibility: hidden; }
+.hp-no-tags .hp-tag { display: none; }
 .hp-shelf-hint { align-self: center; margin-top: 20cqh; padding: 2cqh 4cqw; background: rgba(255, 255, 255, 0.85); color: #3b2f25; border-radius: 999px; font: 600 max(11px, 9cqh)/1.2 "Bricolage Grotesque", sans-serif; }
 .hp-plank { position: absolute; left: 0; right: 0; top: 72cqh; height: 7cqh; }
 .hp-shelf-wood .hp-plank {
