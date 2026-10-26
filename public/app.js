@@ -4766,6 +4766,7 @@ function dmFor(friendId) {
     log.addEventListener('scroll', () => {
       if (log.scrollTop < 120) loadOlder(dm);
       else if (dm.detached && log.scrollHeight - log.scrollTop - log.clientHeight < 300) loadNewer(dm);
+      if (S.openDm === dm.friendId) renderJumpBar();
     });
     // A name above messages (or the picture beside them) opens that person's profile.
     log.addEventListener('click', (e) => {
@@ -5546,9 +5547,13 @@ async function jumpToNewest(dm) {
   if (S.openDm === dm.friendId) markDmSeen(dm);
 }
 
+// "Jump to the newest": looking at older messages, after jumping to one (the conversation's
+// detached from its newest), or scrolled up a screen or more from them.
 function renderJumpBar() {
   const dm = S.openDm && S.dms.get(S.openDm);
-  el.jumpPresent.hidden = !(dm && dm.detached && !dm.log.hidden);
+  const log = dm && dm.log;
+  const away = Boolean(log) && !log.hidden && (dm.detached || log.scrollHeight - log.scrollTop - log.clientHeight > Math.max(400, log.clientHeight));
+  el.jumpPresent.hidden = !away;
 }
 
 // Adds something to the end of a conversation, with a day heading if it's a new day.

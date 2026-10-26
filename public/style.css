@@ -1194,17 +1194,26 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .search-note { padding: 28px 18px; color: var(--mist); font-size: 14px; text-align: center; line-height: 1.45; }
 .search-more { display: block; margin: 6px auto 0; }
 
-/* Looking at older messages (jumped to one): back to the newest. */
+/* Looking at older messages (jumped to one, or scrolled a long way up): back to the newest. It
+   floats over the bottom of the messages, so nothing moves as it comes and goes. */
+.jump-float { position: relative; flex: none; height: 0; z-index: 3; }
 .jump-present {
-  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin: 2px 14px 6px; padding: 5px 6px 5px 14px;
+  position: absolute; left: 14px; right: 14px; bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 5px 6px 5px 14px;
   background: color-mix(in srgb, var(--lamp) 12%, var(--dusk));
   border: 1px solid color-mix(in srgb, var(--lamp) 35%, transparent); border-radius: 10px;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
   font-size: 13px; color: var(--mist);
 }
 .jump-present[hidden] { display: none; }
 .jump-present .text-btn { display: inline-flex; align-items: center; gap: 4px; color: var(--lamp-text); font-weight: 700; white-space: nowrap; }
 .jump-present .icon { width: 15px; height: 15px; }
+/* (On a phone: just the button, a pill in the middle.) */
+@media (max-width: 560px) {
+  .jump-present { left: 50%; right: auto; transform: translateX(-50%); padding: 4px 8px; border-radius: 999px; }
+  .jump-present > span { display: none; }
+}
 
 .home { height: 100%; overflow-y: auto; display: grid; place-items: center; padding: 24px; }
 .home-inner { width: min(460px, 100%); text-align: center; }
