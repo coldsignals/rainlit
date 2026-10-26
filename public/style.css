@@ -2259,6 +2259,11 @@ a.embed-author:hover .embed-name { text-decoration: underline; }
 .msg-react { font-size: 17px; line-height: 1; }
 .msg-react .emoji-img { width: 20px; height: 20px; vertical-align: middle; }
 .msg-more .icon, .msg-react-more .icon { width: 17px; height: 17px; }
+/* Shift held (app.js: shiftHeld): a bin, which deletes without asking. */
+.msg-tools .msg-bin { display: none; color: var(--danger-text); }
+.shift-held .msg-tools .msg-bin { display: inline-grid; }
+.msg-tools .msg-bin:hover, .msg-tools .msg-bin:focus-visible { background: var(--danger-soft); color: var(--danger-text); }
+.msg-bin .icon { width: 17px; height: 17px; }
 .chat-log li.menu-open { background: color-mix(in srgb, var(--text) 4%, transparent); border-radius: 8px; }
 /* Phones: long-press a message instead (and don't start selecting text). */
 @media (hover: none) {

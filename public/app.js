@@ -3944,7 +3944,30 @@ function addMessageMenu(li) {
     });
     tools.append(btn);
   }
+  // (With Shift held, a bin too: it deletes it at once, without asking.)
+  if (messageActions(li).includes('delete')) {
+    const bin = document.createElement('button');
+    bin.type = 'button';
+    bin.className = 'msg-bin';
+    bin.title = 'Delete, without being asked';
+    bin.setAttribute('aria-label', 'Delete');
+    bin.innerHTML = '<svg class="icon"><use href="#i-trash"/></svg>';
+    bin.addEventListener('click', () => deleteNow(li));
+    tools.append(bin);
+  }
   li.append(tools);
+}
+
+// Holding Shift: a message's hover toolbar has a bin, and the menu's Delete doesn't ask.
+function shiftHeld(on) {
+  document.documentElement.classList.toggle('shift-held', on);
+}
+
+// Deleted at once, without asking (Shift held).
+function deleteNow(li) {
+  closeMessageMenu();
+  if (li.dataset.from === 'me') deleteMine(li);
+  else if (canModerateMessages(li)) deleteAsModerator(li);
 }
 
 function quickReactButton(li, emoji) {
@@ -4253,15 +4276,15 @@ function onMessageMenuCopy() {
   if (text) copyText(text, li.dataset.kind === 'gif' ? 'GIF link copied.' : 'Copied.');
 }
 
-function onMessageMenuDelete() {
+function onMessageMenuDelete(e) {
   const li = msgMenuLi;
   if (!li) return;
-  // The first press asks, the second deletes.
+  // The first press asks, the second deletes (or the first, with Shift held).
   const mine = li.dataset.from === 'me';
-  if (!el.msgDelete.dataset.confirm) {
+  if (!el.msgDelete.dataset.confirm && !(e && e.shiftKey)) {
     el.msgDelete.dataset.confirm = '1';
     el.msgDelete.textContent = !mine ? `Delete ${friendName(li.dataset.author)}'s message?`
-      : li.dataset.channel ? 'Delete for everyone?' : 'Delete for both of you?';
+      : li.dataset.channel ? 'Delete for everyone?' : isNotes(S.openDm) ? 'Delete from your notes?' : 'Delete for both of you?';
     return;
   }
   closeMessageMenu();
@@ -4655,11 +4678,14 @@ function onDmEdited({ dm: dmId, id, text, editedAt, mentions, everyone }) {
 async function deleteMine(li) {
   const id = li.dataset.id;
   if (li.dataset.from !== 'me' || li.classList.contains('removed')) return;
+  const dm = [...S.dms.values()].find((d) => d.log.contains(li));
   // Still uploading: just stop, and it's as if it was never sent.
   const upload = S.uploads.get(id);
   if (upload) {
     upload.abort();
-    return li.remove();
+    li.remove();
+    if (dm) tidyLog(dm);
+    return;
   }
   // Sent straight to your friend during a call (saving off): tell them through the call.
   const t = S.transfers.get(id);
@@ -4669,14 +4695,13 @@ async function deleteMine(li) {
     wsSend({ type: 'delete', id });
     return showRemoved(li, 'You removed a file');
   }
-  const dm = [...S.dms.values()].find((d) => d.log.contains(li));
   if (!dm) return;
   const what = li.classList.contains('file-msg') ? 'a file' : 'a message'; // before the server's own notice replaces it
   try {
     await api('DELETE', `${convPath(dm.friendId)}/messages/${id}`);
     if (isNotes(dm.friendId)) {
       li.remove();
-      regroup(dm.log);
+      tidyLog(dm);
     } else {
       showRemoved(li, `You removed ${what}`);
     }
@@ -5717,6 +5742,24 @@ function regroup(log) {
   }
 }
 
+// After messages are taken out: a day's heading with nothing left under it goes, and so does a
+// "new messages" line with nothing after it. The conversation's first and last days are its
+// messages' again, so the next one sent today has its "Today" heading.
+function tidyLog(dm) {
+  const kids = [...dm.log.children];
+  const said = (li) => !li.classList.contains('day') && !li.classList.contains('new-divider');
+  if (dm.divider && !kids.slice(kids.indexOf(dm.divider.el) + 1).some(said)) clearNewDivider(dm);
+  for (const [i, li] of kids.entries()) {
+    if (!li.classList.contains('day')) continue;
+    const next = kids.slice(i + 1).find((x) => x.isConnected && !x.classList.contains('new-divider'));
+    if (!next || next.classList.contains('day')) li.remove();
+  }
+  const dated = [...dm.log.children].filter((li) => li.dataset.at && said(li));
+  dm.firstDay = dated.length ? dayKey(Number(dated[0].dataset.at)) : '';
+  dm.lastDay = dated.length ? dayKey(Number(dated.at(-1).dataset.at)) : '';
+  regroup(dm.log);
+}
+
 // ----- Sending -----
 
 // Sends a message. If the server's briefly away (restarting for an update, or a blip in the
@@ -6022,7 +6065,7 @@ function onDmGone({ dm: dmId, ids, notes }) {
     const li = dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`);
     if (li) li.remove();
   }
-  regroup(dm.log);
+  tidyLog(dm);
   for (const id of ids) refreshQuotes(id);
 }
 
@@ -17973,6 +18016,10 @@ async function init() {
     saveUrl(a.getAttribute('href'), a.download || 'file', (li && li.dataset.type) || '');
   }, true);
   el.msgDelete.addEventListener('click', onMessageMenuDelete);
+  addEventListener('keydown', (e) => { if (e.key === 'Shift') shiftHeld(true); });
+  addEventListener('keyup', (e) => { if (e.key === 'Shift') shiftHeld(false); });
+  addEventListener('pointermove', (e) => shiftHeld(e.shiftKey), { passive: true }); // (pressed while elsewhere)
+  addEventListener('blur', () => shiftHeld(false));
   el.editCancel.addEventListener('click', () => { stopEdit(); el.chatInput.focus(); });
   if (newLineOnEnter()) el.editHint.textContent = 'Editing your message. Send saves it.';
   // Sending leaves you in the message box (on a phone, the keyboard stays up).
