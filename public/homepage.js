@@ -489,8 +489,11 @@
   // after it takes back, so anything quieter than the ceiling comes out as it went in.
   const LIMIT = { threshold: -14, knee: 0, ratio: 20, attack: 0.003, release: 0.25 };
   const AFTER = 0.51;
-  function soundOn(media, fade = 0.8) {
-    if (media.hpSound || media.hpWaiting) return;
+  // (level: how loud it's turned, 0 to 1 of as loud as the limiter lets it be: a song's slider.)
+  function soundOn(media, fade = 0.8, level = 1) {
+    if (media.hpSound) return void levelOf(media, level);
+    media.hpLevel = level;
+    if (media.hpWaiting) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
     // (Made now, in the click that asked for the sound: browsers let it start then.)
     if (Ctx && !media.hpPlain) {
@@ -508,11 +511,17 @@
         const limiter = soundCtx.createDynamicsCompressor();
         for (const [k, v] of Object.entries(LIMIT)) limiter[k].value = v;
         const gain = soundCtx.createGain();
+        // (What a song's visualizer looks at: the sound as the limiter lets it out, before it's
+        // turned up or down, so a song turned down low still shows.)
+        const analyser = soundCtx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.75;
         const t = soundCtx.currentTime;
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(AFTER, t + fade);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, AFTER * media.hpLevel), t + fade);
         source.connect(limiter).connect(gain).connect(soundCtx.destination);
-        media.hpSound = { ctx: soundCtx, source, limiter, gain };
+        limiter.connect(analyser);
+        media.hpSound = { ctx: soundCtx, source, limiter, gain, analyser };
         media.volume = 1;
       } catch {
         softly(media, fade);
@@ -525,18 +534,73 @@
     media.addEventListener('loadedmetadata', limit, { once: true });
   }
 
-  // Without the limiter: half volume, faded in.
+  // Without the limiter: half volume (of its level), faded in.
   function softly(media, fade = 0.8) {
     if (media.hpSound) return;
-    media.hpSound = { soft: true };
+    const s = (media.hpSound = { soft: true, fading: true });
     const start = performance.now();
     media.volume = 0;
     const step = () => {
       const k = Math.min(1, (performance.now() - start) / (fade * 1500));
-      media.volume = 0.5 * k;
+      media.volume = 0.5 * k * (media.hpLevel ?? 1);
       if (k < 1) requestAnimationFrame(step);
+      else s.fading = false;
     };
     requestAnimationFrame(step);
+  }
+
+  // Turned up or down, now (level: as for soundOn).
+  function levelOf(media, level) {
+    media.hpLevel = level;
+    const s = media.hpSound;
+    if (!s) return;
+    if (s.gain) {
+      const g = s.gain.gain;
+      const t = s.ctx.currentTime;
+      if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(t);
+      else {
+        const now = g.value;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(now, t);
+      }
+      g.setTargetAtTime(Math.max(0.0001, AFTER * level), t, 0.05);
+    } else if (s.soft && !s.fading) {
+      media.volume = 0.5 * level;
+    }
+  }
+
+  // ---------- Songs: how loud, and whether one starts by itself ----------
+  // The listener's, on this device (kept as the app keeps its settings: app.js, store). A song's as
+  // loud as a player's slider was last set, on any page: a quarter, to start with. The app's
+  // Settings can stop songs starting by themselves.
+  const pref = (k, fallback) => {
+    try {
+      return localStorage.getItem(`rainlit.${k}`) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  function songVolume() {
+    const v = Number(pref('hpVolume', '25'));
+    return Number.isFinite(v) ? Math.min(100, Math.max(0, v)) / 100 : 0.25;
+  }
+  function setSongVolume(v) {
+    try {
+      localStorage.setItem('rainlit.hpVolume', String(Math.round(v * 100)));
+    } catch {}
+    for (const a of document.querySelectorAll('.hp-music audio')) levelOf(a, v);
+    for (const r of document.querySelectorAll('.hp-vol')) showVolume(r, v);
+  }
+  // Every song stops (a video's sound is starting, or a call).
+  function songsOff() {
+    for (const a of document.querySelectorAll('.hp-music audio')) a.pause();
+  }
+
+  function showVolume(range, v) {
+    const pct = Math.round(v * 100);
+    if (Number(range.value) !== pct) range.value = String(pct);
+    range.style.setProperty('--vol', `${pct}%`);
+    range.title = `Volume: ${pct}%`;
   }
 
   // A video of the owner's. On the page it plays without its sound, over and over like a GIF,
@@ -587,6 +651,7 @@
       e.stopPropagation();
       if (video.muted || video.paused) {
         video.hpStopped = false;
+        songsOff(); // (one sound at a time: a song playing stops)
         soundOn(video);
         video.muted = false;
         video.play().catch(() => {});
@@ -690,6 +755,7 @@
     video.playsInline = true;
     video.poster = NO_POSTER;
     loadSound(video, ctx.fileUrl(p.pop));
+    songsOff(); // (one sound at a time: a song playing stops)
     soundOn(video);
     const paused = () => win.classList.toggle('hp-popup-paused', video.paused);
     video.addEventListener('click', () => (video.paused ? video.play().catch(() => {}) : video.pause()));
@@ -1345,33 +1411,124 @@
     const bars = document.createElement('span');
     bars.className = 'hp-bars';
     bars.setAttribute('aria-hidden', 'true');
-    for (let i = 0; i < 4; i++) bars.append(document.createElement('i'));
+    for (let i = 0; i < 7; i++) bars.append(document.createElement('i'));
+    // How loud: the same on every player, on every page, for whoever's listening.
+    const vol = document.createElement('input');
+    vol.type = 'range';
+    vol.className = 'hp-vol';
+    vol.min = '0';
+    vol.max = '100';
+    vol.step = '1';
+    vol.setAttribute('aria-label', 'Volume');
+    vol.disabled = ctx.edit;
+    showVolume(vol, songVolume());
+    vol.addEventListener('input', () => setSongVolume(Number(vol.value) / 100));
+    vol.addEventListener('click', (e) => e.stopPropagation());
     if (p.style === 'cassette') {
       const reels = document.createElement('span');
       reels.className = 'hp-reels';
       reels.setAttribute('aria-hidden', 'true');
-      reels.append(document.createElement('i'), document.createElement('i'));
-      node.append(inside(title, reels, play), audio);
+      reels.append(document.createElement('i'), bars, document.createElement('i'));
+      node.append(inside(title, reels, vol, play), audio);
     } else {
-      node.append(inside(play, title, bars), audio);
+      const mid = document.createElement('span');
+      mid.className = 'hp-mid';
+      mid.append(title, vol);
+      node.append(inside(play, mid, bars), audio);
     }
+    // (One song at a time.)
+    const start = () => {
+      for (const other of document.querySelectorAll('.hp-music audio')) if (other !== audio) other.pause();
+      if (soundCtx && soundCtx.state === 'suspended') soundCtx.resume().catch(() => {});
+      soundOn(audio, 0.8, songVolume());
+      return audio.play();
+    };
+    node.hpStart = start; // (and if it's the page's first song: firstSongStarts)
+    node.hpAuto = p.auto !== false;
     play.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (audio.paused) {
-        for (const other of document.querySelectorAll('.hp-music audio')) if (other !== audio) other.pause();
-        soundOn(audio);
-        audio.play().catch(() => {});
-      } else {
-        audio.pause();
-      }
+      if (audio.paused) start().catch(() => {});
+      else audio.pause();
     });
     audio.addEventListener('play', () => {
       node.classList.add('hp-playing');
       play.setAttribute('aria-label', 'Pause');
     });
+    audio.addEventListener('playing', () => visualize(node, audio, bars));
     audio.addEventListener('pause', () => {
       node.classList.remove('hp-playing');
       play.setAttribute('aria-label', 'Play');
+      stillBars(node, bars);
+    });
+  }
+
+  // While a song plays, its bars go with it and its player glows with it (so it's easy to find, to
+  // turn it down or off): from the sound as the limiter lets it out. Without the limiter (R2's not
+  // letting the page read it), the bars dance by themselves, as they always have, and the glow
+  // breathes. Someone who'd rather things didn't move sees still bars and a steady glow.
+  function visualize(node, audio, bars) {
+    cancelAnimationFrame(node.hpViz);
+    const an = audio.hpSound && audio.hpSound.analyser;
+    const live = Boolean(an) && !calmMotion();
+    node.classList.toggle('hp-live', live);
+    if (!live) return;
+    const data = new Uint8Array(an.frequencyBinCount);
+    const kids = [...bars.children];
+    // (Each bar a band of it, low to high, wider as they go up, as hearing goes.)
+    const top = data.length * 0.6;
+    const edges = kids.map((_, i) => Math.round(top ** (i / kids.length))).concat(Math.round(top));
+    let glow = 0.35;
+    const step = () => {
+      if (audio.paused || !node.isConnected) return;
+      an.getByteFrequencyData(data);
+      let sum = 0;
+      kids.forEach((bar, i) => {
+        let peak = 0;
+        for (let k = edges[i]; k < Math.max(edges[i] + 1, edges[i + 1]); k++) peak = Math.max(peak, data[k]);
+        const h = Math.max(0.15, (peak / 255) ** 1.6);
+        bar.style.height = `${Math.round(h * 100)}%`;
+        sum += h;
+      });
+      glow = glow * 0.85 + (sum / kids.length) * 0.15;
+      node.style.setProperty('--level', glow.toFixed(3));
+      node.hpViz = requestAnimationFrame(step);
+    };
+    node.hpViz = requestAnimationFrame(step);
+  }
+
+  function stillBars(node, bars) {
+    cancelAnimationFrame(node.hpViz);
+    node.classList.remove('hp-live');
+    node.style.removeProperty('--level');
+    for (const bar of bars.children) bar.style.height = '';
+  }
+
+  // A page's first song (of those its owner lets start by themselves) starts when the page is
+  // shown, as loud as the listener's slider says (a quarter, to start with). Not if they'd rather
+  // songs didn't (the app's Settings), or have turned them all the way down, or are in a call
+  // (opts.quiet). A browser won't let sound start on a page nothing's been pressed on yet (one
+  // opened from a link): then it starts at the first press anywhere, unless that's on a player
+  // (which is pressed to do something of its own).
+  function firstSongStarts(page, canvas, opts) {
+    if (opts.quiet || pref('hpAutoplay', 'on') === 'off' || !songVolume()) return;
+    const first = [...canvas.querySelectorAll(':scope > .hp-music')].filter((n) => n.hpAuto)
+      .sort((a, b) => parseFloat(a.style.top) - parseFloat(b.style.top) || parseFloat(a.style.left) - parseFloat(b.style.left))[0];
+    if (!first) return;
+    first.hpStart().catch(() => {
+      const quit = () => {
+        removeEventListener('pointerdown', once, true);
+        removeEventListener('keydown', once, true);
+        page.hpUnwait = null;
+      };
+      const once = (e) => {
+        if (e.key === 'Escape') return;
+        quit();
+        if (!first.isConnected || (e.target.closest && e.target.closest('.hp-music'))) return;
+        first.hpStart().catch(() => {});
+      };
+      addEventListener('pointerdown', once, true);
+      addEventListener('keydown', once, true);
+      page.hpUnwait = quit;
     });
   }
 
@@ -1515,6 +1672,7 @@
   // Everything playing on the page stops (it's closing, or being drawn again): its songs, its pet,
   // and its effects.
   function hush(page) {
+    if (page.hpUnwait) page.hpUnwait();
     for (const a of page.querySelectorAll('audio')) a.pause();
     for (const v of page.querySelectorAll('video')) {
       v.pause();
@@ -3328,6 +3486,7 @@
     stage.append(canvas);
     room.append(sky, stage);
     page.append(room);
+    if (!ctx.edit) firstSongStarts(page, canvas, opts);
     // Pieces can reach past the page's 800px, and below it. On a screen wide enough, the page is
     // centered as it was made, with those showing around it. On a narrower one, everything is
     // shown: all of it, scaled down to fit. (Times the zoom, from pinching.) The top is the
@@ -3482,6 +3641,8 @@
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
     COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
+    // (a call's starting: any song playing stops)
+    songsOff,
     // (a piece's video popped up, or its sound played, to try: the editor)
     popVideo, closeTopPopup, playSound,
     petEl, petRoom, petMeters, fullWords, happyWords,

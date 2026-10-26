@@ -520,16 +520,49 @@ a.hp-piece:focus-visible, .hp-pops:focus-visible { outline: 3px solid #f5b94a; o
 }
 .hp-playing .hp-play::before { width: 19cqh; height: 22cqh; margin: 0; border: 0; background: linear-gradient(90deg, currentColor 34%, transparent 34% 66%, currentColor 66%); }
 .hp-song { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; font: 600 30cqh/1.2 "Pixelify Sans", sans-serif; }
+/* The song's name, and under it how loud it is (app: homepage.js, setSongVolume). */
+.hp-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4cqh; }
+.hp-mid .hp-song { flex: none; }
+.hp-vol {
+  -webkit-appearance: none; appearance: none;
+  display: block; width: 100%; height: max(12px, 16cqh); margin: 0; padding: 0;
+  background: transparent; cursor: pointer;
+  --track: max(3px, 5cqh); --knob: max(11px, 16cqh);
+}
+.hp-vol::-webkit-slider-runnable-track {
+  height: var(--track); border-radius: 999px;
+  background: linear-gradient(90deg, var(--tint) var(--vol, 25%), color-mix(in srgb, var(--tint) 28%, transparent) var(--vol, 25%));
+}
+.hp-vol::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: var(--knob); height: var(--knob); margin-top: calc((var(--track) - var(--knob)) / 2);
+  background: #fff; border: 2px solid var(--tint); border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.hp-vol::-moz-range-track { height: var(--track); border-radius: 999px; background: color-mix(in srgb, var(--tint) 28%, transparent); }
+.hp-vol::-moz-range-progress { height: var(--track); border-radius: 999px; background: var(--tint); }
+.hp-vol::-moz-range-thumb { box-sizing: border-box; width: var(--knob); height: var(--knob); background: #fff; border: 2px solid var(--tint); border-radius: 50%; }
+.hp-vol:focus-visible { outline: 2px solid var(--tint); outline-offset: 3px; border-radius: 999px; }
+.hp-vol:disabled { pointer-events: none; }
 .hp-song span { display: inline-block; }
 .hp-playing .hp-song span { animation: hp-song 10s linear infinite alternate; }
 @keyframes hp-song { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(min(0px, calc(-100% + 40cqw))); } }
-.hp-bars { display: flex; align-items: flex-end; gap: 3cqh; flex: none; height: 42cqh; }
-.hp-bars i { width: 6cqh; height: 30%; background: var(--tint); border-radius: 2px; }
+.hp-bars { display: flex; align-items: flex-end; gap: 2.4cqh; flex: none; height: 42cqh; }
+.hp-bars i { width: 4.6cqh; height: 30%; background: var(--tint); border-radius: 2px; }
 .hp-playing .hp-bars i { animation: hp-eq 0.9s ease-in-out infinite; }
 .hp-playing .hp-bars i:nth-child(2) { animation-delay: -0.3s; }
 .hp-playing .hp-bars i:nth-child(3) { animation-delay: -0.6s; }
 .hp-playing .hp-bars i:nth-child(4) { animation-delay: -0.15s; }
+.hp-playing .hp-bars i:nth-child(5) { animation-delay: -0.45s; }
+.hp-playing .hp-bars i:nth-child(6) { animation-delay: -0.75s; }
+.hp-playing .hp-bars i:nth-child(7) { animation-delay: -0.2s; }
 @keyframes hp-eq { 0%, 100% { height: 25%; } 50% { height: 100%; } }
+/* Playing: the bars go with the song itself (homepage.js: visualize), and the player glows with
+   it, so it's easy to find; without the song to listen to, the glow breathes. */
+.hp-live .hp-bars i { animation: none; transition: height 70ms linear; }
+.hp-music.hp-playing .hp-in { filter: drop-shadow(0 0 calc(3px + var(--level, 0.35) * 16px) color-mix(in srgb, var(--tint) 80%, transparent)); }
+.hp-music.hp-playing:not(.hp-live) .hp-in { animation: hp-glow 1.8s ease-in-out infinite; }
+@keyframes hp-glow { 50% { filter: drop-shadow(0 0 14px color-mix(in srgb, var(--tint) 85%, transparent)); } }
 .hp-music-tunebox .hp-in {
   padding: 0 6cqw 0 18cqh;
   background: linear-gradient(#2e2545, #19142a); color: #fff;
@@ -549,13 +582,16 @@ a.hp-piece:focus-visible, .hp-pops:focus-visible { outline: 3px solid #f5b94a; o
   background: #fff8e8; border-top: 5cqh solid var(--tint); border-radius: 2cqh;
   font: 400 15cqh/1.2 Caveat, cursive; text-align: center;
 }
-.hp-reels { display: flex; gap: 22cqw; padding: 3cqh 8cqw; background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
-.hp-reels i {
+.hp-reels { display: flex; align-items: center; gap: 5cqw; padding: 3cqh 8cqw; background: rgba(255, 255, 255, 0.08); border-radius: 999px; }
+.hp-music-cassette .hp-bars { justify-content: center; width: 12cqw; height: 18cqh; gap: 1.5cqh; }
+.hp-music-cassette .hp-bars i { width: 2.4cqh; }
+.hp-music-cassette .hp-vol { position: absolute; left: 9cqw; right: calc(5cqw + 22cqh + 4cqw); bottom: 6cqh; width: auto; height: max(12px, 10cqh); --track: max(3px, 2.6cqh); --knob: max(10px, 7.5cqh); }
+.hp-reels > i {
   width: 26cqh; height: 26cqh;
   background: repeating-conic-gradient(#f4efe6 0 30deg, #b9b2a6 30deg 60deg);
   border: 3cqh solid #0e0b12; border-radius: 50%;
 }
-.hp-playing .hp-reels i { animation: hp-spin 2.4s linear infinite; }
+.hp-playing .hp-reels > i { animation: hp-spin 2.4s linear infinite; }
 @keyframes hp-spin { to { transform: rotate(360deg); } }
 .hp-music-cassette .hp-play { position: absolute; right: 5cqw; bottom: 6cqh; width: 22cqh; height: 22cqh; }
 .hp-music-cassette .hp-play::before { margin-left: 2cqh; border-left-width: 8cqh; border-top-width: 5cqh; border-bottom-width: 5cqh; }
@@ -1040,7 +1076,7 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   .hp-fx-shimmer .hp-ink, .hp-fx-lamplight .hp-ink, .hp-frame-neon,
   .hp-sky::before, .hp-sky::after, .hp-sky i, .hp-backdrop i, .hp-ball-mist, .hp-asking .hp-ball,
   .hp-pet *, .hp-pet-bit,
-  .hp-playing .hp-bars i, .hp-playing .hp-reels i, .hp-playing .hp-song span { animation: none !important; }
+  .hp-playing .hp-bars i, .hp-playing .hp-reels > i, .hp-playing .hp-song span, .hp-music.hp-playing .hp-in { animation: none !important; }
   .hp-fx-marquee .hp-ink { padding-left: 0; }
 }
 

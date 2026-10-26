@@ -122,7 +122,7 @@
     const top = page.scrollTop;
     const doc = state.trying ? tried() : state.doc;
     const { owner, views, pet, mine } = state.data;
-    state.mounted = H.mount(page, { owner, doc, views, pet, mine }, { edit: state.editing, report: app.report });
+    state.mounted = H.mount(page, { owner, doc, views, pet, mine }, { edit: state.editing, report: app.report, quiet: Boolean(app.inCall && app.inCall()) });
     page.scrollTop = top;
     if (state.editing) drawPicked();
   }
@@ -966,7 +966,7 @@
       ...(supporter() || glowOffered() ? [el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, glowItem('fortune', 'Fortune ball', 'The fortune ball', {
         t: 'fortune', color: '#b98bff', label: 'ask me something, then click me', answers: [], w: 200, h: 250,
       })), tryingNow('piece:')))] : []),
-      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB, and only play when a visitor presses play. A shelf shows off favourite games, music or shows by their covers. A friend button (like the old web\'s little 88x31 badges) takes visitors to a friend\'s page. A taskbar has a start button and a clock (each visitor\'s own time). A fortune ball answers whatever visitors ask it.' }),
+      el('p', { class: 'hp-note-small', text: 'Visitors sign your guestbook themselves (you can delete anything in it). In an "ask me anything" box, they ask you things (anonymously, if you let them), and what you answer shows on your page. Songs can be MP3, M4A, OGG, FLAC or WAV, up to 10 MB. The first one starts by itself, quietly, when someone opens your page (unless you or they turn that off). A shelf shows off favourite games, music or shows by their covers. A friend button (like the old web\'s little 88x31 badges) takes visitors to a friend\'s page. A taskbar has a start button and a clock (each visitor\'s own time). A fortune ball answers whatever visitors ask it.' }),
     ];
   }
 
@@ -1399,7 +1399,15 @@
         field(p.style === 'retro' ? 'Color (for "Dark" and "Paper")' : 'Color', colors(p.color, (color) => set({ color }))),
         field('Title font', fonts('font')));
     } else if (p.t === 'music') {
-      out.push(el('p', { class: 'hp-note-small', text: 'It plays when a visitor presses play, over and over, never by itself.' }),
+      out.push(el('p', {
+        class: 'hp-note-small',
+        text: p.auto === false ? 'It plays when a visitor presses play, over and over.'
+          : "It starts by itself, quietly, when someone opens your page (unless they've turned that off, or there's a song above it that does), and plays over and over. They can turn it up, down, or off.",
+      }),
+        el('div', { class: 'hp-row' }, el('button', {
+          class: 'hp-chip', type: 'button', 'aria-pressed': String(p.auto !== false), text: 'Plays by itself',
+          onclick: () => set({ auto: p.auto === false }),
+        })),
         words("The song's name", 'title', 80, 'a song'),
         field('Kind', chips(H.MUSICS, p.style, (style) => set({ style }))),
         field('Color', colors(p.color, (color) => set({ color }))),
