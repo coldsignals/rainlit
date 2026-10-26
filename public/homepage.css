@@ -1039,9 +1039,10 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-pet-ball { background: no-repeat center / contain; image-rendering: pixelated; transition: transform 0.7s cubic-bezier(0.2, 0.75, 0.3, 1), opacity 0.5s; }
 .hp-pet-bowl.gone, .hp-pet-ball.gone { opacity: 0; }
 /* Its owner's card, on their homepage: how it's doing, and feeding it or playing with it. */
+/* (Everything in it fits inside it: a long name's Feed button takes two lines, and Play goes under it.) */
 .hp-pet-care {
-  position: absolute; z-index: 7; width: 240px; box-sizing: border-box;
-  display: grid; gap: 8px; padding: 14px 14px 12px;
+  position: absolute; z-index: 7; width: 264px; box-sizing: border-box;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 14px 14px 12px;
   background: #fffaf0; color: #3b2f25;
   border: 2px solid #3b2f25; border-radius: 16px;
   box-shadow: 0 16px 34px -12px rgba(0, 0, 0, 0.6);
@@ -1058,16 +1059,16 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-pet-meter em { color: #8a7457; font-size: 12px; font-style: normal; text-align: right; }
 .hp-pet-sub, .hp-pet-msg { margin: 0; color: #8a7457; font-size: 12.5px; }
 .hp-pet-msg { color: #b3263e; font-weight: 650; }
-.hp-pet-do { display: flex; gap: 8px; }
+.hp-pet-do { display: flex; flex-wrap: wrap; gap: 8px; }
 .hp-pet-do button {
-  flex: 1; min-width: 0; padding: 8px 10px;
+  flex: 1 1 auto; min-width: 0; padding: 8px 10px;
   border: 2px solid #3b2f25; border-radius: 10px;
   background: #ffd23f; color: #3b2f25;
   font: 400 13px/1.1 Silkscreen, "Bricolage Grotesque", sans-serif; letter-spacing: 0.02em; cursor: pointer;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow-wrap: anywhere;
   box-shadow: 0 3px 0 #3b2f25;
 }
-.hp-pet-do .play { flex: none; background: #ff9fc9; }
+.hp-pet-do .play { background: #ff9fc9; }
 .hp-pet-do button:hover { filter: brightness(1.05); }
 .hp-pet-do button:active { transform: translateY(3px); box-shadow: none; }
 
