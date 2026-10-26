@@ -2550,20 +2550,12 @@
     }
     return rows;
   }
-  // (A lava lamp, its blobs where they are: [x, y, how big].)
+  // (A lava lamp, on a little table: its blobs where they are in its glass, [x, y, how big].)
   function lavaLamp(blobs) {
-    const widths = { 2: 3, 3: 5, 4: 5, 5: 5, 6: 5 };
-    const rows = ['..mmm..', '..mmm..'];
-    for (let y = 2; y <= 12; y++) {
-      const w = widths[y] || 7;
-      let row = '';
-      for (let x = 0; x < 7; x++) {
-        if (Math.abs(x - 3) > (w - 1) / 2) row += '.';
-        else row += blobs.some(([bx, by, r]) => Math.hypot(x - bx, y - by) <= r) ? 'o' : 'l';
-      }
-      rows.push(row);
-    }
-    return [...rows, '.mmmmm.', 'mmmmmmm', 'mmmmmmm'];
+    const glass = ['.lll.', '.lll.', '.lll.', 'lllll', 'lllll', 'lllll', 'lllll'].map((row, y) => [...row]
+      .map((c, x) => (c === 'l' && blobs.some(([bx, by, r]) => Math.hypot(x - bx, y - by) <= r) ? 'o' : c)).join(''));
+    const lamp = ['.mmm.', ...glass, '.mmm.', 'mmmmm', 'mmmmm'];
+    return [...lamp.map((row) => `..${row}..`), 'ttttttttt', 'TTTTTTTTT', '.DDDDDDD.', '.DddyddD.', '.DDDDDDD.', '.D.....D.', '.D.....D.'];
   }
   // (The northern lights, in bands that wave.)
   function auroraTile() {
@@ -2780,8 +2772,8 @@
     },
     lava: {
       label: 'Lava lamp', perk: true, glow: '#c08aff',
-      frames: [lavaLamp([[2, 4, 1.1], [4, 10, 1.5]]), lavaLamp([[3, 6, 1.2], [3, 9, 1.4]])],
-      colors: { m: '#9aa0b5', l: '#8a5cff', o: '#ff9a3d' },
+      frames: [lavaLamp([[2, 1, 0.6], [2, 4.6, 1.2]]), lavaLamp([[2, 2.2, 0.8], [2, 5.2, 1]])],
+      colors: { m: '#9aa0b5', l: '#8a5cff', o: '#ff9a3d', t: '#9a6b45', T: '#7a5234', D: '#6b4a32', d: '#8a5f3d', y: '#e3c27a' },
     },
     arcade: {
       label: 'Arcade machine', perk: true, glow: '#7fd8ff',
