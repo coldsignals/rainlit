@@ -549,24 +549,67 @@
     requestAnimationFrame(step);
   }
 
-  // Turned up or down, now (level: as for soundOn).
+  // Turned up or down, now (level: as for soundOn). (Not one fading out: it's going.)
   function levelOf(media, level) {
     media.hpLevel = level;
     const s = media.hpSound;
-    if (!s) return;
+    if (!s || media.hpLeaving) return;
     if (s.gain) {
-      const g = s.gain.gain;
       const t = s.ctx.currentTime;
-      if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(t);
-      else {
-        const now = g.value;
-        g.cancelScheduledValues(t);
-        g.setValueAtTime(now, t);
-      }
-      g.setTargetAtTime(Math.max(0.0001, AFTER * level), t, 0.05);
+      hold(s.gain.gain, t);
+      s.gain.gain.setTargetAtTime(Math.max(0.0001, AFTER * level), t, 0.05);
     } else if (s.soft && !s.fading) {
       media.volume = 0.5 * level;
     }
+  }
+
+  // (A gain held where it is now, so whatever's next starts from there.)
+  function hold(g, t) {
+    if (g.cancelAndHoldAtTime) return g.cancelAndHoldAtTime(t);
+    const now = g.value;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(now, t);
+  }
+
+  // A song fading, over `seconds`: in to its level as it plays again (from silence, if it was
+  // paused), or out as it's paused. With the limiter, its gain; without it, its volume. Then
+  // `then`.
+  function fadeSong(media, to, seconds, then = null, fromSilence = false) {
+    clearTimeout(media.hpFadeEnd);
+    cancelAnimationFrame(media.hpFadeStep);
+    const s = media.hpSound;
+    if (s && s.gain) {
+      const g = s.gain.gain;
+      const t = s.ctx.currentTime;
+      hold(g, t);
+      if (fromSilence) g.setValueAtTime(0.0001, t);
+      g.linearRampToValueAtTime(Math.max(0.0001, AFTER * to), t + seconds);
+    } else if (s && s.soft) {
+      s.fading = true;
+      const from = fromSilence ? 0 : media.volume;
+      const begun = performance.now();
+      const step = () => {
+        const k = Math.min(1, (performance.now() - begun) / (seconds * 1000));
+        media.volume = from + (0.5 * to - from) * k;
+        if (k < 1) media.hpFadeStep = requestAnimationFrame(step);
+        else s.fading = false;
+      };
+      media.volume = from;
+      media.hpFadeStep = requestAnimationFrame(step);
+    }
+    if (then) media.hpFadeEnd = setTimeout(then, seconds * 1000);
+  }
+
+  // A song faded out, then paused (its player shows it's stopping at once: 'hp-leaving').
+  function fadeOut(media, seconds = 0.5) {
+    if (media.paused || media.hpLeaving) return;
+    if (!media.hpSound) return media.pause();
+    media.hpLeaving = true;
+    media.dispatchEvent(new Event('hp-leaving'));
+    fadeSong(media, 0, seconds, () => {
+      media.hpLeaving = false;
+      media.pause();
+    });
   }
 
   // ---------- Songs: how loud, and whether one starts by itself ----------
@@ -591,9 +634,9 @@
     for (const a of document.querySelectorAll('.hp-music audio')) levelOf(a, v);
     for (const r of document.querySelectorAll('.hp-vol')) showVolume(r, v);
   }
-  // Every song stops (a video's sound is starting, or a call).
+  // Every song fades out and stops (a video's sound is starting, or a call).
   function songsOff() {
-    for (const a of document.querySelectorAll('.hp-music audio')) a.pause();
+    for (const a of document.querySelectorAll('.hp-music audio')) fadeOut(a, 0.35);
   }
 
   function showVolume(range, v) {
@@ -1436,28 +1479,39 @@
       mid.append(title, vol);
       node.append(inside(play, mid, bars), audio);
     }
-    // (One song at a time.)
+    // (One song at a time: another one playing fades out. This one fades in: the first time as the
+    // limiter comes in, after that from silence, or from wherever it'd faded out to.)
     const start = () => {
-      for (const other of document.querySelectorAll('.hp-music audio')) if (other !== audio) other.pause();
+      for (const other of document.querySelectorAll('.hp-music audio')) if (other !== audio) fadeOut(other, 0.35);
       if (soundCtx && soundCtx.state === 'suspended') soundCtx.resume().catch(() => {});
-      soundOn(audio, 0.8, songVolume());
+      const again = Boolean(audio.hpSound);
+      const leaving = audio.hpLeaving;
+      audio.hpLeaving = false;
+      soundOn(audio, 1, songVolume());
+      if (again) fadeSong(audio, songVolume(), 0.6, null, !leaving);
+      showPlaying(true);
+      if (leaving) visualize(node, audio, bars);
       return audio.play();
+    };
+    const showPlaying = (on) => {
+      node.classList.toggle('hp-playing', on);
+      play.setAttribute('aria-label', on ? 'Pause' : 'Play');
     };
     node.hpStart = start; // (and if it's the page's first song: firstSongStarts)
     node.hpAuto = p.auto !== false;
     play.addEventListener('click', (e) => {
       e.stopPropagation();
-      if (audio.paused) start().catch(() => {});
-      else audio.pause();
+      if (audio.paused || audio.hpLeaving) start().catch(() => {});
+      else fadeOut(audio);
     });
-    audio.addEventListener('play', () => {
-      node.classList.add('hp-playing');
-      play.setAttribute('aria-label', 'Pause');
-    });
+    audio.addEventListener('play', () => showPlaying(true));
     audio.addEventListener('playing', () => visualize(node, audio, bars));
+    audio.addEventListener('hp-leaving', () => {
+      showPlaying(false);
+      stillBars(node, bars);
+    });
     audio.addEventListener('pause', () => {
-      node.classList.remove('hp-playing');
-      play.setAttribute('aria-label', 'Play');
+      showPlaying(false);
       stillBars(node, bars);
     });
   }
@@ -1673,7 +1727,7 @@
   // and its effects.
   function hush(page) {
     if (page.hpUnwait) page.hpUnwait();
-    for (const a of page.querySelectorAll('audio')) a.pause();
+    for (const a of page.querySelectorAll('audio')) (a.closest('.hp-music') ? fadeOut(a, 0.35) : a.pause());
     for (const v of page.querySelectorAll('video')) {
       v.pause();
       if (videoWatch) videoWatch.unobserve(v);
