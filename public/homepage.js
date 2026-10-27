@@ -614,7 +614,7 @@
 
   // ---------- Songs: how loud, and whether one starts by itself ----------
   // The listener's, on this device (kept as the app keeps its settings: app.js, store). A song's as
-  // loud as a player's slider was last set, on any page: a quarter, to start with. The app's
+  // loud as a player's slider was last set, on any page: a tenth, to start with. The app's
   // Settings can stop songs starting by themselves.
   const pref = (k, fallback) => {
     try {
@@ -624,8 +624,8 @@
     }
   };
   function songVolume() {
-    const v = Number(pref('hpVolume', '25'));
-    return Number.isFinite(v) ? Math.min(100, Math.max(0, v)) / 100 : 0.25;
+    const v = Number(pref('hpVolume', '10'));
+    return Number.isFinite(v) ? Math.min(100, Math.max(0, v)) / 100 : 0.1;
   }
   function setSongVolume(v) {
     try {
@@ -1558,7 +1558,7 @@
   }
 
   // A page's first song (of those its owner lets start by themselves) starts when the page is
-  // shown, as loud as the listener's slider says (a quarter, to start with). Not if they'd rather
+  // shown, as loud as the listener's slider says (a tenth, to start with). Not if they'd rather
   // songs didn't (the app's Settings), or have turned them all the way down, or are in a call
   // (opts.quiet). A browser won't let sound start on a page nothing's been pressed on yet (one
   // opened from a link): then it starts at the first press anywhere, unless that's on a player

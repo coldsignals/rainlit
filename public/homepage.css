@@ -531,7 +531,7 @@ a.hp-piece:focus-visible, .hp-pops:focus-visible { outline: 3px solid #f5b94a; o
 }
 .hp-vol::-webkit-slider-runnable-track {
   height: var(--track); border-radius: 999px;
-  background: linear-gradient(90deg, var(--tint) var(--vol, 25%), color-mix(in srgb, var(--tint) 28%, transparent) var(--vol, 25%));
+  background: linear-gradient(90deg, var(--tint) var(--vol, 10%), color-mix(in srgb, var(--tint) 28%, transparent) var(--vol, 10%));
 }
 .hp-vol::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
