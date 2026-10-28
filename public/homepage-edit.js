@@ -1305,7 +1305,7 @@
             style: { padding: '3px', outline: now === key ? '2px solid #3b2f25' : '' },
             onclick: () => pickWin(key),
           }, H.windowSwatch(key, p.popName || 'video.mp4'), el('span', { class: 'hp-swatch-name', text: label })));
-          out.push(field('Its window', el('div', { class: 'hp-grid' }, ...windows)),
+          out.push(field('The window its video pops up in', el('div', { class: 'hp-grid' }, ...windows)),
             words("The window's name", 'popName', 60, 'video.mp4'),
             el('div', { class: 'hp-row' }, el('button', { class: 'hp-tool', type: 'button', text: 'Try it', onclick: () => tryIt() })),
             el('p', { class: 'hp-note-small', text: 'It pops up somewhere over your page, playing with its sound, till it\'s closed. Every click pops up another (five at most).' }));
