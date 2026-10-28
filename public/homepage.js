@@ -296,7 +296,8 @@
   // ---------- Scenes ----------
   // A background that's alive (public/homepage-scenes.js has them, loaded the first time a page
   // has one): drawn in view, behind the weather and the pieces. It moves, and answers the pointer,
-  // and clicks or taps on the page's background (not on its pieces, links or pet). It only runs
+  // and a click anywhere on the page (on a piece too: what it does happens behind the piece, and
+  // the piece does what it does), or a tap (a touch that doesn't move: not one that scrolls). It only runs
   // while it's to be seen (not with the page closed, or Rainlit in the background), about 30
   // times a second on a phone; for someone who'd rather things didn't move, it's one still
   // picture.
@@ -371,17 +372,29 @@
       const r = page.getBoundingClientRect();
       return [e.clientX - r.left, e.clientY - r.top];
     };
-    const bare = (e) => !(e.target.closest && e.target.closest('.hp-piece, .hp-pet, .hp-pet-care, .hp-popup, .hp-unzoom, a, button, input, textarea'));
-    const down = (e) => {
-      if (!running || e.button !== 0 || !bare(e)) return;
+    const poke = (e) => {
       pokes++;
       scene.poke(...where(e));
     };
+    let touch = null; // (where a touch began, and when: a tap's one that ends there, soon)
+    const down = (e) => {
+      if (!running || e.button !== 0) return;
+      if (e.pointerType === 'touch') touch = { id: e.pointerId, x: e.clientX, y: e.clientY, at: performance.now() };
+      else poke(e);
+    };
+    const up = (e) => {
+      const t = touch;
+      touch = null;
+      if (running && t && t.id === e.pointerId && performance.now() - t.at < 600 && Math.hypot(e.clientX - t.x, e.clientY - t.y) < 12) poke(e);
+    };
+    const cancel = () => { touch = null; };
     const move = (e) => {
-      if (running && e.pointerType !== 'touch') scene.point(...(bare(e) ? where(e) : [null, null]));
+      if (running && e.pointerType !== 'touch') scene.point(...where(e));
     };
     const leave = () => scene && scene.point(null, null);
     page.addEventListener('pointerdown', down, { passive: true });
+    page.addEventListener('pointerup', up, { passive: true });
+    page.addEventListener('pointercancel', cancel);
     page.addEventListener('pointermove', move, { passive: true });
     page.addEventListener('pointerleave', leave);
     document.addEventListener('visibilitychange', shown);
@@ -398,6 +411,8 @@
         halt();
         if (ro) ro.disconnect();
         page.removeEventListener('pointerdown', down);
+        page.removeEventListener('pointerup', up);
+        page.removeEventListener('pointercancel', cancel);
         page.removeEventListener('pointermove', move);
         page.removeEventListener('pointerleave', leave);
         document.removeEventListener('visibilitychange', shown);

@@ -1,7 +1,7 @@
 // Homepage scenes: a page's background, alive. public/homepage.js (sceneOn) loads this the first
 // time a page has one, draws the scene in view behind the weather and the page's pieces, and
-// tells it where the pointer is, and where the page's background is pressed (a click or a tap:
-// never on a piece, a link or the pet). Each scene is made for a canvas's 2D context, in CSS
+// tells it where the pointer is, and where the page is pressed (a click or a tap, anywhere: on a
+// piece too, the scene answering behind it). Each scene is made for a canvas's 2D context, in CSS
 // pixels, with the page's two colours, and has:
 //   resize(w, h)   (the view's size; it starts over)
 //   frame(dt)      (dt: seconds since the last frame)

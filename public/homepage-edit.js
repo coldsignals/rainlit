@@ -1154,7 +1154,7 @@
         }, H.sceneSwatch(key, key === bg.scene ? bg.c1 : info.c1, key === bg.scene ? bg.c2 : info.c2), el('span', { class: 'hp-swatch-name', text: info.label }));
       };
       const all = Object.entries(H.SCENES);
-      out.push(el('p', { class: 'hp-note-small', style: { marginTop: '10px' }, text: 'Alive, and your visitors can play with it: a click or a tap on the background (not on your stickers and the rest).' }),
+      out.push(el('p', { class: 'hp-note-small', style: { marginTop: '10px' }, text: 'Alive, and your visitors can play with it: a click or a tap anywhere on your page (it happens behind your stickers and the rest).' }),
         el('div', { class: 'hp-grid', style: { marginTop: '8px' } }, ...all.filter(([key]) => !H.PERKS.scene.includes(key)).map(swatch).filter(Boolean)));
       const glow = all.filter(([key]) => H.PERKS.scene.includes(key)).map(swatch).filter(Boolean);
       if (glow.length) out.push(el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, ...glow), tryingScene)));
