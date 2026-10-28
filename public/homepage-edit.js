@@ -1278,12 +1278,36 @@
       if (mode === 'video') {
         out.push(el('div', { class: 'hp-grid' }, videoButton(p.pop ? 'A different video…' : 'Pick a video…', (f, name) => set({ pop: f.id, popName: name, popWin: p.popWin || 'window', href: '' }))));
         if (p.pop) {
-          out.push(field('Its window', chips(H.WINDOWS, p.popWin || 'window', (popWin) => set({ popWin }))),
+          // (Trying it: it pops up as it will for visitors. One that's up when another window's
+          // picked is shown again in that one, where it was, as far in (from the start, if it had
+          // finished), and stopped if it was.)
+          const tryIt = (was) => {
+            const win = H.popVideo(p, { fileUrl: (id) => `/homepage-files/${id}` }, $('hp-page'));
+            win.hpTried = p.id;
+            if (!was) return;
+            win.style.left = was.left;
+            win.style.top = was.top;
+            const video = win.querySelector('video');
+            video.currentTime = was.at;
+            if (was.paused) video.pause();
+          };
+          const pickWin = (popWin) => {
+            if (popWin === (p.popWin || 'window')) return;
+            const up = [...document.querySelectorAll('.hp-frame > .hp-popup')].filter((w) => w.hpTried === p.id).pop();
+            const v = up && up.querySelector('video');
+            const was = v && { left: up.style.left, top: up.style.top, at: v.ended ? 0 : v.currentTime || 0, paused: v.paused && !v.ended };
+            set({ popWin });
+            if (was) tryIt(was);
+          };
+          const now = p.popWin || 'window';
+          const windows = Object.entries(H.WINDOWS).map(([key, label]) => el('button', {
+            class: 'hp-item hp-swatch', type: 'button', title: label, 'aria-pressed': String(now === key),
+            style: { padding: '3px', outline: now === key ? '2px solid #3b2f25' : '' },
+            onclick: () => pickWin(key),
+          }, H.windowSwatch(key, p.popName || 'video.mp4'), el('span', { class: 'hp-swatch-name', text: label })));
+          out.push(field('Its window', el('div', { class: 'hp-grid' }, ...windows)),
             words("The window's name", 'popName', 60, 'video.mp4'),
-            el('div', { class: 'hp-row' }, el('button', {
-              class: 'hp-tool', type: 'button', text: 'Try it',
-              onclick: () => H.popVideo(p, { fileUrl: (id) => `/homepage-files/${id}` }, $('hp-page')),
-            })),
+            el('div', { class: 'hp-row' }, el('button', { class: 'hp-tool', type: 'button', text: 'Try it', onclick: () => tryIt() })),
             el('p', { class: 'hp-note-small', text: 'It pops up somewhere over your page, playing with its sound, till it\'s closed. Every click pops up another (five at most).' }));
         } else {
           out.push(el('p', { class: 'hp-note-small', text: 'MP4 or WebM, up to 20 MB.' }));

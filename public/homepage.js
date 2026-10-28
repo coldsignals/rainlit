@@ -617,6 +617,16 @@
     root.append(pane);
     return { pane, close, bar };
   }
+  // A window as a swatch (the editor's, for what a video pops up in): one drawn as it'd be, made
+  // small, a video's ▶ in it.
+  function windowSwatch(theme, title = 'video.mp4') {
+    const s = document.createElement('span');
+    s.className = 'hp-win-swatch';
+    const win = document.createElement('span');
+    s.append(win);
+    windowEl(win, theme, title, { folder: 'My Videos' }).pane.append(Object.assign(document.createElement('i'), { textContent: '▶' }));
+    return s;
+  }
 
   function imagePiece(node, p, ctx) {
     const img = document.createElement('img');
@@ -3897,7 +3907,7 @@
 
   window.Homepage = {
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
-    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP, SCENES, sceneSwatch,
+    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP, SCENES, sceneSwatch, windowSwatch,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
     // (a call's starting: any song playing stops)
     songsOff,
