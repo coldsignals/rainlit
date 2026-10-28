@@ -3762,11 +3762,13 @@
     page.append(room);
     if (doc.bg && doc.bg.kind === 'scene') page.hpScene = sceneOn(page, room, doc.bg, { name: ctx.owner.displayName || ctx.owner.username || '' });
     if (!ctx.edit) firstSongStarts(page, canvas, opts);
-    // Pieces can reach past the page's 800px, and below it. On a screen wide enough, the page is
-    // centered as it was made, with those showing around it. On a narrower one, everything is
-    // shown: all of it, scaled down to fit. (Times the zoom, from pinching.) The top is the
-    // page's edge: anything above it is cut off (a lamp hanging from the ceiling, say), and
-    // putting something higher never moves the rest of the page down.
+    // Pieces can reach past the page's 800px, and below it. The page is in the middle of the view,
+    // as it was made, with those showing around it; one that'd be out of view there moves it over
+    // just enough to show it (not to the middle of everything: on a screen a little narrower, a
+    // piece hanging off one side would push the whole page well over to the other). On a screen
+    // too narrow for all of it, it's all shown, scaled down to fit. (Times the zoom, from
+    // pinching.) The top is the page's edge: anything above it is cut off (a lamp hanging from
+    // the ceiling, say), and putting something higher never moves the rest of the page down.
     const reach = () => {
       const b = { left: 0, right: WIDTH, top: 0, bottom: doc.height };
       for (const node of canvas.children) {
@@ -3788,14 +3790,10 @@
     const fit = () => {
       const b = reach();
       const avail = page.clientWidth || WIDTH;
-      const past = Math.max(-b.left, b.right - WIDTH);
-      let s = 1, width = WIDTH + 2 * past, left = past;
-      if (avail < width) {
-        width = b.right - b.left;
-        left = -b.left;
-        s = Math.min(1, avail / width);
-      }
-      s *= page.hpZoom || 1;
+      const fits = Math.min(1, avail / (b.right - b.left));
+      const width = Math.max(avail / fits, b.right - b.left); // (the view, in the page's own pixels)
+      const left = Math.min(Math.max((width - WIDTH) / 2, -b.left), width - b.right);
+      const s = fits * (page.hpZoom || 1);
       canvas.style.transform = `translate(${left * s}px, ${-b.top * s}px) scale(${s})`;
       stage.style.width = `${width * s}px`;
       stage.style.height = `${(b.bottom - b.top) * s}px`;
