@@ -718,8 +718,9 @@ function pond(g, c1, c2) {
     g.fill();
     g.restore();
     for (const side of [-1, 1]) {
+      // (Just behind its head, swept back.)
       g.beginPath();
-      g.ellipse(L * 0.1, side * L * 0.16, L * 0.12, L * 0.05, side * (0.7 + sway * 0.3), 0, Math.PI * 2);
+      g.ellipse(L * 0.14, side * L * 0.16, L * 0.12, L * 0.05, -side * (0.7 + sway * 0.3), 0, Math.PI * 2);
       g.fill();
     }
     g.beginPath();
@@ -875,6 +876,7 @@ function pond(g, c1, c2) {
       for (let i = 0; i < Math.round(rate * 0.55); i++) ripple();
       paint();
     },
+    things: () => koi.map((k) => ({ x: Math.round(k.x), y: Math.round(k.y), len: Math.round(k.len), angle: +k.angle.toFixed(2), fright: +k.fright.toFixed(2) })),
   };
 }
 
