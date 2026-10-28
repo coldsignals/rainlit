@@ -1114,7 +1114,9 @@ function lava(g, c1, c2) {
 function bounce(g, c1, c2, opts = {}) {
   const back = rgbOf(c1);
   const PALETTE = [rgbOf(c2), [255, 79, 163], [90, 209, 255], [255, 214, 64], [120, 236, 140], [190, 120, 255], [255, 140, 60], [255, 255, 255]];
-  const words = String(opts.name || '').trim().slice(0, 18) || 'Rainlit';
+  const words = String(opts.name || '').trim().slice(0, 32) || 'Rainlit';
+  const SLANT = 0.22; // (how far it leans: done here, not by the font, so it's known how far it reaches)
+  const font = (size) => `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
   let w = 1;
   let h = 1;
   let logo = null; // (it in white, and in its colour now)
@@ -1133,30 +1135,51 @@ function bounce(g, c1, c2, opts = {}) {
   let corners = 0;
   let party = 0; // (after a corner: flashing through its colours, a while)
   let flashIn = 0;
+  // (The name as big as fits across the logo, all of it, its letters' own shape measured, leaning
+  // and all: none of it's cut off, however long it is or however tall its letters.)
   const paintLogo = () => {
     const k = g.canvas.width / w;
     lw = Math.round(clamp(Math.min(w, h) * 0.3, 110, 260));
-    const font = (s) => `italic 800 ${s}px "Bricolage Grotesque", system-ui, sans-serif`;
+    // (Its ink at a size: how far it reaches each way from where it's written, and how wide it is.)
     const m = canvasOf(1, 1).getContext('2d');
-    m.font = font(100);
-    const fs = Math.min(lw * 0.4, (100 * lw) / Math.max(1, m.measureText(words).width));
+    const ink = (size) => {
+      m.font = font(size);
+      const at = m.measureText(words);
+      const up = at.actualBoundingBoxAscent || size * 0.74;
+      const down = at.actualBoundingBoxDescent || 0;
+      const left = at.actualBoundingBoxLeft || 0;
+      const right = at.actualBoundingBoxRight || at.width;
+      return { size, up, down, left, right, w: left + right + SLANT * (up + down) };
+    };
+    const room = lw * 0.92;
+    let t = ink(100);
+    t = ink(Math.min((100 * room) / Math.max(1, t.w), lw * 0.4));
+    // (Small letters can come out a little wider than big ones made small: measured again there.)
+    for (let i = 0; i < 4 && t.w > room; i++) t = ink((t.size * room) / t.w - 0.1);
+    const pad = 3;
     const disc = lw * 0.2;
-    lh = Math.round(fs * 0.95 + disc + 6);
+    const gap = Math.max(3, t.size * 0.08);
+    lh = Math.round(pad + t.up + t.down + gap + disc + pad);
     logo = canvasOf(lw * k, lh * k);
     const x2 = logo.getContext('2d');
     x2.scale(k, k);
     x2.fillStyle = '#fff';
-    x2.font = font(fs);
-    x2.textAlign = 'center';
+    x2.font = font(t.size);
+    x2.textAlign = 'left';
     x2.textBaseline = 'alphabetic';
-    x2.fillText(words, lw / 2, fs * 0.8, lw);
+    x2.save();
+    x2.translate((lw - t.w) / 2 + t.left + SLANT * t.down, pad + t.up);
+    x2.transform(1, 0, -SLANT, 1, 0, 0);
+    x2.fillText(words, 0, 0);
+    x2.restore();
     // (The disc under it, with HOMEPAGE cut out of it.)
-    const dy = fs * 0.95 + disc / 2 + 2;
+    const dy = pad + t.up + t.down + gap + disc / 2;
     x2.beginPath();
     x2.ellipse(lw / 2, dy, lw * 0.46, disc / 2, 0, 0, Math.PI * 2);
     x2.fill();
     x2.globalCompositeOperation = 'destination-out';
-    x2.font = `800 ${disc * 0.58}px "Bricolage Grotesque", system-ui, sans-serif`;
+    x2.font = font(disc * 0.58);
+    x2.textAlign = 'center';
     x2.textBaseline = 'middle';
     x2.fillText('H O M E P A G E', lw / 2, dy + disc * 0.03, lw * 0.7);
     tint();
@@ -1205,7 +1228,7 @@ function bounce(g, c1, c2, opts = {}) {
       vx = (Math.random() < 0.5 ? -1 : 1) * v;
       vy = (Math.random() < 0.5 ? -1 : 1) * v * 0.8;
       // (Its font, once it's come, if it hadn't.)
-      if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { if (logo) paintLogo(); }).catch(() => {});
+      if (document.fonts && document.fonts.check && !document.fonts.check(font(100), words)) document.fonts.load(font(100), words).then(() => { if (logo) paintLogo(); }).catch(() => {});
     },
     frame(dt) {
       clock += dt;
