@@ -32,6 +32,7 @@ const keep = require('./lib/keep');
 const homepages = require('./lib/homepages');
 const pets = require('./lib/pets');
 const announcements = require('./lib/announcements');
+const whatsNew = require('./lib/whatsnew');
 const blobs = require('./lib/blobs');
 const abuse = require('./lib/abuse');
 // (A new flag: the admin hears, wherever they are in the app.)
@@ -384,6 +385,11 @@ api.post('/admin/waitlist/release', needAdmin, (req, res) => {
 // Whoever runs the server telling everyone something: each shows once, until "Got it".
 
 api.get('/announcements', needUser, (req, res) => res.json({ announcements: announcements.unseenFor(req.user) }));
+// What's new (lib/whatsnew.js): seen, up to this one.
+api.post('/whats-new/seen', needUser, (req, res) => {
+  whatsNew.markSeen(req.user.id, (req.body || {}).id);
+  res.json({ ok: true });
+});
 api.post('/announcements/seen', needUser, (req, res) => {
   announcements.markSeen(req.user.id, (req.body || {}).upTo);
   res.json({ ok: true });
@@ -534,6 +540,7 @@ api.post('/signup', async (req, res) => {
       `).run(id, username, email, hash, displayName, firstAccount ? 1 : 0, now, open ? 1 : 0, born.age < 18 ? born.eighteenAt : null);
       badges.welcome(id, now);
       announcements.skipOld(id); // (made under things as they are now)
+      whatsNew.skipOld(id); // (and what's new already isn't news to it)
       if (!firstAccount && !open) {
         const used = db.prepare('UPDATE invites SET used_by = ?, used_at = ? WHERE code = ? AND used_by IS NULL')
           .run(id, Date.now(), code);
@@ -1029,6 +1036,7 @@ api.get('/friends', needUser, (req, res) => {
     blocked: safety.blockedBy(req.user.id).map((id) => people.userById(id)).filter(Boolean).map(people.publicUser),
     voice: voice.enabled,
     mail: mail.enabled,
+    whatsNewSeen: whatsNew.seenBy(req.user),
     ...(req.user.is_admin ? { openReports: safety.openReportCount(), openFlags: abuse.openCount(), newFeedback: feedback.unseenCount() } : {}),
   };
   const convos = dms.summariesFor(req.user.id);

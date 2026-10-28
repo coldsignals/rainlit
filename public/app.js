@@ -145,7 +145,7 @@ for (const id of [
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
   'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
-  'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
+  'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
   'glow', 'glow-because', 'glow-get', 'glow-price',
@@ -5081,6 +5081,120 @@ function onAnnouncementClosed() {
   const a = announceQueue.shift();
   if (a) api('POST', '/announcements/seen', { upTo: a.id }).catch(() => {});
   showAnnouncement();
+}
+
+// ----- What's new -----
+// What Rainlit's got lately (public/whats-new.json, written with each update, the newest first):
+// the newest is shown once, in a box over everything, the first time you open Rainlit after it's
+// out (on whichever of your devices), till "Got it". Not over something else (an announcement
+// first), and not in a call: it waits. Settings has them all.
+
+let whatsNewList = null;
+let whatsNewMarks = ''; // (the one to say's seen, once this box closes)
+
+async function whatsNewEntries() {
+  if (whatsNewList) return whatsNewList;
+  try {
+    const data = await (await fetch(`${SERVER}/whats-new.json`, { cache: 'no-cache' })).json();
+    whatsNewList = Array.isArray(data.entries) ? data.entries.filter((e) => e && typeof e.id === 'string') : [];
+  } catch {
+    return [];
+  }
+  return whatsNewList;
+}
+
+async function maybeWhatsNew() {
+  clearTimeout(S.whatsNewWait);
+  if (!S.me || S.whatsNewDone) return;
+  const list = await whatsNewEntries();
+  const fresh = list.filter((e) => e.id > (S.whatsNewSeen || ''));
+  if (!fresh.length) return;
+  if (S.inCall || S.startingCall || S.voice || document.querySelector('dialog[open]') || announceQueue.length) {
+    S.whatsNewWait = setTimeout(maybeWhatsNew, 15_000); // (later: after the call, or the box that's open)
+    return;
+  }
+  S.whatsNewDone = true;
+  showWhatsNew([fresh[0]], fresh.length > 1 ? `And ${fresh.length - 1} more before it, in Settings.` : '');
+  whatsNewMarks = fresh[0].id;
+}
+
+// Some of What's new, in its box: each entry's name and when, then each thing in it (a picture or
+// a clip, what it's called (Glow's said so), and a few words).
+function showWhatsNew(entries, more = '') {
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const body = el.whatsNewBody;
+  body.replaceChildren();
+  for (const entry of entries) {
+    const head = document.createElement('h2');
+    head.className = 'whats-new-title';
+    head.textContent = String(entry.title || "What's new");
+    const when = document.createElement('p');
+    when.className = 'hint whats-new-date';
+    when.textContent = /^\d{4}-\d{2}-\d{2}$/.test(entry.date || '') ? dayName(entry.date).replace(/^\w+, /, '') : '';
+    body.append(head, when);
+    for (const item of Array.isArray(entry.items) ? entry.items : []) {
+      const card = document.createElement('section');
+      card.className = 'whats-new-item';
+      const src = typeof item.media === 'string' && /^\/whats-new\/[\w.-]+\.(mp4|webm|webp|png|jpg|gif)$/.test(item.media) ? item.media : '';
+      if (src) {
+        let media;
+        if (/\.(mp4|webm)$/.test(src)) {
+          media = document.createElement('video');
+          media.muted = true;
+          media.loop = true;
+          media.playsInline = true;
+          media.autoplay = !calm;
+          media.controls = calm; // (still, for someone who'd rather things didn't move: theirs to play)
+          media.preload = 'metadata';
+          media.setAttribute('aria-label', String(item.title || ''));
+          // (Its own shape, once it's known: a placeholder's till then.)
+          media.addEventListener('loadedmetadata', () => {
+            if (media.videoWidth && media.videoHeight) media.style.aspectRatio = `${media.videoWidth} / ${media.videoHeight}`;
+          }, { once: true });
+        } else {
+          media = document.createElement('img');
+          media.alt = String(item.title || '');
+          media.loading = 'lazy';
+          media.style.aspectRatio = 'auto';
+        }
+        media.className = 'whats-new-media';
+        media.src = `${SERVER}${src}`;
+        card.append(media);
+      }
+      const name = document.createElement('h3');
+      name.textContent = String(item.title || '');
+      if (item.glow) {
+        const tag = document.createElement('span');
+        tag.className = 'whats-new-glow';
+        tag.textContent = PERK_NAME;
+        name.append(' ', tag);
+      }
+      const text = document.createElement('p');
+      text.textContent = String(item.text || '');
+      card.append(name, text);
+      body.append(card);
+    }
+  }
+  el.whatsNewMore.textContent = more;
+  el.whatsNew.querySelector('.whats-new-scroll').scrollTop = 0;
+  if (!el.whatsNew.open) el.whatsNew.showModal();
+}
+
+// All of it, from Settings (seen or not).
+async function openWhatsNew() {
+  const list = await whatsNewEntries();
+  if (!list.length) return toast("Nothing's new yet.");
+  whatsNewMarks = list[0].id;
+  showWhatsNew(list);
+}
+
+function onWhatsNewClosed() {
+  for (const v of el.whatsNew.querySelectorAll('video')) v.pause();
+  const id = whatsNewMarks;
+  whatsNewMarks = '';
+  if (!id || id <= (S.whatsNewSeen || '')) return;
+  S.whatsNewSeen = id;
+  api('POST', '/whats-new/seen', { id }).catch(() => {});
 }
 
 // The Admin panel: sending one, and the ones sent.
@@ -13495,6 +13609,10 @@ async function refreshFriends() {
     renderComposer();
     S.voiceEnabled = Boolean(data.voice);
     S.mailEnabled = Boolean(data.mail);
+    if (typeof data.whatsNewSeen === 'string') {
+      S.whatsNewSeen = data.whatsNewSeen;
+      maybeWhatsNew();
+    }
     S.blockedUsers = data.blocked || [];
     S.blocked = new Set(S.blockedUsers.map((u) => u.id));
     S.openReports = data.openReports || 0;
@@ -18263,7 +18381,9 @@ async function init() {
   el.deleteBtn.addEventListener('click', onDeleteAccount);
   // Dialogs close with their X, or by clicking outside them (not the ones asking something that
   // needs an answer: 18+, an announcement, sharing what you're doing).
-  for (const d of [el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim]) {
+  el.whatsNew.addEventListener('close', onWhatsNewClosed);
+  el.whatsNewBtn.addEventListener('click', openWhatsNew);
+  for (const d of [el.whatsNew, el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 

@@ -1157,6 +1157,20 @@
     </form>
   </dialog>
 
+  <!-- ============ What's new (public/whats-new.json; app.js: maybeWhatsNew) ============ -->
+  <dialog id="whats-new" class="settings whats-new" aria-labelledby="whats-new-title">
+    <form method="dialog" class="whats-new-card">
+      <div class="whats-new-scroll">
+        <p class="whats-new-label">What's new in Rainlit</p>
+        <div id="whats-new-body"></div>
+      </div>
+      <div class="announce-row whats-new-row">
+        <span class="hint" id="whats-new-more"></span>
+        <button class="primary-btn" type="submit" value="ok" autofocus>Got it</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- ============ A voice channel marked 18+: asked before joining ============ -->
   <dialog id="activity-ask" class="settings age-dialog" aria-labelledby="activity-ask-title">
     <form method="dialog" class="age-gate-card">
@@ -1709,7 +1723,7 @@
         <p id="push-note" class="conn-info" hidden></p>
         <p id="conn-info" class="conn-info"></p>
         <p class="conn-info">Rainlit is free software (GNU AGPL). <a id="source-link" href="https://github.com/coldsignals/rainlit" target="_blank" rel="noopener">Source code</a> <a class="legal-link x-link" href="https://x.com/rainlitapp" target="_blank" rel="noopener" aria-label="Rainlit on X (@rainlitapp)" title="Rainlit on X (@rainlitapp)"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></a></p>
-        <p class="conn-info"><a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms of service</a> · <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="legal-link" href="/switching" target="_blank" rel="noopener">Switching from Discord</a><span></span><a id="support-link" href="/support" hidden>Rainlit Glow</a></p>
+        <p class="conn-info"><a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms of service</a> · <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="legal-link" href="/switching" target="_blank" rel="noopener">Switching from Discord</a> · <button id="whats-new-btn" class="text-btn whats-new-btn" type="button">What's new</button><span></span><a id="support-link" href="/support" hidden>Rainlit Glow</a></p>
       </div>
     </form>
   </dialog>

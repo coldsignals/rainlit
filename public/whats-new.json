@@ -1,0 +1,31 @@
+{
+  "entries": [
+    {
+      "id": "2026-10-28",
+      "date": "2026-10-28",
+      "title": "Homepages come alive",
+      "items": [
+        {
+          "title": "Scenes",
+          "text": "Backgrounds that move, and that visitors can play with: a click or a tap anywhere on the page. Starfield flight and Bubbles are for everyone; Pipes, Pond and Lava lamp come with Glow. They're in your homepage's Page tab, under Background.",
+          "media": "/whats-new/2026-10-28-scenes.mp4"
+        },
+        {
+          "title": "Songs that play by themselves",
+          "text": "A homepage's first song now starts quietly when someone opens it, like MySpace did, and every player has a volume slider and bars that dance to the music. Rather it didn't? There's a switch in Settings.",
+          "media": "/whats-new/2026-10-28-songs.mp4"
+        },
+        {
+          "title": "Jump to the newest",
+          "text": "Scrolled a long way up in a chat? A bar takes you straight back down to the newest messages.",
+          "media": "/whats-new/2026-10-28-jump.webp"
+        },
+        {
+          "title": "Shift to delete",
+          "text": "Hold Shift over one of your messages and a bin shows up: one click deletes it, without being asked.",
+          "media": "/whats-new/2026-10-28-shift.webp"
+        }
+      ]
+    }
+  ]
+}
