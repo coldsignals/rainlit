@@ -514,7 +514,8 @@
         // (What a song's visualizer looks at: the sound as the limiter lets it out, before it's
         // turned up or down, so a song turned down low still shows.)
         const analyser = soundCtx.createAnalyser();
-        analyser.fftSize = 512;
+        // (Fine enough for the lowest bars at any rate: about 23 Hz a step, at 48 kHz as at 192.)
+        analyser.fftSize = 2 ** Math.min(13, Math.max(9, Math.round(Math.log2(soundCtx.sampleRate / 23))));
         analyser.smoothingTimeConstant = 0.75;
         const t = soundCtx.currentTime;
         gain.gain.setValueAtTime(0.0001, t);
@@ -1528,9 +1529,10 @@
     if (!live) return;
     const data = new Uint8Array(an.frequencyBinCount);
     const kids = [...bars.children];
-    // (Each bar a band of it, low to high, wider as they go up, as hearing goes.)
-    const top = data.length * 0.6;
-    const edges = kids.map((_, i) => Math.round(top ** (i / kids.length))).concat(Math.round(top));
+    // (Each bar a band of it, low to high, from 60 Hz to 12 kHz, wider as they go up, as hearing
+    // goes: by how many hertz each of the analyser's steps is, which a device's own rate decides.)
+    const hz = an.context.sampleRate / an.fftSize;
+    const edges = kids.map((_, i) => Math.max(1, Math.round((60 * 200 ** (i / kids.length)) / hz))).concat(Math.round(12000 / hz));
     let glow = 0.35;
     const step = () => {
       if (audio.paused || !node.isConnected) return;
