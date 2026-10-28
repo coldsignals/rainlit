@@ -53,13 +53,22 @@
     plaid: 'Plaid', camo: 'Camo', hexes: 'Hexagons', circuit: 'Circuit board',
     starfield: 'Starfield', bokeh: 'Bokeh', holo: 'Holo', waves: 'Waves',
   };
+  // (Backgrounds that are alive: public/homepage-scenes.js. Each with what its two colours are,
+  // and the colours it starts with.)
+  const SCENES = {
+    warp: { label: 'Starfield flight', colors: ['Space', 'Stars'], c1: '#04050c', c2: '#ffffff' },
+    bubbles: { label: 'Bubbles', colors: ['Top', 'Bottom'], c1: '#8fd3ff', c2: '#f3c8ff' },
+    pipes: { label: 'Pipes', colors: ['Background', 'First pipe'], c1: '#000000', c2: '#3c78f5' },
+    pond: { label: 'Pond', colors: ['Deep water', 'Shallow water'], c1: '#0b3a46', c2: '#3f9a8e' },
+    lava: { label: 'Lava lamp', colors: ['Liquid', 'Wax'], c1: '#4a1a7a', c2: '#ff7a2f' },
+  };
   const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', leaves: 'Autumn leaves', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms', embers: 'Embers' };
   const TRAILS = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', stars: 'Stars', bubbles: 'Bubbles', raindrops: 'Raindrops', pixels: 'Pixels' };
   const CLICKS = { none: 'Nothing', confetti: 'Confetti', hearts: 'Hearts', stars: 'Stars', ripples: 'Ripples', fireworks: 'Fireworks' };
   // Glow's extras (lib/homepages.js): anyone can see them on a page, people with Glow can use them.
   const PERKS = {
     fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms', 'embers'],
-    pattern: ['starfield', 'bokeh', 'holo', 'waves'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels'],
+    pattern: ['starfield', 'bokeh', 'holo', 'waves'], scene: ['pipes', 'pond', 'lava'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels'],
     click: ['confetti', 'hearts', 'stars', 'ripples', 'fireworks'], pet: ['drop', 'dragon', 'fox'], piece: ['fortune'],
   };
 
@@ -282,6 +291,147 @@
         if (MOVING[bg.pattern]) return { ...s, backgroundImage: MOVING[bg.pattern](a, b)[0] };
         return TILES[bg.pattern] ? { ...s, backgroundImage: uri(TILES[bg.pattern](a, b)) } : s;
     }
+  }
+
+  // ---------- Scenes ----------
+  // A background that's alive (public/homepage-scenes.js has them, loaded the first time a page
+  // has one): drawn in view, behind the weather and the pieces. It moves, and answers the pointer,
+  // and clicks or taps on the page's background (not on its pieces, links or pet). It only runs
+  // while it's to be seen (not with the page closed, or Rainlit in the background), about 30
+  // times a second on a phone; for someone who'd rather things didn't move, it's one still
+  // picture.
+  let scenesFrom = null;
+  const loadScenes = () => (scenesFrom ||= import('/homepage-scenes.js').catch((err) => {
+    scenesFrom = null;
+    throw err;
+  }));
+  const calmMedia = () => (window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false });
+
+  function sceneOn(page, room, bg) {
+    const cv = document.createElement('canvas');
+    cv.className = 'hp-scene';
+    cv.setAttribute('aria-hidden', 'true');
+    room.prepend(cv);
+    const g = cv.getContext('2d');
+    const calm = calmMedia();
+    const phone = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    const gap = phone ? 1000 / 31 : 0;
+    let scene = null;
+    let stopped = false;
+    let running = false;
+    let raf = 0;
+    let last = 0;
+    let w = 0;
+    let h = 0;
+    let frames = 0;
+    let pokes = 0;
+    let spent = 0;
+    const size = () => {
+      const nw = page.clientWidth;
+      const nh = page.clientHeight;
+      if (!scene || !nw || !nh || (nw === w && nh === h)) return;
+      w = nw;
+      h = nh;
+      const dpr = Math.min(scene.dpr || 1.5, window.devicePixelRatio || 1);
+      cv.width = Math.round(w * dpr);
+      cv.height = Math.round(h * dpr);
+      cv.style.width = `${w}px`;
+      cv.style.height = `${h}px`;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      scene.resize(w, h);
+      if (calm.matches) scene.still();
+    };
+    const tick = (now) => {
+      raf = 0;
+      if (!running) return;
+      if (now - last >= gap) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        const t0 = performance.now();
+        scene.frame(dt);
+        spent += performance.now() - t0;
+        frames++;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    const go = () => {
+      if (running || stopped || !scene || calm.matches || document.hidden || !page.isConnected) return;
+      running = true;
+      last = performance.now();
+      raf = requestAnimationFrame(tick);
+    };
+    const halt = () => {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+    };
+    const shown = () => (document.hidden ? halt() : go());
+    const ro = window.ResizeObserver ? new ResizeObserver(size) : null;
+    const where = (e) => {
+      const r = page.getBoundingClientRect();
+      return [e.clientX - r.left, e.clientY - r.top];
+    };
+    const bare = (e) => !(e.target.closest && e.target.closest('.hp-piece, .hp-pet, .hp-pet-care, .hp-popup, .hp-unzoom, a, button, input, textarea'));
+    const down = (e) => {
+      if (!running || e.button !== 0 || !bare(e)) return;
+      pokes++;
+      scene.poke(...where(e));
+    };
+    const move = (e) => {
+      if (running && e.pointerType !== 'touch') scene.point(...(bare(e) ? where(e) : [null, null]));
+    };
+    const leave = () => scene && scene.point(null, null);
+    page.addEventListener('pointerdown', down, { passive: true });
+    page.addEventListener('pointermove', move, { passive: true });
+    page.addEventListener('pointerleave', leave);
+    document.addEventListener('visibilitychange', shown);
+    loadScenes().then((m) => {
+      if (stopped) return;
+      scene = (m.SCENES[bg.scene] || m.SCENES.warp)(g, hex(bg.c1, '#04050c'), hex(bg.c2, '#ffffff'));
+      size();
+      if (ro) ro.observe(page);
+      go();
+    }).catch(() => {});
+    return {
+      stop() {
+        stopped = true;
+        halt();
+        if (ro) ro.disconnect();
+        page.removeEventListener('pointerdown', down);
+        page.removeEventListener('pointermove', move);
+        page.removeEventListener('pointerleave', leave);
+        document.removeEventListener('visibilitychange', shown);
+        cv.remove();
+      },
+      // (For tests: whether it's running, how many frames it's drawn (and how long each took, on
+      // average), and how many presses it's had.)
+      state: () => ({ ready: Boolean(scene), running, frames, pokes, ms: frames ? +(spent / frames).toFixed(2) : 0 }),
+      poke: (x, y) => scene && scene.poke(x, y),
+    };
+  }
+
+  // A scene as a swatch: its still picture, as on a page (a small one), made smaller (once the
+  // scenes have come).
+  function sceneSwatch(key, c1, c2) {
+    const s = document.createElement('span');
+    s.className = 'hp-pattern-swatch hp-scene-swatch';
+    s.style.background = hex(c1, '#04050c');
+    const cv = document.createElement('canvas');
+    cv.width = 192;
+    cv.height = 128;
+    s.append(cv);
+    loadScenes().then((m) => {
+      const make = m.SCENES[key];
+      if (!make) return;
+      const big = document.createElement('canvas');
+      big.width = 480;
+      big.height = 320;
+      const scene = make(big.getContext('2d'), hex(c1, '#04050c'), hex(c2, '#ffffff'));
+      scene.resize(480, 320);
+      scene.still();
+      cv.getContext('2d').drawImage(big, 0, 0, 192, 128);
+    }).catch(() => {});
+    return s;
   }
 
   // ---------- Pieces ----------
@@ -1729,6 +1879,10 @@
   // and its effects.
   function hush(page) {
     if (page.hpUnwait) page.hpUnwait();
+    if (page.hpScene) {
+      page.hpScene.stop();
+      page.hpScene = null;
+    }
     for (const a of page.querySelectorAll('audio')) (a.closest('.hp-music') ? fadeOut(a, 0.35) : a.pause());
     for (const v of page.querySelectorAll('video')) {
       v.pause();
@@ -3542,6 +3696,7 @@
     stage.append(canvas);
     room.append(sky, stage);
     page.append(room);
+    if (doc.bg && doc.bg.kind === 'scene') page.hpScene = sceneOn(page, room, doc.bg);
     if (!ctx.edit) firstSongStarts(page, canvas, opts);
     // Pieces can reach past the page's 800px, and below it. On a screen wide enough, the page is
     // centered as it was made, with those showing around it. On a narrower one, everything is
@@ -3695,7 +3850,7 @@
 
   window.Homepage = {
     WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
-    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP,
+    COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP, SCENES, sceneSwatch,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
     // (a call's starting: any song playing stops)
     songsOff,

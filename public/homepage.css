@@ -690,6 +690,12 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 /* (Behind everything on the page, and always in view as it scrolls: homepage.js.) */
 
 .hp-sky { position: sticky; top: 0; left: 0; align-self: start; justify-self: start; overflow: hidden; pointer-events: none; } /* (sized to the view: homepage.js) */
+/* A scene (homepage-scenes.js): in view like the weather, behind it. */
+.hp-scene { display: block; position: sticky; top: 0; left: 0; align-self: start; justify-self: start; pointer-events: none; }
+.hp-scene-swatch canvas { display: block; width: 100%; height: 100%; border-radius: inherit; }
+.hp-swatch-name { display: block; margin-top: 3px; font-size: 11px; font-weight: 600; text-align: center; white-space: nowrap; }
+.hp-pattern-swatch.hp-scene-swatch { width: 96px; height: 60px; }
+.hp-swatch:has(.hp-scene-swatch) { width: auto; height: auto; padding: 3px 3px 5px; }
 .hp-sky-none { display: none; }
 .hp-sky::before, .hp-sky::after { content: ''; position: absolute; left: 0; right: 0; will-change: transform; }
 .hp-sky-rain::before, .hp-sky-rain::after {

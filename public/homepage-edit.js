@@ -1135,8 +1135,32 @@
     const bg = doc.bg;
     const setBg = (fields) => change((d) => { d.bg = { ...d.bg, ...fields }; });
     // (A picture's there to go back to once one's been used.)
-    const kinds = bg.file ? { pattern: 'Pattern', color: 'Color', image: 'Picture' } : { pattern: 'Pattern', color: 'Color' };
-    const out = [h3('Background'), chips(kinds, bg.kind, (kind) => setBg({ kind }))];
+    const kinds = { pattern: 'Pattern', color: 'Color', scene: 'Scene', ...(bg.file ? { image: 'Picture' } : {}) };
+    // (A scene starts in its own colours, which can be changed after.)
+    const sceneFields = (key) => ({ kind: 'scene', scene: key, c1: H.SCENES[key].c1, c2: H.SCENES[key].c2 });
+    const out = [h3('Background'), chips(kinds, bg.kind, (kind) => setBg(kind === 'scene' && !bg.scene ? sceneFields('warp') : { kind }))];
+    if (bg.kind === 'scene') {
+      const tryingScene = tryingNow('scene:');
+      const current = tryingScene || bg.scene || 'warp';
+      const swatch = ([key, info]) => {
+        const locked = H.PERKS.scene.includes(key) && !supporter() && key !== bg.scene;
+        if (locked && !glowOffered()) return null;
+        const on = current === key;
+        const pickIt = () => setBg(key === bg.scene ? { kind: 'scene' } : sceneFields(key));
+        return el('button', {
+          class: `hp-item hp-swatch${key === tryingScene ? ' hp-chip-trying' : ''}`, type: 'button', title: locked ? `${info.label} (comes with Glow: try it on)` : info.label,
+          'aria-pressed': String(on), style: { padding: '3px', outline: on && key !== tryingScene ? '2px solid #3b2f25' : '' },
+          onclick: () => (locked ? tryOn(`scene:${key}`, info.label, pickIt) : pickIt()),
+        }, H.sceneSwatch(key, key === bg.scene ? bg.c1 : info.c1, key === bg.scene ? bg.c2 : info.c2), el('span', { class: 'hp-swatch-name', text: info.label }));
+      };
+      const all = Object.entries(H.SCENES);
+      out.push(el('p', { class: 'hp-note-small', style: { marginTop: '10px' }, text: 'Alive, and your visitors can play with it: a click or a tap on the background (not on your stickers and the rest).' }),
+        el('div', { class: 'hp-grid', style: { marginTop: '8px' } }, ...all.filter(([key]) => !H.PERKS.scene.includes(key)).map(swatch).filter(Boolean)));
+      const glow = all.filter(([key]) => H.PERKS.scene.includes(key)).map(swatch).filter(Boolean);
+      if (glow.length) out.push(el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, ...glow), tryingScene)));
+      const [n1, n2] = (H.SCENES[current] || H.SCENES.warp).colors;
+      out.push(field(n1, colors(bg.c1, (c) => setBg({ c1: c }))), field(n2, colors(bg.c2, (c) => setBg({ c2: c }))));
+    }
     if (bg.kind === 'pattern') {
       // (Glow's move: they're in its box, to try on.)
       const tryingPattern = tryingNow('pattern:');
@@ -1156,7 +1180,7 @@
       const moving = all.filter(([key]) => H.PERKS.pattern.includes(key)).map(swatch).filter(Boolean);
       if (moving.length) out.push(el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, ...moving), tryingPattern)));
     }
-    if (bg.kind !== 'image') {
+    if (bg.kind !== 'image' && bg.kind !== 'scene') {
       out.push(field(bg.kind === 'pattern' ? 'Background color' : 'Color', colors(bg.c1, (c) => setBg({ c1: c }))));
       if (bg.kind === 'pattern') out.push(field('Pattern color', colors(bg.c2, (c) => setBg({ c2: c }))));
     }
