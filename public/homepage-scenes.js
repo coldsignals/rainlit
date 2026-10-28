@@ -2,15 +2,15 @@
 // time a page has one, draws the scene in view behind the weather and the page's pieces, and
 // tells it where the pointer is, and where the page is pressed (a click or a tap, anywhere: on a
 // piece too, the scene answering behind it). Each scene is made for a canvas's 2D context, in CSS
-// pixels, with the page's two colours, and has:
+// pixels, with the page's two colours (and { name }: its owner's), and has:
 //   resize(w, h)   (the view's size; it starts over)
 //   frame(dt)      (dt: seconds since the last frame)
 //   point(x, y)    (where the pointer is; null when it's gone)
 //   poke(x, y)     (pressed there)
 //   still()        (one picture that stands for it: for someone who'd rather things didn't
 //                  move, and the editor's swatches)
-// Starfield flight and Bubbles are everyone's; Pipes, Pond and Lava lamp come with Glow
-// (lib/homepages.js keeps to that).
+// Starfield flight, Bubbles and Bouncing logo are everyone's; Pipes, Pond, Lava lamp, Mystify, Snow
+// globe and Constellations come with Glow (lib/homepages.js keeps to that).
 
 const rgbOf = (hex) => {
   const n = parseInt(String(hex || '').replace('#', '').padEnd(6, '0').slice(0, 6), 16) || 0;
@@ -1106,4 +1106,752 @@ function lava(g, c1, c2) {
   };
 }
 
-export const SCENES = { warp, bubbles, pipes, pond, lava };
+// ---------- Bouncing logo ----------
+// The old DVD player's, waiting: a logo (the page's owner's name, on a disc) drifting from side to
+// side, a new colour each time it touches one; right into a corner, and sparkles burst out of it as
+// it flashes through all its colours. A click or a tap sends it off away from there (and so, with a
+// bit of aim, into a corner).
+function bounce(g, c1, c2, opts = {}) {
+  const back = rgbOf(c1);
+  const PALETTE = [rgbOf(c2), [255, 79, 163], [90, 209, 255], [255, 214, 64], [120, 236, 140], [190, 120, 255], [255, 140, 60], [255, 255, 255]];
+  const words = String(opts.name || '').trim().slice(0, 18) || 'Rainlit';
+  let w = 1;
+  let h = 1;
+  let logo = null; // (it in white, and in its colour now)
+  let tinted = null;
+  let lw = 1;
+  let lh = 1;
+  let x = 0;
+  let y = 0;
+  let vx = 0;
+  let vy = 0;
+  let colorAt = 0;
+  let hitX = -1; // (when it last touched a side, and the top or bottom: both at once is a corner)
+  let hitY = -1;
+  let clock = 0;
+  let sparks = [];
+  let corners = 0;
+  let party = 0; // (after a corner: flashing through its colours, a while)
+  let flashIn = 0;
+  const paintLogo = () => {
+    const k = g.canvas.width / w;
+    lw = Math.round(clamp(Math.min(w, h) * 0.3, 110, 260));
+    const font = (s) => `italic 800 ${s}px "Bricolage Grotesque", system-ui, sans-serif`;
+    const m = canvasOf(1, 1).getContext('2d');
+    m.font = font(100);
+    const fs = Math.min(lw * 0.4, (100 * lw) / Math.max(1, m.measureText(words).width));
+    const disc = lw * 0.2;
+    lh = Math.round(fs * 0.95 + disc + 6);
+    logo = canvasOf(lw * k, lh * k);
+    const x2 = logo.getContext('2d');
+    x2.scale(k, k);
+    x2.fillStyle = '#fff';
+    x2.font = font(fs);
+    x2.textAlign = 'center';
+    x2.textBaseline = 'alphabetic';
+    x2.fillText(words, lw / 2, fs * 0.8, lw);
+    // (The disc under it, with HOMEPAGE cut out of it.)
+    const dy = fs * 0.95 + disc / 2 + 2;
+    x2.beginPath();
+    x2.ellipse(lw / 2, dy, lw * 0.46, disc / 2, 0, 0, Math.PI * 2);
+    x2.fill();
+    x2.globalCompositeOperation = 'destination-out';
+    x2.font = `800 ${disc * 0.58}px "Bricolage Grotesque", system-ui, sans-serif`;
+    x2.textBaseline = 'middle';
+    x2.fillText('H O M E P A G E', lw / 2, dy + disc * 0.03, lw * 0.7);
+    tint();
+  };
+  const tint = () => {
+    tinted = canvasOf(logo.width, logo.height);
+    const t = tinted.getContext('2d');
+    t.drawImage(logo, 0, 0);
+    t.globalCompositeOperation = 'source-in';
+    t.fillStyle = css(PALETTE[colorAt % PALETTE.length]);
+    t.fillRect(0, 0, tinted.width, tinted.height);
+  };
+  const recolor = () => {
+    colorAt = (colorAt + 1 + Math.floor(Math.random() * (PALETTE.length - 2))) % PALETTE.length;
+    tint();
+  };
+  // (Sparkles out of a corner, in all its colours.)
+  const burst = (cx, cy) => {
+    corners++;
+    party = 1.1;
+    for (let i = 0; i < 70; i++) {
+      const a = Math.atan2(h / 2 - cy, w / 2 - cx) + rand(-0.95, 0.95);
+      const v = rand(200, 640);
+      sparks.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: rand(1, 2), size: rand(3, 7), color: PALETTE[i % PALETTE.length] });
+    }
+  };
+  const paint = () => {
+    g.fillStyle = css(back);
+    g.fillRect(0, 0, w, h);
+    for (const s of sparks) {
+      g.globalAlpha = clamp(1 - s.t / s.life, 0, 1);
+      g.fillStyle = css(s.color);
+      g.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
+    }
+    g.globalAlpha = 1;
+    g.drawImage(tinted, x, y, lw, lh);
+  };
+  return {
+    resize(nw, nh) {
+      w = nw;
+      h = nh;
+      paintLogo();
+      x = rand(0, Math.max(0, w - lw));
+      y = rand(0, Math.max(0, h - lh));
+      const v = clamp((w + h) * 0.045, 60, 150);
+      vx = (Math.random() < 0.5 ? -1 : 1) * v;
+      vy = (Math.random() < 0.5 ? -1 : 1) * v * 0.8;
+      // (Its font, once it's come, if it hadn't.)
+      if (document.fonts && document.fonts.status !== 'loaded') document.fonts.ready.then(() => { if (logo) paintLogo(); }).catch(() => {});
+    },
+    frame(dt) {
+      clock += dt;
+      x += vx * dt;
+      y += vy * dt;
+      let hit = false;
+      if (x <= 0 || x >= w - lw) {
+        x = clamp(x, 0, Math.max(0, w - lw));
+        vx = x <= 0 ? Math.abs(vx) : -Math.abs(vx);
+        hitX = clock;
+        hit = true;
+      }
+      if (y <= 0 || y >= h - lh) {
+        y = clamp(y, 0, Math.max(0, h - lh));
+        vy = y <= 0 ? Math.abs(vy) : -Math.abs(vy);
+        hitY = clock;
+        hit = true;
+      }
+      if (hit) {
+        recolor();
+        // (Both within a moment: a corner.)
+        if (Math.abs(hitX - hitY) < 0.09) {
+          burst(x < (w - lw) / 2 ? 0 : w, y < (h - lh) / 2 ? 0 : h);
+          hitX = hitY = -1;
+        }
+      }
+      if (party > 0) {
+        party -= dt;
+        flashIn -= dt;
+        if (flashIn <= 0) {
+          flashIn = 0.07;
+          recolor();
+        }
+      }
+      for (const s of sparks) {
+        s.t += dt;
+        s.vy += 380 * dt;
+        s.vx *= Math.exp(-dt * 1.2);
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+      }
+      sparks = sparks.filter((s) => s.t < s.life);
+      paint();
+    },
+    point() {},
+    poke(px, py) {
+      // (Off away from there, as fast as it was going.)
+      const v = Math.hypot(vx, vy);
+      let dx = x + lw / 2 - px;
+      let dy = y + lh / 2 - py;
+      const d = Math.hypot(dx, dy) || 1;
+      dx /= d;
+      dy /= d;
+      // (Never too nearly straight across or up and down: it'd take an age to get anywhere.)
+      const a = Math.atan2(dy, dx);
+      const q = Math.round(a / (Math.PI / 2)) * (Math.PI / 2);
+      const off = a - q;
+      const b = q + (Math.abs(off) < 0.35 ? Math.sign(off || 1) * 0.35 : off);
+      vx = Math.cos(b) * v;
+      vy = Math.sin(b) * v;
+      recolor();
+    },
+    still() {
+      x = (w - lw) / 2;
+      y = (h - lh) / 2;
+      paint();
+    },
+    things: () => ({ words, x: Math.round(x), y: Math.round(y), w: lw, h: lh, vx: Math.round(vx), vy: Math.round(vy), color: colorAt, corners }),
+  };
+}
+
+// ---------- Mystify ----------
+// The other screensaver: shapes of bright lines, each corner bouncing about the screen on its own,
+// echoes of where they were trailing behind, their colours slowly turning. A click or a tap starts
+// another there (four at most: the oldest goes), and the pointer draws the corners near it.
+function mystify(g, c1, c2) {
+  const back = rgbOf(c1);
+  const ECHOES = 7;
+  const EVERY = 0.075; // (an echo, every this many seconds)
+  let w = 1;
+  let h = 1;
+  let shapes = [];
+  let px = null;
+  let py = null;
+  let since = 0;
+  // (Where the first shape's colour starts: the page's second colour, or a bright cyan.)
+  const startHue = (() => {
+    const [r, gg, b] = rgbOf(c2).map((v) => v / 255);
+    const hi = Math.max(r, gg, b);
+    const lo = Math.min(r, gg, b);
+    if (hi - lo < 0.15) return 185;
+    const d = hi - lo;
+    const hue = hi === r ? ((gg - b) / d) % 6 : hi === gg ? (b - r) / d + 2 : (r - gg) / d + 4;
+    return (hue * 60 + 360) % 360;
+  })();
+  const shape = (hue, at) => {
+    const v = clamp((w + h) * 0.07, 70, 190);
+    const pts = Array.from({ length: 4 }, () => {
+      const a = rand(0, Math.PI * 2);
+      const s = rand(0.55, 1) * v * (at ? 1.6 : 1);
+      return { x: at ? at[0] : rand(0, w), y: at ? at[1] : rand(0, h), vx: Math.cos(a) * s, vy: Math.sin(a) * s };
+    });
+    return { pts, hue, echoes: [], born: 0 };
+  };
+  const colorOf = (s, a) => `hsla(${Math.round(s.hue)}, 100%, 62%, ${a})`;
+  const paint = () => {
+    g.fillStyle = css(back);
+    g.fillRect(0, 0, w, h);
+    g.lineJoin = 'round';
+    for (const s of shapes) {
+      const all = [...s.echoes, s.pts.flatMap((p) => [p.x, p.y])];
+      all.forEach((q, i) => {
+        const a = ((i + 1) / all.length) * Math.min(1, s.born * 3);
+        g.beginPath();
+        g.moveTo(q[0], q[1]);
+        for (let j = 2; j < 8; j += 2) g.lineTo(q[j], q[j + 1]);
+        g.closePath();
+        // (Its glow, then the line.)
+        g.strokeStyle = colorOf(s, a * 0.16);
+        g.lineWidth = 7;
+        g.stroke();
+        g.strokeStyle = colorOf(s, a);
+        g.lineWidth = 1.6;
+        g.stroke();
+      });
+    }
+  };
+  return {
+    resize(nw, nh) {
+      w = nw;
+      h = nh;
+      shapes = [shape(startHue), shape((startHue + 180) % 360)];
+      for (const s of shapes) s.born = 1;
+    },
+    frame(dt) {
+      since += dt;
+      const echo = since >= EVERY;
+      if (echo) since = 0;
+      for (const s of shapes) {
+        s.born += dt;
+        s.hue = (s.hue + dt * 14) % 360;
+        for (const p of s.pts) {
+          // (Drawn to the pointer, if it's near.)
+          if (px !== null) {
+            const dx = px - p.x;
+            const dy = py - p.y;
+            const d = Math.hypot(dx, dy);
+            if (d < 240 && d > 1) {
+              const pull = (1 - d / 240) * 260;
+              p.vx += (dx / d) * pull * dt;
+              p.vy += (dy / d) * pull * dt;
+            }
+          }
+          // (Never too slow, nor too fast, for long.)
+          const v = Math.hypot(p.vx, p.vy) || 1;
+          const want = clamp(v, 50, 320);
+          const nv = want + (v - want) * Math.exp(-dt * 1.5);
+          p.vx = (p.vx / v) * nv;
+          p.vy = (p.vy / v) * nv;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          if (p.x < 0 || p.x > w) {
+            p.x = clamp(p.x, 0, w);
+            p.vx = p.x <= 0 ? Math.abs(p.vx) : -Math.abs(p.vx);
+          }
+          if (p.y < 0 || p.y > h) {
+            p.y = clamp(p.y, 0, h);
+            p.vy = p.y <= 0 ? Math.abs(p.vy) : -Math.abs(p.vy);
+          }
+        }
+        if (echo) {
+          s.echoes.push(s.pts.flatMap((p) => [p.x, p.y]));
+          if (s.echoes.length > ECHOES) s.echoes.shift();
+        }
+      }
+      paint();
+    },
+    point(x, y) {
+      px = x;
+      py = y;
+    },
+    poke(x, y) {
+      if (shapes.length >= 4) shapes.shift();
+      const last = shapes[shapes.length - 1];
+      shapes.push(shape(((last ? last.hue : startHue) + rand(90, 150)) % 360, [x, y]));
+    },
+    still() {
+      for (let i = 0; i < 40; i++) this.frame(1 / 30);
+    },
+    things: () => shapes.map((s) => ({ hue: Math.round(s.hue), pts: s.pts.map((p) => [Math.round(p.x), Math.round(p.y)]) })),
+  };
+}
+
+// ---------- Snow globe ----------
+// A little winter scene in a snow globe: a cabin with its window lit, pines on the snowy hills,
+// and snow drifting down and settling on them. A click or a tap shakes it (the harder, the nearer
+// the bottom), and moving the pointer quickly stirs it: the snow swirls up and slowly settles
+// again. Now and then it's given a little shake by itself.
+function globe(g, c1, c2) {
+  const sky = rgbOf(c1);
+  const snow = rgbOf(c2);
+  let w = 1;
+  let h = 1;
+  let back = null;
+  let flakes = [];
+  let lying = 0; // (snow settled on the ground: what a shake lifts)
+  let spin = 0; // (the water swirling round: which way, and how fast)
+  let sprites = [];
+  let px = null;
+  let py = null;
+  let pAt = 0;
+  let clock = 0;
+  let nudgeIn = 6;
+  // (The ground, where the snow settles: low hills.)
+  const ground = (x) => h * 0.8 + Math.sin((x / w) * Math.PI * 2 + 0.6) * h * 0.035 + Math.sin((x / w) * Math.PI * 5.2) * h * 0.012;
+  const flakeSprite = (r) => {
+    const k = g.canvas.width / w;
+    const S = Math.ceil(r * 2 + 2);
+    const c = canvasOf(S * k, S * k);
+    const x = c.getContext('2d');
+    x.scale(k, k);
+    const grad = x.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, r);
+    grad.addColorStop(0, css(snow, 1));
+    grad.addColorStop(0.55, css(snow, 0.85));
+    grad.addColorStop(1, css(snow, 0));
+    x.fillStyle = grad;
+    x.fillRect(0, 0, S, S);
+    return { pic: c, S };
+  };
+  const drawScene = () => {
+    const k = g.canvas.width / w;
+    back = canvasOf(w * k, h * k);
+    const b = back.getContext('2d');
+    b.scale(k, k);
+    // (The sky inside the glass, and a few stars.)
+    const air = b.createLinearGradient(0, 0, 0, h);
+    air.addColorStop(0, css(shade(sky, -0.35)));
+    air.addColorStop(0.7, css(sky));
+    air.addColorStop(1, css(shade(sky, 0.25)));
+    b.fillStyle = air;
+    b.fillRect(0, 0, w, h);
+    for (let i = 0; i < (w * h) / 9000; i++) {
+      b.fillStyle = `rgba(255, 255, 255, ${rand(0.15, 0.6)})`;
+      b.fillRect(rand(0, w), rand(0, h * 0.6), rand(0.8, 1.8), rand(0.8, 1.8));
+    }
+    // (Far hills, blue with distance.)
+    b.fillStyle = css(mix(sky, snow, 0.35));
+    b.beginPath();
+    b.moveTo(0, h);
+    const far = (x) => h * 0.7 + Math.sin((x / w) * 7 + 1.3) * h * 0.035 + Math.sin((x / w) * 2.1) * h * 0.04;
+    for (let x = 0; x < w; x += 8) b.lineTo(x, far(x));
+    b.lineTo(w, far(w));
+    b.lineTo(w, h);
+    b.fill();
+    // (Pines: a dark green, a little snow on them.)
+    const pine = (x, base, size) => {
+      b.fillStyle = '#3a2a20';
+      b.fillRect(x - size * 0.04, base - size * 0.18, size * 0.08, size * 0.18);
+      for (let i = 0; i < 3; i++) {
+        const bottom = base - size * (0.12 + i * 0.25);
+        const top = bottom - size * 0.42;
+        const half = size * (0.3 - i * 0.07);
+        b.fillStyle = '#1d3b33';
+        b.beginPath();
+        b.moveTo(x, top);
+        b.lineTo(x + half, bottom);
+        b.lineTo(x - half, bottom);
+        b.closePath();
+        b.fill();
+        // (Snow on its tip.)
+        const cap = 0.3;
+        b.fillStyle = css(snow, 0.88);
+        b.beginPath();
+        b.moveTo(x, top);
+        b.lineTo(x + half * cap, top + size * 0.42 * cap);
+        b.lineTo(x - half * cap, top + size * 0.42 * cap);
+        b.closePath();
+        b.fill();
+      }
+    };
+    const s = Math.min(w, h);
+    const cabinX = w * 0.38;
+    for (const [fx, f] of [[0.08, 0.8], [0.15, 1.1], [0.24, 0.7], [0.55, 1], [0.63, 1.25], [0.72, 0.85], [0.86, 1.05], [0.94, 0.75]]) pine(w * fx, ground(w * fx) + 4, s * 0.16 * f);
+    // (The cabin, its roof deep in snow, its window lit.)
+    const cw = s * 0.17;
+    const ch = cw * 0.6;
+    const cy = ground(cabinX) + 2;
+    b.fillStyle = '#6b3f2a';
+    b.fillRect(cabinX - cw / 2, cy - ch, cw, ch);
+    b.fillStyle = '#4e2c1d';
+    for (let i = 1; i < 5; i++) b.fillRect(cabinX - cw / 2, cy - ch + (ch / 5) * i, cw, 1.5);
+    const glow = b.createRadialGradient(cabinX - cw * 0.18, cy - ch * 0.5, 2, cabinX - cw * 0.18, cy - ch * 0.5, cw * 0.9);
+    glow.addColorStop(0, 'rgba(255, 196, 90, 0.5)');
+    glow.addColorStop(1, 'rgba(255, 196, 90, 0)');
+    b.fillStyle = glow;
+    b.fillRect(cabinX - cw * 1.2, cy - ch * 1.6, cw * 2.2, ch * 2.2);
+    b.fillStyle = '#ffd27a';
+    b.fillRect(cabinX - cw * 0.3, cy - ch * 0.68, cw * 0.24, ch * 0.34);
+    b.fillStyle = '#3a2418';
+    b.fillRect(cabinX + cw * 0.12, cy - ch * 0.62, cw * 0.2, ch * 0.62);
+    b.fillStyle = '#5c3524';
+    b.beginPath();
+    b.moveTo(cabinX - cw / 2, cy - ch);
+    b.lineTo(cabinX, cy - ch - cw * 0.36);
+    b.lineTo(cabinX + cw / 2, cy - ch);
+    b.closePath();
+    b.fill();
+    b.fillStyle = '#5a4a44';
+    b.fillRect(cabinX + cw * 0.18, cy - ch - cw * 0.4, cw * 0.1, cw * 0.26);
+    b.strokeStyle = css(snow);
+    b.lineWidth = cw * 0.13;
+    b.lineJoin = 'round';
+    b.lineCap = 'round';
+    b.beginPath();
+    b.moveTo(cabinX - cw * 0.6, cy - ch + cw * 0.03);
+    b.lineTo(cabinX, cy - ch - cw * 0.38);
+    b.lineTo(cabinX + cw * 0.6, cy - ch + cw * 0.03);
+    b.stroke();
+    // (The snowy ground, in front of it all.)
+    const drift = b.createLinearGradient(0, h * 0.75, 0, h);
+    drift.addColorStop(0, css(snow));
+    drift.addColorStop(1, css(mix(snow, sky, 0.3)));
+    b.fillStyle = drift;
+    b.beginPath();
+    b.moveTo(0, h);
+    for (let x = 0; x < w; x += 6) b.lineTo(x, ground(x));
+    b.lineTo(w, ground(w));
+    b.lineTo(w, h);
+    b.fill();
+    // (The glass: darker round its edges.)
+    const edge = b.createRadialGradient(w / 2, h * 0.45, Math.min(w, h) * 0.3, w / 2, h * 0.5, Math.max(w, h) * 0.75);
+    edge.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    edge.addColorStop(1, 'rgba(0, 0, 10, 0.45)');
+    b.fillStyle = edge;
+    b.fillRect(0, 0, w, h);
+  };
+  const flake = (x, y, vx, vy) => ({ x, y, vx, vy, kind: Math.floor(Math.random() * 3), sway: rand(0, 6.3) });
+  // (Snow off the ground, near x, thrown up.)
+  const lift = (n, x0, force) => {
+    n = Math.min(n, lying);
+    for (let i = 0; i < n; i++) {
+      const x = x0 === null ? rand(0, w) : clamp(x0 + rand(-0.35, 0.35) * w, 0, w);
+      flakes.push(flake(x, ground(x) - 2, rand(-1, 1) * force * 0.5, -rand(0.4, 1) * force));
+    }
+    lying -= n;
+  };
+  const shake = (x, y, how) => {
+    const near = clamp(y / h, 0.2, 1); // (the nearer the bottom, the harder)
+    lift(Math.round(lying * 0.55 * how * near), x, (380 + 320 * near) * how);
+    spin = clamp(spin + (x < w / 2 ? 1 : -1) * 1.2 * how, -2.2, 2.2);
+    for (const f of flakes) {
+      const d = Math.hypot(f.x - x, f.y - y);
+      const push = Math.max(0, 1 - d / 360) * 420 * how;
+      if (push > 0) {
+        f.vx += ((f.x - x) / (d || 1)) * push + rand(-60, 60);
+        f.vy += ((f.y - y) / (d || 1)) * push - rand(0, 80);
+      }
+    }
+  };
+  const paint = () => {
+    g.drawImage(back, 0, 0, w, h);
+    for (const f of flakes) {
+      const s = sprites[f.kind];
+      g.drawImage(s.pic, f.x - s.S / 2, f.y - s.S / 2, s.S, s.S);
+    }
+    // (A gleam on the glass, over it all.)
+    g.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    g.lineWidth = Math.min(w, h) * 0.03;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.ellipse(w / 2, h / 2, w * 0.45, h * 0.44, 0, Math.PI * 1.1, Math.PI * 1.3);
+    g.stroke();
+    g.lineWidth *= 0.45;
+    g.beginPath();
+    g.ellipse(w / 2, h / 2, w * 0.45, h * 0.44, 0, Math.PI * 1.34, Math.PI * 1.38);
+    g.stroke();
+  };
+  return {
+    resize(nw, nh) {
+      w = nw;
+      h = nh;
+      drawScene();
+      sprites = [flakeSprite(1.6), flakeSprite(2.4), flakeSprite(3.4)];
+      const n = Math.round(clamp((w * h) / 2600, 250, 850));
+      // (Most of it settled; some still coming down.)
+      lying = Math.round(n * 0.65);
+      flakes = Array.from({ length: n - lying }, () => flake(rand(0, w), rand(-h * 0.1, h * 0.8), rand(-10, 10), rand(10, 30)));
+    },
+    frame(dt) {
+      clock += dt;
+      nudgeIn -= dt;
+      if (nudgeIn <= 0) {
+        nudgeIn = rand(14, 24);
+        shake(rand(w * 0.2, w * 0.8), h * 0.9, 0.3);
+      }
+      spin *= Math.exp(-dt * 0.45);
+      const cx = w / 2;
+      const cy = h * 0.55;
+      const r = Math.max(w, h);
+      for (const f of flakes) {
+        // (Carried round by the water, falling through it slowly, swaying.)
+        f.sway += dt * 1.7;
+        const flowX = (-(f.y - cy) / r) * spin * 260 + Math.sin(f.sway) * 9;
+        const flowY = ((f.x - cx) / r) * spin * 260 + 16 + f.kind * 7;
+        const k = Math.min(1, dt * 1.3);
+        f.vx += (flowX - f.vx) * k;
+        f.vy += (flowY - f.vy) * k;
+        f.x += f.vx * dt;
+        f.y += f.vy * dt;
+        if (f.x < 0) {
+          f.x = 0;
+          f.vx = Math.abs(f.vx) * 0.5;
+        } else if (f.x > w) {
+          f.x = w;
+          f.vx = -Math.abs(f.vx) * 0.5;
+        }
+        if (f.y < 0) {
+          f.y = 0;
+          f.vy = Math.abs(f.vy) * 0.4;
+        }
+        // (Settled: it's part of the snow on the ground.)
+        if (f.vy > 0 && f.y >= ground(f.x) - 1) f.gone = true;
+      }
+      const before = flakes.length;
+      flakes = flakes.filter((f) => !f.gone);
+      lying += before - flakes.length;
+      paint();
+    },
+    point(x, y) {
+      // (Moved quickly: a stir, behind it.)
+      const now = clock;
+      if (x !== null && px !== null && now > pAt) {
+        const v = Math.hypot(x - px, y - py) / Math.max(0.016, now - pAt);
+        if (v > 700) {
+          for (const f of flakes) {
+            const d = Math.hypot(f.x - x, f.y - y);
+            if (d < 90) {
+              f.vx += ((x - px) / Math.max(0.016, now - pAt)) * 0.25 * (1 - d / 90);
+              f.vy += ((y - py) / Math.max(0.016, now - pAt)) * 0.25 * (1 - d / 90);
+            }
+          }
+          if (y > ground(x) - 60) lift(4, x, 260);
+        }
+      }
+      px = x;
+      py = y;
+      pAt = now;
+    },
+    poke(x, y) {
+      shake(x, y, 1);
+    },
+    still() {
+      paint();
+    },
+    things: () => ({ falling: flakes.length, lying, spin: +spin.toFixed(2) }),
+  };
+}
+
+// ---------- Constellations ----------
+// A night sky, its stars twinkling and slowly drifting. Near the pointer they join up, as on a
+// star chart; a click or a tap draws a constellation there, the nearest few joined for a while,
+// with its name.
+function constellations(g, c1, c2) {
+  const night = rgbOf(c1);
+  const glint = rgbOf(c2);
+  const NAMES = ['The Lantern', 'The Great Kettle', 'The Little Umbrella', 'The Sleepy Cat', 'The Paper Boat', 'The Porch Light', 'The Lost Sock', 'The Teacup',
+    'The Wandering Snail', 'The Old Radio', 'The Sleeping Fox', 'The Kite', 'The Raincloud', 'The Bicycle', 'The Moth', 'The Fiddle', 'The Mitten', 'The Watering Can',
+    'The Dreaming Toad', 'The Spare Key'];
+  const REACH = 170; // (how near the pointer stars join up)
+  const LINK = 100; // (and how near each other)
+  let w = 1;
+  let h = 1;
+  let back = null;
+  let sprite = null;
+  let stars = [];
+  let drawn = []; // (constellations: which stars, joined how, called what, and for how long)
+  let names = [];
+  let px = null;
+  let py = null;
+  let clock = 0;
+  const drawSky = () => {
+    const k = g.canvas.width / w;
+    back = canvasOf(w * k, h * k);
+    const b = back.getContext('2d');
+    b.scale(k, k);
+    const air = b.createLinearGradient(0, 0, w * 0.2, h);
+    air.addColorStop(0, css(shade(night, -0.3)));
+    air.addColorStop(1, css(shade(night, 0.12)));
+    b.fillStyle = air;
+    b.fillRect(0, 0, w, h);
+    // (A milky band across it, and the faintest stars, too far to join up.)
+    b.save();
+    b.translate(w / 2, h / 2);
+    b.rotate(-0.42);
+    const band = b.createLinearGradient(0, -h * 0.28, 0, h * 0.28);
+    band.addColorStop(0, css(glint, 0));
+    band.addColorStop(0.5, css(glint, 0.07));
+    band.addColorStop(1, css(glint, 0));
+    b.fillStyle = band;
+    b.fillRect(-w, -h * 0.28, w * 2, h * 0.56);
+    b.restore();
+    for (let i = 0; i < (w * h) / 1800; i++) {
+      b.fillStyle = css(glint, rand(0.08, 0.32));
+      b.fillRect(rand(0, w), rand(0, h), rand(0.6, 1.3), rand(0.6, 1.3));
+    }
+    // (A star's glow, to draw them with.)
+    const S = 24;
+    sprite = canvasOf(S * k, S * k);
+    const s = sprite.getContext('2d');
+    s.scale(k, k);
+    const grad = s.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    grad.addColorStop(0.12, css(mix(glint, [255, 255, 255], 0.6), 0.95));
+    grad.addColorStop(0.35, css(glint, 0.28));
+    grad.addColorStop(1, css(glint, 0));
+    s.fillStyle = grad;
+    s.fillRect(0, 0, S, S);
+  };
+  // (The nearest few stars to a spot, joined up the shortest way: a minimum spanning tree.)
+  const join = (x, y) => {
+    const near = stars.map((s, i) => [Math.hypot(s.x - x, s.y - y), i]).filter(([d]) => d < 280).sort((a, b) => a[0] - b[0]).slice(0, Math.round(rand(5, 8))).map(([, i]) => i);
+    if (near.length < 3) return null;
+    const inTree = [near[0]];
+    const rest = near.slice(1);
+    const links = [];
+    while (rest.length) {
+      let best = null;
+      for (const a of inTree) {
+        for (const b of rest) {
+          const d = Math.hypot(stars[a].x - stars[b].x, stars[a].y - stars[b].y);
+          if (!best || d < best[2]) best = [a, b, d];
+        }
+      }
+      links.push([best[0], best[1]]);
+      inTree.push(best[1]);
+      rest.splice(rest.indexOf(best[1]), 1);
+    }
+    if (!names.length) names = [...NAMES].sort(() => Math.random() - 0.5);
+    return { stars: near, links, name: names.pop(), t: 0, life: 9 };
+  };
+  const paint = () => {
+    g.drawImage(back, 0, 0, w, h);
+    const S = 24;
+    // (Lines first: the constellations drawn, then the pointer's.)
+    g.lineCap = 'round';
+    for (const c of drawn) {
+      const a = Math.min(1, c.t / 0.6) * Math.min(1, (c.life - c.t) / 2);
+      g.strokeStyle = css(glint, 0.55 * a);
+      g.lineWidth = 1.4;
+      g.beginPath();
+      for (const [i, j] of c.links) {
+        g.moveTo(stars[i].x, stars[i].y);
+        g.lineTo(stars[j].x, stars[j].y);
+      }
+      g.stroke();
+      // (Its name, under it.)
+      let lowest = -Infinity;
+      let sum = 0;
+      for (const i of c.stars) {
+        lowest = Math.max(lowest, stars[i].y);
+        sum += stars[i].x;
+      }
+      g.fillStyle = css(glint, 0.75 * a);
+      g.font = '600 12px "Bricolage Grotesque", system-ui, sans-serif';
+      g.textAlign = 'center';
+      g.fillText(c.name.toUpperCase().split('').join(String.fromCharCode(8202)), clamp(sum / c.stars.length, 70, w - 70), Math.min(h - 8, lowest + 24));
+    }
+    if (px !== null) {
+      const near = [];
+      for (let i = 0; i < stars.length; i++) {
+        const d = Math.hypot(stars[i].x - px, stars[i].y - py);
+        if (d < REACH) near.push([i, d]);
+      }
+      g.lineWidth = 1;
+      for (let a = 0; a < near.length; a++) {
+        for (let b = a + 1; b < near.length; b++) {
+          const s1 = stars[near[a][0]];
+          const s2 = stars[near[b][0]];
+          const d = Math.hypot(s1.x - s2.x, s1.y - s2.y);
+          if (d > LINK) continue;
+          const k = (1 - d / LINK) * (1 - Math.max(near[a][1], near[b][1]) / REACH);
+          g.strokeStyle = css(glint, 0.5 * k);
+          g.beginPath();
+          g.moveTo(s1.x, s1.y);
+          g.lineTo(s2.x, s2.y);
+          g.stroke();
+        }
+      }
+    }
+    // (The stars: twinkling, brighter near the pointer, or in a constellation.)
+    const lit = new Set();
+    for (const c of drawn) for (const i of c.stars) lit.add(i);
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      let a = 0.55 + 0.45 * Math.sin(clock * s.speed + s.phase);
+      if (px !== null) a += Math.max(0, 1 - Math.hypot(s.x - px, s.y - py) / REACH) * 0.5;
+      if (lit.has(i)) a += 0.4;
+      g.globalAlpha = clamp(a, 0.15, 1);
+      const size = S * s.r * (lit.has(i) ? 1.25 : 1);
+      g.drawImage(sprite, s.x - size / 2, s.y - size / 2, size, size);
+    }
+    g.globalAlpha = 1;
+  };
+  return {
+    resize(nw, nh) {
+      w = nw;
+      h = nh;
+      drawSky();
+      const n = Math.round(clamp((w * h) / 4200, 140, 480));
+      stars = Array.from({ length: n }, () => ({ x: rand(0, w), y: rand(0, h), r: rand(0.35, 1) ** 2 * 0.9 + 0.25, phase: rand(0, 6.3), speed: rand(0.6, 2.4), vx: rand(-1.5, 1.5), vy: rand(-0.8, 0.8) }));
+      drawn = [];
+    },
+    frame(dt) {
+      clock += dt;
+      for (const s of stars) {
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        if (s.x < -10) s.x += w + 20;
+        else if (s.x > w + 10) s.x -= w + 20;
+        if (s.y < -10) s.y += h + 20;
+        else if (s.y > h + 10) s.y -= h + 20;
+      }
+      for (const c of drawn) c.t += dt;
+      drawn = drawn.filter((c) => c.t < c.life);
+      paint();
+    },
+    point(x, y) {
+      px = x;
+      py = y;
+    },
+    poke(x, y) {
+      const c = join(x, y);
+      if (!c) return;
+      if (drawn.length >= 3) drawn.shift();
+      drawn.push(c);
+    },
+    still() {
+      const c = join(w * 0.4, h * 0.45);
+      if (c) {
+        c.t = 1;
+        drawn = [c];
+      }
+      paint();
+    },
+    things: () => drawn.map((c) => ({ name: c.name, stars: c.stars.length, links: c.links.length })),
+  };
+}
+
+export const SCENES = { warp, bubbles, bounce, pipes, pond, lava, mystify, globe, constellations };

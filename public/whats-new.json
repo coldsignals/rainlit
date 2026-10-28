@@ -1,6 +1,36 @@
 {
   "entries": [
     {
+      "id": "2026-10-28b",
+      "date": "2026-10-28",
+      "title": "Four more scenes",
+      "items": [
+        {
+          "title": "Bouncing logo",
+          "text": "Your name drifts around your page like an old DVD player's logo, a new colour at every edge, and celebrates when it hits a corner just right. Click to send it off another way, and try to aim it in.",
+          "media": "/whats-new/2026-10-28b-bounce.mp4"
+        },
+        {
+          "title": "Mystify",
+          "glow": true,
+          "text": "The other old screensaver: neon shapes bouncing about, trailing echoes of themselves. They lean toward your pointer, and a click starts another one.",
+          "media": "/whats-new/2026-10-28b-mystify.mp4"
+        },
+        {
+          "title": "Snow globe",
+          "glow": true,
+          "text": "A little cabin in the snow. Click to shake it, and the snow swirls up and slowly settles again.",
+          "media": "/whats-new/2026-10-28b-globe.mp4"
+        },
+        {
+          "title": "Constellations",
+          "glow": true,
+          "text": "A night sky whose stars join up around your pointer. Click, and a constellation's drawn there, with its name. All four are in your homepage's Page tab, under Background.",
+          "media": "/whats-new/2026-10-28b-constellations.mp4"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28",
       "date": "2026-10-28",
       "title": "Homepages come alive",

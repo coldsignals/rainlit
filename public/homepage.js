@@ -61,6 +61,10 @@
     pipes: { label: 'Pipes', colors: ['Background', 'First pipe'], c1: '#000000', c2: '#3c78f5' },
     pond: { label: 'Pond', colors: ['Deep water', 'Shallow water'], c1: '#0b3a46', c2: '#3f9a8e' },
     lava: { label: 'Lava lamp', colors: ['Liquid', 'Wax'], c1: '#4a1a7a', c2: '#ff7a2f' },
+    bounce: { label: 'Bouncing logo', colors: ['Background', 'Logo'], c1: '#000000', c2: '#5ad1ff' },
+    mystify: { label: 'Mystify', colors: ['Background', 'Lines'], c1: '#000000', c2: '#4ff0ff' },
+    globe: { label: 'Snow globe', colors: ['Sky', 'Snow'], c1: '#2a4a7f', c2: '#ffffff' },
+    constellations: { label: 'Constellations', colors: ['Sky', 'Stars'], c1: '#0b1230', c2: '#d6e4ff' },
   };
   const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', leaves: 'Autumn leaves', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms', embers: 'Embers' };
   const TRAILS = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', stars: 'Stars', bubbles: 'Bubbles', raindrops: 'Raindrops', pixels: 'Pixels' };
@@ -68,7 +72,7 @@
   // Glow's extras (lib/homepages.js): anyone can see them on a page, people with Glow can use them.
   const PERKS = {
     fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms', 'embers'],
-    pattern: ['starfield', 'bokeh', 'holo', 'waves'], scene: ['pipes', 'pond', 'lava'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels'],
+    pattern: ['starfield', 'bokeh', 'holo', 'waves'], scene: ['pipes', 'pond', 'lava', 'mystify', 'globe', 'constellations'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels'],
     click: ['confetti', 'hearts', 'stars', 'ripples', 'fireworks'], pet: ['drop', 'dragon', 'fox'], piece: ['fortune'],
   };
 
@@ -322,7 +326,7 @@
   }));
   const calmMedia = () => (window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false });
 
-  function sceneOn(page, room, bg) {
+  function sceneOn(page, room, bg, opts = {}) {
     const cv = document.createElement('canvas');
     cv.className = 'hp-scene';
     cv.setAttribute('aria-hidden', 'true');
@@ -426,7 +430,7 @@
     document.addEventListener('visibilitychange', shown);
     loadScenes().then((m) => {
       if (stopped) return;
-      scene = (m.SCENES[bg.scene] || m.SCENES.warp)(g, hex(bg.c1, '#04050c'), hex(bg.c2, '#ffffff'));
+      scene = (m.SCENES[bg.scene] || m.SCENES.warp)(g, hex(bg.c1, '#04050c'), hex(bg.c2, '#ffffff'), opts);
       gap = 1000 / Math.min(phone ? 30 : 60, scene.fps || 60);
       size();
       if (ro) ro.observe(page);
@@ -457,8 +461,8 @@
   }
 
   // A scene as a swatch: its still picture, as on a page (a small one), made smaller (once the
-  // scenes have come).
-  function sceneSwatch(key, c1, c2) {
+  // scenes have come). (opts: { name }, the page's owner's, for the Bouncing logo.)
+  function sceneSwatch(key, c1, c2, opts = {}) {
     const s = document.createElement('span');
     s.className = 'hp-pattern-swatch hp-scene-swatch';
     s.style.background = hex(c1, '#04050c');
@@ -472,7 +476,7 @@
       const big = document.createElement('canvas');
       big.width = 480;
       big.height = 320;
-      const scene = make(big.getContext('2d'), hex(c1, '#04050c'), hex(c2, '#ffffff'));
+      const scene = make(big.getContext('2d'), hex(c1, '#04050c'), hex(c2, '#ffffff'), opts);
       scene.resize(480, 320);
       scene.still();
       cv.getContext('2d').drawImage(big, 0, 0, 192, 128);
@@ -3756,7 +3760,7 @@
     stage.append(canvas);
     room.append(sky, stage);
     page.append(room);
-    if (doc.bg && doc.bg.kind === 'scene') page.hpScene = sceneOn(page, room, doc.bg);
+    if (doc.bg && doc.bg.kind === 'scene') page.hpScene = sceneOn(page, room, doc.bg, { name: ctx.owner.displayName || ctx.owner.username || '' });
     if (!ctx.edit) firstSongStarts(page, canvas, opts);
     // Pieces can reach past the page's 800px, and below it. On a screen wide enough, the page is
     // centered as it was made, with those showing around it. On a narrower one, everything is

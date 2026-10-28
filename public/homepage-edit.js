@@ -1151,7 +1151,7 @@
           class: `hp-item hp-swatch${key === tryingScene ? ' hp-chip-trying' : ''}`, type: 'button', title: locked ? `${info.label} (comes with Glow: try it on)` : info.label,
           'aria-pressed': String(on), style: { padding: '3px', outline: on && key !== tryingScene ? '2px solid #3b2f25' : '' },
           onclick: () => (locked ? tryOn(`scene:${key}`, info.label, pickIt) : pickIt()),
-        }, H.sceneSwatch(key, key === bg.scene ? bg.c1 : info.c1, key === bg.scene ? bg.c2 : info.c2), el('span', { class: 'hp-swatch-name', text: info.label }));
+        }, H.sceneSwatch(key, key === bg.scene ? bg.c1 : info.c1, key === bg.scene ? bg.c2 : info.c2, { name: state.data.owner.displayName }), el('span', { class: 'hp-swatch-name', text: info.label }));
       };
       const all = Object.entries(H.SCENES);
       out.push(el('p', { class: 'hp-note-small', style: { marginTop: '10px' }, text: 'Alive, and your visitors can play with it: a click or a tap anywhere on your page (it happens behind your stickers and the rest).' }),
