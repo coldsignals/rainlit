@@ -539,7 +539,8 @@ async function pickMic(android = Boolean(ANDROID)) {
       open = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {}
     mics = await list();
-    if (open) open.getTracks().forEach((t) => t.stop());
+    if (open && android) keepWarm(open); // (for the picked one to open beside: micBridge)
+    else if (open) open.getTracks().forEach((t) => t.stop());
   }
   if (S.devices.mic) {
     relabelDevice('mic', mics);
@@ -558,15 +559,68 @@ function wantedMicLabel(devices, android = Boolean(ANDROID)) {
   return android ? (mics.find((d) => /wired headset/i.test(d.label)) || {}).label || '' : '';
 }
 
-async function getMicTrack(deviceId) {
+async function getMicTrack(deviceId, android = Boolean(ANDROID)) {
   const audio = { ...S.micFx };
+  const bridge = await micBridge(deviceId, android);
   try {
     const s = await navigator.mediaDevices.getUserMedia({ audio: deviceId ? { ...audio, deviceId: { exact: deviceId } } : audio });
-    return s.getAudioTracks()[0];
+    const track = s.getAudioTracks()[0];
+    if (android) trace('mic-open', { got: (track && track.label) || '?', beside: bridge ? 1 : 0 });
+    return track;
   } catch (err) {
-    if (deviceId && (err.name === 'NotFoundError' || err.name === 'OverconstrainedError')) return getMicTrack('');
+    if (deviceId && (err.name === 'NotFoundError' || err.name === 'OverconstrainedError')) return getMicTrack('', android);
     throw err;
+  } finally {
+    closeBridge(bridge);
   }
+}
+
+// ----- Android: a picked microphone, opened beside another -----
+// On Siren's phone (a Poco, in Android's app), the microphone picked in Settings didn't take
+// when it was the only one opening, as when a call starts: Settings showed it picked, but the
+// call heard the phone's own, till she picked another one and back again, which opens it while
+// the other one's still open. So there it's always opened that way: beside the microphone
+// pickMic opened to see the names (kept open till then), or beside the default one, opened for
+// a moment. (Android chooses which microphone the phone listens with for everything at once.)
+let warmMic = null; // { track, timer }
+
+function keepWarm(stream) {
+  dropWarm();
+  for (const t of stream.getVideoTracks()) t.stop();
+  const track = stream.getAudioTracks()[0];
+  if (track) warmMic = { track, timer: setTimeout(dropWarm, 5000) }; // (not wanted after all: closed anyway)
+}
+
+function dropWarm() {
+  const w = warmMic;
+  warmMic = null;
+  if (!w) return;
+  clearTimeout(w.timer);
+  w.track.stop();
+}
+
+// The microphone to open `deviceId` beside (null: none needed), and closing it once that's open.
+async function micBridge(deviceId, android = Boolean(ANDROID)) {
+  if (!android || !deviceId) {
+    dropWarm();
+    return null;
+  }
+  if (warmMic) {
+    const t = warmMic.track;
+    clearTimeout(warmMic.timer);
+    warmMic = null;
+    return t;
+  }
+  if (S.local.mic && S.local.mic.readyState === 'live') return null; // (one's open: as when it's picked during a call)
+  try {
+    return (await navigator.mediaDevices.getUserMedia({ audio: true })).getAudioTracks()[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+function closeBridge(track) {
+  if (track) setTimeout(() => track.stop(), 300);
 }
 
 async function getCamTrack(deviceId) {
@@ -12652,12 +12706,15 @@ async function joinVoice(channelId) {
     v.joinedAt = Date.now(); // (if the server restarts, the call carries on from here)
     rememberVoiceTab(true); // (for the next start, if this page goes without leaving: see voiceBeacon)
     if (v.speak && !v.muted) {
+      const bridge = await micBridge(mic); // (Android: see micBridge)
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
         applyVoicePtt();
       } catch (err) {
         v.muted = true;
         toast(mediaErrorText(err, 'Microphone'));
+      } finally {
+        closeBridge(bridge);
       }
     }
     room.startAudio().catch(() => {});
@@ -13050,7 +13107,14 @@ function voiceDevicesChanged() {
   if (v.room.localParticipant.isMicrophoneEnabled) {
     v.room.localParticipant.setMicrophoneEnabled(false)
       .then(() => pickMic())
-      .then((mic) => v.room.localParticipant.setMicrophoneEnabled(true, { ...S.micFx, ...(mic ? { deviceId: mic } : {}) }))
+      .then(async (mic) => {
+        const bridge = await micBridge(mic); // (Android: see micBridge)
+        try {
+          await v.room.localParticipant.setMicrophoneEnabled(true, { ...S.micFx, ...(mic ? { deviceId: mic } : {}) });
+        } finally {
+          closeBridge(bridge);
+        }
+      })
       .catch((err) => toast(mediaErrorText(err, 'Microphone')));
   }
 }
