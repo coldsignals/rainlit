@@ -67,6 +67,7 @@
       <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></symbol>
       <symbol id="i-reply" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
       <symbol id="i-react" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-7.5-8.9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/><path d="M19 2v6M16 5h6"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></symbol>
       <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
       <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></symbol>
@@ -183,6 +184,7 @@
       <p id="auth-error" class="form-error auth-error" role="alert" hidden></p>
       <p id="get-apps" class="get-apps"><a href="/downloads">Get the Windows and Android apps</a></p>
       <p class="get-apps from-discord"><a class="legal-link" href="/switching">Coming from Discord?</a></p>
+      <p id="follow-x" class="get-apps follow-x"><a class="legal-link x-link" href="https://x.com/rainlitapp" target="_blank" rel="noopener" aria-label="Rainlit on X (@rainlitapp)" title="Rainlit on X (@rainlitapp)"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></a></p>
       <p id="server-switch" class="server-switch" hidden><button type="button" id="server-switch-btn" class="text-btn">Use a different Rainlit server</button></p>
     </div>
   </main>
@@ -1706,7 +1708,7 @@
         <p id="server-note" class="conn-info" hidden>Server: <span id="server-host"></span> · <button type="button" id="server-change-btn" class="text-btn">Change</button></p>
         <p id="push-note" class="conn-info" hidden></p>
         <p id="conn-info" class="conn-info"></p>
-        <p class="conn-info">Rainlit is free software (GNU AGPL). <a id="source-link" href="https://github.com/coldsignals/rainlit" target="_blank" rel="noopener">Source code</a></p>
+        <p class="conn-info">Rainlit is free software (GNU AGPL). <a id="source-link" href="https://github.com/coldsignals/rainlit" target="_blank" rel="noopener">Source code</a> <a class="legal-link x-link" href="https://x.com/rainlitapp" target="_blank" rel="noopener" aria-label="Rainlit on X (@rainlitapp)" title="Rainlit on X (@rainlitapp)"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></a></p>
         <p class="conn-info"><a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms of service</a> · <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="legal-link" href="/switching" target="_blank" rel="noopener">Switching from Discord</a><span></span><a id="support-link" href="/support" hidden>Rainlit Glow</a></p>
       </div>
     </form>

@@ -6638,6 +6638,7 @@ async function initServerSwitch() {
   if (name && name.content) {
     el.serverName.textContent = name.content;
     el.serverName.hidden = false;
+    document.getElementById('follow-x').hidden = true; // (Rainlit's own, not this server's people's)
   }
   const bridge = DESKTOP && DESKTOP.getServer ? DESKTOP : ANDROID;
   if (!bridge) return;

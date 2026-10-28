@@ -266,6 +266,17 @@ button { cursor: pointer; }
 .get-apps a { color: var(--lamp-text); font-weight: 600; }
 .get-apps:not([hidden]) + .from-discord { margin-top: 10px; }
 .from-discord a { color: var(--mist); font-weight: 500; }
+/* Rainlit on X (@rainlitapp): just its logo, by the project's other links (app.js hides it on a
+   server with a name of its own, whose people it isn't). */
+.follow-x { margin-top: 14px; }
+.follow-x a.x-link { margin-left: -7px; } /* (its logo lined up with the words above it) */
+a.x-link {
+  display: inline-grid; place-items: center; width: 30px; height: 30px; margin: -6px 0;
+  border-radius: 8px; color: var(--mist); vertical-align: middle;
+  transition: color 0.15s, background 0.15s;
+}
+a.x-link:hover, a.x-link:focus-visible { color: var(--text); background: var(--dusk); }
+a.x-link .icon { width: 16px; height: 16px; }
 
 .tagline { margin: 14px 0 36px; color: var(--mist); font-size: 17px; max-width: 32ch; }
 
