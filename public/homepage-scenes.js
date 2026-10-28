@@ -294,6 +294,7 @@ function bubbles(g, c1, c2) {
     still() {
       paint();
     },
+    things: () => list.map((b) => ({ x: Math.round(b.x), y: Math.round(b.y), r: Math.round(b.size) })),
   };
 }
 
@@ -458,8 +459,8 @@ function pipes(g, c1, c2) {
       }
       wait += dt;
       let n = 0;
-      while (wait >= 1 / 26 && n++ < 4) {
-        wait -= 1 / 26;
+      while (wait >= 1 / 11 && n++ < 3) {
+        wait -= 1 / 11;
         advance();
         if (fading > 0) break;
       }
@@ -495,25 +496,30 @@ function pipes(g, c1, c2) {
 
 // ---------- Pond ----------
 // Water with ripples, where it's clicked or tapped, behind the pointer, and as rain now and then:
-// they bend the koi swimming below (who dart away from a ripple) and the lily pads floating on
-// it. (Worked out a few pixels at a time, and smoothed out as it's drawn.)
+// koi swim below (and dart away from a ripple), and lily pads float on it, rocking as the ripples
+// go by and pushed along by a splash. (The water's drawn sharp; the ripples are worked out a few
+// pixels at a time, only where the water's moving, and laid over it as light and shade.)
 function pond(g, c1, c2) {
   const deep = rgbOf(c1);
   const shallow = rgbOf(c2);
-  const CELL = matchMedia('(pointer: coarse)').matches ? 5 : 4;
-  const DAMP = 0.982;
+  const EPS = 0.35; // (water moving less than this doesn't show)
+  const hi = shade(shallow, 0.82);
+  const lo = shade(deep, -0.75);
   let w = 1;
   let h = 1;
+  let CELL = 4;
   let W = 1;
   let H = 1;
+  let rate = 60; // (steps a second: so ripples go as fast, however big the cells)
+  let damp = 0.982;
   let cur = null;
   let old = null;
-  let water = null; // (the water itself, at the ripples' size)
-  let pads = null; // (the lily pads, likewise)
-  let scenery = null;
-  let sx = null;
-  let flat = null;
-  let out = null;
+  let box = null; // (where the water's moving, in cells: [x0, y0, x1, y1]; null, nowhere)
+  let was = null; // (and where it was, a step before)
+  let water = null;
+  let lit = null; // (the ripples' light and shade: a cell a pixel)
+  let img = null;
+  let pads = [];
   let koi = [];
   let rainIn = 2;
   let simWait = 0;
@@ -526,24 +532,74 @@ function pond(g, c1, c2) {
     { body: [35, 30, 40], spots: [245, 110, 40] },
     { body: [255, 250, 245], spots: [240, 120, 40] },
   ];
-  const drop = (x, y, amp, rad) => {
-    const cx = x / CELL;
-    const cy = y / CELL;
-    const r = Math.ceil(rad);
-    for (let j = -r; j <= r; j++) {
-      for (let i = -r; i <= r; i++) {
-        const gx = Math.round(cx) + i;
-        const gy = Math.round(cy) + j;
-        if (gx < 1 || gy < 1 || gx >= W - 1 || gy >= H - 1) continue;
-        const d = Math.hypot(i, j);
-        if (d <= rad) cur[gy * W + gx] += amp * (1 - d / (rad + 1));
+  const SHADOW = { body: [0, 0, 0], spots: [0, 0, 0] };
+  const both = (a, b) => (!a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])]);
+  // (A drop: the water pushed down there, r pixels across, in a smooth bump.)
+  const drop = (x, y, amp, r) => {
+    const cx = x / CELL + 1;
+    const cy = y / CELL + 1;
+    const rad = Math.max(1.3, r / CELL);
+    const x0 = Math.max(1, Math.floor(cx - rad));
+    const x1 = Math.min(W - 2, Math.ceil(cx + rad));
+    const y0 = Math.max(1, Math.floor(cy - rad));
+    const y1 = Math.min(H - 2, Math.ceil(cy + rad));
+    if (x1 < x0 || y1 < y0) return;
+    for (let gy = y0; gy <= y1; gy++) {
+      for (let gx = x0; gx <= x1; gx++) {
+        const d = Math.hypot(gx - cx, gy - cy) / rad;
+        if (d < 1) cur[gy * W + gx] += amp * (0.5 + 0.5 * Math.cos(Math.PI * d));
       }
     }
+    box = both(box, [x0, y0, x1, y1]);
+  };
+  // (One step of the ripples spreading, where the water's moving and a cell round it: from all eight
+  // cells round each, so they spread as circles, not squares.)
+  const ripple = () => {
+    const b = both(box, was);
+    if (!b) return;
+    const x0 = Math.max(1, b[0] - 1);
+    const y0 = Math.max(1, b[1] - 1);
+    const x1 = Math.min(W - 2, b[2] + 1);
+    const y1 = Math.min(H - 2, b[3] + 1);
+    let nx0 = W;
+    let ny0 = H;
+    let nx1 = -1;
+    let ny1 = -1;
+    for (let y = y0; y <= y1; y++) {
+      let i = y * W + x0;
+      for (let x = x0; x <= x1; x++, i++) {
+        const v = ((cur[i] + cur[i - 1] + cur[i + 1] + cur[i - W] + cur[i + W]) / 3 + (cur[i - W - 1] + cur[i - W + 1] + cur[i + W - 1] + cur[i + W + 1]) / 12 - old[i]) * damp;
+        old[i] = v;
+        if (v > EPS || v < -EPS) {
+          if (x < nx0) nx0 = x;
+          if (x > nx1) nx1 = x;
+          if (y < ny0) ny0 = y;
+          ny1 = y;
+        }
+      }
+    }
+    const t = cur;
+    cur = old;
+    old = t;
+    was = box;
+    box = nx1 >= 0 ? [nx0, ny0, nx1, ny1] : null;
+    if (!box && !was) {
+      cur.fill(0);
+      old.fill(0);
+    }
+  };
+  // (How the water's tilted at a spot, times `by`: what it bends, and how far.)
+  const tilt = (x, y, by, most) => {
+    const gx = clamp(Math.round(x / CELL + 1), 1, W - 2);
+    const gy = clamp(Math.round(y / CELL + 1), 1, H - 2);
+    const i = gy * W + gx;
+    return [clamp((cur[i - 1] - cur[i + 1]) * by, -most, most), clamp((cur[i - W] - cur[i + W]) * by, -most, most)];
   };
   const drawWater = () => {
-    water = canvasOf(W, H);
+    const k = g.canvas.width / w;
+    water = canvasOf(w * k, h * k);
     const x = water.getContext('2d');
-    x.scale(1 / CELL, 1 / CELL);
+    x.scale(k, k);
     const grad = x.createLinearGradient(0, 0, w * 0.3, h);
     grad.addColorStop(0, css(shallow));
     grad.addColorStop(1, css(deep));
@@ -567,48 +623,52 @@ function pond(g, c1, c2) {
       x.fill();
     }
   };
-  const drawPads = () => {
-    pads = canvasOf(W, H);
-    const x = pads.getContext('2d');
-    x.scale(1 / CELL, 1 / CELL);
-    const n = Math.round(clamp((w * h) / 70000, 4, 12));
-    for (let i = 0; i < n; i++) {
-      const px = rand(30, w - 30);
-      const py = rand(30, h - 30);
-      const r = rand(20, 42);
-      const notch = rand(0, Math.PI * 2);
-      x.fillStyle = css(mix([60, 140, 60], [110, 170, 70], rand(0, 1)));
+  // (Each lily pad drawn once, as a picture of its own, to float about.)
+  const makePad = (r) => {
+    const k = g.canvas.width / w;
+    const S = (r + 16) * 2;
+    const c = canvasOf(S * k, S * k);
+    const x = c.getContext('2d');
+    x.scale(k, k);
+    const m = S / 2;
+    const notch = rand(0, Math.PI * 2);
+    x.fillStyle = css(mix([60, 140, 60], [110, 170, 70], rand(0, 1)));
+    x.beginPath();
+    x.moveTo(m, m);
+    x.arc(m, m, r, notch + 0.35, notch + Math.PI * 2 - 0.35);
+    x.closePath();
+    x.fill();
+    x.strokeStyle = 'rgba(255, 255, 255, 0.16)'; // (its rim, catching the light)
+    x.lineWidth = 1.2;
+    x.beginPath();
+    x.arc(m, m, r - 0.8, notch + 0.4, notch + Math.PI * 2 - 0.4);
+    x.stroke();
+    x.strokeStyle = 'rgba(30, 80, 30, 0.45)';
+    x.lineWidth = 1.5;
+    for (let v = 0; v < 6; v++) {
+      const a = notch + 0.6 + v * ((Math.PI * 2 - 1.2) / 5);
       x.beginPath();
-      x.moveTo(px, py);
-      x.arc(px, py, r, notch + 0.35, notch + Math.PI * 2 - 0.35);
-      x.closePath();
-      x.fill();
-      x.strokeStyle = 'rgba(30, 80, 30, 0.45)';
-      x.lineWidth = 1.5;
-      for (let v = 0; v < 6; v++) {
-        const a = notch + 0.6 + v * ((Math.PI * 2 - 1.2) / 5);
+      x.moveTo(m, m);
+      x.lineTo(m + Math.cos(a) * r * 0.85, m + Math.sin(a) * r * 0.85);
+      x.stroke();
+    }
+    if (Math.random() < 0.4) {
+      // (A water lily.)
+      const fx = m + rand(-r * 0.3, r * 0.3);
+      const fy = m + rand(-r * 0.3, r * 0.3);
+      for (let p = 0; p < 8; p++) {
+        const a = (p / 8) * Math.PI * 2;
+        x.fillStyle = p % 2 ? 'rgba(255, 190, 220, 0.95)' : 'rgba(255, 150, 200, 0.95)';
         x.beginPath();
-        x.moveTo(px, py);
-        x.lineTo(px + Math.cos(a) * r * 0.85, py + Math.sin(a) * r * 0.85);
-        x.stroke();
-      }
-      if (Math.random() < 0.4) {
-        // (A water lily.)
-        const fx = px + rand(-r * 0.3, r * 0.3);
-        const fy = py + rand(-r * 0.3, r * 0.3);
-        for (let p = 0; p < 8; p++) {
-          const a = (p / 8) * Math.PI * 2;
-          x.fillStyle = p % 2 ? 'rgba(255, 190, 220, 0.95)' : 'rgba(255, 150, 200, 0.95)';
-          x.beginPath();
-          x.ellipse(fx + Math.cos(a) * 6, fy + Math.sin(a) * 6, 8, 4, a, 0, Math.PI * 2);
-          x.fill();
-        }
-        x.fillStyle = 'rgba(255, 220, 90, 1)';
-        x.beginPath();
-        x.arc(fx, fy, 3.5, 0, Math.PI * 2);
+        x.ellipse(fx + Math.cos(a) * 6, fy + Math.sin(a) * 6, 8, 4, a, 0, Math.PI * 2);
         x.fill();
       }
+      x.fillStyle = 'rgba(255, 220, 90, 1)';
+      x.beginPath();
+      x.arc(fx, fy, 3.5, 0, Math.PI * 2);
+      x.fill();
     }
+    return { pic: c, S };
   };
   const swim = (k, dt) => {
     k.wander += rand(-1.6, 1.6) * dt;
@@ -626,130 +686,141 @@ function pond(g, c1, c2) {
     k.y += Math.sin(k.angle) * speed * dt;
     k.tail += dt * (5 + k.fright * 9);
   };
-  const drawKoi = (x, k) => {
+  const float = (p, dt) => {
+    p.vx += (p.drift[0] - p.vx) * Math.min(1, dt * 0.7);
+    p.vy += (p.drift[1] - p.vy) * Math.min(1, dt * 0.7);
+    p.spin += (p.turn - p.spin) * Math.min(1, dt * 0.7);
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.a += p.spin * dt;
+    // (Back off the edges.)
+    if (p.x < p.r * 0.6) p.vx = p.drift[0] = Math.abs(p.drift[0]);
+    else if (p.x > w - p.r * 0.6) p.vx = p.drift[0] = -Math.abs(p.drift[0]);
+    if (p.y < p.r * 0.6) p.vy = p.drift[1] = Math.abs(p.drift[1]);
+    else if (p.y > h - p.r * 0.6) p.vy = p.drift[1] = -Math.abs(p.drift[1]);
+  };
+  const drawKoi = (k, look, dx, dy) => {
     const L = k.len;
-    x.save();
-    x.translate(k.x, k.y);
-    x.rotate(k.angle);
+    g.save();
+    g.translate(k.x + dx, k.y + dy);
+    g.rotate(k.angle);
     const sway = Math.sin(k.tail) * 0.45;
-    x.fillStyle = css(k.look.body, 0.95);
+    g.fillStyle = css(look.body, 0.95);
     // (Its tail, its fins, then its body.)
-    x.save();
-    x.translate(-L * 0.42, 0);
-    x.rotate(sway);
-    x.beginPath();
-    x.moveTo(0, 0);
-    x.quadraticCurveTo(-L * 0.25, -L * 0.2, -L * 0.36, -L * 0.17);
-    x.quadraticCurveTo(-L * 0.28, 0, -L * 0.36, L * 0.17);
-    x.quadraticCurveTo(-L * 0.25, L * 0.2, 0, 0);
-    x.fill();
-    x.restore();
+    g.save();
+    g.translate(-L * 0.42, 0);
+    g.rotate(sway);
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.quadraticCurveTo(-L * 0.25, -L * 0.2, -L * 0.36, -L * 0.17);
+    g.quadraticCurveTo(-L * 0.28, 0, -L * 0.36, L * 0.17);
+    g.quadraticCurveTo(-L * 0.25, L * 0.2, 0, 0);
+    g.fill();
+    g.restore();
     for (const side of [-1, 1]) {
-      x.beginPath();
-      x.ellipse(L * 0.1, side * L * 0.16, L * 0.12, L * 0.05, side * (0.7 + sway * 0.3), 0, Math.PI * 2);
-      x.fill();
+      g.beginPath();
+      g.ellipse(L * 0.1, side * L * 0.16, L * 0.12, L * 0.05, side * (0.7 + sway * 0.3), 0, Math.PI * 2);
+      g.fill();
     }
-    x.beginPath();
-    x.ellipse(0, 0, L * 0.5, L * 0.16, 0, 0, Math.PI * 2);
-    x.fill();
-    x.fillStyle = css(k.look.spots, 0.95);
-    for (const [sx2, sy2, sr] of k.spots) {
-      x.beginPath();
-      x.ellipse(sx2 * L, sy2 * L, sr * L, sr * L * 0.7, 0, 0, Math.PI * 2);
-      x.fill();
+    g.beginPath();
+    g.ellipse(0, 0, L * 0.5, L * 0.16, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = css(look.spots, 0.95);
+    g.beginPath();
+    for (const [sx, sy, sr] of k.spots) {
+      g.moveTo(sx * L + sr * L, sy * L);
+      g.ellipse(sx * L, sy * L, sr * L, sr * L * 0.7, 0, 0, Math.PI * 2);
     }
-    x.restore();
+    g.fill();
+    g.restore();
   };
-  const compose = () => {
-    const x = scenery.getContext('2d');
-    x.setTransform(1, 0, 0, 1, 0, 0);
-    x.drawImage(water, 0, 0);
-    x.setTransform(1 / CELL, 0, 0, 1 / CELL, 0, 0);
-    // (A shadow under each fish, then the fish, then the pads over them.)
-    for (const k of koi) {
-      x.save();
-      x.globalAlpha = 0.25;
-      x.translate(6, 8);
-      const tint = k.look;
-      k.look = { body: [0, 0, 0], spots: [0, 0, 0] };
-      drawKoi(x, k);
-      k.look = tint;
-      x.restore();
-    }
-    for (const k of koi) drawKoi(x, k);
-    x.setTransform(1, 0, 0, 1, 0, 0);
-    x.drawImage(pads, 0, 0);
-    return x.getImageData(0, 0, W, H).data;
-  };
-  const render = () => {
-    const base = compose();
-    const o = out.data;
-    for (let y = 1; y < H - 1; y++) {
-      for (let x = 1; x < W - 1; x++) {
-        const i = y * W + x;
-        const dx = cur[i - 1] - cur[i + 1];
-        const dy = cur[i - W] - cur[i + W];
-        const tx = clamp(x + Math.round(dx * 0.035), 0, W - 1);
-        const ty = clamp(y + Math.round(dy * 0.035), 0, H - 1);
-        const j = (ty * W + tx) * 4;
-        const k = i * 4;
-        const light = (dx - dy) * 0.16;
-        o[k] = base[j] + light;
-        o[k + 1] = base[j + 1] + light;
-        o[k + 2] = base[j + 2] + light;
-        o[k + 3] = 255;
+  // (The ripples, as light and shade, over the water and the fish, where it's moving.)
+  const shine = () => {
+    const b = both(box, was);
+    if (!b) return;
+    const x0 = Math.max(1, b[0] - 2);
+    const y0 = Math.max(1, b[1] - 2);
+    const x1 = Math.min(W - 2, b[2] + 2);
+    const y1 = Math.min(H - 2, b[3] + 2);
+    const d = img.data;
+    const [hr, hg, hb] = hi;
+    const [lr, lg, lb] = lo;
+    for (let y = y0; y <= y1; y++) {
+      let i = y * W + x0;
+      let o = i * 4;
+      for (let x = x0; x <= x1; x++, i++, o += 4) {
+        const v = cur[i - 1] - cur[i + 1] - cur[i - W] + cur[i + W];
+        if (v > 0) {
+          d[o] = hr;
+          d[o + 1] = hg;
+          d[o + 2] = hb;
+          d[o + 3] = v * 0.7 + v * v * 0.005;
+        } else {
+          d[o] = lr;
+          d[o + 1] = lg;
+          d[o + 2] = lb;
+          d[o + 3] = -v * 0.55;
+        }
       }
     }
-    for (let x = 0; x < W; x++) {
-      for (const y of [0, H - 1]) {
-        const k = (y * W + x) * 4;
-        o[k] = base[k];
-        o[k + 1] = base[k + 1];
-        o[k + 2] = base[k + 2];
-        o[k + 3] = 255;
-      }
-    }
-    for (let y = 0; y < H; y++) {
-      for (const x of [0, W - 1]) {
-        const k = (y * W + x) * 4;
-        o[k] = base[k];
-        o[k + 1] = base[k + 1];
-        o[k + 2] = base[k + 2];
-        o[k + 3] = 255;
-      }
-    }
-    sx.getContext('2d').putImageData(out, 0, 0);
+    const bw = x1 - x0 + 1;
+    const bh = y1 - y0 + 1;
+    lit.getContext('2d').putImageData(img, 0, 0, x0, y0, bw, bh);
     g.imageSmoothingEnabled = true;
-    g.drawImage(sx, 0, 0, W, H, 0, 0, W * CELL, H * CELL);
+    g.drawImage(lit, x0, y0, bw, bh, (x0 - 1.5) * CELL, (y0 - 1.5) * CELL, bw * CELL, bh * CELL);
   };
-  const ripple = () => {
-    for (let y = 1; y < H - 1; y++) {
-      for (let x = 1; x < W - 1; x++) {
-        const i = y * W + x;
-        old[i] = ((cur[i - 1] + cur[i + 1] + cur[i - W] + cur[i + W]) * 0.5 - old[i]) * DAMP;
-      }
+  const paint = () => {
+    g.drawImage(water, 0, 0, w, h);
+    // (A shadow under each fish, on the bottom, then the fish; the ripples over them; then the
+    // pads, floating on top, each with its shadow.)
+    const by = 0.035 * CELL;
+    g.globalAlpha = 0.22;
+    for (const k of koi) drawKoi(k, SHADOW, 6, 8);
+    g.globalAlpha = 1;
+    for (const k of koi) drawKoi(k, k.look, ...tilt(k.x, k.y, by, 7));
+    shine();
+    for (const p of pads) {
+      const [dx, dy] = tilt(p.x, p.y, by * 0.6, 4);
+      p.shown = [p.x + dx, p.y + dy];
+      g.fillStyle = 'rgba(0, 0, 0, 0.16)';
+      g.beginPath();
+      g.arc(p.x + dx + 3, p.y + dy + 4, p.r, 0, Math.PI * 2);
+      g.fill();
     }
-    const t = cur;
-    cur = old;
-    old = t;
+    for (const p of pads) {
+      g.save();
+      g.translate(...p.shown);
+      g.rotate(p.a);
+      g.drawImage(p.pic, -p.S / 2, -p.S / 2, p.S, p.S);
+      g.restore();
+    }
   };
   return {
-    dpr: 1,
+    fps: 30,
     resize(nw, nh) {
       w = nw;
       h = nh;
-      W = Math.ceil(w / CELL) + 2;
-      H = Math.ceil(h / CELL) + 2;
+      // (Cells of 4 pixels, bigger on a big screen: never more than about 130,000 of them.)
+      CELL = clamp(Math.ceil(Math.sqrt((w * h) / 130000)), 4, 7);
+      rate = (60 * 4) / CELL;
+      damp = 0.982 ** (60 / rate);
+      W = Math.ceil(w / CELL) + 3;
+      H = Math.ceil(h / CELL) + 3;
       cur = new Float32Array(W * H);
       old = new Float32Array(W * H);
-      scenery = canvasOf(W, H);
-      sx = canvasOf(W, H);
-      out = sx.getContext('2d').createImageData(W, H);
-      flat = null;
+      box = was = null;
+      lit = canvasOf(W, H);
+      img = lit.getContext('2d').createImageData(W, H);
       drawWater();
-      drawPads();
-      const n = Math.round(clamp((w * h) / 160000, 3, 6));
-      koi = Array.from({ length: n }, (_, i) => ({
+      const n = Math.round(clamp((w * h) / 70000, 4, 12));
+      pads = Array.from({ length: n }, () => {
+        const r = rand(20, 42);
+        const drift = [rand(-3, 3), rand(-3, 3)];
+        const turn = rand(-0.05, 0.05);
+        return { x: rand(30, w - 30), y: rand(30, h - 30), r, a: rand(0, Math.PI * 2), vx: drift[0], vy: drift[1], drift, turn, spin: turn, ...makePad(r) };
+      });
+      const many = Math.round(clamp((w * h) / 160000, 3, 6));
+      koi = Array.from({ length: many }, (_, i) => ({
         x: rand(80, w - 80), y: rand(80, h - 80), angle: rand(0, Math.PI * 2), wander: 0, speed: rand(26, 44), tail: rand(0, 6), fright: 0,
         len: rand(46, 74), look: KOI[i % KOI.length],
         spots: Array.from({ length: 3 }, () => [rand(-0.3, 0.3), rand(-0.06, 0.06), rand(0.06, 0.12)]),
@@ -760,24 +831,25 @@ function pond(g, c1, c2) {
       rainIn -= dt;
       if (rainIn <= 0) {
         rainIn = rand(0.9, 3.2);
-        drop(rand(0, w), rand(0, h), rand(90, 150), 1.4);
+        drop(rand(0, w), rand(0, h), rand(70, 120), 7);
       }
       for (const k of koi) swim(k, dt);
+      for (const p of pads) float(p, dt);
       simWait += dt;
       let n = 0;
-      while (simWait >= 1 / 60 && n++ < 3) {
-        simWait -= 1 / 60;
+      while (simWait >= 1 / rate && n++ < 4) {
+        simWait -= 1 / rate;
         ripple();
       }
-      render();
+      paint();
     },
     point(x, y) {
       if (x === null || clock - lastWake < 0.05) return;
       lastWake = clock;
-      drop(x, y, 40, 1.2);
+      drop(x, y, 32, 6);
     },
     poke(x, y) {
-      drop(x, y, 520, 3.2);
+      drop(x, y, 420, 15);
       for (const k of koi) {
         const d = Math.hypot(k.x - x, k.y - y);
         if (d < 170) {
@@ -785,10 +857,23 @@ function pond(g, c1, c2) {
           k.fright = 1;
         }
       }
+      // (A splash pushes the pads nearby away, turning.)
+      for (const p of pads) {
+        const d = Math.hypot(p.x - x, p.y - y);
+        if (d < 240 && d > 0.01) {
+          const push = (1 - d / 240) * 46;
+          p.vx += ((p.x - x) / d) * push;
+          p.vy += ((p.y - y) / d) * push;
+          p.spin += rand(-0.6, 0.6) * (1 - d / 240);
+        }
+      }
     },
     still() {
-      if (!flat) render();
-      flat = true;
+      // (Rings from two drops, a moment after.)
+      drop(w * 0.32, h * 0.58, 420, 15);
+      drop(w * 0.7, h * 0.35, 300, 12);
+      for (let i = 0; i < Math.round(rate * 0.55); i++) ripple();
+      paint();
     },
   };
 }
@@ -797,27 +882,35 @@ function pond(g, c1, c2) {
 // The inside of a lava lamp: wax in the warm liquid, heated at the bottom till it rises, stretching
 // as it goes, cooling at the top and sinking back, joining and parting on the way. Pressed on, a
 // blob warms and rises; pressed in the liquid, a new one starts there. The pointer warms them too.
+// (The wax is worked out a few pixels at a time, only near a blob, and its glow from a smaller copy
+// of it, blurred, put together small and drawn big once: blurring the whole view, every frame, is
+// too slow for some computers. It's all soft, so on a computer it's drawn at three quarters of the
+// screen's pixels.)
 function lava(g, c1, c2) {
   const liquid = rgbOf(c1);
   const wax = rgbOf(c2);
-  const CELL = matchMedia('(pointer: coarse)').matches ? 7 : 5;
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  const GLOW = 3; // (the glow's pixels: this many of the wax's)
+  let CELL = 5;
   let w = 1;
   let h = 1;
   let W = 1;
   let H = 1;
   let blobs = [];
-  let layer = null;
+  let layer = null; // (the wax, a cell a pixel)
   let img = null;
-  let back = null;
-  let glass = null;
+  let glow = null;
+  let both = null; // (the glow and the wax over it, a cell a pixel)
+  let at = new Float64Array(0); // (each blob's x, y, size squared, and stretch, for working it out)
+  let back = null; // (the liquid, and the glass it's in)
   let clock = 0;
   let px = null;
   let py = null;
   const hot = shade(wax, 0.45);
   const edge = shade(wax, -0.2);
   const blob = (x, y, r, heat) => ({ x, y, r, vx: 0, vy: 0, heat, phase: rand(0, 6.3) });
-  const many = () => Math.round(clamp((w * h) / 100000, 5, 9));
-  const glows = (() => {
+  const many = () => Math.round(clamp((w * h) / 120000, 4, 8));
+  const blurs = (() => {
     try {
       const t = canvasOf(2, 2).getContext('2d');
       t.filter = 'blur(2px)';
@@ -826,30 +919,73 @@ function lava(g, c1, c2) {
       return false;
     }
   })();
+  // (How much wax there is at each cell: every blob's share, more the nearer it is. A block of 8 by
+  // 8 cells too far from them all to be wax, at its nearest, is just liquid.)
+  const TILE = 8;
   const field = () => {
     const d = img.data;
-    const list = blobs.map((b) => ({ x: b.x, y: b.y, rr: b.r * b.r, sy: 1 / (1 + Math.min(0.7, Math.abs(b.vy) / 55)) }));
-    for (let gy = 0; gy < H; gy++) {
-      const y = gy * CELL;
-      for (let gx = 0; gx < W; gx++) {
-        const x = gx * CELL;
-        let f = 0;
-        for (const b of list) {
-          const dx = x - b.x;
-          const dy = (y - b.y) * b.sy;
-          f += b.rr / (dx * dx + dy * dy + 1);
+    const n = blobs.length;
+    if (at.length < n * 4) at = new Float64Array(n * 8);
+    for (let j = 0; j < n; j++) {
+      const b = blobs[j];
+      at[j * 4] = b.x;
+      at[j * 4 + 1] = b.y;
+      at[j * 4 + 2] = b.r * b.r;
+      at[j * 4 + 3] = 1 / (1 + Math.min(0.7, Math.abs(b.vy) / 55)); // (stretched as it goes)
+    }
+    const [er, eg, eb] = edge;
+    const [wr, wg, wb] = wax;
+    const [hr, hg, hb] = hot;
+    for (let ty = 0; ty < H; ty += TILE) {
+      const gy1 = Math.min(H, ty + TILE);
+      const ya = ty * CELL;
+      const yb = (gy1 - 1) * CELL;
+      for (let tx = 0; tx < W; tx += TILE) {
+        const gx1 = Math.min(W, tx + TILE);
+        const xa = tx * CELL;
+        const xb = (gx1 - 1) * CELL;
+        let most = 0;
+        for (let j = 0; j < n * 4; j += 4) {
+          const bx = at[j];
+          const by = at[j + 1];
+          const dx = bx < xa ? xa - bx : bx > xb ? bx - xb : 0;
+          const dy = (by < ya ? ya - by : by > yb ? by - yb : 0) * at[j + 3];
+          most += at[j + 2] / (dx * dx + dy * dy + 1);
         }
-        const k = (gy * W + gx) * 4;
-        if (f < 0.6) {
-          d[k + 3] = 0;
+        if (most < 0.8) {
+          for (let gy = ty; gy < gy1; gy++) for (let k = (gy * W + tx) * 4 + 3, e = (gy * W + gx1) * 4; k < e; k += 4) d[k] = 0;
           continue;
         }
-        const inner = clamp((f - 1) * 0.12, 0, 0.45);
-        const c = f < 1 ? mix(edge, wax, (f - 0.6) / 0.4) : mix(wax, hot, inner);
-        d[k] = c[0];
-        d[k + 1] = c[1];
-        d[k + 2] = c[2];
-        d[k + 3] = f < 1 ? Math.round(((f - 0.6) / 0.4) ** 1.5 * 255) : 255;
+        for (let gy = ty; gy < gy1; gy++) {
+          const y = gy * CELL;
+          for (let gx = tx; gx < gx1; gx++) {
+            const x = gx * CELL;
+            let f = 0;
+            for (let j = 0; j < n * 4; j += 4) {
+              const dx = x - at[j];
+              const dy = (y - at[j + 1]) * at[j + 3];
+              f += at[j + 2] / (dx * dx + dy * dy + 1);
+            }
+            const k = (gy * W + gx) * 4;
+            if (f < 0.8) {
+              d[k + 3] = 0;
+            } else if (f < 1) {
+              // (Its edge, darker, fading out.)
+              const t = (f - 0.8) / 0.2;
+              d[k] = er + (wr - er) * t;
+              d[k + 1] = eg + (wg - eg) * t;
+              d[k + 2] = eb + (wb - eb) * t;
+              d[k + 3] = 255 * t ** 1.2;
+            } else {
+              // (Hotter in the middle.)
+              const t = Math.min(0.45, (f - 1) * 0.12);
+              d[k] = wr + (hr - wr) * t;
+              d[k + 1] = wg + (hg - wg) * t;
+              d[k + 2] = wb + (hb - wb) * t;
+              d[k + 3] = 255;
+            }
+          }
+        }
       }
     }
     layer.getContext('2d').putImageData(img, 0, 0);
@@ -857,33 +993,39 @@ function lava(g, c1, c2) {
   const paint = () => {
     g.drawImage(back, 0, 0, w, h);
     field();
+    // (Its glow: the wax, smaller, blurred, and faint; the wax over it; then all of it drawn big.)
+    const q = glow.getContext('2d');
+    q.clearRect(0, 0, glow.width, glow.height);
+    q.drawImage(layer, 0, 0, W / GLOW, H / GLOW);
+    const s = both.getContext('2d');
+    s.clearRect(0, 0, W, H);
+    s.globalAlpha = 0.3;
+    s.drawImage(glow, 0, 0, glow.width * GLOW, glow.height * GLOW);
+    s.globalAlpha = 1;
+    s.drawImage(layer, 0, 0);
     g.imageSmoothingEnabled = true;
-    if (glows) {
-      g.save();
-      g.filter = 'blur(18px)';
-      g.globalAlpha = 0.55;
-      g.drawImage(layer, 0, 0, W * CELL, H * CELL);
-      g.filter = `blur(${CELL * 0.45}px)`; // (and its edges smooth, not in steps)
-      g.globalAlpha = 1;
-      g.drawImage(layer, 0, 0, W * CELL, H * CELL);
-      g.restore();
-    } else {
-      g.drawImage(layer, 0, 0, W * CELL, H * CELL);
-    }
-    g.drawImage(glass, 0, 0, w, h);
+    g.drawImage(both, -CELL / 2, -CELL / 2, W * CELL, H * CELL);
   };
   return {
-    dpr: 1,
+    dpr: coarse ? 1 : 0.75,
+    fps: 30,
     resize(nw, nh) {
       w = nw;
       h = nh;
-      W = Math.ceil(w / CELL) + 1;
-      H = Math.ceil(h / CELL) + 1;
+      // (Cells of 5 pixels (6 on a phone), bigger on a big screen: never more than about 70,000.)
+      CELL = Math.max(coarse ? 6 : 5, Math.ceil(Math.sqrt((w * h) / 70000)));
+      W = Math.ceil(w / CELL) + 2;
+      H = Math.ceil(h / CELL) + 2;
       layer = canvasOf(W, H);
       img = layer.getContext('2d').createImageData(W, H);
+      both = canvasOf(W, H);
+      glow = canvasOf(Math.ceil(W / GLOW) + 1, Math.ceil(H / GLOW) + 1);
+      if (blurs) glow.getContext('2d').filter = 'blur(2px)';
       // (The liquid, lit from the lamp at the bottom.)
-      back = canvasOf(w, h);
+      const k = g.canvas.width / w;
+      back = canvasOf(w * k, h * k);
       const b = back.getContext('2d');
+      b.scale(k, k);
       const grad = b.createLinearGradient(0, 0, 0, h);
       grad.addColorStop(0, css(shade(liquid, -0.45)));
       grad.addColorStop(0.55, css(liquid));
@@ -891,25 +1033,23 @@ function lava(g, c1, c2) {
       b.fillStyle = grad;
       b.fillRect(0, 0, w, h);
       const bulb = b.createRadialGradient(w / 2, h * 1.05, 0, w / 2, h * 1.05, Math.max(w, h) * 0.6);
-      bulb.addColorStop(0, css(shade(wax, 0.55), 0.5));
+      bulb.addColorStop(0, css(shade(wax, 0.55), 0.38));
       bulb.addColorStop(1, css(wax, 0));
       b.fillStyle = bulb;
       b.fillRect(0, 0, w, h);
       // (The glass: a gleam down one side, and its edges darker.)
-      glass = canvasOf(w, h);
-      const q = glass.getContext('2d');
-      const gleam = q.createLinearGradient(0, 0, w, 0);
+      const gleam = b.createLinearGradient(0, 0, w, 0);
       gleam.addColorStop(0, 'rgba(0, 0, 0, 0.28)');
       gleam.addColorStop(0.1, 'rgba(255, 255, 255, 0.07)');
       gleam.addColorStop(0.16, 'rgba(255, 255, 255, 0.16)');
       gleam.addColorStop(0.22, 'rgba(255, 255, 255, 0.04)');
       gleam.addColorStop(0.85, 'rgba(255, 255, 255, 0)');
       gleam.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
-      q.fillStyle = gleam;
-      q.fillRect(0, 0, w, h);
+      b.fillStyle = gleam;
+      b.fillRect(0, 0, w, h);
       const m = Math.min(w, h);
       const n = many();
-      blobs = Array.from({ length: n }, (_, i) => blob(w * (0.12 + (0.76 * (i + rand(0.25, 0.75))) / n), rand(h * 0.1, h * 0.9), rand(m * 0.065, m * 0.11), i % 2 ? 0.85 : 0.15));
+      blobs = Array.from({ length: n }, (_, i) => blob(w * (0.12 + (0.76 * (i + rand(0.25, 0.75))) / n), rand(h * 0.1, h * 0.9), rand(m * 0.05, m * 0.085), i % 2 ? 0.85 : 0.15));
       blobs.sort(() => Math.random() - 0.5);
     },
     frame(dt) {
@@ -955,7 +1095,7 @@ function lava(g, c1, c2) {
         near.heat = 1;
         near.vy = Math.min(near.vy, -22);
       } else {
-        blobs.push(blob(x, y, rand(m * 0.045, m * 0.075), clamp(1 - y / h + 0.3, 0.2, 1)));
+        blobs.push(blob(x, y, rand(m * 0.04, m * 0.065), clamp(1 - y / h + 0.3, 0.2, 1)));
       }
     },
     still() {

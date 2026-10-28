@@ -293,14 +293,28 @@
     }
   }
 
+  // Where the pointer is over something, in its own pixels from its corner. (The app's Size
+  // setting zooms everything: on the screen, a pixel of it can be more than one.)
+  function spotIn(node, e) {
+    const r = node.getBoundingClientRect();
+    const kx = r.width && node.offsetWidth ? node.offsetWidth / r.width : 1;
+    const ky = r.height && node.offsetHeight ? node.offsetHeight / r.height : 1;
+    return { x: (e.clientX - r.left) * kx, y: (e.clientY - r.top) * ky };
+  }
+  // (How much bigger than its own pixels it is on the screen: the Size setting's zoom.)
+  const zoomOf = (node) => {
+    const r = node.getBoundingClientRect();
+    return r.width && node.offsetWidth ? r.width / node.offsetWidth : 1;
+  };
+
   // ---------- Scenes ----------
   // A background that's alive (public/homepage-scenes.js has them, loaded the first time a page
   // has one): drawn in view, behind the weather and the pieces. It moves, and answers the pointer,
   // and a click anywhere on the page (on a piece too: what it does happens behind the piece, and
   // the piece does what it does), or a tap (a touch that doesn't move: not one that scrolls). It only runs
-  // while it's to be seen (not with the page closed, or Rainlit in the background), about 30
-  // times a second on a phone; for someone who'd rather things didn't move, it's one still
-  // picture.
+  // while it's to be seen (not with the page closed, or Rainlit in the background), up to 60
+  // times a second (30 on a phone, and for the ones that take the most drawing); for someone
+  // who'd rather things didn't move, it's one still picture.
   let scenesFrom = null;
   const loadScenes = () => (scenesFrom ||= import('/homepage-scenes.js').catch((err) => {
     scenesFrom = null;
@@ -316,7 +330,7 @@
     const g = cv.getContext('2d');
     const calm = calmMedia();
     const phone = window.matchMedia && matchMedia('(pointer: coarse)').matches;
-    const gap = phone ? 1000 / 31 : 0;
+    let gap = 0;
     let scene = null;
     let stopped = false;
     let running = false;
@@ -324,16 +338,20 @@
     let last = 0;
     let w = 0;
     let h = 0;
+    let dpr = 0;
     let frames = 0;
     let pokes = 0;
+    let pressed = null;
     let spent = 0;
     const size = () => {
       const nw = page.clientWidth;
       const nh = page.clientHeight;
-      if (!scene || !nw || !nh || (nw === w && nh === h)) return;
+      // (Sharp on the screen: its pixels, times the zoom; but not more of them than it needs.)
+      const nd = scene && Math.min(scene.dpr || 1.5, (window.devicePixelRatio || 1) * zoomOf(page));
+      if (!scene || !nw || !nh || (nw === w && nh === h && Math.abs(nd - dpr) < 0.01)) return;
       w = nw;
       h = nh;
-      const dpr = Math.min(scene.dpr || 1.5, window.devicePixelRatio || 1);
+      dpr = nd;
       cv.width = Math.round(w * dpr);
       cv.height = Math.round(h * dpr);
       cv.style.width = `${w}px`;
@@ -342,10 +360,16 @@
       scene.resize(w, h);
       if (calm.matches) scene.still();
     };
+    // (A frame when one's due: on a screen that draws faster, every other one or so, evened out.)
+    let at = 0;
+    let owed = 0;
     const tick = (now) => {
       raf = 0;
       if (!running) return;
-      if (now - last >= gap) {
+      owed += now - at;
+      at = now;
+      if (owed >= gap - 1) {
+        owed = Math.min(gap, Math.max(0, owed - gap));
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
         const t0 = performance.now();
@@ -358,7 +382,8 @@
     const go = () => {
       if (running || stopped || !scene || calm.matches || document.hidden || !page.isConnected) return;
       running = true;
-      last = performance.now();
+      last = at = performance.now();
+      owed = gap;
       raf = requestAnimationFrame(tick);
     };
     const halt = () => {
@@ -369,12 +394,13 @@
     const shown = () => (document.hidden ? halt() : go());
     const ro = window.ResizeObserver ? new ResizeObserver(size) : null;
     const where = (e) => {
-      const r = page.getBoundingClientRect();
-      return [e.clientX - r.left, e.clientY - r.top];
+      const p = spotIn(page, e);
+      return [p.x, p.y];
     };
     const poke = (e) => {
       pokes++;
-      scene.poke(...where(e));
+      pressed = where(e);
+      scene.poke(...pressed);
     };
     let touch = null; // (where a touch began, and when: a tap's one that ends there, soon)
     const down = (e) => {
@@ -401,6 +427,7 @@
     loadScenes().then((m) => {
       if (stopped) return;
       scene = (m.SCENES[bg.scene] || m.SCENES.warp)(g, hex(bg.c1, '#04050c'), hex(bg.c2, '#ffffff'));
+      gap = 1000 / Math.min(phone ? 30 : 60, scene.fps || 60);
       size();
       if (ro) ro.observe(page);
       go();
@@ -419,8 +446,12 @@
         cv.remove();
       },
       // (For tests: whether it's running, how many frames it's drawn (and how long each took, on
-      // average), and how many presses it's had.)
-      state: () => ({ ready: Boolean(scene), running, frames, pokes, ms: frames ? +(spent / frames).toFixed(2) : 0 }),
+      // average), how many presses it's had and where the last was (in its own pixels), and what's
+      // in it, for a scene that says.)
+      state: () => ({
+        ready: Boolean(scene), running, frames, pokes, pressed, ms: frames ? +(spent / frames).toFixed(2) : 0,
+        size: [w, h, +dpr.toFixed(2)], things: scene && scene.things ? scene.things() : null,
+      }),
       poke: (x, y) => scene && scene.poke(x, y),
     };
   }
@@ -2387,10 +2418,7 @@
         const half = (thingOf('stand', r[side]).w * P) / 2;
         return { x: side === 'left' ? P * 3 + half : W - P * 3 - half, y: H - P * (15 - (STANDS[r[side]].out || 0)) };
       },
-      at(e) {
-        const r = room.getBoundingClientRect();
-        return { x: e.clientX - r.left, y: e.clientY - r.top };
-      },
+      at: (e) => spotIn(room, e),
     };
   }
 
@@ -3446,11 +3474,13 @@
     let dpr = 1;
     let last = null;
     let gap = 0;
+    let drawn = null; // (the box last frame's were drawn in: only that's cleared, not all of it)
     const size = () => {
       const nw = host.clientWidth;
       const nh = host.clientHeight;
-      const nd = Math.min(2, window.devicePixelRatio || 1);
+      const nd = Math.min(2, (window.devicePixelRatio || 1) * (host.currentCSSZoom || 1));
       if (nw === w && nh === h && nd === dpr) return;
+      drawn = null;
       w = nw;
       h = nh;
       dpr = nd;
@@ -3514,7 +3544,8 @@
       at = now;
       size();
       g.setTransform(1, 0, 0, 1, 0, 0);
-      g.clearRect(0, 0, cv.width, cv.height);
+      if (drawn) g.clearRect(drawn[0], drawn[1], drawn[2] - drawn[0], drawn[3] - drawn[1]);
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = parts.length - 1; i >= 0; i--) {
         const p = parts[i];
         p.t += dt;
@@ -3533,8 +3564,15 @@
         p.y += p.vy * dt;
         p.rot += p.spin * dt;
         draw(p);
+        // (How far from where it is it can reach: a ring as it grows, a spark's streak behind it.)
+        const r = p.shape === 'ring' ? p.size + p.grow * (p.t - (p.delay || 0)) + 2 : p.shape === 'spark' ? Math.hypot(p.vx, p.vy) * 0.04 + p.size : p.size * 1.5 + 4;
+        x0 = Math.min(x0, p.x - r);
+        y0 = Math.min(y0, p.y - r);
+        x1 = Math.max(x1, p.x + r);
+        y1 = Math.max(y1, p.y + r);
       }
       g.globalAlpha = 1;
+      drawn = x1 > x0 ? [Math.max(0, Math.floor(x0 * dpr) - 2), Math.max(0, Math.floor(y0 * dpr) - 2), Math.min(cv.width, Math.ceil(x1 * dpr) + 2), Math.min(cv.height, Math.ceil(y1 * dpr) + 2)] : null;
       raf = parts.length ? requestAnimationFrame(tick) : 0;
     }
     function draw(p) {
@@ -3598,10 +3636,7 @@
       g.setTransform(c, n, -n, c, p.x * dpr, p.y * dpr);
       if (FX_SHAPES) g.fill(FX_SHAPES[p.shape]);
     }
-    const point = (e) => {
-      const r = host.getBoundingClientRect();
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
-    };
+    const point = (e) => spotIn(host, e);
     on.addEventListener('pointermove', (e) => {
       if (!live || chosen.trail === 'none' || e.pointerType === 'touch' || calm.matches) return;
       const { x, y } = point(e);
@@ -3810,10 +3845,7 @@
     back.addEventListener('click', () => zoomTo(1, page.clientWidth / 2, page.clientHeight / 2));
     let pinch = null;
     let tap = null;
-    const point = (t) => {
-      const r = page.getBoundingClientRect();
-      return { x: t.clientX - r.left, y: t.clientY - r.top };
-    };
+    const point = (t) => spotIn(page, t);
     page.addEventListener('touchstart', (e) => {
       if (!page.hpFit) return;
       if (e.touches.length === 2) {
