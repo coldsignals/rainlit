@@ -16158,17 +16158,21 @@ let rainbowTimer = 0;
 let dewPictures = false;
 
 // An amount of it: 0.5, 12, 1,234, 2.25 million.
+const DEW_BIG = [[1e33, 'decillion'], [1e30, 'nonillion'], [1e27, 'octillion'], [1e24, 'septillion'], [1e21, 'sextillion'], [1e18, 'quintillion'], [1e15, 'quadrillion'], [1e12, 'trillion'], [1e9, 'billion'], [1e6, 'million']];
 function dewWords(n) {
   const v = Math.max(0, Number(n) || 0);
   if (v < 10 && v % 1 >= 0.1) return (Math.floor(v * 10) / 10).toFixed(1);
   if (v < 1e6) return Math.floor(v).toLocaleString();
-  for (const [k, word] of [[1e15, 'quadrillion'], [1e12, 'trillion'], [1e9, 'billion'], [1e6, 'million']]) {
+  for (const [k, word] of DEW_BIG) {
     if (v >= k) return `${(Math.floor((v / k) * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${word}`;
   }
   return '';
 }
-// (Shorter, on a thing's swatch: 2.5K, 1M.)
-const dewShort = (n) => (n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(1)}K` : String(Math.ceil(n)));
+// (Shorter, on a thing's swatch: 2.5K, 1M, 30T.)
+function dewShort(n) {
+  for (const [k, short] of [[1e15, 'Q'], [1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]) if (n >= k) return `${+(n / k).toFixed(1)}${short}`;
+  return String(Math.ceil(n));
+}
 // How much there is right now: as the server last said, what's been collected since, and pats not
 // sent yet.
 const dewNow = () => (S.dew ? S.dew.dew + (S.dew.perSecond * (performance.now() - S.dewAt)) / 1000 + dewPats * S.dew.perPat : 0);
@@ -16288,11 +16292,21 @@ function renderDew() {
   renderDewCount();
 }
 
-// Upgrades ready to get (patted enough, or enough of a collector), cheapest first.
+// Upgrades ready to get (patted enough, enough of a collector, or of them all, made enough, caught
+// enough rainbow drops: lib/dew.js ready), cheapest first, each with a picture of what it's for.
+function dewReady(u) {
+  const d = S.dew;
+  if (u.of) return (Number(d.collectors[u.of]) || 0) >= u.owned;
+  if (u.pats !== undefined) return d.pats + dewPats >= u.pats;
+  if (u.count !== undefined) return Object.values(d.collectors).reduce((n, v) => n + (Number(v) || 0), 0) >= u.count;
+  if (u.rainbows !== undefined) return (d.rainbows || 0) >= u.rainbows;
+  if (u.earned !== undefined) return d.earned >= u.earned;
+  return true;
+}
+const dewUpgradeIcon = (u) => (u.of ? u.of : u.boost ? 'drop' : u.happy ? 'heart' : u.sooner || u.longer || u.richer ? 'rainbow' : 'pat');
 function renderDewUpgrades() {
   const d = S.dew;
-  const owned = (k) => Number(d.collectors[k]) || 0;
-  const ready = S.dewShop.upgrades.filter((u) => !d.upgrades.includes(u.key) && (u.of ? owned(u.of) >= u.owned : d.pats + dewPats >= u.pats)).sort((a, b) => a.cost - b.cost);
+  const ready = S.dewShop.upgrades.filter((u) => !d.upgrades.includes(u.key) && dewReady(u)).sort((a, b) => a.cost - b.cost);
   const items = ready.map((u) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -16301,7 +16315,7 @@ function renderDewUpgrades() {
     b.title = u.about;
     const icon = document.createElement('i');
     icon.className = 'dew-icon';
-    icon.style.backgroundImage = `url("${Homepage.dewIcon(u.of || 'pat')}")`;
+    icon.style.backgroundImage = `url("${Homepage.dewIcon(dewUpgradeIcon(u))}")`;
     const name = document.createElement('span');
     name.textContent = u.label;
     const cost = document.createElement('em');
@@ -16315,7 +16329,7 @@ function renderDewUpgrades() {
     const none = document.createElement('p');
     none.className = 'pet-note';
     const have = d.upgrades.length;
-    none.textContent = have ? `You've ${have} so far. More come along as you pat it, and get more to collect it with.` : 'They come along as you pat it, and get things to collect it with.';
+    none.textContent = have ? `You've ${have} of ${S.dewShop.upgrades.length} so far. More come along as you pat it, get more to collect it with, and catch rainbow drops.` : 'They come along as you pat it, get things to collect it with, and catch rainbow drops.';
     items.push(none);
   }
   el.dewUpgrades.replaceChildren(...items);
@@ -16331,8 +16345,8 @@ function renderDewCollectors() {
   el.dewCollectors.replaceChildren(...shop.collectors.filter((c, i) => i <= Math.max(1, last + 1)).map((c) => {
     const n = owned(c.key);
     const price = Math.ceil(c.cost * shop.moreEach ** n);
-    const doubled = shop.upgrades.filter((u) => u.of === c.key && d.upgrades.includes(u.key)).length;
-    const each = c.rate * 2 ** doubled * (1 + d.happyMore);
+    const doubled = shop.upgrades.filter((u) => u.double && u.of === c.key && d.upgrades.includes(u.key)).length;
+    const each = c.rate * 2 ** doubled * (d.boost || 1) * (1 + d.happyMore);
     const row = document.createElement('div');
     row.className = 'dew-row';
     const icon = document.createElement('i');

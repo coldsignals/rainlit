@@ -3505,7 +3505,26 @@
     net: { rows: ['p........p', 'pnnnnnnnnp', 'pn.n.n.n.p', 'pnnnnnnnnp', 'pn.n.n.nbp', 'pnnnnnnnnp', 'p........p', 'p........p', 'p........p'], colors: { p: '#7a5234', n: '#c8d0dc', b: '#7fd0ff' } },
     pond: { rows: ['.r......r.', '.r......r.', '.rGggggGr.', 'Gbbbbbbbbg', 'gbbwbbbbbg', 'gbbbbbbbbG', '.Gbbbbbbg.', '..gGggGg..'], colors: { r: '#4f8a3f', g: '#5aa650', G: '#3f8a45', b: '#4fa3d9', w: '#bfe8ff' } },
     mist: { rows: ['..wwww....', '.wwwwww.w.', 'wwwwwwwwww', '.www.www..', '...MM.....', '.MMMMMMMM.', '.MlMMMMoM.', '.MMMMMMMM.', '.M......M.'], colors: { w: '#e8eef4', M: '#5a6272', l: '#7fd0ff', o: '#ffd23a' } },
-    // (A paw, for the upgrades to pats; and a rainbow drop, rolling down the window now and then.)
+    garden: { rows: ['.b..b...b.', '..........', '.g..G..g..', 'gGg.G.gGg.', '.G.gGg.G..', '.G..G..G..', 'tttttttttt', 'tTTTTTTTTt', '.tttttttt.'], colors: { b: '#7fd0ff', g: '#5aa650', G: '#3f8a45', t: '#8a5f3d', T: '#6b4a32' } },
+    cloud: { rows: ['....h.....', '....h.....', '..wwwww...', '.wwwwwwww.', 'wwwWwwwwww', 'wWwwwwWwww', '.wwwwwwww.', '..b..b..b.', '.b..b..b..'], colors: { w: '#eef3f8', W: '#cfd8e2', h: '#8a93a3', b: '#7fd0ff' } },
+    dance: { rows: ['.s......s.', '..s....s..', '...s..s...', '.cccccccc.', '.cwwwwwwc.', '.rRrRrRrR.', '.RrRrRrRr.', '.rRrRrRrR.', '.cccccccc.'], colors: { c: '#d8c8a8', w: '#f2ead8', r: '#d94a4a', R: '#a83434', s: '#6b4a32' } },
+    jar: {
+      rows: ['..mmmmmm..', '.gggggggg.', '.gnnnnnng.', '.gnNNNnng.', '.gnnyNnng.', '.gqqyqqqg.', '.gbqyqqbg.', '.gqbqqbqg.', '.gggggggg.'],
+      colors: { m: '#8a93a3', g: '#bfe3ee', n: '#5a6272', N: '#3f4552', y: '#ffd23a', b: '#7fd0ff', q: 'rgba(191, 231, 240, 0.3)' },
+    },
+    station: { rows: ['....rr....', '...rwwr...', '...rwwr...', '...rwwr...', '...rbbr...', '...rbbr...', '..rbbbbr..', '..rbbbbr..', '...rrrr...'], colors: { r: '#c8ccd4', w: '#ffffff', b: '#4fa3d9' } },
+    moon: { rows: ['....yyy...', '..yyyy....', '.yyy......', '.yy.......', '.yy.......', '.yyy......', '..yyyy....', '....yyy...', 'bBbbBbbBbb', 'bbBbbBbbBb'], colors: { y: '#ffe9a8', b: '#4fa3d9', B: '#7fd0ff' } },
+    // (Rings of colour, an arch: drawn, not written out.)
+    loom: {
+      rows: Array.from({ length: 7 }, (_, y) => Array.from({ length: 12 }, (_, x) => {
+        const d = Math.hypot(x + 0.5 - 6, y + 0.5 - 7);
+        return d > 6 || d < 1.5 ? '.' : 'roygbp'[Math.min(5, Math.floor((6 - d) / 0.75))];
+      }).join('')),
+      colors: { r: '#ff5f6d', o: '#ffa24a', y: '#ffe066', g: '#6fe08a', b: '#5fb4ff', p: '#b07bff' },
+    },
+    // (A heart, for the upgrades for a happy pet; a paw, for the upgrades to pats; and a rainbow
+    // drop, rolling down the window now and then.)
+    heart: { rows: ['.hh...hh.', 'hHhh.hhhh', 'hhhhhhhhh', 'hhhhhhhhh', '.hhhhhhh.', '..hhhhh..', '...hhh...', '....h....'], colors: { h: '#ff6f91', H: '#ffd0dc' } },
     pat: { rows: ['.pp...pp.', '.pp...pp.', '.........', 'pp.ppp.pp', 'pp.ppp.pp', '..ppppp..', '.ppppppp.', '.ppppppp.', '..ppppp..'], colors: { p: '#f6c28b' } },
     rainbow: {
       rows: ['....r....', '...ror...', '...ooo...', '..oyyyo..', '.wyyggyy.', '.wgggggg.', '.bbbbbbb.', '..pbbbp..', '...ppp...'],
