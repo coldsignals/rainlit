@@ -2834,8 +2834,10 @@ button.person.open { background: var(--dusk-hi); }
    and its things, wherever they've been put (windows with the rain outside among them).
    Everything's measured in the room's own pixels (--px, the same size as its pet's). */
 .settings.pet-dialog { width: min(560px, calc(100vw / var(--zoom) - 24px)); }
+/* (Everything in it is in front or behind the rest of it, not the box: scrolled, it all goes under
+   the box's head.) */
 .pet-room {
-  position: relative; overflow: hidden; height: calc(var(--px, 6px) * 42);
+  position: relative; overflow: hidden; height: calc(var(--px, 6px) * 42); isolation: isolate;
   margin: 0 -20px; border-block: 2px solid var(--line); background: #2a1f33;
 }
 .pr-scene { position: absolute; inset: 0; z-index: 0; }
