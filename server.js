@@ -33,6 +33,7 @@ const homepages = require('./lib/homepages');
 const pets = require('./lib/pets');
 const announcements = require('./lib/announcements');
 const whatsNew = require('./lib/whatsnew');
+const dew = require('./lib/dew');
 const blobs = require('./lib/blobs');
 const abuse = require('./lib/abuse');
 // (A new flag: the admin hears, wherever they are in the app.)
@@ -1606,6 +1607,25 @@ api.post('/users/:id/pet', needUser, (req, res) => {
   pets.petIt(u.id, req.user.id);
   res.json({ pet: pets.visiting(u.id) });
 });
+
+// ----- Dew -----
+// (lib/dew.js) What your pet shakes off when you pat it: how much you have, and everything there
+// is to get with it; pats; another collector, an upgrade or a thing for its room; and a rainbow
+// drop caught.
+const dewRoute = (fn) => (req, res) => {
+  try {
+    res.json(fn(req, req.body || {}));
+  } catch (err) {
+    if (err instanceof dew.DewError || err instanceof pets.PetError) return fail(res, err.status, err.message);
+    throw err;
+  }
+};
+api.get('/dew', needUser, dewRoute((req) => ({ dew: dew.get(req.user.id), shop: dew.SHOP })));
+api.post('/dew/pats', needUser, dewRoute((req, b) => ({ dew: dew.pat(req.user.id, b.n) })));
+api.post('/dew/collectors', needUser, dewRoute((req, b) => ({ dew: dew.buy(req.user.id, String(b.key || '')) })));
+api.post('/dew/upgrades', needUser, dewRoute((req, b) => ({ dew: dew.upgrade(req.user.id, String(b.key || '')) })));
+api.post('/dew/items', needUser, dewRoute((req, b) => dew.unlock(req.user, String(b.slot || ''), String(b.key || ''))));
+api.post('/dew/rainbow', needUser, dewRoute((req) => ({ dew: dew.rainbow(req.user.id) })));
 
 // ----- Conversations -----
 //
@@ -3181,6 +3201,7 @@ app.use((err, req, res, _next) => {
 
 const server = http.createServer(app);
 realtime.attach(server, { build: BUILD });
+dew.start(realtime.onlineIds); // (dew collecting, for everyone with Rainlit open)
 
 // Render stops the old server when an update goes live. Calls carry on after it (lib/realtime.js
 // notes when each was last known to be going), and the call debug log says so, so a call that

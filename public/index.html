@@ -1791,9 +1791,11 @@
       </div>
       <div id="pet-room" class="pet-room" aria-label="Your pet's room">
         <p id="pet-room-empty" class="pet-room-empty">Pick a pet, and it moves in here.</p>
+        <p id="pet-dew" class="pet-dew" title="Dew: pat your pet for it" hidden><i class="dew-drop" aria-hidden="true"></i><span id="pet-dew-n">0</span></p>
       </div>
       <nav class="pet-tabs" role="tablist" aria-label="Your pet">
         <button class="pet-tab" type="button" role="tab" data-pet-tab="care">Care</button>
+        <button class="pet-tab" type="button" role="tab" data-pet-tab="dew">Dew</button>
         <button class="pet-tab" type="button" role="tab" data-pet-tab="decor">Decorate</button>
         <button class="pet-tab" type="button" role="tab" data-pet-tab="pet">Pet</button>
       </nav>
@@ -1807,8 +1809,29 @@
         </div>
         <p id="pet-msg" class="pet-msg" role="status" hidden></p>
       </section>
+      <!-- Dew (app.js: renderDew; lib/dew.js): what it shakes off when it's patted, and what collects it. -->
+      <section id="pet-dew-pane" class="pet-dew-pane" aria-label="Dew" data-pet-pane="dew">
+        <div class="dew-head">
+          <i class="dew-drop big" aria-hidden="true"></i>
+          <div>
+            <strong class="dew-total"><span id="dew-total">0</span> dew</strong>
+            <span id="dew-rates" class="pet-note"></span>
+          </div>
+        </div>
+        <p id="dew-note" class="pet-note"></p>
+        <h3 class="pet-pick-title">Upgrades</h3>
+        <div id="dew-upgrades" class="dew-upgrades"></div>
+        <h3 class="pet-pick-title">Collect it with</h3>
+        <div id="dew-collectors" class="dew-collectors"></div>
+        <p class="pet-note">Spend it in Decorate, on things for its room that only dew brings.</p>
+        <p id="dew-msg" class="pet-msg" role="status" hidden></p>
+      </section>
       <section id="pet-decor" class="pet-decor" aria-label="Doing up its room" data-pet-pane="decor">
         <div id="pet-decor-rows" class="pet-decor"></div>
+        <div id="pet-decor-dew" class="theme-try dew-try" hidden>
+          <span id="pet-decor-dew-text"></span>
+          <button id="pet-decor-dew-btn" class="primary-btn small" type="button">Get it</button>
+        </div>
         <div id="pet-decor-try" class="theme-try" hidden>
           <span id="pet-decor-try-text"></span>
           <button id="pet-decor-try-btn" class="primary-btn small" type="button">See Glow</button>

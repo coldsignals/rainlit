@@ -154,6 +154,7 @@ for (const id of [
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -15781,11 +15782,14 @@ function renderPetButton() {
 function openPet() {
   S.petTry = '';
   S.roomTry = null;
+  S.dewTry = null;
   S.petTab = S.pet ? 'care' : 'pet';
   el.petMsg.hidden = true;
   if (!el.pet.open) el.pet.showModal();
   renderPet();
   loadPet().then(() => { if (el.pet.open) renderPet(); });
+  loadDew();
+  startDew();
 }
 
 // Its room (with whatever of Glow's you're trying on), your pet (or one of Glow's you're trying
@@ -15803,6 +15807,7 @@ function renderPet() {
         renderPetCare();
         renderPetButton();
       },
+      onPat: patForDew,
     });
   } else if (el.petRoom.hpPet) {
     el.petRoom.hpPet.stop();
@@ -15811,6 +15816,7 @@ function renderPet() {
   }
   el.petRoomEmpty.hidden = Boolean(shown);
   renderPetCare();
+  renderDew();
   renderPetDecor();
   renderPetKinds();
   renderPetAbout();
@@ -15887,27 +15893,36 @@ function renderPetVisit(pet, owner) {
   el.petVisitNote.textContent = `Click to pet ${pet.name || 'it'}.${n ? ` Petted ${n.toLocaleString()} ${n === 1 ? 'time' : 'times'} so far.` : ''}`;
 }
 
-// Its box's tabs: Care (once you've a pet), Decorate, and Pet. (Your pet's care and details are
-// put away while you try another pet on.)
+// Its box's tabs: Care and Dew (once you've a pet), Decorate, and Pet. (Your pet's care, dew and
+// details are put away while you try another pet on.)
 function renderPetTabs() {
   const p = S.pet;
-  if (!p && S.petTab === 'care') S.petTab = 'pet';
+  const ownTabs = ['care', 'dew'];
+  if (!p && ownTabs.includes(S.petTab)) S.petTab = 'pet';
   for (const b of el.pet.querySelectorAll('[data-pet-tab]')) {
-    b.hidden = b.dataset.petTab === 'care' && !p;
+    b.hidden = ownTabs.includes(b.dataset.petTab) && !p;
     b.setAttribute('aria-selected', String(S.petTab === b.dataset.petTab));
   }
   for (const pane of el.pet.querySelectorAll('[data-pet-pane]')) pane.hidden = pane.dataset.petPane !== S.petTab;
   if (S.petTab === 'care') el.petCare.hidden = !p || Boolean(S.petTry);
+  if (S.petTab === 'dew') el.petDewPane.hidden = !p || Boolean(S.petTry);
   if (S.petTab === 'pet') el.petAbout.hidden = !p || Boolean(S.petTry);
 }
 
 // Doing up its room: a row for each place in it. Glow's things, for anyone without Glow, are
-// there to try on (in the room, never saved), wherever Glow's shown.
+// there to try on (in the room, never saved), wherever Glow's shown. So are the things dew brings,
+// each with what it costs, till you've got it with dew.
 const DECOR_ROWS = [['wall', 'Wallpaper'], ['sky', 'Out the window'], ['floor', 'Floor'], ['rug', 'Rug'], ['hang', 'On the wall'], ['left', 'Left corner'], ['right', 'Right corner']];
-const furnishPetRoom = () => Homepage.furnish(el.petRoom, { ...(S.room || {}), ...(S.roomTry || {}) });
+const dewTried = () => (S.dewTry ? { [S.dewTry.slot]: S.dewTry.key } : {});
+const furnishPetRoom = () => Homepage.furnish(el.petRoom, { ...(S.room || {}), ...(S.roomTry || {}), ...dewTried() });
+const hasDewThing = (list, key) => Boolean(S.dew && S.dew.items.includes(`${list}:${key}`));
+const dewPriceOf = (list, key) => {
+  const item = S.dewShop && S.dewShop.items.find((i) => i.list === list && i.key === key);
+  return item ? item.price : 0;
+};
 
 function renderPetDecor() {
-  const room = { ...Homepage.ROOM_DEFAULT, ...(S.room || {}), ...(S.roomTry || {}) };
+  const room = { ...Homepage.ROOM_DEFAULT, ...(S.room || {}), ...(S.roomTry || {}), ...dewTried() };
   const theirs = (slot, key) => Boolean(S.room && S.room[slot] === key);
   el.petDecorRows.replaceChildren(...DECOR_ROWS.map(([slot, label]) => {
     const list = Homepage.ROOM_SLOTS[slot];
@@ -15915,12 +15930,16 @@ function renderPetDecor() {
     const opts = Object.keys(things).filter((key) => !things[key].perk || supporting() || glowShown() || theirs(slot, key)).map((key) => {
       const t = things[key];
       const locked = t.perk && !supporting() && !theirs(slot, key);
+      const dewLocked = Boolean(t.dew) && !hasDewThing(list, key) && !theirs(slot, key);
+      const price = dewLocked ? dewPriceOf(list, key) : 0;
+      const trying = (S.roomTry && S.roomTry[slot] === key) || (S.dewTry && S.dewTry.slot === slot && S.dewTry.key === key);
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = `pet-decor-opt${t.perk ? ' glow' : ''}${S.roomTry && S.roomTry[slot] === key ? ' trying' : ''}`;
+      b.className = `pet-decor-opt${t.perk ? ' glow' : ''}${t.dew ? ' dew' : ''}${dewLocked ? ' locked' : ''}${trying ? ' trying' : ''}`;
       b.dataset.decor = `${slot}:${key}`;
+      if (price) b.dataset.price = dewShort(price);
       b.setAttribute('aria-pressed', String(room[slot] === key));
-      b.title = locked ? `${t.label} (comes with Glow: try it on)` : t.label;
+      b.title = locked ? `${t.label} (comes with Glow: try it on)` : dewLocked ? `${t.label}: ${price ? `${dewWords(price)} dew` : 'dew brings it'} (try it on)` : t.label;
       b.setAttribute('aria-label', b.title);
       b.append(Homepage.roomSwatch(list, key));
       b.addEventListener('click', () => pickDecor(slot, key));
@@ -15940,10 +15959,29 @@ function renderPetDecor() {
   el.petDecorTry.hidden = !tried;
   if (tried) withGlow(el.petDecorTryText, `${Homepage.ROOM[Homepage.ROOM_SLOTS[tried[0]]][tried[1]].label}: one of Glow's. It's in your pet's room to see, but not saved.`);
   el.petDecorTryBtn.hidden = !glowShown();
+  // (One of dew's, tried on: what it costs, and getting it.)
+  const dt = S.dewTry;
+  el.petDecorDew.hidden = !dt;
+  if (dt) {
+    const list = Homepage.ROOM_SLOTS[dt.slot];
+    const price = dewPriceOf(list, dt.key);
+    el.petDecorDewText.textContent = `${Homepage.ROOM[list][dt.key].label}: ${dewWords(price)} dew. It's in your pet's room to see.`;
+    el.petDecorDewBtn.dataset.dewPrice = String(price);
+    el.petDecorDewBtn.disabled = dewNow() + 1e-6 < price;
+  }
 }
 
 async function pickDecor(slot, key) {
-  const t = Homepage.ROOM[Homepage.ROOM_SLOTS[slot]][key];
+  const list = Homepage.ROOM_SLOTS[slot];
+  const t = Homepage.ROOM[list][key];
+  // (One of dew's, not got yet: tried on, or taken off again.)
+  if (t.dew && !hasDewThing(list, key) && !(S.room && S.room[slot] === key)) {
+    S.dewTry = S.dewTry && S.dewTry.slot === slot && S.dewTry.key === key ? null : { slot, key };
+    furnishPetRoom();
+    renderPetDecor();
+    return;
+  }
+  if (S.dewTry && S.dewTry.slot === slot) S.dewTry = null;
   if (t.perk && !supporting() && !(S.room && S.room[slot] === key)) {
     const tries = { ...(S.roomTry || {}) };
     if (tries[slot] === key) delete tries[slot];
@@ -16065,6 +16103,7 @@ async function savePet(fields) {
   if (el.pet.open) renderPet();
   renderPetButton();
   if (Homepage.petChanged) Homepage.petChanged(S.pet);
+  if (!S.dew && el.pet.open) loadDew();
 }
 
 // Feeding it (a bowl comes, and it eats) or playing with it (it chases a ball).
@@ -16101,6 +16140,265 @@ async function releasePet() {
   renderPet();
   renderPetButton();
   if (Homepage.petChanged) Homepage.petChanged(null);
+}
+
+// ----- Dew (lib/dew.js) -----
+// What your pet shakes off when you pat it, collected for things for its room that only dew brings
+// (they're in Decorate, with what they cost). Pats are counted as you make them and sent a second at
+// a time; what collects it by itself is counted up as it comes, and checked with the server every so
+// often (it has the say). Now and then a rainbow drop rolls down the room's window: catch it. It's
+// all in your pet's box, for whoever wants it, and nowhere else.
+
+let dewPats = 0; // (pats not sent yet)
+let dewSending = null;
+let dewSendTimer = 0;
+let dewTicker = 0;
+let dewSyncAt = 0;
+let rainbowTimer = 0;
+let dewPictures = false;
+
+// An amount of it: 0.5, 12, 1,234, 2.25 million.
+function dewWords(n) {
+  const v = Math.max(0, Number(n) || 0);
+  if (v < 10 && v % 1 >= 0.1) return (Math.floor(v * 10) / 10).toFixed(1);
+  if (v < 1e6) return Math.floor(v).toLocaleString();
+  for (const [k, word] of [[1e15, 'quadrillion'], [1e12, 'trillion'], [1e9, 'billion'], [1e6, 'million']]) {
+    if (v >= k) return `${(Math.floor((v / k) * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${word}`;
+  }
+  return '';
+}
+// (Shorter, on a thing's swatch: 2.5K, 1M.)
+const dewShort = (n) => (n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(1)}K` : String(Math.ceil(n)));
+// How much there is right now: as the server last said, what's been collected since, and pats not
+// sent yet.
+const dewNow = () => (S.dew ? S.dew.dew + (S.dew.perSecond * (performance.now() - S.dewAt)) / 1000 + dewPats * S.dew.perPat : 0);
+
+async function loadDew() {
+  dewSyncAt = performance.now();
+  try {
+    const d = await api('GET', '/dew');
+    S.dewShop = d.shop;
+    setDew(d.dew);
+  } catch {}
+}
+function setDew(state) {
+  const was = S.dew;
+  S.dew = state;
+  S.dewAt = performance.now();
+  planRainbow();
+  renderDew();
+  // (Decorate again: with what dew's things cost, once that's known, or one got.)
+  if (el.pet.open && (S.dewTry || !was || was.items.length !== state.items.length)) renderPetDecor();
+}
+
+// Counted up while the box is open (and checked every 20 seconds); pats not sent yet go when it
+// closes.
+function startDew() {
+  if (dewTicker) return;
+  dewTicker = setInterval(() => {
+    renderDewCount();
+    if (performance.now() - dewSyncAt > 20_000) loadDew();
+  }, 250);
+}
+function stopDew() {
+  clearInterval(dewTicker);
+  dewTicker = 0;
+  clearTimeout(rainbowTimer);
+  rainbowTimer = 0;
+  for (const n of el.petRoom.querySelectorAll('.dew-rainbow, .dew-burst')) n.remove();
+  sendPats();
+}
+
+// A pat (in its room: homepage.js onPat): counted now, sent in a moment. What it brought, to show.
+function patForDew() {
+  if (!S.dew || !S.pet || S.petTry) return '';
+  dewPats++;
+  if (!dewSendTimer) dewSendTimer = setTimeout(sendPats, 800);
+  renderDewCount();
+  return `+${dewWords(S.dew.perPat)}`;
+}
+async function sendPats() {
+  clearTimeout(dewSendTimer);
+  dewSendTimer = 0;
+  if (dewSending) await dewSending;
+  const n = dewPats;
+  if (!n) return;
+  dewPats = 0;
+  dewSending = api('POST', '/dew/pats', { n }).then((d) => setDew(d.dew)).catch(() => {}).finally(() => { dewSending = null; });
+  await dewSending;
+}
+
+// Getting another collector, or an upgrade.
+async function buyDew(kind, key) {
+  el.dewMsg.hidden = true;
+  await sendPats();
+  try {
+    setDew((await api('POST', `/dew/${kind}`, { key })).dew);
+  } catch (err) {
+    el.dewMsg.textContent = err.message;
+    el.dewMsg.hidden = false;
+  }
+}
+
+// Getting the thing tried on in Decorate: it's yours, and in the room.
+async function getDewThing() {
+  const t = S.dewTry;
+  if (!t) return;
+  await sendPats();
+  let d;
+  try {
+    d = await api('POST', '/dew/items', t);
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  S.room = d.room;
+  S.dewTry = null;
+  setDew(d.dew);
+  furnishPetRoom();
+  renderPetDecor();
+}
+
+// The count on its room, and the tab's (and which of what's for dew there's enough for).
+function renderDewCount() {
+  if (!S.dew) return;
+  const n = dewNow();
+  el.petDewN.textContent = dewWords(n);
+  el.dewTotal.textContent = dewWords(n);
+  for (const b of el.pet.querySelectorAll('[data-dew-price]')) b.disabled = n + 1e-6 < Number(b.dataset.dewPrice);
+}
+
+function renderDew() {
+  const d = S.dew;
+  const shop = S.dewShop;
+  if (!dewPictures && window.Homepage && Homepage.dewIcon) {
+    dewPictures = true;
+    document.documentElement.style.setProperty('--dew-drop', `url("${Homepage.dewIcon('drop')}")`);
+    document.documentElement.style.setProperty('--dew-rainbow', `url("${Homepage.dewIcon('rainbow')}")`);
+  }
+  el.petDew.hidden = !d || !S.pet || Boolean(S.petTry);
+  if (!d || !shop) return;
+  const p = S.pet;
+  el.dewRates.textContent = d.perSecond ? `${dewWords(d.perSecond)} a second, and ${dewWords(d.perPat)} a pat` : `${dewWords(d.perPat)} a pat`;
+  el.dewNote.textContent = !d.pats ? `Pat ${p ? petCalled(p) : 'your pet'} up there in its room, and it shakes some off.`
+    : d.happyMore >= 0.005 && p ? `${petName(p)} is happy, so what collects it brings ${Math.round(d.happyMore * 100)}% more.`
+      : 'A happy pet means what collects it brings more: up to a quarter more.';
+  renderDewUpgrades();
+  renderDewCollectors();
+  renderDewCount();
+}
+
+// Upgrades ready to get (patted enough, or enough of a collector), cheapest first.
+function renderDewUpgrades() {
+  const d = S.dew;
+  const owned = (k) => Number(d.collectors[k]) || 0;
+  const ready = S.dewShop.upgrades.filter((u) => !d.upgrades.includes(u.key) && (u.of ? owned(u.of) >= u.owned : d.pats + dewPats >= u.pats)).sort((a, b) => a.cost - b.cost);
+  const items = ready.map((u) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'dew-upgrade';
+    b.dataset.dewPrice = String(u.cost);
+    b.title = u.about;
+    const icon = document.createElement('i');
+    icon.className = 'dew-icon';
+    icon.style.backgroundImage = `url("${Homepage.dewIcon(u.of || 'pat')}")`;
+    const name = document.createElement('span');
+    name.textContent = u.label;
+    const cost = document.createElement('em');
+    cost.textContent = dewWords(u.cost);
+    b.append(icon, name, cost);
+    b.setAttribute('aria-label', `${u.label}: ${u.about} ${dewWords(u.cost)} dew`);
+    b.addEventListener('click', () => buyDew('upgrades', u.key));
+    return b;
+  });
+  if (!items.length) {
+    const none = document.createElement('p');
+    none.className = 'pet-note';
+    const have = d.upgrades.length;
+    none.textContent = have ? `You've ${have} so far. More come along as you pat it, and get more to collect it with.` : 'They come along as you pat it, and get things to collect it with.';
+    items.push(none);
+  }
+  el.dewUpgrades.replaceChildren(...items);
+}
+
+// What collects it: what you've got, and the next to get (the rest come into sight as you go).
+function renderDewCollectors() {
+  const d = S.dew;
+  const shop = S.dewShop;
+  const owned = (k) => Number(d.collectors[k]) || 0;
+  let last = -1;
+  shop.collectors.forEach((c, i) => { if (owned(c.key)) last = i; });
+  el.dewCollectors.replaceChildren(...shop.collectors.filter((c, i) => i <= Math.max(1, last + 1)).map((c) => {
+    const n = owned(c.key);
+    const price = Math.ceil(c.cost * shop.moreEach ** n);
+    const doubled = shop.upgrades.filter((u) => u.of === c.key && d.upgrades.includes(u.key)).length;
+    const each = c.rate * 2 ** doubled * (1 + d.happyMore);
+    const row = document.createElement('div');
+    row.className = 'dew-row';
+    const icon = document.createElement('i');
+    icon.className = 'dew-icon';
+    icon.style.backgroundImage = `url("${Homepage.dewIcon(c.key)}")`;
+    const words = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = n ? `${n} ${n === 1 ? c.label : c.many}` : c.label;
+    const about = document.createElement('span');
+    about.textContent = n ? `${dewWords(n * each)} a second` : `${c.about} ${dewWords(each)} a second.`;
+    words.append(name, about);
+    const buy = document.createElement('button');
+    buy.type = 'button';
+    buy.className = 'dew-buy';
+    buy.dataset.dewPrice = String(price);
+    const drop = document.createElement('i');
+    drop.className = 'dew-drop';
+    buy.append(drop, dewWords(price));
+    buy.setAttribute('aria-label', `Get ${n ? 'another' : 'a'} ${c.label.toLowerCase()} for ${dewWords(price)} dew`);
+    buy.addEventListener('click', () => buyDew('collectors', c.key));
+    row.append(icon, words, buy);
+    return row;
+  }));
+}
+
+// The next rainbow drop: rolling down the window when it comes (if you're there to see it).
+function planRainbow() {
+  clearTimeout(rainbowTimer);
+  rainbowTimer = 0;
+  const r = S.dew && S.dew.rainbow;
+  if (!r || !el.pet.open || r.in + r.for < 2000 || r.in > 30 * 60_000 || el.petRoom.querySelector('.dew-rainbow')) return;
+  rainbowTimer = setTimeout(showRainbow, Math.max(0, r.in));
+}
+function showRainbow() {
+  rainbowTimer = 0;
+  const r = S.dew && S.dew.rainbow;
+  if (!r || !el.pet.open || !S.pet || S.petTry || el.petRoom.querySelector('.dew-rainbow')) return;
+  const left = r.in + r.for - (performance.now() - S.dewAt);
+  if (left < 1500) return;
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'dew-rainbow';
+  b.title = 'A rainbow drop! Catch it';
+  b.setAttribute('aria-label', 'Catch the rainbow drop');
+  b.style.animationDuration = `${Math.round(left)}ms`;
+  b.addEventListener('animationend', () => { if (!b.classList.contains('caught')) b.remove(); });
+  b.addEventListener('click', () => catchRainbow(b));
+  el.petRoom.append(b);
+}
+async function catchRainbow(b) {
+  if (b.disabled) return;
+  b.disabled = true;
+  await sendPats();
+  b.classList.add('caught');
+  setTimeout(() => b.remove(), 500);
+  try {
+    const d = (await api('POST', '/dew/rainbow')).dew;
+    const burst = document.createElement('p');
+    burst.className = 'dew-burst';
+    burst.textContent = `+${dewWords(d.got)} dew!`;
+    burst.addEventListener('animationend', () => burst.remove());
+    el.petRoom.append(burst);
+    setDew(d);
+  } catch (err) {
+    toast(err.message);
+  }
 }
 
 // ----- Supporting Rainlit (lib/supporters.js) -----
@@ -18405,6 +18703,7 @@ async function init() {
   el.petRelease.addEventListener('click', releasePet);
   el.petTryBtn.addEventListener('click', () => openGlow({ because: S.petTry ? `The ${Homepage.PETS[S.petTry].label.toLowerCase()} comes with Glow.` : '' }));
   el.petDecorTryBtn.addEventListener('click', () => openGlow());
+  el.petDecorDewBtn.addEventListener('click', getDewThing);
   for (const b of el.pet.querySelectorAll('[data-pet-tab]')) {
     b.addEventListener('click', () => {
       S.petTab = b.dataset.petTab;
@@ -18414,6 +18713,8 @@ async function init() {
   el.pet.addEventListener('close', () => {
     S.petTry = '';
     S.roomTry = null;
+    S.dewTry = null;
+    stopDew();
     if (el.petRoom.hpPet) el.petRoom.hpPet.stop();
   });
 

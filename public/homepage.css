@@ -1013,6 +1013,11 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-pet-heart, .hp-pet-spark { width: calc(18px / var(--hp-scale, 1)); height: calc(18px / var(--hp-scale, 1)); }
 .hp-pet-spark { animation-duration: 1.4s; }
 .hp-pet-z { color: #fff; font: 700 calc(15px / var(--hp-scale, 1))/1 "Pixelify Sans", monospace; text-shadow: 0 0 3px rgba(0, 0, 0, 0.6); animation-duration: 1.9s; }
+/* (In its own room, the dew a pat brought: app.js.) */
+.hp-pet-dew {
+  color: #c8eeff; font: 700 calc(15px / var(--hp-scale, 1))/1 "Pixelify Sans", monospace; white-space: nowrap;
+  text-shadow: 0 1px 0 #1a3550, 0 0 3px rgba(0, 0, 0, 0.6); animation-duration: 1s;
+}
 .hp-pet-bubble {
   top: 40%; width: calc(var(--pw) / 22 * 2); height: calc(var(--pw) / 22 * 2);
   box-sizing: border-box; border: calc(var(--pw) / 44) solid rgba(214, 240, 255, 0.95); border-radius: 30%;

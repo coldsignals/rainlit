@@ -2698,21 +2698,33 @@
       me.raf = requestAnimationFrame(frame);
     }
 
-    // Petted: it hops, hearts come up, and it's counted. (On their homepage, its owner gets its
-    // card too.) Busy eating or chasing its ball, it carries on.
+    // Petted: it hops, hearts come up, and it's counted (a pet a second, at most, so it's only
+    // sent that often). In its owner's room, it's patted for dew too (onPat: app.js), and what
+    // that brought comes up. (On their homepage, its owner gets its card too.) Busy eating or
+    // chasing its ball, it carries on.
+    let petSent = -Infinity;
+    let pattedAt = -Infinity;
     function petted() {
       if (me.opts.inert) return;
+      const now = performance.now();
+      const quick = now - pattedAt < 450; // (patted again and again: fewer hearts each time)
+      pattedAt = now;
       if (!me.plan.length && !me.arrive && me.mode !== 'eat') mode('joy', 1.3);
-      hearts(3);
+      hearts(quick ? 1 : 3);
       showTag(3);
-      petCall(me.opts.petUrl).then((d) => {
-        if (!d || !d.pet) return;
-        me.info = { ...me.info, ...d.pet };
-        mood();
-        if (me.opts.onInfo) me.opts.onInfo(me.info);
-        const card = me.caring && cardOf();
-        if (card && card.life === life) fillCare(card);
-      }).catch(() => {});
+      const got = me.opts.onPat ? me.opts.onPat() : '';
+      if (got) bit('dew', got);
+      if (now - petSent >= 1000) {
+        petSent = now;
+        petCall(me.opts.petUrl).then((d) => {
+          if (!d || !d.pet) return;
+          me.info = { ...me.info, ...d.pet };
+          mood();
+          if (me.opts.onInfo) me.opts.onInfo(me.info);
+          const card = me.caring && cardOf();
+          if (card && card.life === life) fillCare(card);
+        }).catch(() => {});
+      }
       if (me.opts.mine && me.where.card) care();
     }
     function showTag(secs) {
@@ -3074,11 +3086,41 @@
     }
     return g.map((r) => r.join(''));
   }
+  // (Leaves with dew on them, on a deep green: two to a tile.)
+  function leavesTile() {
+    const g = Array.from({ length: 16 }, () => Array(16).fill('a'));
+    const leaf = ['..bb...', '.bbbb..', 'bbcbbb.', 'bbbcbbb', '.bbbcbb', '..bbbbb', '...bbb.'];
+    const stamp = (x0, y0) => leaf.forEach((row, y) => [...row].forEach((c, x) => { if (c !== '.') g[y0 + y][x0 + x] = c; }));
+    stamp(1, 1);
+    stamp(9, 8);
+    for (const [x, y] of [[3, 3], [11, 10], [13, 2], [5, 12]]) g[y][x] = 'd';
+    return g.map((r) => r.join(''));
+  }
+  // (A rug like a leaf: a vein down its middle, and veins off it, towards its tip.)
+  function leafRug() {
+    const w = 36;
+    return oval(w, 10, 'bbbbbba').map((row, y) => [...row].map((c, x) => {
+      if (c === '.') return c;
+      if ((y === 4 || y === 5) && x > 1 && x < w - 2) return 'c';
+      const off = y < 4 ? 4 - y : y > 5 ? y - 5 : 0;
+      return off && x > 3 && x < w - 4 && (x - off * 2 + 60) % 6 === 0 ? 'c' : c;
+    }).join(''));
+  }
+  // (A terrarium on a little stand: moss and plants behind glass, and a drop running down the
+  // glass, at `drop` rows down.)
+  function terrarium(drop) {
+    const rows = [
+      '.cccccccccccccc.', 'cqqqqqqqqqqqqqqc', 'cqqqqqqqqqGqqqqc', 'cqqqqqqqqGGGqqqc', 'cqqgqqqqGgGgGqqc', 'cqgggqqqGGgGGqqc', 'cqgGgqqqqGgGqqqc',
+      'cqqGqqpqqqGqqqqc', 'cmmmmmmmmmmmmmmc', 'cssssssssssssssc', 'cccccccccccccccc', '.TTTTTTTTTTTTTT.', '.T............T.', '.T............T.',
+    ];
+    return rows.map((r, y) => (y === drop ? `${r.slice(0, 4)}d${r.slice(5)}` : r));
+  }
   // (A pet bed: there are two.)
   const BED_ROWS = ['.....pppppppppppp.....', '...ppbbbbbbbbbbbbpp...', '..pbbbbbbbbbbbbbbbbp..', '.pbbbbbbbbbbbbbbbbbbp.', 'ppbbbbbbbbbbbbbbbbbbpp', 'pppbbbbbbbbbbbbbbbbppp', 'PpppppbbbbbbbbbbpppppP', '.PPPppppppppppppppPPP.', '...PPPPPPPPPPPPPPPP...'];
 
   // Wallpapers and floors: a tile each, repeated (and for some of Glow's, some of it twinkling).
-  // (`perk`: one of Glow's.)
+  // (`perk`: one of Glow's. `dew`: one that dew brings, lib/pets.js DEW_ROOM, which says what it
+  // costs.)
   const WALLS = {
     stripes: { label: 'Stripes', tile: ['aaabbb'], colors: { a: '#4b3f73', b: '#554880' } },
     dots: { label: 'Dots', tile: ['aaaaaaaa', 'abbaaaaa', 'abbaaaaa', 'aaaaaaaa', 'aaaaaaaa', 'aaaaabba', 'aaaaabba', 'aaaaaaaa'], colors: { a: '#2f5d62', b: '#3f7a7f' } },
@@ -3100,6 +3142,8 @@
     },
     aurora: { label: 'Aurora', perk: true, twinkle: 'g', tile: auroraTile(), colors: { a: '#0f1a33', b: '#0b1328', g: '#5ff0b0', t: '#2a9f96', p: '#7a5cd6' } },
     city: { label: 'City at night', perk: true, twinkle: 'y', tile: cityTile(), colors: { a: '#0f1530', b: '#1a2246', s: '#cfd8ff', h: '#0a0d1c', y: '#ffd76a' } },
+    leaves: { label: 'Dewy leaves', dew: true, tile: leavesTile(), colors: { a: '#284a37', b: '#3f7a4f', c: '#5fa36a', d: '#cfeeff' } },
+    retro: { label: 'Seventies', dew: true, tile: ['aaabbbcccdddcccbbb'], colors: { a: '#4a2c1a', b: '#b5562a', c: '#d99a34', d: '#efd29a' } },
   };
   const FLOORS = {
     wood: { label: 'Wood', tile: ['aaaaaaaaaaaaaaab', 'acaaaaaaaaaaaaab', 'aaaaaaaaaaaaaaab', 'bbbbbbbbbbbbbbbb', 'aaaaaaabaaaaaaaa', 'aaaaaaabaaaaacaa', 'aaaaaaabaaaaaaaa', 'bbbbbbbbbbbbbbbb'], colors: { a: '#a8744c', b: '#8a5c3a', c: '#b8845a' } },
@@ -3115,6 +3159,8 @@
       colors: { a: '#cfe9ff', b: '#ffffff', c: '#b3dcf7' },
     },
     crystal: { label: 'Crystal', perk: true, twinkle: 'c', tile: ['aaabbaaa', 'aabbbbaa', 'abbcbbba', 'bbcbbbbb', 'abbbbbba', 'aabbbbaa', 'aaabbaaa', 'aaaaaaaa'], colors: { a: '#5a3fa0', b: '#8a6fd6', c: '#e2d4ff' } },
+    moss: { label: 'Moss', dew: true, tile: ['abaacaba', 'baabaaab', 'acbaabca', 'abaacaba', 'baaabaab', 'aadbaaba', 'cabaabaa', 'abaabcab'], colors: { a: '#3d6b38', b: '#4b8043', c: '#5c9650', d: '#d6f2ff' } },
+    checker: { label: 'Checkerboard', dew: true, tile: ['aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa'], colors: { a: '#26262e', b: '#e6e6ea' } },
   };
   // Rugs, things on the wall, and things for the corners: a picture each (or two, taking turns),
   // with a line round it unless it glows (`bare`).
@@ -3125,6 +3171,7 @@
     woven: { label: 'Woven', rows: woven(34, 9), colors: { a: '#a8502f', b: '#e8d8b8', c: '#2f3f5f', w: '#e8d8b8' } },
     charcoal: { label: 'Charcoal', rows: oval(36, 10, 'bbababa'), colors: { a: '#4a4e57', b: '#5d626c' } },
     magic: { label: 'Magic circle', perk: true, glow: '#9ae8ff', bare: true, rows: oval(38, 10, '...c.b.a').map((r, y) => (y === 4 || y === 5 ? r.replace(/c/g, 'w') : r)), colors: { a: '#7efaff', b: '#b58cff', c: '#b58cff', w: '#ffffff' } },
+    leaf: { label: 'Leaf', dew: true, rows: leafRug(), colors: { a: '#2f6a3a', b: '#4f9a5a', c: '#3a7a45' } },
   };
   const HANGS = {
     none: { label: 'None' },
@@ -3159,6 +3206,18 @@
       colors: { p: '#ff7ad6' },
     },
     bolt: { label: 'Neon bolt', perk: true, glow: '#4fe0ff', bare: true, flicker: true, rows: neonBolt(), colors: { c: '#7ff6ff' } },
+    umbrella: {
+      label: 'Umbrella', dew: true,
+      rows: ['.......k.......', '.....rrRrr.....', '...rrrrRrrrr...', '..rrrRrRrRrrr..', '.rrrRrrRrrRrrr.', '.rrRrrrRrrrRrr.', 'rrRrrrrRrrrrRrr', 'rr.rr.rrr.rr.rr',
+        '.......h.......', '.......h.......', '.......h.......', '.......h.......', '.......h...h...', '........hhh....'],
+      colors: { r: '#f2c230', R: '#c9961a', k: '#5a3a26', h: '#5a3a26' },
+    },
+    poster: {
+      label: 'Band poster', dew: true,
+      rows: ['wwwwwwwwwwwww', 'wkkkkkkkkkkkw', 'wkkkkkkyykkkw', 'wkkkkkyykkkkw', 'wkkkkyykkkkkw', 'wkkkyyyyyykkw', 'wkkkkkkyykkkw', 'wkkkkkyykkkkw',
+        'wkkkkyykkkkkw', 'wkkkkykkkkkkw', 'wkkkkkkkkkkkw', 'wkpppkpppkppw', 'wkkkkkkkkkkkw', 'wkkpppppppkkw', 'wkkkkkkkkkkkw', 'wwwwwwwwwwwww'],
+      colors: { w: '#ece6da', k: '#1d1b26', y: '#ffd23a', p: '#ff5fa8' },
+    },
   };
   const STANDS = {
     none: { label: 'None' },
@@ -3207,6 +3266,23 @@
         ['aaaaaaaaaaaa', 'aMmmMmmMmmma', 'ammmmmmmmmma', 'aaaaaaaaaaaa', 'aAssssssssAa', 'aAssssgsssAa', 'aAsssgggssAa', 'aAssssgsssAa', 'aAssyyssssAa', 'aAssssssssAa', 'aaaaaaaaaaaa', 'cccccccccccc', 'ccrccccbyccc', 'aaaaaaaaaaaa', 'aAAAAAAAAAAa', 'aAAAyyyyAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aaaaaaaaaaaa'],
       ],
       colors: { a: '#2b2f3d', A: '#363b4d', m: '#ff5fa8', M: '#ffd0e6', s: '#13233f', g: '#7dff8a', y: '#ffd84d', c: '#4a5068', r: '#ef4d5e', b: '#4c8dff' },
+    },
+    barrel: {
+      label: 'Rain barrel', dew: true,
+      rows: ['..BBBBBBBBBB..', '.BaaaaaaaaaaB.', '.BbbbbbbbbbbB.', '.MMMMMMMMMMMM.', 'bbdbbbdbbbdbbb', 'bbdbbbdbbbdbbb', 'bbdbbbdbbbdbbb', 'MMMMMMMMMMMMMM',
+        'bbdbbbdbbbdbss', 'bbdbbbdbbbdbbS', 'bbdbbbdbbbdbbb', 'MMMMMMMMMMMMMM', '.bbdbbbdbbbdb.', '.bbdbbbdbbbdb.', '..BBBBBBBBBB..'],
+      colors: { B: '#4e321d', a: '#6fb8e8', b: '#9a6a3f', d: '#7a4f2c', M: '#8a93a3', s: '#b8c0cc', S: '#7d8592' },
+    },
+    records: {
+      label: 'Record player', dew: true,
+      rows: ['....KKKKKKKK..a...', '...KkkkllkkkK.aa..', '.mmmmmmmmmmmmmmmm.', '.mggggggggggggoom.', '.mmmmmmmmmmmmmmmm.', 'tttttttttttttttttt', 'TTTTTTTTTTTTTTTTTT',
+        'TruyGpruyTDDDDDDDT', 'TruyGpruyTDdddddDT', 'TruyGpruyTDddoddDT', 'TruyGpruyTDdddddDT', 'TruyGpruyTDDDDDDDT', 'TTTTTTTTTTTTTTTTTT', '.T..............T.'],
+      colors: { K: '#15151a', k: '#2a2a33', l: '#e8504a', a: '#c8ccd4', m: '#3a3f4b', g: '#59606e', o: '#c8ccd4', t: '#9a6b45', T: '#7a5234',
+        r: '#e04a4a', u: '#4a7de0', y: '#e8c23a', G: '#4fae5a', p: '#a06ad8', D: '#6b4a32', d: '#8a5f3d' },
+    },
+    terrarium: {
+      label: 'Terrarium', dew: true, frames: [terrarium(2), terrarium(4)],
+      colors: { c: '#bfe3ee', q: 'rgba(191, 231, 240, 0.22)', d: '#f0fcff', g: '#5fae5a', G: '#3f8a45', p: '#ff8fc6', m: '#4f8a3f', s: '#6b4a32', T: '#7a5234' },
     },
   };
   // What's out its window: the weather. Its owner picks one, or it changes by itself (day or night
@@ -3260,6 +3336,12 @@
         return y === mid - 1 ? 'v' : y === mid ? 'g' : y === mid + 1 ? 'c' : '.';
       }).join('')),
       tileColors: { v: '#b07bff', g: '#5dffa8', c: '#5ee7ff' },
+    },
+    fog: {
+      label: 'Foggy morning', dew: true, scene: skyRows((x, y) => (y < 4 ? 'a' : y < 8 ? 'b' : 'c')), colors: { a: '#9fb0c0', b: '#b3c1ce', c: '#c7d1da' },
+      fx: 'drift',
+      tile: Array.from({ length: SKY_H }, (_, y) => Array.from({ length: 24 }, (_, x) => ((y === 3 && x >= 1 && x <= 10) || (y === 4 && x >= 3 && x <= 14) || (y === 7 && x >= 12 && x <= 22) || (y === 8 && x >= 10 && x <= 19) ? 'w' : '.')).join('')),
+      tileColors: { w: '#e6ecf1' },
     },
   };
 
@@ -3407,6 +3489,34 @@
     base.style.backgroundImage = `url("${BASEBOARD}")`;
     scene.replaceChildren(layer('pr-wall', thingOf('wall', r.wall), true), layer('pr-floor', thingOf('floor', r.floor), true), base, win,
       thing('rug'), thing('hang'), thing('left'), thing('right'));
+  }
+
+  // Dew's pictures (app.js shows them in its pet's Dew tab): a drop of it, and each thing that
+  // collects it (lib/dew.js).
+  const DEW_ICONS = {
+    drop: { rows: ['....b....', '...bbb...', '...bbb...', '..bbbbb..', '.bwbbbbb.', '.bwbbbbb.', '.bbbbbbB.', '..bbbbB..', '...BBB...'], colors: { b: '#7fd0ff', w: '#ffffff', B: '#4fa3d9' } },
+    leaf: {
+      rows: ['.......ggg', '.....ggggg', '....ggggGg', '...gggGggg', '..ggGgggbg', '..gGggggg.', '.gGggggg..', '.Gggggg...', 'G.ggg.....', 'G.........'],
+      colors: { g: '#5aa650', G: '#3f8a45', b: '#bfeaff' },
+    },
+    acorn: { rows: ['..........', '.bbbbbbbb.', 'cCcCcCcCcC', 'CcCcCcCcCc', '.cCcCcCcC.', '..cCcCcC..', '...cccc...', '....cc....'], colors: { c: '#8a5a32', C: '#6e4426', b: '#7fd0ff' } },
+    web: { rows: ['w...w...w', '.w.www.w.', '.www.w.ww', '..w.bw.w.', 'wwwwwwwww', '..w.w.bw.', '.ww.w.ww.', '.w.www.w.', 'w...w...w'], colors: { w: '#d8dde6', b: '#7fd0ff' } },
+    moss: { rows: ['...gGg....', '.gGgggGg..', 'gggGgggGg.', 'GgggbgggGg', 'gGgggggGgg', 'tttttttttt', '.TTTTTTTT.'], colors: { g: '#5aa650', G: '#3f8a45', b: '#bfeaff', t: '#8a5f3d', T: '#6b4a32' } },
+    net: { rows: ['p........p', 'pnnnnnnnnp', 'pn.n.n.n.p', 'pnnnnnnnnp', 'pn.n.n.nbp', 'pnnnnnnnnp', 'p........p', 'p........p', 'p........p'], colors: { p: '#7a5234', n: '#c8d0dc', b: '#7fd0ff' } },
+    pond: { rows: ['.r......r.', '.r......r.', '.rGggggGr.', 'Gbbbbbbbbg', 'gbbwbbbbbg', 'gbbbbbbbbG', '.Gbbbbbbg.', '..gGggGg..'], colors: { r: '#4f8a3f', g: '#5aa650', G: '#3f8a45', b: '#4fa3d9', w: '#bfe8ff' } },
+    mist: { rows: ['..wwww....', '.wwwwww.w.', 'wwwwwwwwww', '.www.www..', '...MM.....', '.MMMMMMMM.', '.MlMMMMoM.', '.MMMMMMMM.', '.M......M.'], colors: { w: '#e8eef4', M: '#5a6272', l: '#7fd0ff', o: '#ffd23a' } },
+    // (A paw, for the upgrades to pats; and a rainbow drop, rolling down the window now and then.)
+    pat: { rows: ['.pp...pp.', '.pp...pp.', '.........', 'pp.ppp.pp', 'pp.ppp.pp', '..ppppp..', '.ppppppp.', '.ppppppp.', '..ppppp..'], colors: { p: '#f6c28b' } },
+    rainbow: {
+      rows: ['....r....', '...ror...', '...ooo...', '..oyyyo..', '.wyyggyy.', '.wgggggg.', '.bbbbbbb.', '..pbbbp..', '...ppp...'],
+      colors: { r: '#ff5f6d', o: '#ffa24a', y: '#ffe066', g: '#6fe08a', b: '#5fb4ff', p: '#b07bff', w: '#ffffff' },
+    },
+  };
+  const dewIconSrc = new Map();
+  function dewIcon(key) {
+    const icon = DEW_ICONS[key] || DEW_ICONS.drop;
+    if (!dewIconSrc.has(key)) dewIconSrc.set(key, pixelsSrc(outlined(icon.rows), { k: '#2a1f33', ...icon.colors }));
+    return dewIconSrc.get(key);
   }
 
   // One of a room's things (or a wallpaper or floor), small: to pick it.
@@ -3916,7 +4026,7 @@
     // (a piece's video popped up, or its sound played, to try: the editor)
     popVideo, closeTopPopup, playSound,
     petEl, petRoom, petMeters, fullWords, happyWords,
-    ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch,
+    ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch, dewIcon,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
     petDid: (page, what, info) => { if (page.hpPet) page.hpPet.did(what, info); },
     // (the sheet of a pet's frames, to look at them)
