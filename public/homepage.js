@@ -2218,21 +2218,57 @@
   // on its eyes, one round its neck and one on its body. Each is drawn into its pixels, so it's
   // there in every frame (lying down, eating, hopping) and wherever it goes. A hat sits on its head
   // (`crown`: its head's top middle), glasses on its eyes (wherever they are), a collar goes round
-  // its neck (`neck`: the row, from x0 to x1; a fish's `ring` is up and down), and a sweater's
-  // colours take the place of its coat's on its body (`body`: the parts it covers; `coat`: which of
-  // its letters are coat, not face). All in its pixels, standing and facing right.
+  // its neck (`neck`: the row, from x0 to x1; a fish's `ring` is up and down; a droplet's bowtie
+  // goes under its smile, `bow`), and a sweater on its body (JUMPER_AT; `coat`: which of its letters
+  // are coat, not face). All in its pixels, standing and facing right.
   const WEAR_AT = {
-    cat: { crown: [12, 2], neck: [8, 14, 8], body: [[2, 7, 8, 7], [2, 8, 12, 11]] },
-    dog: { crown: [12, 2], neck: [8, 14, 8], body: [[2, 7, 6, 7], [2, 8, 12, 11]] },
-    fish: { crown: [11, 4], ring: [9, 4, 10], body: [[3, 4, 8, 10]] },
-    drop: { crown: [9, 3], neck: [5, 13, 12], body: [[3, 4, 15, 12]], coat: 'as' },
-    dragon: { crown: [12, 2], neck: [8, 14, 8], body: [[2, 7, 8, 7], [2, 8, 12, 11]] },
-    fox: { crown: [12, 2], neck: [8, 13, 8], body: [[3, 7, 8, 7], [4, 8, 12, 10]], coat: 'abs' },
+    cat: { crown: [12, 2], neck: [8, 14, 8] },
+    dog: { crown: [12, 2], neck: [8, 14, 8] },
+    fish: { crown: [11, 4], ring: [9, 4, 10] },
+    drop: { crown: [9, 3], bow: [9, 11], coat: 'as' },
+    dragon: { crown: [12, 2], neck: [8, 14, 8] },
+    fox: { crown: [12, 2], neck: [8, 13, 8], coat: 'abs' },
   };
+  // (What each can't wear: the droplet's all drop, with no neck for a collar and no body for a
+  // sweater, though a bowtie suits it. lib/pets.js says the same.)
+  const WEAR_NOT = { drop: { neck: ['collar', 'bandana', 'spiked', 'scarf'], body: true } };
+  const canWear = (kind, slot, key) => {
+    const no = WEAR_NOT[kind] && WEAR_NOT[kind][slot];
+    return !(no === true || (Array.isArray(no) && no.includes(key)));
+  };
+  // Where a sweater goes, on each that wears one: from its neck back (only so far: `reach` columns
+  // behind its head, the rest of it its own coat), its `back` rows behind its head (from its `rear`
+  // to just before its head, at `neck`) and its `chest` rows under its head (to its `front`). Round
+  // its neck, the sweater's collar: down behind its head, and along under its chin (the chest's top
+  // row); at its back edge, a hem; on its front legs' tops, sleeves (`arms`), its paws out of them;
+  // and a hood lying behind its head (`hood`). A fish's is all behind its head, like a band round it.
+  const JUMPER_AT = {
+    cat: { rear: 2, neck: 8, front: 12, back: [7, 8], chest: [9, 11], arms: [[9, 12], [11, 12]], hood: [[7, 5], [6, 6], [7, 6]] },
+    dog: { rear: 2, neck: 7, front: 12, back: [7, 8], chest: [9, 11], arms: [[9, 12], [11, 12]], hood: [[6, 5], [5, 6], [6, 6]] },
+    fish: { rear: 3, neck: 9, back: [4, 10], arms: [], hood: [] },
+    dragon: { rear: 2, neck: 8, front: 12, back: [7, 8], chest: [9, 11], arms: [[9, 12], [11, 12]], hood: [] },
+    fox: { rear: 3, neck: 8, front: 13, back: [7, 7], chest: [8, 10], arms: [[11, 11], [13, 11]], hood: [[7, 5], [6, 6], [7, 6]] },
+  };
+  // (A sweater's pixels on it, each [x, y, part]: 'body', 'collar', 'hem' or 'arm'.)
+  function jumperOf(kind, reach) {
+    const j = JUMPER_AT[kind];
+    if (!j) return [];
+    const cut = Math.max(j.rear, j.neck - reach);
+    const px = [];
+    for (let y = j.back[0]; y <= j.back[1]; y++) for (let x = cut; x < j.neck; x++) px.push([x, y, x === j.neck - 1 ? 'collar' : x === cut ? 'hem' : 'body']);
+    if (j.chest) {
+      for (let y = j.chest[0]; y <= j.chest[1]; y++) {
+        for (let x = cut; x <= j.front; x++) px.push([x, y, y === j.chest[0] && x >= j.neck ? 'collar' : x === cut ? 'hem' : 'body']);
+      }
+    }
+    for (const [x, y] of j.arms) px.push([x, y, 'arm']);
+    return px;
+  }
   // Hats: their rows, the bottom one on its head (moved along `dx`). Glasses: how they're made
   // round its eyes. Collars: `band` round its neck (its letters taking turns), a `tag` under it at
-  // the front, something hanging (`hang`) or a `bow` there, and a `tail` at the back. Sweaters:
-  // `paint`, the letter for each pixel of its body.
+  // the front, something hanging (`hang`) or a `bow` there, and a `tail` at the back. Sweaters: how
+  // far back they go (`reach`), and `paint`, the letter for each of their pixels (its part, and
+  // where on it: `at`, its middle and lowest row); a `hood`, in its colour.
   const WEAR = {
     head: {
       bow: { label: 'Bow', rows: ['BB.BB', 'BBbBB'], colors: { B: '#ff6fae', b: '#c94a86' } },
@@ -2250,17 +2286,23 @@
     neck: {
       collar: { label: 'Collar', band: 'C', tag: 'Y', colors: { C: '#d94a4a', Y: '#ffd23a' } },
       bandana: { label: 'Bandana', band: 'R', hang: ['RRR', '.R.'], colors: { R: '#3a6fd8' } },
-      bowtie: { label: 'Bowtie', bow: ['B.B', 'BKB', 'B.B'], colors: { B: '#d0304a', K: '#8a1f30' } },
+      bowtie: { label: 'Bowtie', bow: ['B.B', 'BKB', 'B.B'], front: ['B...B', 'BBKBB', 'B...B'], colors: { B: '#d0304a', K: '#8a1f30' } },
       spiked: { label: 'Spiked collar', band: 'KS', colors: { K: '#2a2a33', S: '#d0d6e0' } },
       scarf: { label: 'Scarf', band: 'SQ', tail: true, colors: { S: '#e05a4a', Q: '#f3e6d0' } },
     },
     body: {
-      stripes: { label: 'Striped sweater', paint: (x, y) => (y % 2 ? 'X' : 'Y'), colors: { X: '#d9534f', Y: '#f3e6d0' } },
-      hoodie: { label: 'Hoodie', paint: (x, y, at) => (y === at.y1 - 1 && Math.abs(x - at.mx) <= 1 ? 'h' : 'H'), colors: { H: '#7d8597', h: '#5d6577' } },
-      knit: { label: 'Cozy knit', paint: (x, y) => ((x + y) % 4 === 0 ? 'W' : 'N'), colors: { N: '#2f7a4f', W: '#f3f3f3' } },
+      stripes: { label: 'Striped sweater', reach: 4, paint: (x, y, part) => (part === 'body' ? (y % 2 ? 'X' : 'Y') : 'Z'), colors: { X: '#d9534f', Y: '#f3e6d0', Z: '#a8403c' } },
+      // (Its pocket: along its lowest row but one, in the middle.)
+      hoodie: {
+        label: 'Hoodie', reach: 5, hood: 'h', paint: (x, y, part, at) => (part !== 'body' || (y === at.low - 1 && Math.abs(x - at.mx) <= 1) ? 'h' : 'H'),
+        colors: { H: '#7d8597', h: '#5d6577' },
+      },
+      knit: { label: 'Cozy knit', reach: 6, paint: (x, y, part) => (part === 'body' ? ((x + y) % 4 === 0 ? 'W' : 'N') : 'C'), colors: { N: '#2f7a4f', W: '#f3f3f3', C: '#e6dcc0' } },
+      // (A little sparkle on its side, and its collar, in gold; its cuffs and hem a lighter blue.)
       rainlit: {
-        label: 'Rainlit sweater', paint: (x, y, at) => ((x === at.mx && Math.abs(y - at.my) <= 1) || (y === at.my && Math.abs(x - at.mx) === 1) ? 'A' : 'R'),
-        colors: { R: '#24305a', A: '#f9c862' },
+        label: 'Rainlit sweater', reach: 4,
+        paint: (x, y, part, at) => (part === 'collar' || (part === 'body' && ((x === at.mx && Math.abs(y - at.my) <= 1) || (y === at.my && Math.abs(x - at.mx) === 1))) ? 'A' : part === 'body' ? 'R' : 'r'),
+        colors: { R: '#24305a', r: '#3b4f8c', A: '#f9c862' },
       },
     },
   };
@@ -2278,7 +2320,7 @@
     const free = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'];
     for (const slot of WEAR_SLOTS) {
       const item = wear && WEAR[slot][wear[slot]];
-      if (!item) continue;
+      if (!item || !canWear(kind, slot, wear[slot])) continue;
       const mine = {};
       const ink = (c) => {
         if (!mine[c]) {
@@ -2311,7 +2353,12 @@
         if (b) for (let gx = a[0] + ew + 1; gx < b[0] - 1; gx++) put(out.over, gx, a[1], 'F');
         put(out.over, a[0] - 2, a[1], 'F');
       } else if (slot === 'neck') {
-        if (at.neck) {
+        if (at.bow) {
+          // (Face on, under its smile: the bow's `front`, its middle at x.)
+          const [x, y] = at.bow;
+          const rows = item.front || item.bow;
+          if (rows) rows.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x - Math.floor(row.length / 2) + j, y + i, c); }));
+        } else if (at.neck) {
           const [x0, x1, y] = at.neck;
           const front = x1 - 1;
           if (item.band) for (let x = x0; x <= x1; x++) put(out.band, x, y, item.band[(x - x0) % item.band.length]);
@@ -2328,12 +2375,16 @@
           if (item.tail) put(out.over, x - 1, y0, item.band[0]), put(out.over, x - 2, y0 - 1, item.band[1] || item.band[0]);
         }
       } else if (slot === 'body') {
-        const xs = at.body.flatMap(([x0, , x1]) => [x0, x1]);
-        const ys = at.body.flatMap(([, y0, , y1]) => [y0, y1]);
-        const shape = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
-        shape.mx = Math.round((shape.x0 + shape.x1) / 2);
-        shape.my = Math.round((shape.y0 + shape.y1) / 2);
-        for (const [x0, y0, x1, y1] of at.body) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(out.paint, x, y, item.paint(x, y, shape));
+        const px = jumperOf(kind, item.reach);
+        const body = px.filter((p) => p[2] === 'body');
+        if (!body.length) continue;
+        // (Its middle, and its lowest row.)
+        const shape = {
+          mx: Math.round(body.reduce((n, p) => n + p[0], 0) / body.length), my: Math.round(body.reduce((n, p) => n + p[1], 0) / body.length),
+          low: Math.max(...body.map((p) => p[1])),
+        };
+        for (const [x, y, part] of px) put(out.paint, x, y, item.paint(x, y, part, shape));
+        if (item.hood) for (const [x, y] of JUMPER_AT[kind].hood) put(out.over, x, y, item.hood);
       }
     }
     out.coat = at.coat || 'abcs';
@@ -4616,7 +4667,7 @@
     // (a piece's video popped up, or its sound played, to try: the editor)
     popVideo, closeTopPopup, playSound,
     petEl, petRoom, petMeters, fullWords, happyWords,
-    ROOM, ROOM_DEFAULT, ROOM_SLOTS, THING_LISTS, THINGS_MAX, furnish, newThing, arrange, roomSwatch, dewIcon, WEAR, WEAR_SLOTS,
+    ROOM, ROOM_DEFAULT, ROOM_SLOTS, THING_LISTS, THINGS_MAX, furnish, newThing, arrange, roomSwatch, dewIcon, WEAR, WEAR_SLOTS, canWear,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
     petDid: (page, what, info) => { if (page.hpPet) page.hpPet.did(what, info); },
     // (the sheet of a pet's frames, to look at them)

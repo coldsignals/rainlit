@@ -16121,9 +16121,16 @@ function dressPet() {
 function renderPetWear() {
   const p = S.pet;
   if (!p || !window.Homepage || !Homepage.WEAR) return;
+  if (S.wearTry && !Homepage.canWear(p.kind, S.wearTry.slot, S.wearTry.key)) S.wearTry = null;
   const shown = wearShown();
-  el.petWearRows.replaceChildren(...WEAR_ROWS.map(([slot, label]) => {
-    const opts = ['', ...Object.keys(Homepage.WEAR[slot])].map((key) => {
+  // (Only what suits it: a droplet's a drop all over, so not a sweater or a collar.)
+  const fits = (slot) => Object.keys(Homepage.WEAR[slot]).filter((key) => Homepage.canWear(p.kind, slot, key));
+  const rows = WEAR_ROWS.filter(([slot]) => fits(slot).length);
+  const note = document.createElement('p');
+  note.className = 'pet-note';
+  note.textContent = p.kind === 'drop' ? "A droplet's all drop: there's no neck for a collar or a body for a sweater, but a hat, glasses or a bowtie suit it." : '';
+  el.petWearRows.replaceChildren(...rows.map(([slot, label]) => {
+    const opts = ['', ...fits(slot)].map((key) => {
       const item = key && Homepage.WEAR[slot][key];
       const got = !key || hasDewThing('wear', key) || (p.wear || {})[slot] === key;
       const price = got ? 0 : wearPriceOf(slot, key);
@@ -16155,6 +16162,7 @@ function renderPetWear() {
     row.append(name, box);
     return row;
   }));
+  if (note.textContent) el.petWearRows.append(note);
   const t = S.wearTry;
   el.petWearDew.hidden = !t;
   if (t) {
