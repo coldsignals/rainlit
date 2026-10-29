@@ -15965,7 +15965,7 @@ function renderPetDecor() {
   if (dt) {
     const list = Homepage.ROOM_SLOTS[dt.slot];
     const price = dewPriceOf(list, dt.key);
-    el.petDecorDewText.textContent = `${Homepage.ROOM[list][dt.key].label}: ${dewWords(price)} dew. It's in your pet's room to see.`;
+    el.petDecorDewText.textContent = `${Homepage.ROOM[list][dt.key].label}: ${dewWords(price)} dew, just for looks. It's in your pet's room to see.`;
     el.petDecorDewBtn.dataset.dewPrice = String(price);
     el.petDecorDewBtn.disabled = dewNow() + 1e-6 < price;
   }
