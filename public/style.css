@@ -2912,6 +2912,12 @@ button.person.open { background: var(--dusk-hi); }
 .pr-tool:disabled { opacity: 0.3; cursor: default; }
 .pr-tool svg { width: 17px; height: 17px; }
 .pr-tool-away { color: #b03a48; }
+/* (Its colours: a swatch each, the one it's in pressed.) */
+.pr-tints { display: flex; align-items: center; gap: 3px; margin: 0 3px; padding: 0 5px; border-inline: 2px solid #e8dcc4; }
+.pr-tints[hidden] { display: none; }
+.pr-tint { width: 18px; height: 18px; padding: 0; border: 2px solid #2a1f33; border-radius: 0; background: var(--c); cursor: pointer; }
+.pr-tint:hover, .pr-tint:focus-visible { outline: 2px solid #b8a888; outline-offset: 1px; }
+.pr-tint[aria-pressed="true"] { outline: 2px solid #2a1f33; outline-offset: 2px; }
 .pet-room .hp-pet-tag { display: none; } /* (its name's just below) */
 .pet-room-empty {
   position: absolute; z-index: 1000; left: 50%; top: 64%; transform: translate(-50%, -50%); margin: 0;

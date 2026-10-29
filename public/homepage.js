@@ -3699,6 +3699,81 @@
   // (Which list each of the room's own picks from: its wallpaper, its floor, and the weather out its
   // windows.)
   const ROOM_SLOTS = { wall: 'wall', floor: 'floor', sky: 'sky' };
+  // Each thing's other colours, three of them, to pick from where it's put (arrange): each a name and
+  // the colours it changes (the first its main one, for its swatch), and a `glow` of its own for
+  // what glows. A wood's white, black or birch; a pot, a shade, a cushion, a neon tube its own.
+  const TINTS = {
+    'rug:round': [{ name: 'Blue', a: '#4f7fd0', b: '#8fb6f0' }, { name: 'Sage', a: '#5f9a6a', b: '#a3d0aa' }, { name: 'Gold', a: '#d9a13a', b: '#f3cf7a' }],
+    'rug:rect': [{ name: 'Red', a: '#c0463f', b: '#f5a99f' }, { name: 'Green', a: '#3f8a4f', b: '#a9e0b0' }, { name: 'Purple', a: '#6a4fc0', b: '#c3b0f5' }],
+    'rug:woven': [{ name: 'Teal', a: '#2f7a7a', c: '#6a2f3f' }, { name: 'Plum', a: '#7a3f6a', c: '#2f5f4f' }, { name: 'Olive', a: '#6a7a2f', c: '#5f2f2f' }],
+    'rug:charcoal': [{ name: 'Cream', a: '#d8cbb0', b: '#e8dcc4' }, { name: 'Navy', a: '#2f3f6a', b: '#3f5080' }, { name: 'Forest', a: '#2f4f3a', b: '#3f6a4a' }],
+    'rug:magic': [
+      { name: 'Rose', a: '#ff9ad6', b: '#ffd27a', c: '#ffd27a', glow: '#ff9ae0' }, { name: 'Emerald', a: '#7aff9a', b: '#7ad6ff', c: '#7ad6ff', glow: '#9affb0' },
+      { name: 'Ember', a: '#ffb07a', b: '#ff6f6f', c: '#ff6f6f', glow: '#ffb08a' },
+    ],
+    'rug:leaf': [{ name: 'Autumn', b: '#d9822f', a: '#a8502f', c: '#c0682f' }, { name: 'Golden', b: '#d9b43a', a: '#a8862a', c: '#c09a2f' }, { name: 'Frost', b: '#8fc0d0', a: '#4f7a8a', c: '#6a9aaa' }],
+    'hang:window': [{ name: 'White', b: '#f3efe6', a: '#d8d2c6', c: '#a8a094' }, { name: 'Black', b: '#55555f', a: '#3a3a44', c: '#26262e' }, { name: 'Teal', b: '#4fa49c', a: '#2f7a76', c: '#235a56' }],
+    'hang:picture': [
+      { name: 'Night', u: '#1a2350', f: '#3a3a44', y: '#ffeeb8', g: '#3f6a5a', G: '#2f4f44' }, { name: 'Sunset', u: '#ff9a6a', f: '#8a5a3c', y: '#ffe066', g: '#8a5a8a', G: '#5a3f6a' },
+      { name: 'Sea', u: '#bfe8ff', f: '#f3efe6', y: '#ffffff', g: '#3a7bd5', G: '#2c5fa8' },
+    ],
+    'hang:clock': [{ name: 'Blue', a: '#3a7bd5' }, { name: 'Green', a: '#3f9e57' }, { name: 'Black', a: '#2f2f38' }],
+    'hang:shelf': [{ name: 'White', b: '#ece6da', B: '#c8c0b0' }, { name: 'Black', b: '#4a4a55', B: '#33333b' }, { name: 'Birch', b: '#e0c08a', B: '#b89a60' }],
+    'hang:guitar': [{ name: 'Red', b: '#d9483f', B: '#a8302a' }, { name: 'Black', b: '#3a3a44', B: '#26262e' }, { name: 'Blue', b: '#3f7fd0', B: '#2c5fa8' }],
+    'hang:darts': [{ name: 'Blue', r: '#3a7bd5', g: '#e8c23a' }, { name: 'Purple', r: '#8a4fc0', g: '#ffd84d' }, { name: 'Grey', r: '#2f2f38', g: '#9aa0b0' }],
+    'hang:lights': [
+      { name: 'Warm', y: '#fff1c0', Y: '#8a7a5a', p: '#ffd9a0', P: '#8a6a4a', c: '#fff1c0', C: '#8a7a5a', g: '#ffd9a0', G: '#8a6a4a', glow: '#fff1c0' },
+      { name: 'Ice', y: '#c8f0ff', Y: '#4a6a7a', p: '#9fd8ff', P: '#3a5a7a', c: '#c8f0ff', C: '#4a6a7a', g: '#9fd8ff', G: '#3a5a7a', glow: '#bfe8ff' },
+      { name: 'Candy', y: '#ff6fae', Y: '#7a3a5c', p: '#ffffff', P: '#7a7a8a', c: '#ff6fae', C: '#7a3a5c', g: '#ffffff', G: '#7a7a8a', glow: '#ffc2dc' },
+    ],
+    'hang:neon': [{ name: 'Blue', p: '#7ad6ff', glow: '#5fc8ff' }, { name: 'Green', p: '#7aff9a', glow: '#5fff8a' }, { name: 'Gold', p: '#ffe07a', glow: '#ffd05f' }],
+    'hang:bolt': [{ name: 'Pink', c: '#ff7ad6', glow: '#ff5fc8' }, { name: 'Gold', c: '#ffe07a', glow: '#ffd05f' }, { name: 'Green', c: '#7aff9a', glow: '#5fff8a' }],
+    'hang:umbrella': [{ name: 'Red', r: '#e04a4a', R: '#a83434' }, { name: 'Blue', r: '#3a7bd5', R: '#2c5fa8' }, { name: 'Green', r: '#4f9a5a', R: '#3a7a45' }],
+    'hang:poster': [{ name: 'Blue', y: '#7fd0ff', p: '#ffd23a' }, { name: 'Pink', y: '#ff5fa8', p: '#7fd0ff' }, { name: 'Light', k: '#f3e6d0', w: '#1d1b26', y: '#e04a4a', p: '#3a7bd5' }],
+    'stand:plant': [{ name: 'White pot', o: '#ece6da', O: '#c8c0b0' }, { name: 'Blue pot', o: '#3a7bd5', O: '#2c5fa8' }, { name: 'Black pot', o: '#3a3a44', O: '#26262e' }],
+    'stand:lamp': [{ name: 'Mint', y: '#a8f0d8', Y: '#6ac0a8', glow: '#c0ffe8' }, { name: 'Rose', y: '#ffb0c8', Y: '#e07a98', glow: '#ffc8d8' }, { name: 'White', y: '#fffaf0', Y: '#d8d0c0', glow: '#fffaf0' }],
+    'stand:bed': [{ name: 'Blue', p: '#4f7fd0', b: '#a8c8f5', P: '#3a5fa8' }, { name: 'Purple', p: '#8a5ac0', b: '#d4c0f0', P: '#6a3fa0' }, { name: 'Yellow', p: '#e0b030', b: '#fbe6a0', P: '#b08a20' }],
+    'stand:bedgrey': [{ name: 'Red', p: '#c04a4a', b: '#f0b0a8', P: '#963434' }, { name: 'Orange', p: '#e0863a', b: '#fbd0a0', P: '#b0642a' }, { name: 'Green', p: '#4f8a5a', b: '#b8dcbc', P: '#3a6a44' }],
+    'stand:books': [{ name: 'White', B: '#ece6da', d: '#b8b0a4' }, { name: 'Black', B: '#3a3a44', d: '#22222a' }, { name: 'Birch', B: '#d8b07a', d: '#8a6a40' }],
+    'stand:desk': [
+      { name: 'White', t: '#ece6da', T: '#c8c0b0', D: '#b0a898', d: '#d8d0c0' }, { name: 'Black', t: '#4a4a55', T: '#33333b', D: '#26262e', d: '#3a3a44' },
+      { name: 'Birch', t: '#e0c08a', T: '#b89a60', D: '#a08048', d: '#c8a870' },
+    ],
+    'stand:armchair': [{ name: 'Red', a: '#a8443f', b: '#c05a52', c: '#86342f' }, { name: 'Green', a: '#4f8a5a', b: '#62a06c', c: '#3a6a44' }, { name: 'Mustard', a: '#c8a03a', b: '#dab452', c: '#a0802a' }],
+    'stand:aquarium': [{ name: 'Tropical', a: '#4fd0c0', y: '#f0d890', glow: '#8ff0e0' }, { name: 'Deep', a: '#2f5fa8', m: '#3a3a44', glow: '#6a9aff' }, { name: 'Pond', a: '#6aa86a', y: '#8a6a4a', glow: '#a8e0a8' }],
+    'stand:lava': [{ name: 'Red', l: '#ff5f5f', o: '#ffd84d', glow: '#ff8a8a' }, { name: 'Green', l: '#3fd0a0', o: '#ffffff', glow: '#8affd8' }, { name: 'Blue', l: '#3a7bd5', o: '#ff6fae', glow: '#8ab8ff' }],
+    'stand:arcade': [
+      { name: 'Red', a: '#6a2424', A: '#843434', m: '#ffd84d', M: '#fff3b0' }, { name: 'Blue', a: '#22346a', A: '#2f4384', m: '#7fe3ff', M: '#d8f6ff' },
+      { name: 'White', a: '#c8c4bc', A: '#e0dcd4', m: '#ff5fa8', M: '#ffd0e6' },
+    ],
+    'stand:barrel': [{ name: 'Dark', b: '#6b4a32', d: '#4e321d', B: '#33200f' }, { name: 'Blue', b: '#3a6fc0', d: '#2c56a0', B: '#1f3a70' }, { name: 'Green', b: '#4f8a5a', d: '#3a6a44', B: '#24442b' }],
+    'stand:records': [
+      { name: 'White', t: '#ece6da', T: '#c8c0b0', D: '#b0a898', d: '#d8d0c0' }, { name: 'Black', t: '#4a4a55', T: '#33333b', D: '#26262e', d: '#3a3a44' },
+      { name: 'Teal', t: '#3a8a86', T: '#2a6662', D: '#245854', d: '#307874' },
+    ],
+    'stand:terrarium': [{ name: 'Sunny', p: '#ffd84d', T: '#3a3a44', s: '#2f2f38' }, { name: 'Blue', p: '#7fd0ff', m: '#3a6a8a' }, { name: 'Autumn', p: '#ff6f4f', g: '#d0a03a', G: '#a87a2a' }],
+    'ceiling:pendant': [{ name: 'Red', b: '#c04a4a', a: '#8a2f2f', c: '#6a2424' }, { name: 'Black', b: '#3f3f4a', a: '#2a2a33', c: '#1d1d24' }, { name: 'White', b: '#ece6da', a: '#c8c0b0', c: '#a8a090' }],
+    'ceiling:hangplant': [{ name: 'White pot', o: '#ece6da', O: '#c8c0b0' }, { name: 'Blue pot', o: '#3a7bd5', O: '#2c5fa8' }, { name: 'Black pot', o: '#3a3a44', O: '#26262e' }],
+    'ceiling:lantern': [{ name: 'White', r: '#f3eee4', R: '#d8d0c0', glow: '#fff1d0' }, { name: 'Blue', r: '#4f7fd0', R: '#3a5fa8', glow: '#9ac0ff' }, { name: 'Yellow', r: '#ffd23a', R: '#e0a82a', glow: '#ffe08a' }],
+    'ceiling:disco': [
+      { name: 'Gold', a: '#ffe9a8', b: '#e0c070', A: '#c8a050', B: '#a08030', glow: '#ffe9a8' }, { name: 'Rose', a: '#ffd0e4', b: '#e8a0c0', A: '#c88aa8', B: '#a06888', glow: '#ffc8e0' },
+      { name: 'Night', a: '#9aa3b2', b: '#6f7888', A: '#4f5868', B: '#3a4252', glow: '#a8c8ff' },
+    ],
+    'ceiling:mobile': [{ name: 'Pastel', y: '#ffb0c8', Y: '#ffe0ec', m: '#c8f0ff', glow: '#ffd0e0' }, { name: 'Ocean', y: '#7fd0ff', Y: '#d0f0ff', m: '#ffffff', glow: '#a8e0ff' }, { name: 'Sunset', y: '#ff9a3d', Y: '#ffd8a8', m: '#ffe066', glow: '#ffc890' }],
+    'ceiling:raincloud': [{ name: 'Storm', w: '#8a93a3', W: '#6a7383', b: '#9fd8ff' }, { name: 'Sunset', w: '#ffd8c0', W: '#f0b090', b: '#ffe9a8' }, { name: 'Candy', w: '#ffd8ea', W: '#f0aed0', b: '#ff8fd6' }],
+  };
+  // (One of its other colours, if it has it: `tint` 1 to 3. Its main colour, for a swatch: the
+  // first that its other colours change.)
+  const tintOf = (list, key, tint) => (tint && TINTS[`${list}:${key}`] && TINTS[`${list}:${key}`][tint - 1]) || null;
+  const tintsOf = (list, key) => (TINTS[`${list}:${key}`] || []).length;
+  function tintMain(list, key, tint) {
+    const all = TINTS[`${list}:${key}`];
+    if (!all) return '';
+    const main = Object.keys(all[0]).find((k) => k.length === 1);
+    if (tint) return all[tint - 1][main];
+    return ROOM[list][key].window ? WINDOW_COLORS[main] : ROOM[list][key].colors[main];
+  }
+
   // Its things, each where its owner's put it (lib/pets.js keeps them): `x` from one side to the
   // other (0 to 1: as far left as it goes, to as far right), `y` in the room's pixels from its top:
   // the top of what's on the wall or hanging from the ceiling (on a cord that long), the bottom of a
@@ -3713,18 +3788,23 @@
   const WINDOW_COLORS = { k: '#2a1f33', a: '#8a5a3c', b: '#b07a52', c: '#5e3f2c' };
   const WINDOW = pixelsSrc(WINDOW_ROWS, WINDOW_COLORS);
   // (To pick it: blue sky in its panes.)
-  const WINDOW_SWATCH = pixelsSrc(WINDOW_ROWS.map((r, y) => (y >= 2 && y <= 12 ? r.slice(0, 2) + r.slice(2, 20).replace(/\./g, 'u') + r.slice(20) : r)), { ...WINDOW_COLORS, u: '#8fd3ff' });
+  const WINDOW_SWATCH_ROWS = WINDOW_ROWS.map((r, y) => (y >= 2 && y <= 12 ? r.slice(0, 2) + r.slice(2, 20).replace(/\./g, 'u') + r.slice(20) : r));
+  const WINDOW_SWATCH = pixelsSrc(WINDOW_SWATCH_ROWS, { ...WINDOW_COLORS, u: '#8fd3ff' });
   const BASEBOARD = pixelsSrc(['aaaaaaaa', 'bbbbbbbb', 'cccccccc'], { a: '#c89a6a', b: '#8a5c3a', c: '#5e3f2c' });
 
   const thingSrc = new Map();
   // A thing's picture (its frames side by side), and how big it is, in the room's pixels (`rows`: its
-  // first frame's, to tell where it's drawn and where there's nothing).
-  function thingOf(list, key) {
-    const id = `${list}:${key}`;
+  // first frame's, to tell where it's drawn and where there's nothing). `tint`: in one of its other
+  // colours (TINTS).
+  function thingOf(list, key, tint = 0) {
+    const pal = tintOf(list, key, tint);
+    const id = `${list}:${key}:${pal ? tint : 0}`;
     if (!thingSrc.has(id)) {
       const t = ROOM[list][key];
       if (t && t.window) {
-        thingSrc.set(id, { src: WINDOW, still: WINDOW_SWATCH, w: WINDOW_ROWS[0].length, h: WINDOW_ROWS.length, frames: 1, rows: null });
+        const src = pal ? pixelsSrc(WINDOW_ROWS, { ...WINDOW_COLORS, ...pal }) : WINDOW;
+        const still = pal ? pixelsSrc(WINDOW_SWATCH_ROWS, { ...WINDOW_COLORS, ...pal, u: '#8fd3ff' }) : WINDOW_SWATCH;
+        thingSrc.set(id, { src, still, w: WINDOW_ROWS[0].length, h: WINDOW_ROWS.length, frames: 1, rows: null });
       } else if (!t || (!t.rows && !t.frames && !t.tile)) {
         thingSrc.set(id, null);
       } else if (t.tile) {
@@ -3732,7 +3812,7 @@
         thingSrc.set(id, { src: pixelsSrc(t.tile, t.colors), twinkle: twinkle && pixelsSrc(twinkle, t.colors), w: t.tile[0].length, h: t.tile.length });
       } else {
         const frames = (t.frames || [t.rows]).map((f) => (t.bare ? f : outlined(f)));
-        const colors = { k: '#2a1f33', ...t.colors };
+        const colors = { k: '#2a1f33', ...t.colors, ...(pal || {}) };
         const fw = frames[0][0].length;
         const rects = frames.map((f, i) => rectsOf(f, colors, i * fw)).join('');
         const src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fw * frames.length} ${frames[0].length}" shape-rendering="crispEdges">${rects}</svg>`)}`;
@@ -3804,7 +3884,7 @@
       const [y0, y1] = THING_Y[t.list];
       return {
         list: t.list, key: t.key, x: clampTo(num(t.x, 0.5), 0, 1), y: clampTo(Math.round(num(t.y, y0)), y0, y1), size: clampTo(num(t.size, 1), 0.75, 1.5), flip: t.flip === true,
-        ...(t.tried ? { tried: true } : {}),
+        tint: clampTo(Math.round(num(t.tint, 0)), 0, tintsOf(t.list, t.key)), ...(t.tried ? { tried: true } : {}),
       };
     });
     return r;
@@ -3842,23 +3922,28 @@
     n.className = `pr-thing pr-${t.list} pr-${t.key}`;
     n.dataset.i = String(i);
     n.prThing = t;
-    if (info.window) {
-      n.classList.add('pr-window');
-      n.style.setProperty('--frame', `url("${WINDOW}")`);
-      paintSky(n, sky);
-    } else {
-      const art = thingOf(t.list, t.key);
-      n.style.backgroundImage = `url("${art.src}")`;
-      if (art.frames > 1) n.classList.add('pr-frames');
-    }
-    if (info.glow) {
-      n.classList.add('pr-glow');
-      n.style.setProperty('--glow', info.glow);
-    }
+    paintThing(n);
+    if (info.window) paintSky(n, sky);
     if (info.flicker) n.classList.add('pr-flicker');
     if (t.tried) n.classList.add('pr-tried');
     placeThing(n);
     return n;
+  }
+  // (Its picture, in its colours, and its glow.)
+  function paintThing(n) {
+    const t = n.prThing;
+    const info = ROOM[t.list][t.key];
+    const art = thingOf(t.list, t.key, t.tint);
+    if (info.window) {
+      n.classList.add('pr-window');
+      n.style.setProperty('--frame', `url("${art.src}")`);
+    } else {
+      n.style.backgroundImage = `url("${art.src}")`;
+      n.classList.toggle('pr-frames', art.frames > 1);
+    }
+    const glow = (tintOf(t.list, t.key, t.tint) || {}).glow || info.glow;
+    n.classList.toggle('pr-glow', Boolean(glow));
+    if (glow) n.style.setProperty('--glow', glow);
   }
 
   // Furnishing a room (`room`: what's in it, as lib/pets.js keeps it; `tried`: one more thing in it,
@@ -3941,8 +4026,9 @@
   }
 
   // Doing up a room (its owner's, in Decorate): its things dragged about, and the one picked out
-  // flipped, made bigger or smaller, or put away, with the little bar by it (or with keys: arrows to
-  // move it, F to flip it, + and - for its size, Delete to put it away, Esc to leave it). Its pet
+  // flipped, made bigger or smaller, given other colours, or put away, with the little bar by it (or
+  // with keys: arrows to move it, F to flip it, + and - for its size, C for its colours, Delete to
+  // put it away, Esc to leave it). Its pet
   // keeps out of the way meanwhile. `changed(things)`: something's been done, with all its things as
   // they are now (the one tried, too).
   const TOOL_ICONS = {
@@ -3975,10 +4061,13 @@
       });
       return b;
     };
+    // (Its colours: its own, and its others, a swatch each.)
+    const tints = document.createElement('span');
+    tints.className = 'pr-tints';
     tools.append(name, tool('flip', 'Flip it', () => edit((t) => { t.flip = !t.flip; })),
       tool('smaller', 'Smaller', () => edit((t) => { t.size = clampTo(Math.round(t.size * 8 - 1) / 8, 0.75, 1.5); })),
       tool('bigger', 'Bigger', () => edit((t) => { t.size = clampTo(Math.round(t.size * 8 + 1) / 8, 0.75, 1.5); })),
-      tool('away', 'Put it away', putAway));
+      tints, tool('away', 'Put it away', putAway));
     tools.addEventListener('pointerdown', (e) => e.stopPropagation());
     el.append(tools);
 
@@ -3994,9 +4083,29 @@
       n.classList.add('pr-picked');
       const t = things()[st.sel];
       name.textContent = ROOM[t.list][t.key].label;
-      el.setAttribute('aria-label', `${el.prLabel}: ${name.textContent} picked out. Arrow keys move it, F flips it, plus and minus make it bigger or smaller, Delete puts it away.`);
+      el.setAttribute('aria-label', `${el.prLabel}: ${name.textContent} picked out. Arrow keys move it, F flips it, plus and minus make it bigger or smaller, C changes its colours, Delete puts it away.`);
       tools.querySelector('.pr-tool-smaller').disabled = t.size <= 0.75;
       tools.querySelector('.pr-tool-bigger').disabled = t.size >= 1.5;
+      const many = tintsOf(t.list, t.key);
+      tints.hidden = !many;
+      if (many && tints.dataset.for !== `${t.list}:${t.key}`) {
+        tints.dataset.for = `${t.list}:${t.key}`;
+        tints.replaceChildren(...Array.from({ length: many + 1 }, (_, k) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'pr-tint';
+          b.dataset.tint = String(k);
+          b.title = `Colours: ${k ? tintOf(t.list, t.key, k).name : 'its own'}`;
+          b.setAttribute('aria-label', b.title);
+          b.style.setProperty('--c', tintMain(t.list, t.key, k));
+          b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            edit((u) => { u.tint = k; });
+          });
+          return b;
+        }));
+      }
+      for (const b of tints.children) b.setAttribute('aria-pressed', String(Number(b.dataset.tint) === (t.tint || 0)));
       if (tools.hidden) return;
       const W = el.clientWidth;
       const H = el.clientHeight;
@@ -4018,6 +4127,7 @@
       const t = things()[st.sel];
       if (!t) return;
       fn(t);
+      paintThing(nodeOf(st.sel));
       placeThing(nodeOf(st.sel));
       done();
     }
@@ -4132,10 +4242,15 @@
       else if (e.key === 'f' || e.key === 'F') things()[st.sel].flip = !things()[st.sel].flip;
       else if (e.key === '+' || e.key === '=') things()[st.sel].size = clampTo(Math.round(things()[st.sel].size * 8 + 1) / 8, 0.75, 1.5);
       else if (e.key === '-' || e.key === '_') things()[st.sel].size = clampTo(Math.round(things()[st.sel].size * 8 - 1) / 8, 0.75, 1.5);
+      else if ((e.key === 'c' || e.key === 'C') && tintsOf(things()[st.sel].list, things()[st.sel].key)) {
+        const t = things()[st.sel];
+        t.tint = ((t.tint || 0) + 1) % (tintsOf(t.list, t.key) + 1);
+      }
       else if (e.key === 'Delete' || e.key === 'Backspace') return (e.preventDefault(), putAway());
       else if (e.key === 'Escape') return (e.preventDefault(), e.stopPropagation(), select(-1));
       else return;
       e.preventDefault();
+      paintThing(nodeOf(st.sel));
       placeThing(nodeOf(st.sel));
       done();
     });
@@ -4211,8 +4326,9 @@
     return dewIconSrc.get(key);
   }
 
-  // One of a room's things (or a wallpaper or floor), small: to pick it.
-  function roomSwatch(list, key) {
+  // One of a room's things (or a wallpaper or floor), small: to pick it (in one of its other colours:
+  // `tint`).
+  function roomSwatch(list, key, tint = 0) {
     const n = document.createElement('i');
     n.className = `pr-swatch pr-swatch-${list}`;
     // (The weather: a little window of it. Changing by itself: half day, half night.)
@@ -4230,7 +4346,7 @@
       }));
       return n;
     }
-    const t = thingOf(list, key);
+    const t = thingOf(list, key, tint);
     if (!t) {
       n.classList.add('pr-none');
       return n;
