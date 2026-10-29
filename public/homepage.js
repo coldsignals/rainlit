@@ -2213,13 +2213,167 @@
     },
   };
 
+  // ---------- What a pet wears ----------
+  // Things for a pet to wear (lib/pets.js WEAR says what each costs, in dew): one on its head, one
+  // on its eyes, one round its neck and one on its body. Each is drawn into its pixels, so it's
+  // there in every frame (lying down, eating, hopping) and wherever it goes. A hat sits on its head
+  // (`crown`: its head's top middle), glasses on its eyes (wherever they are), a collar goes round
+  // its neck (`neck`: the row, from x0 to x1; a fish's `ring` is up and down), and a sweater's
+  // colours take the place of its coat's on its body (`body`: the parts it covers; `coat`: which of
+  // its letters are coat, not face). All in its pixels, standing and facing right.
+  const WEAR_AT = {
+    cat: { crown: [12, 2], neck: [8, 14, 8], body: [[2, 7, 8, 7], [2, 8, 12, 11]] },
+    dog: { crown: [12, 2], neck: [8, 14, 8], body: [[2, 7, 6, 7], [2, 8, 12, 11]] },
+    fish: { crown: [11, 4], ring: [9, 4, 10], body: [[3, 4, 8, 10]] },
+    drop: { crown: [9, 3], neck: [5, 13, 12], body: [[3, 4, 15, 12]], coat: 'as' },
+    dragon: { crown: [12, 2], neck: [8, 14, 8], body: [[2, 7, 8, 7], [2, 8, 12, 11]] },
+    fox: { crown: [12, 2], neck: [8, 13, 8], body: [[3, 7, 8, 7], [4, 8, 12, 10]], coat: 'abs' },
+  };
+  // Hats: their rows, the bottom one on its head (moved along `dx`). Glasses: how they're made
+  // round its eyes. Collars: `band` round its neck (its letters taking turns), a `tag` under it at
+  // the front, something hanging (`hang`) or a `bow` there, and a `tail` at the back. Sweaters:
+  // `paint`, the letter for each pixel of its body.
+  const WEAR = {
+    head: {
+      bow: { label: 'Bow', rows: ['BB.BB', 'BBbBB'], colors: { B: '#ff6fae', b: '#c94a86' } },
+      beanie: { label: 'Beanie', rows: ['...P...', '.BBBBB.', 'BBBBBBB', 'WBWBWBW'], colors: { P: '#ffffff', B: '#3a7bd5', W: '#2c5fa8' } },
+      party: { label: 'Party hat', rows: ['..W..', '..P..', '.PSP.', 'PSPSP'], colors: { W: '#ffffff', P: '#ff5fa8', S: '#ffd23a' } },
+      cap: { label: 'Cap', dx: 1, rows: ['.CCCC..', 'CCCCCVV'], colors: { C: '#e04a4a', V: '#a83434' } },
+      tophat: { label: 'Top hat', rows: ['.TTT.', '.TTT.', '.RRR.', 'TTTTT'], colors: { T: '#26262e', R: '#c94a4a' } },
+      crown: { label: 'Crown', rows: ['Y.Y.Y', 'YYYYY', 'YRYBY'], colors: { Y: '#ffcf3a', R: '#e04a4a', B: '#4a8ae0' } },
+    },
+    eyes: {
+      round: { label: 'Round glasses', glasses: 'round', colors: { F: '#c9a86a' } },
+      sun: { label: 'Sunglasses', glasses: 'sun', colors: { L: '#22253a', F: '#22253a', W: '#9fb4d6' } },
+      star: { label: 'Star glasses', glasses: 'star', colors: { F: '#ffd23a', S: '#fff3a8' } },
+    },
+    neck: {
+      collar: { label: 'Collar', band: 'C', tag: 'Y', colors: { C: '#d94a4a', Y: '#ffd23a' } },
+      bandana: { label: 'Bandana', band: 'R', hang: ['RRR', '.R.'], colors: { R: '#3a6fd8' } },
+      bowtie: { label: 'Bowtie', bow: ['B.B', 'BKB', 'B.B'], colors: { B: '#d0304a', K: '#8a1f30' } },
+      spiked: { label: 'Spiked collar', band: 'KS', colors: { K: '#2a2a33', S: '#d0d6e0' } },
+      scarf: { label: 'Scarf', band: 'SQ', tail: true, colors: { S: '#e05a4a', Q: '#f3e6d0' } },
+    },
+    body: {
+      stripes: { label: 'Striped sweater', paint: (x, y) => (y % 2 ? 'X' : 'Y'), colors: { X: '#d9534f', Y: '#f3e6d0' } },
+      hoodie: { label: 'Hoodie', paint: (x, y, at) => (y === at.y1 - 1 && Math.abs(x - at.mx) <= 1 ? 'h' : 'H'), colors: { H: '#7d8597', h: '#5d6577' } },
+      knit: { label: 'Cozy knit', paint: (x, y) => ((x + y) % 4 === 0 ? 'W' : 'N'), colors: { N: '#2f7a4f', W: '#f3f3f3' } },
+      rainlit: {
+        label: 'Rainlit sweater', paint: (x, y, at) => ((x === at.mx && Math.abs(y - at.my) <= 1) || (y === at.my && Math.abs(x - at.mx) === 1) ? 'A' : 'R'),
+        colors: { R: '#24305a', A: '#f9c862' },
+      },
+    },
+  };
+  const WEAR_SLOTS = ['head', 'eyes', 'neck', 'body'];
+  // (What it's wearing, as a key: "head:bow,neck:collar".)
+  const wearKey = (wear) => WEAR_SLOTS.filter((slot) => wear && WEAR[slot][wear[slot]]).map((slot) => `${slot}:${wear[slot]}`).join(',');
+
+  // What it's wearing, as pixels to go on it: `over` drawn over it (and past it), `band` only over
+  // it, and `paint` only over its coat, each [x, y, letter] (its own letters for the colours, given
+  // out so no two of its things share one), and the colours.
+  function wearPixels(kind, wear) {
+    const at = WEAR_AT[kind] || WEAR_AT.cat;
+    const P = PET_PIXELS[kind] || PET_PIXELS.cat;
+    const out = { over: [], band: [], paint: [], colors: {} };
+    const free = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'];
+    for (const slot of WEAR_SLOTS) {
+      const item = wear && WEAR[slot][wear[slot]];
+      if (!item) continue;
+      const mine = {};
+      const ink = (c) => {
+        if (!mine[c]) {
+          mine[c] = free.shift();
+          out.colors[mine[c]] = item.colors[c];
+        }
+        return mine[c];
+      };
+      const put = (list, x, y, c) => list.push([x, y, ink(c)]);
+      if (slot === 'head') {
+        const [cx, cy] = at.crown;
+        const w = item.rows[0].length;
+        const x0 = cx - Math.floor(w / 2) + (item.dx || 0);
+        item.rows.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x0 + j, cy - (item.rows.length - 1) + i, c); }));
+      } else if (slot === 'eyes') {
+        const ew = P.eyeW || 2;
+        P.eyes.forEach(([x, y]) => {
+          for (let gx = x - 1; gx <= x + ew; gx++) {
+            for (let gy = y - 1; gy <= y + 2; gy++) {
+              const edge = gx === x - 1 || gx === x + ew || gy === y - 1 || gy === y + 2;
+              if (item.glasses === 'sun' && gy >= y && gy <= y + 1) put(out.over, gx, gy, gx === x - 1 && gy === y ? 'W' : 'L');
+              else if (item.glasses !== 'sun' && edge) put(out.over, gx, gy, 'F');
+            }
+          }
+          // (Star glasses: a twinkle off each top corner.)
+          if (item.glasses === 'star') put(out.over, x - 2, y - 2, 'S'), put(out.over, x + ew + 1, y - 2, 'S');
+        });
+        // (Across between its eyes, and an arm back from the one behind.)
+        const [a, b] = P.eyes;
+        if (b) for (let gx = a[0] + ew + 1; gx < b[0] - 1; gx++) put(out.over, gx, a[1], 'F');
+        put(out.over, a[0] - 2, a[1], 'F');
+      } else if (slot === 'neck') {
+        if (at.neck) {
+          const [x0, x1, y] = at.neck;
+          const front = x1 - 1;
+          if (item.band) for (let x = x0; x <= x1; x++) put(out.band, x, y, item.band[(x - x0) % item.band.length]);
+          if (item.tag) put(out.over, front, y + 1, item.tag);
+          if (item.hang) item.hang.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, front - 1 + j, y + 1 + i, c); }));
+          if (item.bow) item.bow.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, front - 1 + j, y + i, c); }));
+          if (item.tail) put(out.over, x0, y + 1, item.band[0]), put(out.over, x0, y + 2, item.band[1] || item.band[0]), put(out.over, x0 + 1, y + 1, item.band[1] || item.band[0]);
+        } else if (at.ring) {
+          const [x, y0, y1] = at.ring;
+          if (item.band) for (let y = y0; y <= y1; y++) put(out.band, x, y, item.band[(y - y0) % item.band.length]);
+          if (item.tag) put(out.over, x, y1 + 1, item.tag);
+          if (item.hang) item.hang.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x - 1 + j, y1 + 1 + i, c); }));
+          if (item.bow) item.bow.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x - 1 + j, y1 - 1 + i, c); }));
+          if (item.tail) put(out.over, x - 1, y0, item.band[0]), put(out.over, x - 2, y0 - 1, item.band[1] || item.band[0]);
+        }
+      } else if (slot === 'body') {
+        const xs = at.body.flatMap(([x0, , x1]) => [x0, x1]);
+        const ys = at.body.flatMap(([, y0, , y1]) => [y0, y1]);
+        const shape = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+        shape.mx = Math.round((shape.x0 + shape.x1) / 2);
+        shape.my = Math.round((shape.y0 + shape.y1) / 2);
+        for (const [x0, y0, x1, y1] of at.body) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) put(out.paint, x, y, item.paint(x, y, shape));
+      }
+    }
+    out.coat = at.coat || 'abcs';
+    return out;
+  }
+
+  // Dressing a frame (its pixels, a line's room round them already: `pad`), moved as the frame's
+  // been from standing (lying down, eating, a hop).
+  function dress(g, worn, move, P, pad) {
+    const H = g.length;
+    const W = g[0].length;
+    const lie = !P.floats && (move === 'lie' || move === 'eat') ? P.drop : 0;
+    const shift = (x, y) => [x + pad, y + pad + lie + (move === 'eat' && !P.floats && x >= P.head ? 1 : 0) - (move === 'hop' ? 1 : 0)];
+    const coat = new Set(worn.coat);
+    const at = (x, y) => (y >= 0 && y < H && x >= 0 && x < W ? g[y][x] : null);
+    for (const [x, y, c] of worn.paint) {
+      const [gx, gy] = shift(x, y);
+      if (coat.has(at(gx, gy))) g[gy][gx] = c;
+    }
+    for (const [x, y, c] of worn.band) {
+      const [gx, gy] = shift(x, y);
+      const here = at(gx, gy);
+      if (here && here !== '.') g[gy][gx] = c;
+    }
+    for (const [x, y, c] of worn.over) {
+      const [gx, gy] = shift(x, y);
+      if (at(gx, gy) !== null) g[gy][gx] = c;
+    }
+    return g;
+  }
+
   // Its frames, each a picture in pixels (with its line round it, and a pixel's room past that):
   // standing, its tail moved, blinking, walking (two), lying down, asleep (two), glad (two: a
-  // hop), eating (two), and hungry.
+  // hop), eating (two), and hungry. In what it's wearing, if it's wearing anything.
   const PET_FRAMES = 13;
+  const PET_MOVES = ['', '', '', '', '', 'lie', 'lie', 'lie', '', 'hop', 'eat', 'eat', '']; // (each frame, moved from standing)
   const framesMade = new Map();
-  function petFrames(kind) {
-    if (framesMade.has(kind)) return framesMade.get(kind);
+  function petFrames(kind, wear) {
+    const made = `${kind}|${wearKey(wear)}`;
+    if (framesMade.has(made)) return framesMade.get(made);
     const P = PET_PIXELS[kind];
     const W = 18;
     const H = 14;
@@ -2274,14 +2428,21 @@
       g.push(g.shift().fill('.'));
       return g;
     };
+    const worn = wearKey(wear) ? wearPixels(kind, wear) : null;
     const frames = [
       copy(base), put(copy(base), P.swish), eyes(copy(base), 'shut'),
       put(copy(base), P.walk[0]), put(copy(base), P.walk[1]),
       lying(), asleep(), put(asleep(), P.breathe || P.swish, drop),
       glad(), hop(glad()), eating(true), eating(false),
       put(eyes(copy(base), 'sad'), P.sad),
-    ].map((g) => outlined(g, 2));
-    framesMade.set(kind, frames);
+    ].map((g, i) => {
+      if (!worn) return outlined(g, 2);
+      // (Room for its line first: what it's wearing can reach past it, and gets one too.)
+      const room = Array.from({ length: H + 4 }, () => Array(W + 4).fill('.'));
+      g.forEach((row, y) => row.forEach((ch, x) => { room[y + 2][x + 2] = ch; }));
+      return outlined(dress(room, worn, PET_MOVES[i], P, 2), 0);
+    });
+    framesMade.set(made, frames);
     return frames;
   }
 
@@ -2298,14 +2459,15 @@
     return g.map((r) => r.join(''));
   }
 
-  // A pet's frames side by side, in its coat's colours: a picture for its background.
+  // A pet's frames side by side, in its coat's colours (and what it's wearing): a picture for its
+  // background.
   const sheets = new Map();
-  function petSheet(kind, coat) {
-    const key = `${kind}:${coat}`;
+  function petSheet(kind, coat, wear) {
+    const key = `${kind}:${coat}:${wearKey(wear)}`;
     if (!sheets.has(key)) {
       const coats = PETS[kind].coats;
-      const colors = { ...PET_INK, ...(coats[coat] || Object.values(coats)[0]) };
-      const frames = petFrames(kind);
+      const colors = { ...PET_INK, ...(coats[coat] || Object.values(coats)[0]), ...(wearKey(wear) ? wearPixels(kind, wear).colors : {}) };
+      const frames = petFrames(kind, wear);
       const fw = frames[0][0].length;
       const rects = frames.map((f, i) => rectsOf(f, colors, i * fw)).join('');
       sheets.set(key, `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fw * frames.length} ${frames[0].length}" shape-rendering="crispEdges">${rects}</svg>`)}")`);
@@ -2335,7 +2497,7 @@
 
   // A pet, as it looks: standing about, unless it's given something to do (the classes in
   // homepage.css: walk, run, rest, sleep, joy, eat, sad).
-  function petEl(kind, coat) {
+  function petEl(kind, coat, wear) {
     const k = PETS[kind] ? kind : 'cat';
     const coats = PETS[k].coats;
     const c = coats[coat] ? coat : Object.keys(coats)[0];
@@ -2344,7 +2506,7 @@
     node.style.setProperty('--pg', coats[c].g || '#ffffff');
     node.style.setProperty('--blink', `${(-Math.random() * 5).toFixed(2)}s`);
     node.innerHTML = `<span class="hp-pet-shadow"></span><span class="hp-pet-lift"><span class="hp-pet-bounce"><span class="hp-pet-in"><i class="hp-pet-sprite"></i>${PETS[k].wisps ? '<i class="hp-pet-wisp"></i><i class="hp-pet-wisp w2"></i>' : ''}</span></span></span>`;
-    node.querySelector('.hp-pet-sprite').style.backgroundImage = petSheet(k, c);
+    node.querySelector('.hp-pet-sprite').style.backgroundImage = petSheet(k, c, wear);
     return node;
   }
 
@@ -2446,6 +2608,7 @@
       page.hpPet = petLife(pet, key);
     }
     page.hpPet.attach(onPage(page, canvas, doc), { info: pet, mine: ctx.mine, inert: ctx.edit, petUrl: `/api/homepages/${encodeURIComponent(ctx.owner.id || '')}/pet` });
+    page.hpPet.dressIn(pet.wear);
     watchFor(page);
   }
   // Its owner's pet, in its room (the app's). Returns it, to feed and play with it there.
@@ -2459,6 +2622,7 @@
       room.hpPet = petLife(pet, key);
     }
     room.hpPet.attach(inRoom(room, pet.kind), { info: pet, mine: true, petUrl: '/api/pet/pet', ...opts });
+    room.hpPet.dressIn(pet.wear);
     watchFor(room);
     return room.hpPet;
   }
@@ -2481,7 +2645,7 @@
     const kind = PETS[pet.kind] ? pet.kind : 'cat';
     const K = PETS[kind];
     const name = pet.name || K.label;
-    const node = petEl(kind, pet.coat);
+    const node = petEl(kind, pet.coat, pet.wear);
     node.classList.add('hp-pet-live');
     const lift = node.querySelector('.hp-pet-lift');
     const inner = node.querySelector('.hp-pet-in');
@@ -2917,7 +3081,11 @@
       me.t = 0;
       closeCare();
     }
-    const life = { key, node, attach, stop, saw, did, refit, closeCare, tend, info: () => me.info };
+    // (In something else: the same pet, carrying on.)
+    function dressIn(wear) {
+      node.querySelector('.hp-pet-sprite').style.backgroundImage = petSheet(kind, pet.coat, wear);
+    }
+    const life = { key, node, attach, stop, saw, did, refit, closeCare, tend, dressIn, info: () => me.info };
     return life;
   }
 
@@ -4045,7 +4213,7 @@
     // (a piece's video popped up, or its sound played, to try: the editor)
     popVideo, closeTopPopup, playSound,
     petEl, petRoom, petMeters, fullWords, happyWords,
-    ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch, dewIcon,
+    ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch, dewIcon, WEAR, WEAR_SLOTS,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
     petDid: (page, what, info) => { if (page.hpPet) page.hpPet.did(what, info); },
     // (the sheet of a pet's frames, to look at them)

@@ -154,6 +154,7 @@ for (const id of [
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
+  'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
   'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
@@ -15769,7 +15770,7 @@ async function loadPet() {
 function renderPetButton() {
   const p = S.pet;
   el.petBtn.hidden = !S.petButton;
-  el.petBtnFace.style.backgroundImage = Homepage.petSheet(p ? p.kind : 'cat', p ? p.coat : 'grey');
+  el.petBtnFace.style.backgroundImage = Homepage.petSheet(p ? p.kind : 'cat', p ? p.coat : 'grey', p ? p.wear : null);
   el.petBtn.classList.toggle('none', !p);
   // (Hungry, it looks it, with a little dot: never more than that.)
   el.petBtn.classList.toggle('hungry', petHungry(p));
@@ -15783,6 +15784,7 @@ function openPet() {
   S.petTry = '';
   S.roomTry = null;
   S.dewTry = null;
+  S.wearTry = null;
   S.petTab = S.pet ? 'care' : 'pet';
   el.petMsg.hidden = true;
   if (!el.pet.open) el.pet.showModal();
@@ -15809,6 +15811,7 @@ function renderPet() {
       },
       onPat: patForDew,
     });
+    dressPet();
   } else if (el.petRoom.hpPet) {
     el.petRoom.hpPet.stop();
     el.petRoom.hpPet.node.remove();
@@ -15818,6 +15821,7 @@ function renderPet() {
   renderPetCare();
   renderDew();
   renderPetDecor();
+  renderPetWear();
   renderPetKinds();
   renderPetAbout();
   renderPetTabs();
@@ -15848,7 +15852,7 @@ function renderProfilePet(id, self, blocked) {
   const show = (pet, words) => {
     el.mpPet.hidden = !pet;
     if (!pet) return;
-    el.mpPetFace.style.backgroundImage = Homepage.petSheet(pet.kind, pet.coat);
+    el.mpPetFace.style.backgroundImage = Homepage.petSheet(pet.kind, pet.coat, pet.wear);
     el.mpPetText.textContent = words;
     el.mpPet.title = words;
   };
@@ -15897,7 +15901,7 @@ function renderPetVisit(pet, owner) {
 // details are put away while you try another pet on.)
 function renderPetTabs() {
   const p = S.pet;
-  const ownTabs = ['care', 'dew'];
+  const ownTabs = ['care', 'dew', 'wear'];
   if (!p && ownTabs.includes(S.petTab)) S.petTab = 'pet';
   for (const b of el.pet.querySelectorAll('[data-pet-tab]')) {
     b.hidden = ownTabs.includes(b.dataset.petTab) && !p;
@@ -15906,6 +15910,7 @@ function renderPetTabs() {
   for (const pane of el.pet.querySelectorAll('[data-pet-pane]')) pane.hidden = pane.dataset.petPane !== S.petTab;
   if (S.petTab === 'care') el.petCare.hidden = !p || Boolean(S.petTry);
   if (S.petTab === 'dew') el.petDewPane.hidden = !p || Boolean(S.petTry);
+  if (S.petTab === 'wear') el.petWear.hidden = !p || Boolean(S.petTry);
   if (S.petTab === 'pet') el.petAbout.hidden = !p || Boolean(S.petTry);
 }
 
@@ -15969,6 +15974,109 @@ function renderPetDecor() {
     el.petDecorDewBtn.dataset.dewPrice = String(price);
     el.petDecorDewBtn.disabled = dewNow() + 1e-6 < price;
   }
+}
+
+// What it wears: a row for each place on it, each thing on it to see (with what it costs, till
+// it's got with dew). One not got yet is tried on: it's wearing it in its room, till it's got, or
+// taken off again.
+const WEAR_ROWS = [['head', 'On its head'], ['eyes', 'On its eyes'], ['neck', 'Round its neck'], ['body', 'On its body']];
+const wearPriceOf = (slot, key) => {
+  const item = S.dewShop && S.dewShop.wear && S.dewShop.wear.find((i) => i.slot === slot && i.key === key);
+  return item ? item.price : 0;
+};
+// (What it's wearing, and whatever's tried on.)
+const wearShown = () => ({ ...((S.pet && S.pet.wear) || {}), ...(S.wearTry ? { [S.wearTry.slot]: S.wearTry.key } : {}) });
+function dressPet() {
+  if (S.petLife && S.pet && !S.petTry) S.petLife.dressIn(wearShown());
+}
+
+function renderPetWear() {
+  const p = S.pet;
+  if (!p || !window.Homepage || !Homepage.WEAR) return;
+  const shown = wearShown();
+  el.petWearRows.replaceChildren(...WEAR_ROWS.map(([slot, label]) => {
+    const opts = ['', ...Object.keys(Homepage.WEAR[slot])].map((key) => {
+      const item = key && Homepage.WEAR[slot][key];
+      const got = !key || hasDewThing('wear', key) || (p.wear || {})[slot] === key;
+      const price = got ? 0 : wearPriceOf(slot, key);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `pet-decor-opt pet-wear-opt${key ? ' dew' : ''}${got ? '' : ' locked'}${S.wearTry && S.wearTry.slot === slot && S.wearTry.key === key ? ' trying' : ''}`;
+      b.dataset.wear = `${slot}:${key || 'none'}`;
+      if (price) b.dataset.price = dewShort(price);
+      b.setAttribute('aria-pressed', String((shown[slot] || '') === key));
+      b.title = !key ? 'Nothing' : got ? item.label : `${item.label}: ${price ? `${dewWords(price)} dew` : 'dew brings it'} (try it on)`;
+      b.setAttribute('aria-label', b.title);
+      if (key) {
+        b.append(Homepage.petEl(p.kind, p.coat, { [slot]: key }));
+      } else {
+        const none = document.createElement('i');
+        none.className = 'pr-swatch pr-none';
+        b.append(none);
+      }
+      b.addEventListener('click', () => pickWear(slot, key));
+      return b;
+    });
+    const row = document.createElement('div');
+    row.className = 'pet-decor-row';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const box = document.createElement('div');
+    box.className = 'pet-decor-opts';
+    box.append(...opts);
+    row.append(name, box);
+    return row;
+  }));
+  const t = S.wearTry;
+  el.petWearDew.hidden = !t;
+  if (t) {
+    const price = wearPriceOf(t.slot, t.key);
+    el.petWearDewText.textContent = `${Homepage.WEAR[t.slot][t.key].label}: ${dewWords(price)} dew. ${petName(p)} has it on, to see.`;
+    el.petWearDewBtn.dataset.dewPrice = String(price);
+    el.petWearDewBtn.disabled = dewNow() + 1e-6 < price;
+  }
+}
+
+async function pickWear(slot, key) {
+  const p = S.pet;
+  if (!p) return;
+  if (key && !hasDewThing('wear', key) && (p.wear || {})[slot] !== key) {
+    S.wearTry = S.wearTry && S.wearTry.slot === slot && S.wearTry.key === key ? null : { slot, key };
+    dressPet();
+    renderPetWear();
+    return;
+  }
+  if (S.wearTry && S.wearTry.slot === slot) S.wearTry = null;
+  try {
+    S.pet = (await api('PUT', '/pet/wear', { slot, key })).pet;
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  wearChanged();
+}
+// Getting the thing tried on: it's yours (any pet you have can wear it), and on it.
+async function getWear() {
+  const t = S.wearTry;
+  if (!t) return;
+  await sendPats();
+  let d;
+  try {
+    d = await api('POST', '/dew/wear', t);
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  S.pet = d.pet;
+  S.wearTry = null;
+  setDew(d.dew);
+  wearChanged();
+}
+function wearChanged() {
+  dressPet();
+  renderPetWear();
+  renderPetButton();
+  if (Homepage.petChanged) Homepage.petChanged(S.pet);
 }
 
 async function pickDecor(slot, key) {
@@ -16191,8 +16299,11 @@ function setDew(state) {
   S.dewAt = performance.now();
   planRainbow();
   renderDew();
-  // (Decorate again: with what dew's things cost, once that's known, or one got.)
-  if (el.pet.open && (S.dewTry || !was || was.items.length !== state.items.length)) renderPetDecor();
+  // (Decorate and Wear again: with what dew's things cost, once that's known, or one got.)
+  if (el.pet.open && (S.dewTry || S.wearTry || !was || was.items.length !== state.items.length)) {
+    renderPetDecor();
+    renderPetWear();
+  }
 }
 
 // Counted up while the box is open (and checked every 20 seconds); pats not sent yet go when it
@@ -18718,6 +18829,7 @@ async function init() {
   el.petTryBtn.addEventListener('click', () => openGlow({ because: S.petTry ? `The ${Homepage.PETS[S.petTry].label.toLowerCase()} comes with Glow.` : '' }));
   el.petDecorTryBtn.addEventListener('click', () => openGlow());
   el.petDecorDewBtn.addEventListener('click', getDewThing);
+  el.petWearDewBtn.addEventListener('click', getWear);
   for (const b of el.pet.querySelectorAll('[data-pet-tab]')) {
     b.addEventListener('click', () => {
       S.petTab = b.dataset.petTab;
@@ -18728,6 +18840,7 @@ async function init() {
     S.petTry = '';
     S.roomTry = null;
     S.dewTry = null;
+    S.wearTry = null;
     stopDew();
     if (el.petRoom.hpPet) el.petRoom.hpPet.stop();
   });

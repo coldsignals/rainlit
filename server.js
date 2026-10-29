@@ -1574,6 +1574,7 @@ api.put('/pet/room', needUser, (req, res) => {
   }
 });
 api.put('/pet', needUser, petRoute((req) => pets.set(req.user, req.body || {})));
+api.put('/pet/wear', needUser, petRoute((req) => pets.setWear(req.user, String((req.body || {}).slot || ''), String((req.body || {}).key || ''))));
 api.delete('/pet', needUser, petRoute((req) => {
   pets.release(req.user.id);
   return null;
@@ -1626,6 +1627,7 @@ api.post('/dew/collectors', needUser, dewRoute((req, b) => ({ dew: dew.buy(req.u
 api.post('/dew/upgrades', needUser, dewRoute((req, b) => ({ dew: dew.upgrade(req.user.id, String(b.key || '')) })));
 api.post('/dew/items', needUser, dewRoute((req, b) => dew.unlock(req.user, String(b.slot || ''), String(b.key || ''))));
 api.post('/dew/rainbow', needUser, dewRoute((req) => ({ dew: dew.rainbow(req.user.id) })));
+api.post('/dew/wear', needUser, dewRoute((req, b) => dew.wearIt(req.user, String(b.slot || ''), String(b.key || ''))));
 
 // ----- Conversations -----
 //

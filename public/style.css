@@ -2969,6 +2969,10 @@ button.person.open { background: var(--dusk-hi); }
           mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 11'%3E%3Cpath d='M4 0C4 0 0 5 0 7.2a4 4 0 0 0 8 0C8 5 4 0 4 0Z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .pet-decor-opt.trying { outline: 2px dashed #b77bff; outline-offset: 2px; }
+/* What it wears (app.js: renderPetWear): itself in each thing, to pick. */
+.pet-wear { display: grid; gap: 12px; }
+.pet-decor-opt.pet-wear-opt { width: 60px; height: 54px; padding: 2px; }
+.pet-wear-opt .hp-pet { position: relative; width: 54px; height: 44px; --pw: 54px; pointer-events: none; }
 /* (A thing dew brings, not got yet: what it costs, under it.) */
 .pet-decor-opt.dew.locked::after {
   content: attr(data-price); position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);

@@ -1797,6 +1797,7 @@
         <button class="pet-tab" type="button" role="tab" data-pet-tab="care">Care</button>
         <button class="pet-tab" type="button" role="tab" data-pet-tab="dew">Dew</button>
         <button class="pet-tab" type="button" role="tab" data-pet-tab="decor">Decorate</button>
+        <button class="pet-tab" type="button" role="tab" data-pet-tab="wear">Wear</button>
         <button class="pet-tab" type="button" role="tab" data-pet-tab="pet">Pet</button>
       </nav>
       <section id="pet-care" class="pet-care" aria-label="Looking after it" data-pet-pane="care">
@@ -1835,6 +1836,14 @@
         <div id="pet-decor-try" class="theme-try" hidden>
           <span id="pet-decor-try-text"></span>
           <button id="pet-decor-try-btn" class="primary-btn small" type="button">See Glow</button>
+        </div>
+      </section>
+      <!-- What it wears (app.js: renderPetWear): itself in each thing, got with dew. -->
+      <section id="pet-wear" class="pet-wear" aria-label="What it wears" data-pet-pane="wear">
+        <div id="pet-wear-rows" class="pet-decor"></div>
+        <div id="pet-wear-dew" class="theme-try dew-try" hidden>
+          <span id="pet-wear-dew-text"></span>
+          <button id="pet-wear-dew-btn" class="primary-btn small" type="button">Get it</button>
         </div>
       </section>
       <section class="pet-pick" aria-labelledby="pet-pick-title" data-pet-pane="pet">
