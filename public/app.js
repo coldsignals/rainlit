@@ -15757,7 +15757,7 @@ async function loadPet() {
   try {
     const d = await api('GET', '/pet');
     S.pet = d.pet;
-    S.room = d.room || null;
+    if (!roomSave && !roomSending) S.room = d.room || null;
   } catch {
     return;
   }
@@ -15784,6 +15784,7 @@ function openPet() {
   S.petTry = '';
   S.roomTry = null;
   S.dewTry = null;
+  S.thingTry = null;
   S.wearTry = null;
   S.petTab = S.pet ? 'care' : 'pet';
   el.petMsg.hidden = true;
@@ -15912,14 +15913,29 @@ function renderPetTabs() {
   if (S.petTab === 'dew') el.petDewPane.hidden = !p || Boolean(S.petTry);
   if (S.petTab === 'wear') el.petWear.hidden = !p || Boolean(S.petTry);
   if (S.petTab === 'pet') el.petAbout.hidden = !p || Boolean(S.petTry);
+  // (Doing up its room: its things to move about, with the room in view as the rest scrolls by.)
+  const arranging = S.petTab === 'decor' && Boolean(S.room) && !S.petTry;
+  el.pet.classList.toggle('arranging', arranging);
+  if (arranging) el.petRoom.style.setProperty('--stick', `${el.pet.querySelector('.settings-head').offsetHeight}px`);
+  arrangeRoom().set(arranging);
 }
 
-// Doing up its room: a row for each place in it. Glow's things, for anyone without Glow, are
-// there to try on (in the room, never saved), wherever Glow's shown. So are the things dew brings,
+// Doing up its room: its wallpaper, the weather out its windows and its floor (one of each), and its
+// things (as many as it has space for), put in and then moved about in the room itself, flipped,
+// made bigger or smaller, or put away (Homepage.arrange). Glow's things, for anyone without Glow,
+// are there to try (in the room, never saved), wherever Glow's shown. So are the things dew brings,
 // each with what it costs, till you've got it with dew.
-const DECOR_ROWS = [['wall', 'Wallpaper'], ['sky', 'Out the window'], ['floor', 'Floor'], ['rug', 'Rug'], ['hang', 'On the wall'], ['left', 'Left corner'], ['right', 'Right corner']];
+const DECOR_ROWS = [['wall', 'Wallpaper'], ['sky', 'Out the window'], ['floor', 'Floor']];
+const THING_ROWS = [['stand', 'On the floor'], ['hang', 'On the wall'], ['ceiling', 'From the ceiling'], ['rug', 'Rugs']];
 const dewTried = () => (S.dewTry ? { [S.dewTry.slot]: S.dewTry.key } : {});
-const furnishPetRoom = () => Homepage.furnish(el.petRoom, { ...(S.room || {}), ...(S.roomTry || {}), ...dewTried() });
+const furnishPetRoom = () => Homepage.furnish(el.petRoom, { ...(S.room || {}), ...(S.roomTry || {}), ...dewTried() }, { tried: S.thingTry });
+const arrangeRoom = () => Homepage.arrange(el.petRoom, roomArranged);
+const roomThings = () => (S.room && Array.isArray(S.room.things) ? S.room.things : []);
+// (The one tried, if it's one of Glow's or one dew brings.)
+const thingTried = (kind) => {
+  const t = S.thingTry && Homepage.ROOM[S.thingTry.list][S.thingTry.key];
+  return t && (kind === 'glow' ? t.perk : t.dew) ? S.thingTry : null;
+};
 const hasDewThing = (list, key) => Boolean(S.dew && S.dew.items.includes(`${list}:${key}`));
 const dewPriceOf = (list, key) => {
   const item = S.dewShop && S.dewShop.items.find((i) => i.list === list && i.key === key);
@@ -15960,19 +15976,131 @@ function renderPetDecor() {
     row.append(name, box);
     return row;
   }));
+  // Its things: a row of each kind, to put another in.
+  const count = (list, key) => roomThings().filter((t) => t.list === list && t.key === key).length;
+  const head = document.createElement('h3');
+  head.className = 'pet-pick-title';
+  head.textContent = 'Things for its room';
+  const note = document.createElement('p');
+  note.className = 'pet-note';
+  note.textContent = `Pick one to put it in (as many as you like, up to ${Homepage.THINGS_MAX}). Then drag things about in the room, and tap or click one to flip it, make it bigger or smaller, or put it away.`;
+  el.petDecorRows.append(head, note, ...THING_ROWS.map(([list, label]) => {
+    const things = Homepage.ROOM[list];
+    const opts = Object.keys(things).filter((key) => key !== 'none' && (!things[key].perk || supporting() || glowShown() || count(list, key))).map((key) => {
+      const t = things[key];
+      const n = count(list, key);
+      const dewLocked = Boolean(t.dew) && !hasDewThing(list, key);
+      const locked = (t.perk && !supporting()) || dewLocked;
+      const price = dewLocked ? dewPriceOf(list, key) : 0;
+      const trying = Boolean(S.thingTry && S.thingTry.list === list && S.thingTry.key === key);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `pet-decor-opt${t.perk ? ' glow' : ''}${t.dew ? ' dew' : ''}${dewLocked ? ' locked' : ''}${trying ? ' trying' : ''}`;
+      b.dataset.thing = `${list}:${key}`;
+      if (price) b.dataset.price = dewShort(price);
+      if (n > 1) b.dataset.count = `×${n}`;
+      b.setAttribute('aria-pressed', String(n > 0));
+      b.title = t.perk && !supporting() ? `${t.label} (comes with Glow: try it)` : dewLocked ? `${t.label}: ${price ? `${dewWords(price)} dew` : 'dew brings it'} (try it)` : `${t.label}: put one in`;
+      b.setAttribute('aria-label', n ? `${b.title} (${n} in its room)` : b.title);
+      b.append(Homepage.roomSwatch(list, key));
+      b.addEventListener('click', () => addThing(list, key));
+      return b;
+    });
+    const row = document.createElement('div');
+    row.className = 'pet-decor-row';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const box = document.createElement('div');
+    box.className = 'pet-decor-opts';
+    box.append(...opts);
+    row.append(name, box);
+    return row;
+  }));
+  const glowThing = thingTried('glow');
   const tried = S.roomTry ? Object.entries(S.roomTry)[0] : null;
-  el.petDecorTry.hidden = !tried;
-  if (tried) withGlow(el.petDecorTryText, `${Homepage.ROOM[Homepage.ROOM_SLOTS[tried[0]]][tried[1]].label}: one of Glow's. It's in your pet's room to see, but not saved.`);
+  el.petDecorTry.hidden = !tried && !glowThing;
+  if (glowThing) withGlow(el.petDecorTryText, `${Homepage.ROOM[glowThing.list][glowThing.key].label}: one of Glow's. It's in your pet's room to see, but not saved.`);
+  else if (tried) withGlow(el.petDecorTryText, `${Homepage.ROOM[Homepage.ROOM_SLOTS[tried[0]]][tried[1]].label}: one of Glow's. It's in your pet's room to see, but not saved.`);
   el.petDecorTryBtn.hidden = !glowShown();
   // (One of dew's, tried on: what it costs, and getting it.)
-  const dt = S.dewTry;
+  const dewThing = thingTried('dew');
+  const dt = dewThing ? { list: dewThing.list, key: dewThing.key } : S.dewTry && { list: Homepage.ROOM_SLOTS[S.dewTry.slot], key: S.dewTry.key };
   el.petDecorDew.hidden = !dt;
   if (dt) {
-    const list = Homepage.ROOM_SLOTS[dt.slot];
-    const price = dewPriceOf(list, dt.key);
-    el.petDecorDewText.textContent = `${Homepage.ROOM[list][dt.key].label}: ${dewWords(price)} dew, just for looks. It's in your pet's room to see.`;
+    const price = dewPriceOf(dt.list, dt.key);
+    el.petDecorDewText.textContent = `${Homepage.ROOM[dt.list][dt.key].label}: ${dewWords(price)} dew, just for looks. It's in your pet's room to see.`;
     el.petDecorDewBtn.dataset.dewPrice = String(price);
     el.petDecorDewBtn.disabled = dewNow() + 1e-6 < price;
+  }
+}
+
+// Putting another of something in its room: where there's space for it, picked out, to move about.
+// One of Glow's (without Glow), or one dew brings that's not got yet, is tried instead: in the room
+// to see, till it's got or put away (another tried instead of it, or the same one again to take it
+// away).
+function addThing(list, key) {
+  if (!S.room) return;
+  const t = Homepage.ROOM[list][key];
+  if ((t.perk && !supporting()) || (t.dew && !hasDewThing(list, key))) {
+    const again = S.thingTry && S.thingTry.list === list && S.thingTry.key === key;
+    S.thingTry = again ? null : Homepage.newThing(el.petRoom, list, key);
+    if (t.dew) S.dewTry = null;
+    furnishPetRoom();
+    renderPetDecor();
+    if (S.thingTry) arrangeRoom().select(roomThings().length);
+    if (S.thingTry && t.perk && !S.decorGlowTold && glowShown()) {
+      S.decorGlowTold = true;
+      openGlow({ because: `${t.label}: one of Glow's. It's in your pet's room to see, but not saved.` });
+    }
+    return;
+  }
+  if (roomThings().length >= Homepage.THINGS_MAX) {
+    toast(`Its room has space for ${Homepage.THINGS_MAX} things: put one away first.`);
+    return;
+  }
+  S.room = { ...S.room, things: [...roomThings(), Homepage.newThing(el.petRoom, list, key)] };
+  furnishPetRoom();
+  renderPetDecor();
+  arrangeRoom().select(roomThings().length - 1);
+  saveRoomSoon();
+}
+// Something done to its things in the room (moved, flipped, sized, put away): kept, a moment later.
+function roomArranged(things) {
+  const tried = things.find((t) => t.tried);
+  if (tried) delete tried.tried;
+  const was = JSON.stringify(roomThings());
+  S.thingTry = tried || null;
+  S.room = { ...S.room, things: things.filter((t) => t !== tried) };
+  renderPetDecor();
+  if (JSON.stringify(roomThings()) !== was) saveRoomSoon();
+}
+let roomSave = 0;
+let roomSending = 0;
+function saveRoomSoon() {
+  clearTimeout(roomSave);
+  roomSave = setTimeout(saveRoom, 500);
+}
+async function saveRoom() {
+  clearTimeout(roomSave);
+  roomSave = 0;
+  if (!S.room) return;
+  const sent = JSON.stringify(roomThings());
+  roomSending++;
+  try {
+    const room = (await api('PUT', '/pet/room', { things: roomThings() })).room;
+    // (As it's kept, unless it's been changed again since.)
+    if (S.room && JSON.stringify(roomThings()) === sent) S.room = { ...room, wall: S.room.wall, floor: S.room.floor, sky: S.room.sky };
+  } catch (err) {
+    toast(err.message);
+    try {
+      S.room = (await api('GET', '/pet')).room;
+    } catch {}
+    if (el.pet.open) {
+      furnishPetRoom();
+      renderPetDecor();
+    }
+  } finally {
+    roomSending--;
   }
 }
 
@@ -16085,6 +16213,7 @@ async function pickDecor(slot, key) {
   // (One of dew's, not got yet: tried on, or taken off again.)
   if (t.dew && !hasDewThing(list, key) && !(S.room && S.room[slot] === key)) {
     S.dewTry = S.dewTry && S.dewTry.slot === slot && S.dewTry.key === key ? null : { slot, key };
+    if (thingTried('dew')) S.thingTry = null;
     furnishPetRoom();
     renderPetDecor();
     return;
@@ -16108,7 +16237,8 @@ async function pickDecor(slot, key) {
     if (!Object.keys(S.roomTry).length) S.roomTry = null;
   }
   try {
-    S.room = (await api('PUT', '/pet/room', { [slot]: key })).room;
+    const room = (await api('PUT', '/pet/room', { [slot]: key })).room;
+    S.room = { ...room, things: S.room ? roomThings() : room.things };
   } catch (err) {
     toast(err.message);
     return;
@@ -16300,7 +16430,7 @@ function setDew(state) {
   planRainbow();
   renderDew();
   // (Decorate and Wear again: with what dew's things cost, once that's known, or one got.)
-  if (el.pet.open && (S.dewTry || S.wearTry || !was || was.items.length !== state.items.length)) {
+  if (el.pet.open && (S.dewTry || S.thingTry || S.wearTry || !was || was.items.length !== state.items.length)) {
     renderPetDecor();
     renderPetWear();
   }
@@ -16358,20 +16488,34 @@ async function buyDew(kind, key) {
 // Getting the thing tried on in Decorate: it's yours, and in the room.
 async function getDewThing() {
   const t = S.dewTry;
-  if (!t) return;
+  // (A thing: got, and in its room where it's been tried, with the rest as they are here.)
+  const thing = thingTried('dew');
+  if (!t && !thing) return;
   await sendPats();
   let d;
   try {
-    d = await api('POST', '/dew/items', t);
+    if (thing) {
+      clearTimeout(roomSave);
+      roomSave = 0;
+      d = await api('POST', '/dew/items', { list: thing.list, key: thing.key, things: [...roomThings(), thing] });
+    } else {
+      d = await api('POST', '/dew/items', t);
+    }
   } catch (err) {
     toast(err.message);
     return;
   }
-  S.room = d.room;
-  S.dewTry = null;
+  if (thing) {
+    S.room = d.room;
+    S.thingTry = null;
+  } else {
+    S.room = { ...d.room, things: S.room ? roomThings() : d.room.things };
+    S.dewTry = null;
+  }
   setDew(d.dew);
   furnishPetRoom();
   renderPetDecor();
+  if (thing) arrangeRoom().select(roomThings().length - 1);
 }
 
 // The count on its room, and the tab's (and which of what's for dew there's enough for).
@@ -16503,6 +16647,11 @@ function showRainbow() {
   b.title = 'A rainbow drop! Catch it';
   b.setAttribute('aria-label', 'Catch the rainbow drop');
   b.style.animationDuration = `${Math.round(left)}ms`;
+  const win = el.petRoom.querySelector('.pr-window');
+  if (win) {
+    b.style.left = `${win.offsetLeft + (win.offsetWidth * 14) / 22}px`;
+    b.style.top = `${win.offsetTop + win.offsetHeight / 17}px`;
+  }
   b.addEventListener('animationend', () => { if (!b.classList.contains('caught')) b.remove(); });
   b.addEventListener('click', () => catchRainbow(b));
   el.petRoom.append(b);
@@ -16517,6 +16666,12 @@ async function catchRainbow(b) {
     const d = (await api('POST', '/dew/rainbow')).dew;
     const burst = document.createElement('p');
     burst.className = 'dew-burst';
+    // (Where it was caught.)
+    if (b.style.left) {
+      const px = parseFloat(getComputedStyle(el.petRoom).getPropertyValue('--px')) || 6;
+      burst.style.left = `${Math.max(4, parseFloat(b.style.left) - 7 * px)}px`;
+      burst.style.top = `${parseFloat(b.style.top) + 3 * px}px`;
+    }
     burst.textContent = `+${dewWords(d.got)} dew!`;
     burst.addEventListener('animationend', () => burst.remove());
     el.petRoom.append(burst);
@@ -18840,7 +18995,10 @@ async function init() {
     S.petTry = '';
     S.roomTry = null;
     S.dewTry = null;
+    S.thingTry = null;
     S.wearTry = null;
+    if (roomSave) saveRoom();
+    arrangeRoom().set(false);
     stopDew();
     if (el.petRoom.hpPet) el.petRoom.hpPet.stop();
   });

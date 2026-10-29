@@ -1625,7 +1625,7 @@ api.get('/dew', needUser, dewRoute((req) => ({ dew: dew.get(req.user.id), shop: 
 api.post('/dew/pats', needUser, dewRoute((req, b) => ({ dew: dew.pat(req.user.id, b.n) })));
 api.post('/dew/collectors', needUser, dewRoute((req, b) => ({ dew: dew.buy(req.user.id, String(b.key || '')) })));
 api.post('/dew/upgrades', needUser, dewRoute((req, b) => ({ dew: dew.upgrade(req.user.id, String(b.key || '')) })));
-api.post('/dew/items', needUser, dewRoute((req, b) => dew.unlock(req.user, String(b.slot || ''), String(b.key || ''))));
+api.post('/dew/items', needUser, dewRoute((req, b) => dew.unlock(req.user, b)));
 api.post('/dew/rainbow', needUser, dewRoute((req) => ({ dew: dew.rainbow(req.user.id) })));
 api.post('/dew/wear', needUser, dewRoute((req, b) => dew.wearIt(req.user, String(b.slot || ''), String(b.key || ''))));
 

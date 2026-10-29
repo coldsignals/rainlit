@@ -2568,7 +2568,8 @@
     };
   }
   // In its room (the app's): the room's floor (a pet that floats can go anywhere in it), in pixels
-  // the size of the room's own. nap(): where its bed is, if it has one.
+  // the size of the room's own (P: one of them, for how far forward it is, among its things). nap():
+  // where one of its beds is, if it has one.
   function inRoom(room, kind) {
     const size = () => {
       const P = roomPx(room);
@@ -2583,16 +2584,16 @@
         // (Its feet on the open floor, in front of the furniture, which stands 13 rows up from the
         // bottom (a bed, 10): never up on the skirting or a desk. A pet that floats can go anywhere.)
         const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, P * (ROOM_ROWS - 10));
-        return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + P, x1: Math.max(w / 2 + P, W - w / 2 - P), y0, y1: Math.max(y0, H - P * 2) };
+        return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + P, x1: Math.max(w / 2 + P, W - w / 2 - P), y0, y1: Math.max(y0, H - P * 2), P };
       },
       nap() {
-        const r = room.prRoom;
-        const bed = (key) => Boolean(STANDS[key] && STANDS[key].nap);
-        const side = r && (bed(r.left) ? 'left' : bed(r.right) ? 'right' : null);
-        if (!side) return null;
-        const { P, W, H } = size();
-        const half = (thingOf('stand', r[side]).w * P) / 2;
-        return { x: side === 'left' ? P * 3 + half : W - P * 3 - half, y: H - P * (15 - (STANDS[r[side]].out || 0)) };
+        const beds = room.prRoom ? room.prRoom.things.filter((t) => t.list === 'stand' && !t.tried && STANDS[t.key] && STANDS[t.key].nap) : [];
+        if (!beds.length) return null;
+        const { P, W } = size();
+        const t = beds[Math.floor(Math.random() * beds.length)];
+        const s = spotOf(t);
+        // (In it: a little up from its bottom, as far up as it's big.)
+        return { x: (leftOf(t, s, P, W) + s.w / 2) * P, y: (s.top + s.h - 2 * t.size) * P };
       },
       at: (e) => spotIn(room, e),
     };
@@ -2841,6 +2842,8 @@
 
     function render() {
       node.style.transform = `translate(${(me.x - me.w / 2).toFixed(1)}px, ${(me.y - me.w * PET_H).toFixed(1)}px)`;
+      // (In its room, among its things: in front of what's behind where it's standing.)
+      if (me.v && me.v.P) node.style.zIndex = String(10 + Math.round((me.y / me.v.P) * 10));
       lift.style.transform = me.z ? `translateY(${(-me.z).toFixed(1)}px)` : '';
       inner.classList.toggle('left', me.dir < 0);
       node.classList.toggle('lf', me.dir < 0);
@@ -3054,6 +3057,7 @@
       n.style.width = `${w}px`;
       n.style.height = `${w}px`;
       n.style.transform = `translate(${(x - w / 2).toFixed(1)}px, ${(y - w).toFixed(1)}px)`;
+      if (me.v && me.v.P) n.style.zIndex = String(10 + Math.round((y / me.v.P) * 10));
     }
 
     // Where the pointer is, now and then.
@@ -3081,24 +3085,29 @@
       me.t = 0;
       closeCare();
     }
+    // (Its room's being done up: asleep, it wakes, and gets down from its bed if it's in one.)
+    function wake() {
+      if (me.mode === 'sleep') mode('idle', 0.4);
+    }
     // (In something else: the same pet, carrying on.)
     function dressIn(wear) {
       node.querySelector('.hp-pet-sprite').style.backgroundImage = petSheet(kind, pet.coat, wear);
     }
-    const life = { key, node, attach, stop, saw, did, refit, closeCare, tend, dressIn, info: () => me.info };
+    const life = { key, node, attach, stop, saw, did, refit, closeCare, tend, dressIn, wake, info: () => me.info };
     return life;
   }
 
   // ---------- A pet's room ----------
-  // Where someone's pet lives in the app, in pixels like it: a wallpaper and a floor, a window with
-  // the rain outside, a rug, something on the wall, and something in each corner (a pet bed is
-  // where it naps). A few of each, and some of Glow's. Its owner picks them (lib/pets.js keeps
-  // them). It's all measured in the room's own pixels (--px: the same size as its pet's), 42 of
-  // them tall: 26 of wall and 16 of floor.
+  // Where someone's pet lives in the app, in pixels like it: a wallpaper and a floor, windows with
+  // the rain outside, and its things, wherever its owner's put them: rugs, things on the wall,
+  // things hanging from the ceiling and things standing on the floor (a pet bed is where it naps).
+  // A few of each, and some of Glow's. Its owner picks them (lib/pets.js keeps them). It's all
+  // measured in the room's own pixels (--px: the same size as its pet's), 42 of them tall: 26 of
+  // wall and 16 of floor.
 
   const ROOM_ROWS = 42;
   const WALL_ROWS = 26;
-  const ROOM_DEFAULT = { wall: 'stripes', floor: 'wood', rug: 'round', hang: 'none', left: 'plant', right: 'bed', sky: 'auto' };
+  const ROOM_DEFAULT = { wall: 'stripes', floor: 'wood', sky: 'auto' };
 
   // (Pixels made to a shape: a flat oval in rings, from the middle out.)
   function oval(w, h, rings) {
@@ -3283,6 +3292,49 @@
     ];
     return rows.map((r, y) => (y === drop ? `${r.slice(0, 4)}d${r.slice(5)}` : r));
   }
+  // (A disco ball: its mirrors catching the light here and there, `shift` along.)
+  function discoBall(shift) {
+    const rows = ['....mmm....'];
+    for (let y = 0; y < 11; y++) {
+      let row = '';
+      for (let x = 0; x < 11; x++) {
+        if (Math.hypot(x + 0.5 - 5.5, y + 0.5 - 5.5) > 5.6) {
+          row += '.';
+          continue;
+        }
+        const tile = (Math.floor(x / 2) + Math.floor(y / 2)) % 2;
+        if ((x * 3 + y * 5 + shift) % 13 === 0) row += 'wcp'[(x + y + shift) % 3];
+        else row += x + y > 12 ? (tile ? 'A' : 'B') : tile ? 'a' : 'b';
+      }
+      rows.push(row);
+    }
+    return rows;
+  }
+  // (A mobile: a moon and two stars on strings from a little bar, the stars bobbing.)
+  function mobile(bob) {
+    const g = Array.from({ length: 14 }, () => Array(19).fill('.'));
+    g[0][9] = 's';
+    g[1].fill('t');
+    const hang = (x, y, art) => {
+      for (let yy = 2; yy < y; yy++) g[yy][x] = 's';
+      art.forEach((row, dy) => [...row].forEach((c, dx) => { if (c !== '.') g[y + dy][x - 1 + dx] = c; }));
+    };
+    hang(2, 4 + bob, ['.y.', 'yYy', '.y.']);
+    hang(9, 8, ['.mm', 'mm.', 'm..', 'mm.', '.mm']);
+    hang(16, 6 - bob, ['.y.', 'yYy', '.y.']);
+    return g.map((r) => r.join(''));
+  }
+  // (A little rain cloud, raining: drops `f` along, under it, with no outline of their own.)
+  const CLOUD = ['.....wwww......', '...wwwwwwww....', '..wwwwwwwwwwww.', '.wwwWwwwwwwwwww', 'wwwwwwwwwwwWwww', 'wWwwwwwwwwwwwww', '.WWWWWWWWWWWWW.'];
+  function rainCloud(f) {
+    const rows = [...outlined(CLOUD), ...Array(6).fill('.'.repeat(CLOUD[0].length + 2))].map((r) => [...r]);
+    for (const [x, y0] of [[4, 0], [7, 3], [10, 1], [13, 4]]) {
+      const y = 9 + ((y0 + f * 3) % 6);
+      rows[y][x] = 'b';
+      if (rows[y + 1]) rows[y + 1][x] = 'b';
+    }
+    return rows.map((r) => r.join(''));
+  }
   // (A pet bed: there are two.)
   const BED_ROWS = ['.....pppppppppppp.....', '...ppbbbbbbbbbbbbpp...', '..pbbbbbbbbbbbbbbbbp..', '.pbbbbbbbbbbbbbbbbbbp.', 'ppbbbbbbbbbbbbbbbbbbpp', 'pppbbbbbbbbbbbbbbbbppp', 'PpppppbbbbbbbbbbpppppP', '.PPPppppppppppppppPPP.', '...PPPPPPPPPPPPPPPP...'];
 
@@ -3343,6 +3395,8 @@
   };
   const HANGS = {
     none: { label: 'None' },
+    // (A window, with the weather out of it: WINDOW, paintSky.)
+    window: { label: 'Window', window: true },
     picture: {
       label: 'Picture',
       rows: ['ffffffffffffff', 'fuuuuuuuuuuyyf', 'fuuuuuuuuuyyyf', 'fuuuuuuuuuuyuf', 'fuuuuuuuuuuuuf', 'fuuugguuuuuuuf', 'fuuggggguuuguf', 'fugggggggggggf', 'fGgggGggggggGf', 'fGGGGGGGGGGGGf', 'ffffffffffffff'],
@@ -3453,6 +3507,31 @@
       colors: { c: '#bfe3ee', q: 'rgba(191, 231, 240, 0.22)', d: '#f0fcff', g: '#5fae5a', G: '#3f8a45', p: '#ff8fc6', m: '#4f8a3f', s: '#6b4a32', T: '#7a5234' },
     },
   };
+  // Hanging from the ceiling, on a cord as long as its owner likes.
+  const CEILINGS = {
+    pendant: {
+      label: 'Pendant lamp', glow: '#ffd27a',
+      rows: ['....aaa....', '...abbba...', '..abbbbba..', '.abbbbbbba.', 'abbbbbbbbba', 'ccccccccccc', '...yyyyy...', '....yyy....'],
+      colors: { a: '#2f6a5a', b: '#4f9a80', c: '#24524a', y: '#fff1b8' },
+    },
+    hangplant: {
+      label: 'Hanging plant',
+      rows: ['......r......', '.....r.r.....', '....r...r....', '...r.....r...', '..r..g.g..r..', '.r.gGgGgGg.r.', 'gOOOOOOOOOOOg', 'G.ooooooooo.G',
+        'g.ooooooooo.g', 'G..ooooooo..G', 'g...........g', 'G...........g', '.g.........G.', '..G.......g..'],
+      colors: { r: '#d8c8a8', g: '#6ad07a', G: '#3f9e57', O: '#b85a33', o: '#e07a4a' },
+    },
+    lantern: {
+      label: 'Paper lantern', glow: '#ff9a6a',
+      rows: ['...yyyyy...', '.rrrrrrrrr.', 'rRRRRRRRRRr', 'rrrrrrrrrrr', 'rRRRRRRRRRr', 'rrrrrrrrrrr', 'rRRRRRRRRRr', '.rrrrrrrrr.', '...yyyyy...', '.....y.....'],
+      colors: { r: '#e8504a', R: '#c43a3a', y: '#e8c23a' },
+    },
+    disco: {
+      label: 'Disco ball', perk: true, glow: '#cfe8ff', frames: [discoBall(0), discoBall(5)],
+      colors: { m: '#6a6f80', a: '#dfe5ee', b: '#aab3c2', A: '#9aa3b2', B: '#6f7888', w: '#ffffff', c: '#7fe3ff', p: '#ff8fd6' },
+    },
+    mobile: { label: 'Star mobile', perk: true, glow: '#ffe9a8', bare: true, frames: [mobile(0), mobile(1)], colors: { s: '#d8d0c0', t: '#c8a06a', y: '#ffe066', Y: '#fff6c0', m: '#fff1b8' } },
+    raincloud: { label: 'Rain cloud', dew: true, bare: true, frames: [rainCloud(0), rainCloud(1)], colors: { w: '#eef3f8', W: '#cfd8e2', b: '#7fd0ff' } },
+  };
   // What's out its window: the weather. Its owner picks one, or it changes by itself (day or night
   // by their own clock, and the hour's weather: weatherNow). Each is the sky through the window (18
   // by 11 of the room's pixels: two panes, the bar between) and, over it, rain or snow falling,
@@ -3513,21 +3592,37 @@
     },
   };
 
-  const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS, sky: WEATHER };
-  // (Which list each place in the room picks from.)
-  const ROOM_SLOTS = { wall: 'wall', floor: 'floor', rug: 'rug', hang: 'hang', left: 'stand', right: 'stand', sky: 'sky' };
+  const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS, ceiling: CEILINGS, sky: WEATHER };
+  // (Which list each of the room's own picks from: its wallpaper, its floor, and the weather out its
+  // windows.)
+  const ROOM_SLOTS = { wall: 'wall', floor: 'floor', sky: 'sky' };
+  // Its things, each where its owner's put it (lib/pets.js keeps them): `x` from one side to the
+  // other (0 to 1: as far left as it goes, to as far right), `y` in the room's pixels from its top:
+  // the top of what's on the wall or hanging from the ceiling (on a cord that long), the bottom of a
+  // rug or of what stands on the floor (as far back as the skirting, to the front). `size`: three
+  // quarters as big, to half as big again. `flip`: facing the other way.
+  const THING_LISTS = ['stand', 'hang', 'ceiling', 'rug'];
+  const THINGS_MAX = 24;
+  const THING_Y = { hang: [0, 28], ceiling: [0, 24], rug: [28, 42], stand: [29, 42] };
 
   // The window (its weather in its panes: paintSky).
-  const WINDOW = pixelsSrc(outlined(['aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbb', '.cccccccccccccccccc.']), { k: '#2a1f33', a: '#8a5a3c', b: '#b07a52', c: '#5e3f2c' });
+  const WINDOW_ROWS = outlined(['aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbb', '.cccccccccccccccccc.']);
+  const WINDOW_COLORS = { k: '#2a1f33', a: '#8a5a3c', b: '#b07a52', c: '#5e3f2c' };
+  const WINDOW = pixelsSrc(WINDOW_ROWS, WINDOW_COLORS);
+  // (To pick it: blue sky in its panes.)
+  const WINDOW_SWATCH = pixelsSrc(WINDOW_ROWS.map((r, y) => (y >= 2 && y <= 12 ? r.slice(0, 2) + r.slice(2, 20).replace(/\./g, 'u') + r.slice(20) : r)), { ...WINDOW_COLORS, u: '#8fd3ff' });
   const BASEBOARD = pixelsSrc(['aaaaaaaa', 'bbbbbbbb', 'cccccccc'], { a: '#c89a6a', b: '#8a5c3a', c: '#5e3f2c' });
 
   const thingSrc = new Map();
-  // A thing's picture (its frames side by side), and how big it is, in the room's pixels.
+  // A thing's picture (its frames side by side), and how big it is, in the room's pixels (`rows`: its
+  // first frame's, to tell where it's drawn and where there's nothing).
   function thingOf(list, key) {
     const id = `${list}:${key}`;
     if (!thingSrc.has(id)) {
       const t = ROOM[list][key];
-      if (!t || (!t.rows && !t.frames && !t.tile)) {
+      if (t && t.window) {
+        thingSrc.set(id, { src: WINDOW, still: WINDOW_SWATCH, w: WINDOW_ROWS[0].length, h: WINDOW_ROWS.length, frames: 1, rows: null });
+      } else if (!t || (!t.rows && !t.frames && !t.tile)) {
         thingSrc.set(id, null);
       } else if (t.tile) {
         const twinkle = t.twinkle ? t.tile.map((r) => r.replace(new RegExp(`[^${t.twinkle}]`, 'g'), '.')) : null;
@@ -3539,7 +3634,7 @@
         const rects = frames.map((f, i) => rectsOf(f, colors, i * fw)).join('');
         const src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fw * frames.length} ${frames[0].length}" shape-rendering="crispEdges">${rects}</svg>`)}`;
         const still = frames.length > 1 ? pixelsSrc(frames[0], colors) : src;
-        thingSrc.set(id, { src, still, w: fw, h: frames[0].length, frames: frames.length });
+        thingSrc.set(id, { src, still, w: fw, h: frames[0].length, frames: frames.length, rows: frames[0] });
       }
     }
     return thingSrc.get(id);
@@ -3585,15 +3680,91 @@
 
   // A room's pixel: as big as its pet's (a pet is 22 of them across).
   const roomPx = (el) => Math.round(clampTo((el.clientWidth || 480) * 0.24, 88, 132) / 22);
+  const isThing = (t) => Boolean(t && THING_LISTS.includes(t.list) && Object.hasOwn(ROOM[t.list], t.key) && t.key !== 'none');
+  // (A room from before things could be moved, or none yet: its window, something on the wall, a rug
+  // and a thing in each corner, where they were (lib/pets.js says the same).)
+  function legacyThings(room) {
+    const of = (slot, list, d) => (room && typeof room[slot] === 'string' && Object.hasOwn(ROOM[list], room[slot]) ? room[slot] : d);
+    const out = (key) => (STANDS[key] && STANDS[key].out) || 0;
+    const left = of('left', 'stand', 'plant');
+    const right = of('right', 'stand', 'bed');
+    return [
+      { list: 'hang', key: 'window', x: 0.1, y: 3 }, { list: 'hang', key: of('hang', 'hang', 'none'), x: 0.5, y: 5 }, { list: 'rug', key: of('rug', 'rug', 'round'), x: 0.5, y: 40 },
+      { list: 'stand', key: left, x: 0.04, y: 29 + out(left) }, { list: 'stand', key: right, x: 0.96, y: 29 + out(right) },
+    ].filter(isThing);
+  }
+  const num = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
   const roomOf = (room) => {
     const r = { ...ROOM_DEFAULT };
     for (const [slot, list] of Object.entries(ROOM_SLOTS)) if (room && ROOM[list][room[slot]]) r[slot] = room[slot];
+    r.things = (room && Array.isArray(room.things) ? room.things : legacyThings(room)).filter(isThing).slice(0, THINGS_MAX + 1).map((t) => {
+      const [y0, y1] = THING_Y[t.list];
+      return {
+        list: t.list, key: t.key, x: clampTo(num(t.x, 0.5), 0, 1), y: clampTo(Math.round(num(t.y, y0)), y0, y1), size: clampTo(num(t.size, 1), 0.75, 1.5), flip: t.flip === true,
+        ...(t.tried ? { tried: true } : {}),
+      };
+    });
     return r;
   };
 
-  // Furnishing a room (`room`: what's in it; anything not in it is as it was to begin with).
-  function furnish(el, room) {
+  // Where a thing is in its room, in the room's pixels: how big it's drawn, its top (all of it in
+  // the room: on the wall, or above the skirting for what hangs from the ceiling, or on the floor),
+  // and how far forward it is (`depth`: where it stands, for what's on the floor; a pet bed's a
+  // little further back, so its pet's in front of it, lying in it).
+  function spotOf(t) {
+    const art = thingOf(t.list, t.key);
+    const w = art.w * t.size;
+    const h = art.h * t.size;
+    const top = t.list === 'hang' || t.list === 'ceiling' ? clampTo(t.y, 0, Math.max(0, THING_Y[t.list][1] - h))
+      : clampTo(t.y, t.list === 'rug' ? Math.min(ROOM_ROWS, 28 + h) : Math.max(29, h), ROOM_ROWS) - h;
+    return { w, h, top, depth: top + h - (ROOM[t.list][t.key].nap ? 3 * t.size : 0) };
+  }
+  // (Where its left side is, in the room's pixels, `x` of the way along the room beside it.)
+  const leftOf = (t, s, P, W) => t.x * Math.max(0, W / P - s.w);
+  function placeThing(n) {
+    const t = n.prThing;
+    const s = spotOf(t);
+    n.style.setProperty('--x', String(t.x));
+    n.style.setProperty('--w', String(s.w));
+    n.style.setProperty('--h', String(s.h));
+    n.style.setProperty('--t', String(s.top));
+    n.style.setProperty('--s', String(t.size));
+    n.classList.toggle('pr-flip', t.flip);
+    // (What stands on the floor: in front of what's behind it, and its pet too: petLife's depth.)
+    if (t.list === 'stand') n.style.zIndex = String(10 + Math.round(s.depth * 10));
+  }
+  function thingNode(t, i, sky) {
+    const info = ROOM[t.list][t.key];
+    const n = document.createElement('i');
+    n.className = `pr-thing pr-${t.list} pr-${t.key}`;
+    n.dataset.i = String(i);
+    n.prThing = t;
+    if (info.window) {
+      n.classList.add('pr-window');
+      n.style.setProperty('--frame', `url("${WINDOW}")`);
+      paintSky(n, sky);
+    } else {
+      const art = thingOf(t.list, t.key);
+      n.style.backgroundImage = `url("${art.src}")`;
+      if (art.frames > 1) n.classList.add('pr-frames');
+    }
+    if (info.glow) {
+      n.classList.add('pr-glow');
+      n.style.setProperty('--glow', info.glow);
+    }
+    if (info.flicker) n.classList.add('pr-flicker');
+    if (t.tried) n.classList.add('pr-tried');
+    placeThing(n);
+    return n;
+  }
+
+  // Furnishing a room (`room`: what's in it, as lib/pets.js keeps it; `tried`: one more thing in it,
+  // to see, not its own yet). Its wallpaper, floor and skirting, then its things: on the wall (its
+  // windows, with the weather in them), hanging from the ceiling, rugs, and what stands on the
+  // floor, nearer the front over what's further back.
+  function furnish(el, room, opts = {}) {
     const r = roomOf(room);
+    if (isThing(opts.tried)) r.things.push({ ...roomOf({ things: [opts.tried] }).things[0], tried: true });
     el.prRoom = r;
     el.classList.add('pr-room');
     const px = roomPx(el);
@@ -3603,6 +3774,7 @@
       new ResizeObserver(() => {
         el.style.setProperty('--px', `${roomPx(el)}px`);
         if (el.hpPet) el.hpPet.refit();
+        if (el.prArrange) el.prArrange.drawn();
       }).observe(el);
     }
     let scene = el.querySelector('.pr-scene');
@@ -3633,30 +3805,260 @@
       }
       return n;
     };
-    const thing = (slot) => {
-      const list = ROOM_SLOTS[slot];
-      const key = r[slot];
-      const info = ROOM[list][key];
-      const n = layer(`pr-thing pr-${slot} pr-${key}`, thingOf(list, key));
-      if (info && info.glow) {
-        n.classList.add('pr-glow');
-        n.style.setProperty('--glow', info.glow);
-      }
-      if (info && info.flicker) n.classList.add('pr-flicker');
-      if (info && info.out) n.style.bottom = `calc(var(--px) * ${13 - info.out})`; // (13: style.css .pr-left)
-      return n;
-    };
-    const win = document.createElement('i');
-    win.className = 'pr-window';
-    win.style.setProperty('--frame', `url("${WINDOW}")`);
-    paintSky(win, r.sky);
-    // (Changing by itself: looked at again every few minutes, for a new hour.)
+    // (The weather changing by itself: looked at again every few minutes, for a new hour.)
     clearInterval(el.prSkyTimer);
-    if (r.sky === 'auto') el.prSkyTimer = setInterval(() => paintSky(win, 'auto'), 5 * 60_000);
+    if (r.sky === 'auto') el.prSkyTimer = setInterval(() => { for (const w of el.querySelectorAll('.pr-window')) paintSky(w, 'auto'); }, 5 * 60_000);
     const base = layer('pr-base', null);
     base.style.backgroundImage = `url("${BASEBOARD}")`;
-    scene.replaceChildren(layer('pr-wall', thingOf('wall', r.wall), true), layer('pr-floor', thingOf('floor', r.floor), true), base, win,
-      thing('rug'), thing('hang'), thing('left'), thing('right'));
+    const nodes = r.things.map((t, i) => thingNode(t, i, r.sky));
+    const of = (list) => nodes.filter((n) => n.prThing.list === list);
+    scene.replaceChildren(layer('pr-wall', thingOf('wall', r.wall), true), layer('pr-floor', thingOf('floor', r.floor), true), base, ...of('hang'), ...of('ceiling'), ...of('rug'));
+    // (What stands on the floor is in the room itself, with its pet, not behind it with the rest.)
+    for (const n of el.querySelectorAll(':scope > .pr-stand')) n.remove();
+    scene.after(...of('stand'));
+    if (el.prArrange) el.prArrange.drawn();
+  }
+
+  // A thing just put in a room: where there's space for it, if there is (what stands on the floor,
+  // against the wall).
+  function newThing(el, list, key) {
+    const P = roomPx(el);
+    const W = el.clientWidth || 480;
+    const t = { list, key, x: 0.5, y: { hang: 4, ceiling: 2, rug: 40, stand: 29 }[list], size: 1, flip: false };
+    const s = spotOf(t);
+    const others = (el.prRoom ? el.prRoom.things : []).filter((u) => u.list === list);
+    const free = (x) => others.every((u) => {
+      const a = spotOf(u);
+      const ax = leftOf(u, a, P, W);
+      const bx = leftOf({ x }, s, P, W);
+      return ax >= bx + s.w || bx >= ax + a.w || a.top >= s.top + s.h || s.top >= a.top + a.h;
+    });
+    t.x = [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6, 0.05, 0.95, 0.22, 0.78].find(free) ?? 0.5;
+    return t;
+  }
+
+  // Doing up a room (its owner's, in Decorate): its things dragged about, and the one picked out
+  // flipped, made bigger or smaller, or put away, with the little bar by it (or with keys: arrows to
+  // move it, F to flip it, + and - for its size, Delete to put it away, Esc to leave it). Its pet
+  // keeps out of the way meanwhile. `changed(things)`: something's been done, with all its things as
+  // they are now (the one tried, too).
+  const TOOL_ICONS = {
+    flip: '<path d="M7 6 3 10l4 4M3 10h14M13 6l4 4-4 4"/>',
+    smaller: '<path d="M5 10h10"/>',
+    bigger: '<path d="M5 10h10M10 5v10"/>',
+    away: '<path d="M4 6h12M8 6V3h4v3M6 6l1 11h6l1-11"/>',
+  };
+  function arrange(el, changed) {
+    if (el.prArrange) return el.prArrange;
+    el.prLabel = el.getAttribute('aria-label') || 'Its room';
+    const st = { on: false, sel: -1, drag: null };
+    const things = () => (el.prRoom ? el.prRoom.things : []);
+    const nodeOf = (i) => el.querySelector(`.pr-thing[data-i="${i}"]`);
+    const tools = document.createElement('div');
+    tools.className = 'pr-tools';
+    tools.hidden = true;
+    const name = document.createElement('span');
+    name.className = 'pr-tools-name';
+    const tool = (what, label, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `pr-tool pr-tool-${what}`;
+      b.title = label;
+      b.setAttribute('aria-label', label);
+      b.innerHTML = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${TOOL_ICONS[what]}</svg>`;
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fn();
+      });
+      return b;
+    };
+    tools.append(name, tool('flip', 'Flip it', () => edit((t) => { t.flip = !t.flip; })),
+      tool('smaller', 'Smaller', () => edit((t) => { t.size = clampTo(Math.round(t.size * 8 - 1) / 8, 0.75, 1.5); })),
+      tool('bigger', 'Bigger', () => edit((t) => { t.size = clampTo(Math.round(t.size * 8 + 1) / 8, 0.75, 1.5); })),
+      tool('away', 'Put it away', putAway));
+    tools.addEventListener('pointerdown', (e) => e.stopPropagation());
+    el.append(tools);
+
+    // (The little bar: above the one picked out, or below it if it's too near the top.)
+    function show() {
+      for (const n of el.querySelectorAll('.pr-picked')) n.classList.remove('pr-picked');
+      const n = st.on && st.sel >= 0 ? nodeOf(st.sel) : null;
+      tools.hidden = !n || Boolean(st.drag && st.drag.moved);
+      if (!n) {
+        el.setAttribute('aria-label', st.on ? `${el.prLabel}: Enter picks out its things, one after another` : el.prLabel);
+        return;
+      }
+      n.classList.add('pr-picked');
+      const t = things()[st.sel];
+      name.textContent = ROOM[t.list][t.key].label;
+      el.setAttribute('aria-label', `${el.prLabel}: ${name.textContent} picked out. Arrow keys move it, F flips it, plus and minus make it bigger or smaller, Delete puts it away.`);
+      tools.querySelector('.pr-tool-smaller').disabled = t.size <= 0.75;
+      tools.querySelector('.pr-tool-bigger').disabled = t.size >= 1.5;
+      if (tools.hidden) return;
+      const W = el.clientWidth;
+      const H = el.clientHeight;
+      const left = n.offsetLeft + n.offsetWidth / 2 - tools.offsetWidth / 2;
+      tools.style.left = `${clampTo(left, 4, Math.max(4, W - tools.offsetWidth - 4))}px`;
+      const above = n.offsetTop - tools.offsetHeight - 6;
+      tools.style.top = `${above >= 4 ? above : Math.min(H - tools.offsetHeight - 4, n.offsetTop + n.offsetHeight + 6)}px`;
+    }
+    function select(i) {
+      st.sel = i < things().length ? i : -1;
+      show();
+    }
+    function done() {
+      show();
+      if (el.hpPet) el.hpPet.wake();
+      changed(things().map((t) => ({ ...t })));
+    }
+    function edit(fn) {
+      const t = things()[st.sel];
+      if (!t) return;
+      fn(t);
+      placeThing(nodeOf(st.sel));
+      done();
+    }
+    function putAway() {
+      if (!things()[st.sel]) return;
+      things().splice(st.sel, 1);
+      st.sel = -1;
+      furnish(el, el.prRoom);
+      done();
+    }
+    // (One that's been moved goes in front of the rest of its kind: last, before the one tried.)
+    function toFront() {
+      const list = things();
+      const t = list[st.sel];
+      if (t.tried) return;
+      const end = list.findIndex((u) => u.tried);
+      list.splice(st.sel, 1);
+      const at = end < 0 ? list.length : end - (end > st.sel ? 1 : 0);
+      list.splice(at, 0, t);
+      st.sel = at;
+      furnish(el, el.prRoom);
+    }
+    // (Moved from where it was, `dx` and `dy` along, in the room's pixels: a pixel at a time, up and
+    // down.)
+    function moveFrom(i, t0, dx, dy) {
+      const t = things()[i];
+      const P = roomPx(el);
+      const W = el.clientWidth || 480;
+      const s = spotOf(t0);
+      const room = Math.max(0, W / P - s.w);
+      t.x = room > 0 ? clampTo(Math.round(((leftOf(t0, s, P, W) + dx) / room) * 1000) / 1000, 0, 1) : 0.5;
+      const [y0, y1] = THING_Y[t.list];
+      t.y = clampTo(Math.round((t.list === 'hang' || t.list === 'ceiling' ? s.top : s.top + s.h) + dy), y0, y1);
+      placeThing(nodeOf(i));
+    }
+    // (What's under the pointer: the one in front, where it's drawn, not just its box. What stands on
+    // the floor is in front of rugs, which are in front of what hangs from the ceiling, then the wall.)
+    const RANK = { hang: 1, ceiling: 2, rug: 3, stand: 4 };
+    function hit(p) {
+      const P = roomPx(el);
+      const list = things();
+      const order = list.map((t, i) => i).sort((a, b) => {
+        const ta = list[a], tb = list[b];
+        return RANK[tb.list] - RANK[ta.list] || (ta.list === 'stand' ? spotOf(tb).depth - spotOf(ta).depth : 0) || b - a;
+      });
+      for (const i of order) {
+        const t = list[i];
+        const n = nodeOf(i);
+        if (!n) continue;
+        const x0 = n.offsetLeft, y0 = n.offsetTop, w = n.offsetWidth, h = n.offsetHeight;
+        if (p.x < x0 - 2 || p.x > x0 + w + 2 || p.y < y0 - 2 || p.y > y0 + h + 2) continue;
+        const art = thingOf(t.list, t.key);
+        if (!art.rows) return i;
+        const ax = Math.floor(((p.x - x0) / w) * art.w), ay = Math.floor(((p.y - y0) / h) * art.h);
+        const cx = t.flip ? art.w - 1 - ax : ax;
+        // (Near enough: a pixel either side, at its size.)
+        const near = Math.max(1, Math.round(4 / (P * t.size)));
+        for (let yy = ay - near; yy <= ay + near; yy++) {
+          for (let xx = cx - near; xx <= cx + near; xx++) if (art.rows[yy] && art.rows[yy][xx] && art.rows[yy][xx] !== '.') return i;
+        }
+      }
+      return -1;
+    }
+
+    el.addEventListener('pointerdown', (e) => {
+      if (!st.on || e.button > 0 || e.target.closest('.dew-rainbow, .pet-dew')) return;
+      const p = spotIn(el, e);
+      const i = hit(p);
+      if (i < 0) return select(-1);
+      e.preventDefault();
+      el.focus({ preventScroll: true });
+      st.sel = i;
+      st.drag = { id: e.pointerId, p, t0: { ...things()[i] }, moved: false };
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {}
+      show();
+    });
+    el.addEventListener('pointermove', (e) => {
+      const d = st.drag;
+      if (!d || e.pointerId !== d.id) return;
+      const p = spotIn(el, e);
+      const P = roomPx(el);
+      if (!d.moved && Math.hypot(p.x - d.p.x, p.y - d.p.y) < 4) return;
+      d.moved = true;
+      tools.hidden = true;
+      el.classList.add('pr-dragging');
+      moveFrom(st.sel, d.t0, (p.x - d.p.x) / P, (p.y - d.p.y) / P);
+    });
+    const end = (e) => {
+      const d = st.drag;
+      if (!d || e.pointerId !== d.id) return;
+      st.drag = null;
+      el.classList.remove('pr-dragging');
+      if (!d.moved) return show();
+      toFront();
+      done();
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('keydown', (e) => {
+      if (!st.on || e.target !== el) return;
+      // (Enter, or space: the next thing picked out.)
+      if ((e.key === 'Enter' || e.key === ' ') && things().length) {
+        e.preventDefault();
+        return select((st.sel + 1) % things().length);
+      }
+      if (st.sel < 0 || !things()[st.sel]) return;
+      const step = e.shiftKey ? 4 : 1;
+      const by = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+      if (by) moveFrom(st.sel, { ...things()[st.sel] }, by[0], by[1]);
+      else if (e.key === 'f' || e.key === 'F') things()[st.sel].flip = !things()[st.sel].flip;
+      else if (e.key === '+' || e.key === '=') things()[st.sel].size = clampTo(Math.round(things()[st.sel].size * 8 + 1) / 8, 0.75, 1.5);
+      else if (e.key === '-' || e.key === '_') things()[st.sel].size = clampTo(Math.round(things()[st.sel].size * 8 - 1) / 8, 0.75, 1.5);
+      else if (e.key === 'Delete' || e.key === 'Backspace') return (e.preventDefault(), putAway());
+      else if (e.key === 'Escape') return (e.preventDefault(), e.stopPropagation(), select(-1));
+      else return;
+      e.preventDefault();
+      placeThing(nodeOf(st.sel));
+      done();
+    });
+    const arr = {
+      // (On, or off: nothing picked out.)
+      set(on) {
+        st.on = Boolean(on);
+        el.classList.toggle('pr-arranging', st.on);
+        if (st.on) el.tabIndex = 0;
+        else el.removeAttribute('tabindex');
+        if (!st.on) st.sel = -1;
+        show();
+      },
+      select,
+      // (Drawn again: the same one picked out, if it's still there.)
+      drawn() {
+        if (st.sel >= things().length) st.sel = -1;
+        if (!tools.isConnected) el.append(tools);
+        show();
+      },
+      get picked() {
+        return st.sel;
+      },
+    };
+    el.prArrange = arr;
+    return arr;
   }
 
   // Dew's pictures (app.js shows them in its pet's Dew tab): a drop of it, and each thing that
@@ -3730,6 +4132,7 @@
       n.classList.add('pr-none');
       return n;
     }
+    if (THING_LISTS.includes(list)) n.classList.add('pr-swatch-thing');
     if (list === 'wall' || list === 'floor') {
       n.style.backgroundImage = `url("${t.src}")`;
       n.style.backgroundSize = `${t.w * 4}px ${t.h * 4}px`;
@@ -4213,7 +4616,7 @@
     // (a piece's video popped up, or its sound played, to try: the editor)
     popVideo, closeTopPopup, playSound,
     petEl, petRoom, petMeters, fullWords, happyWords,
-    ROOM, ROOM_DEFAULT, ROOM_SLOTS, furnish, roomSwatch, dewIcon, WEAR, WEAR_SLOTS,
+    ROOM, ROOM_DEFAULT, ROOM_SLOTS, THING_LISTS, THINGS_MAX, furnish, newThing, arrange, roomSwatch, dewIcon, WEAR, WEAR_SLOTS,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
     petDid: (page, what, info) => { if (page.hpPet) page.hpPet.did(what, info); },
     // (the sheet of a pet's frames, to look at them)
