@@ -15900,6 +15900,23 @@ function renderPetVisit(pet, owner) {
 
 // Its box's tabs: Care and Dew (once you've a pet), Decorate, and Pet. (Your pet's care, dew and
 // details are put away while you try another pet on.)
+// Leaving a tab of its box: whatever was being tried there (something to wear, something for its
+// room, not got yet) is taken off again, there to see only while what's to pick from is.
+function leavePetTab(tab) {
+  if (tab === 'wear' && S.wearTry) {
+    S.wearTry = null;
+    dressPet();
+    renderPetWear();
+  }
+  if (tab === 'decor' && (S.roomTry || S.dewTry || S.thingTry)) {
+    S.roomTry = null;
+    S.dewTry = null;
+    S.thingTry = null;
+    furnishPetRoom();
+    renderPetDecor();
+  }
+}
+
 function renderPetTabs() {
   const p = S.pet;
   const ownTabs = ['care', 'dew', 'wear'];
@@ -18995,6 +19012,7 @@ async function init() {
   el.petWearDewBtn.addEventListener('click', getWear);
   for (const b of el.pet.querySelectorAll('[data-pet-tab]')) {
     b.addEventListener('click', () => {
+      if (S.petTab !== b.dataset.petTab) leavePetTab(S.petTab);
       S.petTab = b.dataset.petTab;
       renderPetTabs();
     });
