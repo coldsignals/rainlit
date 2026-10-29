@@ -2268,7 +2268,9 @@
   // round its eyes. Collars: `band` round its neck (its letters taking turns), a `tag` under it at
   // the front, something hanging (`hang`) or a `bow` there, and a `tail` at the back. Sweaters: how
   // far back they go (`reach`), and `paint`, the letter for each of their pixels (its part, and
-  // where on it: `at`, its middle and lowest row); a `hood`, in its colour.
+  // where on it: `at`, its middle and lowest row); a `hood`, in its colour. The finest of them move:
+  // `anim`, how many ways each is drawn (a hat's `frames`; glasses' twinkle; a scarf's `tails`; a
+  // sweater's sparkle, `at.f`), one after another, each for `step` of WEAR_PHASES.
   const WEAR = {
     head: {
       bow: { label: 'Bow', rows: ['BB.BB', 'BBbBB'], colors: { B: '#ff6fae', b: '#c94a86' } },
@@ -2276,19 +2278,32 @@
       party: { label: 'Party hat', rows: ['..W..', '..P..', '.PSP.', 'PSPSP'], colors: { W: '#ffffff', P: '#ff5fa8', S: '#ffd23a' } },
       cap: { label: 'Cap', dx: 1, rows: ['.CCCC..', 'CCCCCVV'], colors: { C: '#e04a4a', V: '#a83434' } },
       tophat: { label: 'Top hat', rows: ['.TTT.', '.TTT.', '.RRR.', 'TTTTT'], colors: { T: '#26262e', R: '#c94a4a' } },
-      crown: { label: 'Crown', rows: ['Y.Y.Y', 'YYYYY', 'YRYBY'], colors: { Y: '#ffcf3a', R: '#e04a4a', B: '#4a8ae0' } },
+      // (A glint along its points, then its jewels catching the light.)
+      crown: {
+        label: 'Crown', rows: ['Y.Y.Y', 'YYYYY', 'YRYBY'], anim: { n: 4, step: 4 },
+        frames: [['W.Y.Y', 'YYYYY', 'YRYBY'], ['Y.W.Y', 'YYYYY', 'YRYBY'], ['Y.Y.W', 'YYYYY', 'YRYBY'], ['Y.Y.Y', 'YYYYY', 'YrYbY']],
+        colors: { Y: '#ffcf3a', R: '#e04a4a', B: '#4a8ae0', W: '#ffffff', r: '#ff9a9a', b: '#a8d0ff' },
+      },
+      // (Its propeller going round: side on, its two blades long, then short as they turn, then the
+      // other way about.)
+      propeller: {
+        label: 'Propeller cap', rows: ['PPPhCCC', ...['..RYB..', '.RRYBB.', 'RRRYBBB']], anim: { n: 4, step: 1 },
+        frames: [['PPPhCCC', ...['..RYB..', '.RRYBB.', 'RRRYBBB']], ['..PhC..', ...['..RYB..', '.RRYBB.', 'RRRYBBB']], ['CCChPPP', ...['..RYB..', '.RRYBB.', 'RRRYBBB']], ['..ChP..', ...['..RYB..', '.RRYBB.', 'RRRYBBB']]],
+        colors: { P: '#ff5fa8', C: '#4fd1ff', h: '#3a3f4b', R: '#e04a4a', Y: '#ffd23a', B: '#3a7bd5' },
+      },
     },
     eyes: {
       round: { label: 'Round glasses', glasses: 'round', colors: { F: '#c9a86a' } },
       sun: { label: 'Sunglasses', glasses: 'sun', colors: { L: '#22253a', F: '#22253a', W: '#9fb4d6' } },
-      star: { label: 'Star glasses', glasses: 'star', colors: { F: '#ffd23a', S: '#fff3a8' } },
+      star: { label: 'Star glasses', glasses: 'star', anim: { n: 2, step: 8 }, colors: { F: '#ffd23a', S: '#ffffff' } },
     },
     neck: {
       collar: { label: 'Collar', band: 'C', tag: 'Y', colors: { C: '#d94a4a', Y: '#ffd23a' } },
       bandana: { label: 'Bandana', band: 'R', hang: ['RRR', '.R.'], colors: { R: '#3a6fd8' } },
       bowtie: { label: 'Bowtie', bow: ['B.B', 'BKB', 'B.B'], front: ['B...B', 'BBKBB', 'B...B'], colors: { B: '#d0304a', K: '#8a1f30' } },
       spiked: { label: 'Spiked collar', band: 'KS', colors: { K: '#2a2a33', S: '#d0d6e0' } },
-      scarf: { label: 'Scarf', band: 'SQ', tail: true, colors: { S: '#e05a4a', Q: '#f3e6d0' } },
+      // (Its end hanging down at the back, then caught by the wind: [x along, y down, which colour].)
+      scarf: { label: 'Scarf', band: 'SQ', tail: true, anim: { n: 2, step: 8 }, tails: [[[0, 1, 0], [0, 2, 1], [1, 1, 1]], [[0, 1, 0], [-1, 1, 1], [-2, 2, 0]]], colors: { S: '#e05a4a', Q: '#f3e6d0' } },
     },
     body: {
       stripes: { label: 'Striped sweater', reach: 4, paint: (x, y, part) => (part === 'body' ? (y % 2 ? 'X' : 'Y') : 'Z'), colors: { X: '#d9534f', Y: '#f3e6d0', Z: '#a8403c' } },
@@ -2298,22 +2313,31 @@
         colors: { H: '#7d8597', h: '#5d6577' },
       },
       knit: { label: 'Cozy knit', reach: 6, paint: (x, y, part) => (part === 'body' ? ((x + y) % 4 === 0 ? 'W' : 'N') : 'C'), colors: { N: '#2f7a4f', W: '#f3f3f3', C: '#e6dcc0' } },
-      // (A little sparkle on its side, and its collar, in gold; its cuffs and hem a lighter blue.)
+      // (A little sparkle on its side, twinkling: a + then an x; it and its collar in gold, its cuffs
+      // and hem a lighter blue.)
       rainlit: {
-        label: 'Rainlit sweater', reach: 4,
-        paint: (x, y, part, at) => (part === 'collar' || (part === 'body' && ((x === at.mx && Math.abs(y - at.my) <= 1) || (y === at.my && Math.abs(x - at.mx) === 1))) ? 'A' : part === 'body' ? 'R' : 'r'),
+        label: 'Rainlit sweater', reach: 4, anim: { n: 2, step: 8 },
+        paint: (x, y, part, at) => (part === 'collar' || (part === 'body' && sparkle(x - at.sx, y - at.my, at.f)) ? 'A' : part === 'body' ? 'R' : 'r'),
         colors: { R: '#24305a', r: '#3b4f8c', A: '#f9c862' },
       },
     },
   };
   const WEAR_SLOTS = ['head', 'eyes', 'neck', 'body'];
+  // (How the things that move are drawn, one after another, and how long each: WEAR's `anim`.)
+  const WEAR_PHASES = 16;
+  const WEAR_STEP = 80;
+  // (A sparkle, `dx` and `dy` from its middle: a +, or for `f` 1, an x.)
+  const sparkle = (dx, dy, f) => (f ? Math.abs(dx) === Math.abs(dy) && Math.abs(dx) <= 1 : (dx === 0 && Math.abs(dy) <= 1) || (dy === 0 && Math.abs(dx) <= 1));
+  // (Whether anything it's wearing moves.)
+  const wearMoves = (kind, wear) => WEAR_SLOTS.some((slot) => wear && WEAR[slot][wear[slot]] && WEAR[slot][wear[slot]].anim && canWear(kind, slot, wear[slot]));
   // (What it's wearing, as a key: "head:bow,neck:collar".)
   const wearKey = (wear) => WEAR_SLOTS.filter((slot) => wear && WEAR[slot][wear[slot]]).map((slot) => `${slot}:${wear[slot]}`).join(',');
 
   // What it's wearing, as pixels to go on it: `over` drawn over it (and past it), `band` only over
   // it, and `paint` only over its coat, each [x, y, letter] (its own letters for the colours, given
-  // out so no two of its things share one), and the colours.
-  function wearPixels(kind, wear) {
+  // out so no two of its things share one, the same however it's drawn), and the colours. `phase`:
+  // which of WEAR_PHASES, for the things that move.
+  function wearPixels(kind, wear, phase = 0) {
     const at = WEAR_AT[kind] || WEAR_AT.cat;
     const P = PET_PIXELS[kind] || PET_PIXELS.cat;
     const out = { over: [], band: [], paint: [], colors: {} };
@@ -2329,12 +2353,16 @@
         }
         return mine[c];
       };
+      for (const c of Object.keys(item.colors)) ink(c);
       const put = (list, x, y, c) => list.push([x, y, ink(c)]);
+      // (Which way it's drawn just now, if it moves.)
+      const f = item.anim ? Math.floor(phase / item.anim.step) % item.anim.n : 0;
       if (slot === 'head') {
         const [cx, cy] = at.crown;
-        const w = item.rows[0].length;
+        const rows = item.frames ? item.frames[f] : item.rows;
+        const w = rows[0].length;
         const x0 = cx - Math.floor(w / 2) + (item.dx || 0);
-        item.rows.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x0 + j, cy - (item.rows.length - 1) + i, c); }));
+        rows.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x0 + j, cy - (rows.length - 1) + i, c); }));
       } else if (slot === 'eyes') {
         const ew = P.eyeW || 2;
         P.eyes.forEach(([x, y]) => {
@@ -2345,8 +2373,8 @@
               else if (item.glasses !== 'sun' && edge) put(out.over, gx, gy, 'F');
             }
           }
-          // (Star glasses: a twinkle off each top corner.)
-          if (item.glasses === 'star') put(out.over, x - 2, y - 2, 'S'), put(out.over, x + ew + 1, y - 2, 'S');
+          // (Star glasses: a twinkle off a top corner of each, one corner then the other.)
+          if (item.glasses === 'star') put(out.over, f ? x + ew + 1 : x - 2, y - 2, 'S');
         });
         // (Across between its eyes, and an arm back from the one behind.)
         const [a, b] = P.eyes;
@@ -2365,7 +2393,7 @@
           if (item.tag) put(out.over, front, y + 1, item.tag);
           if (item.hang) item.hang.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, front - 1 + j, y + 1 + i, c); }));
           if (item.bow) item.bow.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, front - 1 + j, y + i, c); }));
-          if (item.tail) put(out.over, x0, y + 1, item.band[0]), put(out.over, x0, y + 2, item.band[1] || item.band[0]), put(out.over, x0 + 1, y + 1, item.band[1] || item.band[0]);
+          if (item.tail) for (const [dx, dy, c] of item.tails[f]) put(out.over, x0 + dx, y + dy, item.band[c] || item.band[0]);
         } else if (at.ring) {
           const [x, y0, y1] = at.ring;
           if (item.band) for (let y = y0; y <= y1; y++) put(out.band, x, y, item.band[(y - y0) % item.band.length]);
@@ -2378,11 +2406,14 @@
         const px = jumperOf(kind, item.reach);
         const body = px.filter((p) => p[2] === 'body');
         if (!body.length) continue;
-        // (Its middle, and its lowest row.)
+        // (Its middle, and its lowest row; and for a sparkle, its side, back from its middle and off
+        // its collar.)
+        const xs = body.map((p) => p[0]);
         const shape = {
-          mx: Math.round(body.reduce((n, p) => n + p[0], 0) / body.length), my: Math.round(body.reduce((n, p) => n + p[1], 0) / body.length),
-          low: Math.max(...body.map((p) => p[1])),
+          mx: Math.round(xs.reduce((n, x) => n + x, 0) / body.length), my: Math.round(body.reduce((n, p) => n + p[1], 0) / body.length),
+          low: Math.max(...body.map((p) => p[1])), f,
         };
+        shape.sx = clampTo(shape.mx - 2, Math.min(...xs) + 1, Math.max(Math.min(...xs) + 1, Math.max(...xs) - 1));
         for (const [x, y, part] of px) put(out.paint, x, y, item.paint(x, y, part, shape));
         if (item.hood) for (const [x, y] of JUMPER_AT[kind].hood) put(out.over, x, y, item.hood);
       }
@@ -2422,8 +2453,8 @@
   const PET_FRAMES = 13;
   const PET_MOVES = ['', '', '', '', '', 'lie', 'lie', 'lie', '', 'hop', 'eat', 'eat', '']; // (each frame, moved from standing)
   const framesMade = new Map();
-  function petFrames(kind, wear) {
-    const made = `${kind}|${wearKey(wear)}`;
+  function petFrames(kind, wear, phase = 0) {
+    const made = `${kind}|${wearKey(wear)}|${phase}`;
     if (framesMade.has(made)) return framesMade.get(made);
     const P = PET_PIXELS[kind];
     const W = 18;
@@ -2479,7 +2510,7 @@
       g.push(g.shift().fill('.'));
       return g;
     };
-    const worn = wearKey(wear) ? wearPixels(kind, wear) : null;
+    const worn = wearKey(wear) ? wearPixels(kind, wear, phase) : null;
     const frames = [
       copy(base), put(copy(base), P.swish), eyes(copy(base), 'shut'),
       put(copy(base), P.walk[0]), put(copy(base), P.walk[1]),
@@ -2513,14 +2544,35 @@
   // A pet's frames side by side, in its coat's colours (and what it's wearing): a picture for its
   // background.
   const sheets = new Map();
+  // (Something it's wearing moves: what's the same however it's drawn is drawn once, and what isn't,
+  // each way it's drawn in turn (each lot shown for its phases, one after another, round and round).
+  // Not for anyone who asks for less motion: just the first.)
+  const calmWear = () => Boolean(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
   function petSheet(kind, coat, wear) {
-    const key = `${kind}:${coat}:${wearKey(wear)}`;
+    const moves = wearMoves(kind, wear) && !calmWear();
+    const key = `${kind}:${coat}:${wearKey(wear)}${moves ? ':moving' : ''}`;
     if (!sheets.has(key)) {
       const coats = PETS[kind].coats;
       const colors = { ...PET_INK, ...(coats[coat] || Object.values(coats)[0]), ...(wearKey(wear) ? wearPixels(kind, wear).colors : {}) };
       const frames = petFrames(kind, wear);
       const fw = frames[0][0].length;
-      const rects = frames.map((f, i) => rectsOf(f, colors, i * fw)).join('');
+      let rects;
+      if (!moves) {
+        rects = frames.map((f, i) => rectsOf(f, colors, i * fw)).join('');
+      } else {
+        const sets = Array.from({ length: WEAR_PHASES }, (_, k) => petFrames(kind, wear, k));
+        const same = frames.map((f, i) => f.map((row, y) => [...row].map((c, x) => (sets.every((s) => s[i][y][x] === c) ? c : '.')).join('')));
+        const shown = new Map(); // (each way it's drawn: the phases it's in)
+        sets.forEach((s, k) => {
+          const own = s.map((f, i) => rectsOf(f.map((row, y) => [...row].map((c, x) => (same[i][y][x] === '.' ? c : '.')).join('')), colors, i * fw)).join('');
+          if (!shown.has(own)) shown.set(own, []);
+          shown.get(own).push(k);
+        });
+        rects = same.map((f, i) => rectsOf(f, colors, i * fw)).join('') + [...shown].map(([own, ks]) => {
+          const values = Array.from({ length: WEAR_PHASES }, (_, k) => (ks.includes(k) ? 'visible' : 'hidden')).join(';');
+          return `<g visibility="hidden"><animate attributeName="visibility" values="${values}" dur="${WEAR_PHASES * WEAR_STEP}ms" calcMode="discrete" repeatCount="indefinite"/>${own}</g>`;
+        }).join('');
+      }
       sheets.set(key, `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fw * frames.length} ${frames[0].length}" shape-rendering="crispEdges">${rects}</svg>`)}")`);
     }
     return sheets.get(key);
