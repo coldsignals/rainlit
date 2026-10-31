@@ -3359,6 +3359,7 @@ button.person.open { background: var(--dusk-hi); }
 .feedback-reply strong { display: block; color: var(--mist); font-size: 12px; }
 .feedback-actions { display: flex; flex-wrap: wrap; gap: 2px 14px; }
 .feedback-actions .text-btn { padding: 2px 0; font-size: 13px; }
+.feedback-actions .text-btn:disabled { color: var(--mist); opacity: 0.7; cursor: default; } /* (a bug report thanked with the Bug Finder badge already) */
 .feedback-reply-form { display: grid; gap: 8px; }
 .feedback-reply-form[hidden] { display: none; }
 .feedback-reply-form textarea {

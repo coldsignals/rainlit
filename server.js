@@ -451,6 +451,40 @@ api.delete('/admin/feedback/:id', needAdmin, (req, res) => {
   if (!feedback.remove(req.params.id)) return fail(res, 404, "That feedback isn't there any more.");
   res.json({ ok: true });
 });
+// (A bug report: whoever sent it gets the Bug Finder badge for it, or one more bug on theirs.)
+api.post('/admin/feedback/:id/credit', needAdmin, feedbackRoute((req) => {
+  const count = giveBadge(feedback.credit(req.params.id), 'bugs');
+  return { count };
+}));
+
+// Badges the admin gives (lib/badges.js GIVEN): Bug Finder, for a bug someone found (again for each
+// one after), or one taken back. Their own devices hear (with a thank-you, for one given), and
+// everyone who sees their profile.
+function badgeChanged(userId) {
+  const u = people.userById(userId);
+  if (!u) return;
+  realtime.sendToUser(userId, { type: 'me', user: people.selfUser(u) });
+  realtime.announceProfile(u);
+}
+function giveBadge(userId, badge) {
+  const count = badges.give(userId, badge);
+  badgeChanged(userId);
+  realtime.sendToUser(userId, { type: 'badge-new', badge, count });
+  return count;
+}
+api.post('/admin/users/:id/badges', needAdmin, (req, res) => {
+  const badge = String((req.body || {}).badge || '');
+  if (!badges.GIVEN.includes(badge)) return fail(res, 400, "That isn't one of the badges that's given.");
+  if (!people.userById(req.params.id)) return fail(res, 404, "That account isn't there any more.");
+  res.json({ count: giveBadge(req.params.id, badge) });
+});
+api.delete('/admin/users/:id/badges/:badge', needAdmin, (req, res) => {
+  if (!badges.GIVEN.includes(req.params.badge)) return fail(res, 400, "That isn't one of the badges that's given.");
+  const count = badges.takeBack(req.params.id, req.params.badge);
+  if (count === null) return fail(res, 404, "They don't have that badge.");
+  badgeChanged(req.params.id);
+  res.json({ count });
+});
 
 // An account made without an invite confirms its email before it can reach out to anyone.
 function needConfirmed(req, res, next) {

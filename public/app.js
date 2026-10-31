@@ -1869,6 +1869,12 @@ function handleServerMessage(msg) {
       return onSpaceRemoved(msg.space, msg.why);
     case 'me':
       return setMe(msg.user);
+    case 'badge-new':
+      // (The admin gave you a badge: Bug Finder, for a bug you found, or another on it.)
+      if (msg.badge === 'bugs') {
+        toast(msg.count > 1 ? `Another bug found: that's ${msg.count} on your Bug Finder badge. Thank you!` : "You've the Bug Finder badge now, on your profile, for finding a bug in Rainlit. Thank you!", 8000);
+      }
+      return;
     case 'ring':
       return startRinging(msg.from);
     case 'ring-stop':
@@ -15228,11 +15234,13 @@ function nameActivityGame(li, p) {
 // ---------------- Badges ----------------
 
 // The little marks on people's profiles, in the order they're shown. Their pictures are in
-// /badges: a glowing leaf for everyone who joined during the alpha, and a raindrop that gathers
-// light the longer someone supports Rainlit (lib/supporters.js). If they stop, it dims, and
-// keeps its level.
+// /badges: a glowing leaf for everyone who joined during the alpha, a firefly for someone who found
+// a bug in Rainlit and told us (the admin gives it, and again for each one after: lib/badges.js),
+// and a raindrop that gathers light the longer someone supports Rainlit (lib/supporters.js). If
+// they stop, it dims, and keeps its level.
 const BADGES = {
   alpha: { name: 'First Leaf', about: 'Here since the Rainlit alpha', when: 'Joined' },
+  bugs: { name: 'Bug Finder', about: 'Found a bug in Rainlit, and told us about it', when: 'Found' },
   supporter: { name: 'Glow', about: 'Supports Rainlit, with Glow', when: 'Since' },
 };
 const SUPPORT_LEVELS = { drizzle: 'Drizzle', shower: 'Shower', downpour: 'Downpour', storm: 'Storm', monsoon: 'Monsoon', lamplight: 'Lamplight' };
@@ -15247,6 +15255,7 @@ function monthsText(months) {
 
 // What a badge says, and its picture.
 function badgeInfo(b) {
+  if (b.id === 'bugs' && b.count > 1) return { ...BADGES.bugs, about: `Found ${b.count} bugs in Rainlit, and told us about them`, when: 'First found', src: '/badges/bugs.svg' };
   if (b.id !== 'supporter') return { ...BADGES[b.id], src: `/badges/${b.id}.svg` };
   const level = SUPPORT_LEVELS[b.level] ? b.level : 'drizzle';
   return {
@@ -17313,8 +17322,15 @@ async function renderFeedbackAdmin() {
     tools.append(
       button(f.reply ? 'Change reply' : 'Reply', () => { form.hidden = !form.hidden; if (!form.hidden) input.focus(); }),
       button(f.done ? 'Not done' : 'Done', () => act('POST', `/admin/feedback/${f.id}/done`, { done: !f.done })),
-      del,
     );
+    // (A bug report: whoever sent it gets the Bug Finder badge for it, once.)
+    if (f.kind === 'bug') {
+      const thank = button(f.credited ? 'Bug Finder given' : 'Bug found', () => act('POST', `/admin/feedback/${f.id}/credit`));
+      thank.title = f.credited ? 'They have the Bug Finder badge for this one' : `Give ${f.user.displayName} the Bug Finder badge for this (or one more bug on theirs)`;
+      thank.disabled = f.credited;
+      tools.append(thank);
+    }
+    tools.append(del);
     li.append(tools, form);
     return li;
   }));
@@ -17734,10 +17750,27 @@ async function renderAdmin() {
       tag.textContent = `Glow · ${SUPPORT_LEVELS[sup.level] || 'Drizzle'}${sup.plan === 'gift' ? ` (a gift, until ${shortDate(sup.until)})` : ''}`;
       line.append(tag);
     }
+    // (...and how many bugs they've found, if any: click to take one back.)
+    const bugs = (u.badges || []).find((b) => b.id === 'bugs');
+    if (bugs) {
+      const tag = document.createElement('button');
+      tag.type = 'button';
+      tag.className = 'text-btn user-room';
+      tag.textContent = `Bug Finder${bugs.count > 1 ? ` · ${bugs.count} bugs` : ''}`;
+      tag.title = 'Take one back (given by mistake)';
+      tag.addEventListener('click', () => takeBugBadge(u, bugs.count || 1));
+      line.append(tag);
+    }
     const words = document.createElement('span');
     words.className = 'user-words';
     words.append(who, line);
-    li.append(makeFace(u, null), words, reset);
+    const found = document.createElement('button');
+    found.type = 'button';
+    found.className = 'text-btn';
+    found.textContent = 'Bug found';
+    found.title = bugs ? 'Another bug they found: one more on their Bug Finder badge' : 'Give them the Bug Finder badge, for a bug they found';
+    found.addEventListener('click', () => giveBugBadge(u));
+    li.append(makeFace(u, null), words, reset, found);
     // (Some months of supporting, as a thank-you; or ending one. Not for someone paying already.)
     if (!sup || sup.plan === 'gift') {
       const gift = document.createElement('button');
@@ -17955,6 +17988,26 @@ function askGift(li, u) {
   box.append(months, label, yes, no);
   li.after(box);
   months.focus();
+}
+
+// The Bug Finder badge, for a bug someone found (or one more on it); or one taken back.
+async function giveBugBadge(u) {
+  try {
+    const { count } = await api('POST', `/admin/users/${u.id}/badges`, { badge: 'bugs' });
+    toast(count > 1 ? `@${u.username}'s Bug Finder badge says ${count} bugs now.` : `@${u.username} has the Bug Finder badge now.`);
+    renderAdmin();
+  } catch (err) {
+    toast(err.message);
+  }
+}
+async function takeBugBadge(u, count) {
+  if (!confirm(count > 1 ? `Take one bug off @${u.username}'s Bug Finder badge? It'll say ${count - 1}.` : `Take @${u.username}'s Bug Finder badge back?`)) return;
+  try {
+    await api('DELETE', `/admin/users/${u.id}/badges/bugs`);
+    renderAdmin();
+  } catch (err) {
+    toast(err.message);
+  }
 }
 
 async function endGift(u) {
