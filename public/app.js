@@ -144,7 +144,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-input', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -269,12 +269,21 @@ const S = {
   wakeLock: null,
 
   devices: { mic: store.get('mic'), cam: store.get('cam'), speaker: store.get('speaker') },
-  // The browser's own mic clean-up. All on unless you turn them off in settings.
+  // The browser's own mic clean-up: echo cancellation and its own volume on unless you turn them off
+  // in settings. Its own noise suppression only stands in for Rainlit's (syncMicFx).
   micFx: {
-    noiseSuppression: store.get('noiseSuppression', 'on') !== 'off',
+    noiseSuppression: false,
     echoCancellation: store.get('echoCancellation', 'on') !== 'off',
     autoGainControl: store.get('autoGainControl', 'on') !== 'off',
   },
+  // Rainlit's own noise suppression (noise.js): Standard, Strong or Off, and how strongly (10 to
+  // 100). (Turned off before it was Rainlit's: off still.)
+  noise: {
+    mode: ['standard', 'strong', 'off'].includes(store.get('noise', '')) ? store.get('noise') : store.get('noiseSuppression', 'on') === 'off' ? 'off' : 'standard',
+    strength: Math.min(100, Math.max(10, Number(store.get('noiseStrength', '80')) || 80)),
+  },
+  noiseBroken: false, // (it couldn't run here: the browser's own stands in)
+  noiseStatus: '', // (Strong's download: '', 'fetching', 'ready', 'failed')
   volume: Number(store.get('volume', '100')) / 100,
   shareQuality: store.get('shareQuality', 'sharp'),
   quickReactions: ['👍', '❤️', '😄'], // your three most-used (from the server), shown first
@@ -561,20 +570,154 @@ function wantedMicLabel(devices, android = Boolean(ANDROID)) {
   return android ? (mics.find((d) => /wired headset/i.test(d.label)) || {}).label || '' : '';
 }
 
-async function getMicTrack(deviceId, android = Boolean(ANDROID)) {
+// (`plain`: as the browser opens it, not cleaned up by Rainlit's noise suppression: see cleanMic.)
+async function getMicTrack(deviceId, android = Boolean(ANDROID), plain = false) {
   const audio = { ...S.micFx };
   const bridge = await micBridge(deviceId, android);
   try {
     const s = await navigator.mediaDevices.getUserMedia({ audio: deviceId ? { ...audio, deviceId: { exact: deviceId } } : audio });
     const track = s.getAudioTracks()[0];
     if (android) trace('mic-open', { got: (track && track.label) || '?', beside: bridge ? 1 : 0 });
+    if (track && ownNoise() && !plain) return await cleanMic(track, deviceId, android);
     return track;
   } catch (err) {
-    if (deviceId && (err.name === 'NotFoundError' || err.name === 'OverconstrainedError')) return getMicTrack('', android);
+    if (deviceId && (err.name === 'NotFoundError' || err.name === 'OverconstrainedError')) return getMicTrack('', android, plain);
     throw err;
   } finally {
     closeBridge(bridge);
   }
+}
+
+// ----- Noise suppression, Rainlit's own (public/noise.js) -----
+// Standard (GTCRN) or Strong (DeepFilterNet 3), cleaning up what your mic hears before it goes
+// anywhere (a call, a voice channel, the mic test), the browser's own off. Where it can't run (no
+// AudioWorklet, say, or it failed to start), the browser's own stands in.
+let noiseModule = null;
+const loadNoise = () => (noiseModule ||= import('/noise.js').catch((err) => {
+  noiseModule = null;
+  throw err;
+}));
+const noiseRuns = () => typeof AudioWorkletNode === 'function' && typeof WebAssembly === 'object' && !S.noiseBroken;
+const ownNoise = () => S.noise.mode !== 'off' && noiseRuns();
+const noiseEngine = () => (S.noise.mode === 'strong' ? 'dfn3' : 'gtcrn');
+function syncMicFx() {
+  S.micFx.noiseSuppression = S.noise.mode !== 'off' && !noiseRuns();
+}
+syncMicFx();
+// It couldn't run: the browser's own from now on (this time the app's open).
+function noiseFailed(err) {
+  trace('noise-failed', { why: String((err && err.message) || err).slice(0, 80) });
+  S.noiseBroken = true;
+  syncMicFx();
+  if (el.settings && el.settings.open) renderNoise();
+}
+
+// Your mic (`raw`, just opened), cleaned up. Couldn't be: opened again with the browser's own (from
+// now on, if it can't run here at all; only this time, if it couldn't start just now: the browser
+// not letting it without a click first, say).
+async function cleanMic(raw, deviceId, android) {
+  try {
+    const N = await loadNoise();
+    const track = await N.cleanTrack(raw, { engine: noiseEngine(), strength: S.noise.strength / 100 });
+    // (Strong, not fetched yet: Standard till it is, then the mic's opened again with it.)
+    if (track.rainlitNoise !== noiseEngine()) prepareNoise();
+    return track;
+  } catch (err) {
+    if (err.name === 'NotRunning') trace('noise-later', {});
+    else noiseFailed(err);
+    raw.stop();
+    S.micFx.noiseSuppression = true;
+    try {
+      return await getMicTrack(deviceId, android, true);
+    } finally {
+      syncMicFx();
+    }
+  }
+}
+// The same for a mic a voice channel opens itself (Rainlit's own for Cloudflare: voice-cf.js), which
+// is its own to open again: as it was, if it can't be.
+async function cleanVoiceMic(raw) {
+  if (!ownNoise()) return raw;
+  try {
+    const N = await loadNoise();
+    const track = await N.cleanTrack(raw, { engine: noiseEngine(), strength: S.noise.strength / 100 });
+    if (track.rainlitNoise !== noiseEngine()) prepareNoise();
+    return track;
+  } catch (err) {
+    noiseFailed(err);
+    return raw;
+  }
+}
+// A voice channel's mic that LiveKit opens (and keeps) itself: cleaned up by a processor on its
+// track, or not (Off, or the browser's own standing in). Only what's changed.
+async function noiseForVoice(room) {
+  if (!window.LivekitClient || VK !== window.LivekitClient || !room) return;
+  const pub = room.localParticipant.getTrackPublication(VK.Track.Source.Microphone);
+  const track = pub && pub.track;
+  if (!track) return;
+  let want = '';
+  try {
+    const N = ownNoise() ? await loadNoise() : null;
+    const engine = N && (N.isReady(noiseEngine()) ? noiseEngine() : 'gtcrn');
+    want = N ? `${engine}:${S.noise.strength}` : '';
+    if ((track.rainlitNoise || '') === want) return;
+    if (!N) {
+      await track.stopProcessor();
+    } else {
+      if (engine !== noiseEngine()) prepareNoise();
+      track.setAudioContext(await N.contextForLivekit());
+      await track.setProcessor(N.livekitProcessor({ engine, strength: S.noise.strength / 100 }));
+    }
+    track.rainlitNoise = want;
+  } catch (err) {
+    noiseFailed(err);
+  }
+}
+// Strong's 12 MB, fetched (when it's picked, or the app starts with it), so a call needn't wait; then
+// any mic that was having Standard meanwhile is opened again with it.
+function prepareNoise() {
+  if (S.noise.mode !== 'strong' || !noiseRuns() || S.noiseStatus === 'fetching' || S.noiseStatus === 'ready') return;
+  S.noiseStatus = 'fetching';
+  if (el.settings && el.settings.open) renderNoise();
+  loadNoise().then((N) => N.prepare('dfn3')).then(() => {
+    S.noiseStatus = 'ready';
+    if (S.local.mic && S.local.mic.rainlitNoise && S.local.mic.rainlitNoise !== noiseEngine()) restartMic();
+    if (S.voice && S.voice.room) noiseForVoice(S.voice.room);
+  }, (err) => {
+    S.noiseStatus = 'failed';
+    trace('noise-fetch', { why: String((err && err.message) || err).slice(0, 80) });
+  }).finally(() => { if (el.settings && el.settings.open) renderNoise(); });
+}
+if (S.noise.mode === 'strong') setTimeout(prepareNoise, 4000);
+
+const NOISE_HINTS = {
+  standard: 'Takes out fans, hum, keys and clicks, and leaves your voice.',
+  strong: 'A bigger model, cleaner still for loud places, with a little more delay. It downloads about 12 MB the first time.',
+  off: 'Nothing taken out: your mic just as it hears you.',
+};
+function renderNoise() {
+  el.noiseSelect.value = S.noise.mode;
+  el.noiseStrength.value = String(S.noise.strength);
+  el.noiseStrengthValue.textContent = `${S.noise.strength}%`;
+  el.noiseStrengthField.hidden = S.noise.mode === 'off' || !noiseRuns();
+  let hint = NOISE_HINTS[S.noise.mode];
+  if (S.noise.mode !== 'off' && !noiseRuns()) hint = "Rainlit's own can't run here, so the browser's noise suppression is on instead.";
+  else if (S.noise.mode === 'strong' && S.noiseStatus === 'fetching') hint += ' Downloading it now…';
+  else if (S.noise.mode === 'strong' && S.noiseStatus === 'failed') hint += " It couldn't download just now, so Standard's on meanwhile.";
+  el.noiseHint.textContent = hint;
+}
+function onNoiseChange() {
+  stopMicTest();
+  S.noise = { mode: el.noiseSelect.value, strength: Math.min(100, Math.max(10, Number(el.noiseStrength.value) || 80)) };
+  store.set('noise', S.noise.mode);
+  store.set('noiseStrength', String(S.noise.strength));
+  if (S.noiseStatus === 'failed') S.noiseStatus = '';
+  syncMicFx();
+  prepareNoise();
+  renderNoise();
+  restartMic();
+  voiceDevicesChanged();
+  renderVolumeCap();
 }
 
 // ----- Android: a picked microphone, opened beside another -----
@@ -9248,7 +9391,7 @@ async function fillDeviceLists() {
   el.pttDetails.hidden = !S.ptt;
   el.pttKeyBtn.textContent = S.pttKeyName;
   renderPttHint();
-  el.noiseInput.checked = S.micFx.noiseSuppression;
+  renderNoise();
   el.echoInput.checked = S.micFx.echoCancellation;
   el.gainInput.checked = S.micFx.autoGainControl;
   el.activityPick.hidden = true;
@@ -9427,11 +9570,13 @@ function onMicChange() {
 function onMicFxChange() {
   stopMicTest();
   S.micFx = {
-    noiseSuppression: el.noiseInput.checked,
+    noiseSuppression: false,
     echoCancellation: el.echoInput.checked,
     autoGainControl: el.gainInput.checked,
   };
-  for (const [k, on] of Object.entries(S.micFx)) store.set(k, on ? 'on' : 'off');
+  syncMicFx();
+  store.set('echoCancellation', S.micFx.echoCancellation ? 'on' : 'off');
+  store.set('autoGainControl', S.micFx.autoGainControl ? 'on' : 'off');
   restartMic();
   voiceDevicesChanged();
   renderVolumeCap();
@@ -12802,7 +12947,7 @@ async function joinVoice(channelId) {
     };
     let room;
     if (cloudflare) {
-      room = new VK.Room(audio);
+      room = new VK.Room({ ...audio, cleanMic: cleanVoiceMic });
       v.room = room;
       v.speak = pass.speak;
       wireVoiceRoom(room, v);
@@ -12825,6 +12970,7 @@ async function joinVoice(channelId) {
       const bridge = await micBridge(mic); // (Android: see micBridge)
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
+        await noiseForVoice(room);
         applyVoicePtt();
       } catch (err) {
         v.muted = true;
@@ -13156,6 +13302,7 @@ async function onVoiceControl(act) {
       store.set('voiceMuted', v.muted ? 'on' : 'off');
       playControlSound(v.muted ? 'mute' : 'unmute');
       await me.setMicrophoneEnabled(!v.muted);
+      if (!v.muted) await noiseForVoice(v.room);
       applyVoicePtt();
     } else if (act === 'deafen') {
       v.deafened = !v.deafened;
@@ -13227,6 +13374,7 @@ function voiceDevicesChanged() {
         const bridge = await micBridge(mic); // (Android: see micBridge)
         try {
           await v.room.localParticipant.setMicrophoneEnabled(true, { ...S.micFx, ...(mic ? { deviceId: mic } : {}) });
+          await noiseForVoice(v.room);
         } finally {
           closeBridge(bridge);
         }
@@ -16894,7 +17042,7 @@ async function feedbackDiagnostics() {
     call: S.inCall ? `a call, ${S.conn ? S.conn.pc.connectionState : 'starting'}` : S.voice ? `a voice channel, ${S.voice.state}` : 'none',
     devices: `${count('audioinput')} mics, ${count('videoinput')} cameras, ${count('audiooutput')} speakers`,
     settings: {
-      pushToTalk: S.ptt, noiseSuppression: S.micFx.noiseSuppression, echoCancellation: S.micFx.echoCancellation,
+      pushToTalk: S.ptt, noiseSuppression: `${S.noise.mode}${S.noise.mode !== 'off' ? ` ${S.noise.strength}%` : ''}${S.micFx.noiseSuppression ? " (the browser's)" : ''}`, echoCancellation: S.micFx.echoCancellation,
       autoMicVolume: S.micFx.autoGainControl, screenShare: S.shareQuality, weather: S.rain, callDebugLog: S.trace,
     },
     errors: recentErrors.map((e) => `${new Date(e.at).toISOString().slice(0, 19)}Z ${e.what}${e.where ? ` (${e.where})` : ''}${e.n > 1 ? ` x${e.n}` : ''}`),
@@ -19255,7 +19403,10 @@ async function init() {
     });
   }
   el.micSelect.addEventListener('change', onMicChange);
-  for (const input of [el.noiseInput, el.echoInput, el.gainInput]) input.addEventListener('change', onMicFxChange);
+  for (const input of [el.echoInput, el.gainInput]) input.addEventListener('change', onMicFxChange);
+  el.noiseSelect.addEventListener('change', onNoiseChange);
+  el.noiseStrength.addEventListener('input', () => { el.noiseStrengthValue.textContent = `${el.noiseStrength.value}%`; });
+  el.noiseStrength.addEventListener('change', onNoiseChange);
   el.camSelect.addEventListener('change', onCamChange);
   el.camPreviewInput.addEventListener('change', () => store.set('camPreview', el.camPreviewInput.checked ? 'on' : 'off'));
   el.camPreviewSelect.addEventListener('change', () => {

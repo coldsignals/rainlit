@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
+const zlib = require('zlib');
 const { pipeline, Transform } = require('stream');
 const express = require('express');
 const auth = require('./lib/auth');
@@ -128,9 +129,10 @@ const LIVEKIT_SRC = (() => {
 })();
 
 // The page may only load its own scripts, and may only be shown on this site (not framed by another).
+// (WebAssembly of its own may be run, as noise suppression is: public/noise.js. Not eval.)
 const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'", // (Rainlit's typeface is served from here: public/fonts)
   `img-src 'self' blob: data: https://*.klipy.com${blobs.origin ? ` ${blobs.origin}` : ''}`, // (R2: files, if they're kept there)
@@ -3177,6 +3179,19 @@ app.get('/files/:id/:name', async (req, res) => {
 
 // LiveKit's browser library (for voice channels), straight from its package.
 app.use('/vendor/livekit', express.static(path.join(__dirname, 'node_modules', 'livekit-client', 'dist'), { index: false, maxAge: '1d' }));
+
+// DeepFilterNet 3's engine (public/noise.js: the strong noise suppression), kept gzipped (a quarter
+// of the size) and sent that way to any browser that takes it, which is all of them (as it is to
+// any that doesn't).
+const DFN3_WASM = path.join(__dirname, 'public', 'vendor', 'noise', 'dfn3', 'df_bg.wasm.gz');
+app.get('/vendor/noise/dfn3/df_bg.wasm', (req, res) => {
+  res.set({ 'Content-Type': 'application/wasm', 'Cache-Control': 'public, max-age=86400', Vary: 'Accept-Encoding' });
+  if (/gzip/.test(req.get('accept-encoding') || '')) {
+    res.set('Content-Encoding', 'gzip');
+    return res.sendFile(DFN3_WASM);
+  }
+  fs.createReadStream(DFN3_WASM).pipe(zlib.createGunzip()).pipe(res);
+});
 
 app.use(
   express.static(path.join(__dirname, 'public'), {

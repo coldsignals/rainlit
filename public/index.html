@@ -1631,11 +1631,22 @@
               <span>Microphone</span>
               <select id="mic-select"></select>
             </label>
+            <!-- Rainlit's own noise suppression (public/noise.js; app.js renderNoise): Standard, Strong
+                 or Off, and how strongly. -->
+            <label class="field">
+              <span>Noise suppression</span>
+              <select id="noise-select">
+                <option value="standard">Standard</option>
+                <option value="strong">Strong</option>
+                <option value="off">Off</option>
+              </select>
+              <small id="noise-hint" class="hint" aria-live="polite"></small>
+            </label>
+            <label class="field" id="noise-strength-field">
+              <span>Strength <output id="noise-strength-value" class="field-value">80%</output></span>
+              <input id="noise-strength" type="range" min="10" max="100" step="5" value="80" />
+            </label>
             <div class="toggle-group">
-              <label class="toggle">
-                <input id="noise-input" type="checkbox" />
-                <span>Noise suppression</span>
-              </label>
               <label class="toggle">
                 <input id="echo-input" type="checkbox" />
                 <span>Echo cancellation</span>

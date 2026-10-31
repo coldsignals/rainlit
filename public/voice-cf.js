@@ -477,7 +477,8 @@
         return;
       }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { ...(this.options.audioCaptureDefaults || {}), ...(options || {}) } });
-      const mst = stream.getAudioTracks()[0];
+      // (Cleaned up first, if the app's asked: its noise suppression, app.js cleanVoiceMic.)
+      const mst = this.options.cleanMic ? await this.options.cleanMic(stream.getAudioTracks()[0]) : stream.getAudioTracks()[0];
       if (pub && this.local.get('mic')) {
         await this.local.get('mic').sender.replaceTrack(mst);
         pub.track.mediaStreamTrack.stop();
