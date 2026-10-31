@@ -15240,7 +15240,7 @@ function nameActivityGame(li, p) {
 // they stop, it dims, and keeps its level.
 const BADGES = {
   alpha: { name: 'First Leaf', about: 'Here since the Rainlit alpha', when: 'Joined' },
-  bugs: { name: 'Bug Finder', about: 'Found a bug in Rainlit, and told us about it', when: 'Found' },
+  bugs: { name: 'Bug Finder', about: 'Found and reported a bug in Rainlit', when: 'Found' },
   supporter: { name: 'Glow', about: 'Supports Rainlit, with Glow', when: 'Since' },
 };
 const SUPPORT_LEVELS = { drizzle: 'Drizzle', shower: 'Shower', downpour: 'Downpour', storm: 'Storm', monsoon: 'Monsoon', lamplight: 'Lamplight' };
@@ -15255,7 +15255,7 @@ function monthsText(months) {
 
 // What a badge says, and its picture.
 function badgeInfo(b) {
-  if (b.id === 'bugs' && b.count > 1) return { ...BADGES.bugs, about: `Found ${b.count} bugs in Rainlit, and told us about them`, when: 'First found', src: '/badges/bugs.svg' };
+  if (b.id === 'bugs' && b.count > 1) return { ...BADGES.bugs, about: `Found and reported ${b.count} bugs in Rainlit`, when: 'First found', src: '/badges/bugs.svg' };
   if (b.id !== 'supporter') return { ...BADGES[b.id], src: `/badges/${b.id}.svg` };
   const level = SUPPORT_LEVELS[b.level] ? b.level : 'drizzle';
   return {
