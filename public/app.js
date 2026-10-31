@@ -283,6 +283,7 @@ const S = {
     strength: Math.min(100, Math.max(10, Number(store.get('noiseStrength', '80')) || 80)),
   },
   noiseBroken: false, // (it couldn't run here: the browser's own stands in)
+  micTesting: false, // (testing your mic in Settings during a call: muted in it meanwhile)
   noiseStatus: '', // (Strong's download: '', 'fetching', 'ready', 'failed')
   volume: Number(store.get('volume', '100')) / 100,
   shareQuality: store.get('shareQuality', 'sharp'),
@@ -1193,6 +1194,8 @@ async function onShareQualityChange() {
 }
 
 async function toggleMic() {
+  // (Testing your mic in Settings, muted meanwhile: the mic button ends that, back as you were.)
+  if (S.micTesting) return stopMicTest();
   // (Deafened, the mic button unmutes you, and undeafens you too: like Discord.)
   if (S.deafened) {
     S.deafened = false;
@@ -1217,9 +1220,10 @@ async function toggleMic() {
   sendState();
 }
 
-// Whether your friend can hear you right now.
+// Whether your friend can hear you right now. (Not while you test your mic in Settings: see
+// syncMicTestMute.)
 function micLive() {
-  return Boolean(S.local.mic && S.micOn && (!S.ptt || S.pttHeld) && !S.onPhone && !S.deafened);
+  return Boolean(S.local.mic && S.micOn && (!S.ptt || S.pttHeld) && !S.onPhone && !S.deafened && !S.micTesting);
 }
 
 // Deafen: you hear nothing from the call (your friend, or their screen's sound), and your mic goes
@@ -1267,7 +1271,7 @@ function syncDesktopPtt() {
 function applyVoicePtt() {
   const v = S.voice;
   const mic = v && v.room && VK && v.room.localParticipant.getTrackPublication(VK.Track.Source.Microphone);
-  if (mic && mic.track) mic.track.mediaStreamTrack.enabled = !v.muted && (!S.ptt || S.pttHeld);
+  if (mic && mic.track) mic.track.mediaStreamTrack.enabled = !v.muted && (!S.ptt || S.pttHeld) && !S.micTesting;
 }
 
 async function renderPttHint() {
@@ -1703,7 +1707,7 @@ function wsSend(msg) {
 
 function myState() {
   return {
-    mic: Boolean(S.micOn && S.local.mic && !S.onPhone && !S.deafened), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone), deaf: S.deafened,
+    mic: Boolean(S.micOn && S.local.mic && !S.onPhone && !S.deafened && !S.micTesting), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone), deaf: S.deafened,
     // (This app shows a camera and a screen at once; it sends its screen on this stream, and is now.)
     both: true, share: S.shareStream.id, apart: Boolean(S.local.screen && S.conn && S.conn.routedBoth),
   };
@@ -3339,7 +3343,7 @@ function fitCallGrid() {
 
 function renderControls() {
   const micLabel = el.micBtn.querySelector('.ctl-label');
-  const micReady = Boolean(S.micOn && S.local.mic && !S.deafened);
+  const micReady = Boolean(S.micOn && S.local.mic && !S.deafened && !S.micTesting);
   el.micBtn.classList.toggle('ptt', S.ptt);
   el.micBtn.classList.toggle('off', !micReady);
   setIcon(el.micBtn, micReady ? 'i-mic' : 'i-mic-off');
@@ -3354,6 +3358,10 @@ function renderControls() {
     el.micBtn.setAttribute('aria-pressed', String(micReady));
     el.micBtn.title = 'Ctrl+Shift+M';
     micLabel.textContent = micReady ? 'Mute' : 'Unmute';
+  }
+  if (S.micTesting) {
+    el.micBtn.title = 'Muted while you test your mic in Settings: click to stop the test';
+    micLabel.textContent = 'Testing';
   }
 
   el.deafenBtn.classList.toggle('off', S.deafened);
@@ -9416,20 +9424,38 @@ const pickedLabel = (select) => (select.selectedOptions[0] && select.selectedOpt
 // Your microphone as it's picked, with the clean-up that's on, as a call has it: a bar shows it
 // hearing you while it records a few seconds, then what it heard plays back, through the speaker
 // that's picked, so you hear yourself as others will. (Played back after, not as you talk: live,
-// through speakers or a phone's, it would ring.) Not during a call: that has the mic already.
+// through speakers or a phone's, it would ring.) During a call or in a voice channel, your mic's
+// muted there till it's done (played back too: your speakers mustn't reach them), then it's back as
+// it was. A call that starts while it's going stops it.
 
 const MIC_TEST_MS = 5000;
 const MIC_TEST_HINT = "Say something for a few seconds: the bar shows your mic hearing you, then you'll hear yourself as others will.";
+const MIC_TEST_CALL_HINT = "Say something for a few seconds, then you'll hear yourself as others will. You're muted in the call meanwhile, and back as you were after.";
 let micTest = null; // { state: starting | listening | playing, track, meter, recorder, chunks, audio, loudest }
 
+// (During a call or in a voice channel: its own mic, as it's sent, copied: the copy goes on while
+// the call's is muted, and no other mic is opened (on Android, closing one again can switch the
+// call to the phone's speaker). Not open yet, a voice channel joined muted, say: none.)
+function callMicCopy() {
+  let mic = S.inCall ? S.local.mic : null;
+  if (!mic && S.voice && S.voice.room && VK) {
+    const pub = S.voice.room.localParticipant.getTrackPublication(VK.Track.Source.Microphone);
+    mic = pub && pub.track && pub.track.mediaStreamTrack;
+  }
+  if (!mic || mic.readyState !== 'live') return null;
+  const copy = mic.clone();
+  copy.enabled = true;
+  return copy;
+}
+
 async function startMicTest() {
-  if (micTest || S.inCall || S.voice) return;
+  if (micTest) return;
   unlockSounds();
-  const t = (micTest = { state: 'starting', loudest: 0, chunks: [] });
+  const t = (micTest = { state: 'starting', loudest: 0, chunks: [], muting: Boolean(S.inCall || S.voice) });
   renderMicTest();
   let track;
   try {
-    track = await getMicTrack(await pickMic());
+    track = (t.muting && callMicCopy()) || (await getMicTrack(await pickMic()));
   } catch (err) {
     if (micTest === t) micTest = null;
     return renderMicTest(mediaErrorText(err, 'Microphone'), 'bad');
@@ -9450,7 +9476,7 @@ async function startMicTest() {
   t.started = Date.now();
   t.timer = setTimeout(() => finishMicTest(t), MIC_TEST_MS);
   t.tick = setInterval(() => {
-    if (S.inCall || S.voice) return stopMicTest(); // (a call's begun: it has the mic now)
+    if (!t.muting && (S.inCall || S.voice)) return stopMicTest(); // (a call's begun: it has the mic now)
     const level = t.meter ? t.meter.read() : 0;
     t.loudest = Math.max(t.loudest, level);
     drawMicMeter(level);
@@ -9538,10 +9564,25 @@ function drawMicMeter(level) {
   el.micMeter.setAttribute('aria-valuenow', String(Math.round(pct)));
 }
 
+// (Testing during a call or in a voice channel: muted there while it lasts, as you were after; the
+// other end sees you muted meanwhile.)
+function syncMicTestMute() {
+  const testing = Boolean(micTest && micTest.muting);
+  if (Boolean(S.micTesting) === testing) return;
+  S.micTesting = testing;
+  applyMic();
+  applyVoicePtt();
+  if (S.inCall) sendState();
+  if (S.voice) sendVoiceState(S.voice);
+  renderControls();
+  if (S.voice) renderVoice();
+}
+
 function renderMicTest(note = null, tone = '') {
   const t = micTest;
-  const busy = !t && Boolean(S.inCall || S.voice);
-  el.micTestBtn.disabled = busy || Boolean(t && t.state === 'starting');
+  syncMicTestMute();
+  const inCall = Boolean(S.inCall || S.voice);
+  el.micTestBtn.disabled = Boolean(t && t.state === 'starting');
   el.micTestBtn.textContent = t ? 'Stop' : note ? 'Test again' : 'Test your mic';
   el.micTest.classList.toggle('testing', Boolean(t));
   el.micTest.classList.toggle('playing', Boolean(t && t.state === 'playing'));
@@ -9552,10 +9593,10 @@ function renderMicTest(note = null, tone = '') {
     return;
   }
   el.micTestHint.dataset.tone = '';
-  el.micTestHint.textContent = !t ? (busy ? "Not during a call: your mic's already on (the mic button glows as you talk)." : MIC_TEST_HINT)
+  el.micTestHint.textContent = !t ? (inCall ? MIC_TEST_CALL_HINT : MIC_TEST_HINT)
     : t.state === 'starting' ? 'Opening your mic…'
-    : t.state === 'listening' ? `Listening… say something (${Math.max(1, Math.ceil((MIC_TEST_MS - (Date.now() - t.started)) / 1000))})`
-    : 'Playing it back…';
+    : t.state === 'listening' ? `Listening… say something (${Math.max(1, Math.ceil((MIC_TEST_MS - (Date.now() - t.started)) / 1000))})${t.muting ? '. Muted in the call meanwhile.' : ''}`
+    : `Playing it back…${t.muting ? ' (still muted in the call)' : ''}`;
 }
 
 function onMicChange() {
@@ -12820,7 +12861,7 @@ function loadCfVoice() {
 // What everyone sees by your name in a voice channel's list: muted or deafened, camera on, sharing.
 function voiceStateOf(v) {
   const me = v.room && v.room.localParticipant;
-  return { muted: v.muted || !v.speak, deafened: v.deafened, video: Boolean(me && me.isCameraEnabled), screen: Boolean(me && me.isScreenShareEnabled) };
+  return { muted: v.muted || !v.speak || Boolean(S.micTesting), deafened: v.deafened, video: Boolean(me && me.isCameraEnabled), screen: Boolean(me && me.isScreenShareEnabled) };
 }
 
 // Told whenever it changes, however it changed: a share stopped from the browser's own "Stop
@@ -13297,6 +13338,7 @@ async function onVoiceControl(act) {
     if (!me || v.state !== 'connected') return;
     if (act === 'mute') {
       if (!v.speak) return toast("You can't talk in this channel.");
+      if (S.micTesting) return stopMicTest(); // (muted while you test your mic: back as you were)
       v.muted = !v.muted;
       if (!v.muted && v.deafened) v.deafened = false;
       store.set('voiceMuted', v.muted ? 'on' : 'off');
@@ -13398,7 +13440,7 @@ function renderVoice() {
     const me = v.room && v.room.localParticipant;
     for (const b of document.querySelectorAll('[data-voice]')) {
       const act = b.dataset.voice;
-      const on = act === 'mute' ? v.muted || !v.speak : act === 'deafen' ? v.deafened
+      const on = act === 'mute' ? v.muted || !v.speak || Boolean(S.micTesting) : act === 'deafen' ? v.deafened
         : act === 'camera' ? Boolean(me && me.isCameraEnabled) : act === 'screen' ? Boolean(me && me.isScreenShareEnabled) : false;
       if (act !== 'sounds') { // (it opens the soundboard: see renderSoundButtons)
         b.classList.toggle('on', on);
@@ -13408,7 +13450,7 @@ function renderVoice() {
       if (icon && act === 'mute') icon.setAttribute('href', on ? '#i-mic-off' : '#i-mic');
       if (icon && act === 'deafen') icon.setAttribute('href', on ? '#i-headphones-off' : '#i-headphones');
       if (icon && act === 'camera') icon.setAttribute('href', on ? '#i-cam' : '#i-cam-off');
-      const label = { mute: on ? 'Unmute' : 'Mute', deafen: on ? 'Undeafen' : 'Deafen', camera: on ? 'Turn camera off' : 'Turn camera on', screen: on ? 'Stop sharing' : 'Share your screen', sounds: 'Soundboard', leave: 'Leave voice' }[act];
+      const label = { mute: S.micTesting ? 'Muted while you test your mic: click to stop the test' : on ? 'Unmute' : 'Mute', deafen: on ? 'Undeafen' : 'Deafen', camera: on ? 'Turn camera off' : 'Turn camera on', screen: on ? 'Stop sharing' : 'Share your screen', sounds: 'Soundboard', leave: 'Leave voice' }[act];
       if (label) {
         b.title = label;
         b.setAttribute('aria-label', label);
