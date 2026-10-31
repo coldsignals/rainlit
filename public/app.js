@@ -98,7 +98,11 @@ function lookingAway() {
 // With push set up, an Android phone in the background gets calls and messages as push
 // notes: tell the server when that's the case.
 function sendBackground() {
-  if (ANDROID) wsSend({ type: 'background', on: Boolean(appAsleep() && S.pushSent) });
+  if (!ANDROID) return;
+  dewTick(); // (dew counted up to now as it was, then as it is: see dewCollecting)
+  S.backgroundSent = Boolean(appAsleep() && S.pushSent);
+  dewTick();
+  wsSend({ type: 'background', on: S.backgroundSent });
 }
 const SPEAKING_LEVEL = 0.02;
 
@@ -1738,6 +1742,8 @@ function connectSocket() {
     const wasDown = Boolean(S.wsDownSince);
     trace('ws-open', { downS: wasDown ? Math.round((Date.now() - S.wsDownSince) / 1000) : undefined });
     S.wsDownSince = null;
+    S.backgroundSent = false; // (a new connection: not, till it's told)
+    dewTick(); // (collecting dew from now)
     if (S.idle) wsSend({ type: 'activity', idle: true });
     if (S.androidPaused) sendBackground();
     if (S.inCall) sendCallJoin();
@@ -1780,6 +1786,7 @@ function sendCallJoin() {
 
 function socketLost(ws) {
   if (S.ws !== ws) return;
+  dewTick(); // (dew collected up to now, and not after)
   ws.onclose = ws.onmessage = ws.onopen = null;
   try { ws.close(); } catch {}
   S.ws = null;
@@ -16601,12 +16608,20 @@ async function releasePet() {
 // a time; what collects it by itself is counted up as it comes, and checked with the server every so
 // often (it has the say). Now and then a rainbow drop rolls down the room's window: catch it. It's
 // all in your pet's box, for whoever wants it, and nowhere else.
+//
+// What's counted here is never more than the server will say there is (or the count would jump
+// back when it does): collecting only while it's collecting (connected: lib/dew.js), and pats only
+// as many as it counts.
 
-let dewPats = 0; // (pats not sent yet)
+let dewPats = 0; // (pats not sent yet: those that'll count)
+let dewFlying = 0; // (sent, not answered yet)
 let dewSending = null;
 let dewSendTimer = 0;
 let dewTicker = 0;
 let dewSyncAt = 0;
+let dewOnline = 0; // (how long it's been collecting since the server last said how much there is)
+let dewTickAt = 0;
+let dewWasOn = false; // (whether it was, then)
 let rainbowTimer = 0;
 let dewPictures = false;
 
@@ -16626,13 +16641,28 @@ function dewShort(n) {
   for (const [k, short] of [[1e15, 'Q'], [1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]) if (n >= k) return `${+(n / k).toFixed(1)}${short}`;
   return String(Math.ceil(n));
 }
-// How much there is right now: as the server last said, what's been collected since, and pats not
-// sent yet.
-const dewNow = () => (S.dew ? S.dew.dew + (S.dew.perSecond * (performance.now() - S.dewAt)) / 1000 + dewPats * S.dew.perPat : 0);
+// How much there is right now: as the server last said, what's been collected since, and pats it
+// hasn't counted yet.
+const dewNow = () => (S.dew ? S.dew.dew + (S.dew.perSecond * dewOnlineMs()) / 1000 + (dewPats + dewFlying) * S.dew.perPat : 0);
+
+// Whether the server's collecting for you now, as lib/realtime.js counts it: connected (and heard
+// from lately: it answers a ping every 10 seconds), and not in the background on a phone.
+const dewCollecting = () => wsOpen() && Date.now() - S.lastServerMsg < 12_000 && !S.backgroundSent;
+// (And for how long since it last said: counted up as the count ticks, and as the connection opens
+// and closes. Not much of a long gap between ticks, asleep or held back in the background: whatever
+// it collected then, it'll say.)
+const dewOnlineMs = () => dewOnline + (dewWasOn && dewCollecting() ? Math.min(2000, performance.now() - dewTickAt) : 0);
+function dewTick() {
+  const now = performance.now();
+  if (dewWasOn) dewOnline += Math.min(2000, now - dewTickAt);
+  dewWasOn = dewCollecting();
+  dewTickAt = now;
+}
 
 async function loadDew() {
   dewSyncAt = performance.now();
   try {
+    if (dewSending) await dewSending; // (pats on their way first, so it's clear which it's counted)
     const d = await api('GET', '/dew');
     S.dewShop = d.shop;
     setDew(d.dew);
@@ -16640,8 +16670,12 @@ async function loadDew() {
 }
 function setDew(state) {
   const was = S.dew;
+  if (was && state.at < was.at) return; // (an older answer, overtaken by a newer on the way)
   S.dew = state;
   S.dewAt = performance.now();
+  dewOnline = 0;
+  dewTickAt = S.dewAt;
+  dewWasOn = dewCollecting();
   planRainbow();
   renderDew();
   // (Decorate and Wear again: with what dew's things cost, once that's known, or one got.)
@@ -16655,7 +16689,10 @@ function setDew(state) {
 // closes.
 function startDew() {
   if (dewTicker) return;
+  dewTickAt = performance.now();
+  dewWasOn = dewCollecting();
   dewTicker = setInterval(() => {
+    dewTick();
     renderDewCount();
     if (performance.now() - dewSyncAt > 20_000) loadDew();
   }, 250);
@@ -16670,12 +16707,21 @@ function stopDew() {
 }
 
 // A pat (in its room: homepage.js onPat): counted now, sent in a moment. What it brought, to show.
+// (Patted faster than the server counts them, about 12 a second with a few seconds' worth saved
+// up, the rest bring nothing.)
 function patForDew() {
-  if (!S.dew || !S.pet || S.petTry) return '';
+  if (!S.dew || !S.pet || S.petTry || dewPatRoom() < 1) return '';
   dewPats++;
   if (!dewSendTimer) dewSendTimer = setTimeout(sendPats, 800);
   renderDewCount();
   return `+${dewWords(S.dew.perPat)}`;
+}
+// (How many more would count now: as many as the server said, and more as it'd let them in since
+// (never sooner), less those it hasn't had yet.)
+function dewPatRoom() {
+  const { patsASecond = 12, patsSaved = 36 } = S.dewShop || {};
+  const room = S.dew.patRoom === undefined ? patsSaved : Math.min(patsSaved, S.dew.patRoom + ((performance.now() - S.dewAt) / 1000) * patsASecond);
+  return room - dewPats - dewFlying;
 }
 async function sendPats() {
   clearTimeout(dewSendTimer);
@@ -16684,7 +16730,22 @@ async function sendPats() {
   const n = dewPats;
   if (!n) return;
   dewPats = 0;
-  dewSending = api('POST', '/dew/pats', { n }).then((d) => setDew(d.dew)).catch(() => {}).finally(() => { dewSending = null; });
+  dewFlying += n;
+  dewSending = api('POST', '/dew/pats', { n })
+    .then((d) => {
+      dewFlying -= n;
+      setDew(d.dew);
+    })
+    .catch((err) => {
+      dewFlying -= n;
+      // (Rainlit couldn't be reached: they're sent again in a bit.)
+      if (!err.status) {
+        dewPats += n;
+        if (!dewSendTimer) dewSendTimer = setTimeout(sendPats, 3000);
+      }
+      renderDewCount();
+    })
+    .finally(() => { dewSending = null; });
   await dewSending;
 }
 
@@ -16767,7 +16828,7 @@ function renderDew() {
 function dewReady(u) {
   const d = S.dew;
   if (u.of) return (Number(d.collectors[u.of]) || 0) >= u.owned;
-  if (u.pats !== undefined) return d.pats + dewPats >= u.pats;
+  if (u.pats !== undefined) return d.pats + dewPats + dewFlying >= u.pats;
   if (u.count !== undefined) return Object.values(d.collectors).reduce((n, v) => n + (Number(v) || 0), 0) >= u.count;
   if (u.rainbows !== undefined) return (d.rainbows || 0) >= u.rainbows;
   if (u.earned !== undefined) return d.earned >= u.earned;
