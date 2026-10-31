@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "id": "2026-10-31",
+      "date": "2026-10-31",
+      "title": "Clearer calls",
+      "items": [
+        {
+          "title": "Noise suppression, Rainlit's own",
+          "text": "Your mic is cleaned up before anyone hears it: fans, hum, keyboard clacks and clicks fade out, and your voice stays. Pick Standard, or Strong (a bigger model for loud places), and how strongly, in Settings under Voice and video. Or Off, to send your mic just as it is.",
+          "media": "/whats-new/2026-10-31-noise.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-10-28e",
       "date": "2026-10-28",
       "title": "Its room, your way",
