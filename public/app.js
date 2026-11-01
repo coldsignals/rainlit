@@ -5287,14 +5287,18 @@ let whatsNewList = null;
 let whatsNewMarks = ''; // (the one to say's seen, once this box closes)
 
 async function whatsNewEntries() {
-  if (whatsNewList) return whatsNewList;
-  try {
-    const data = await (await fetch(`${SERVER}/whats-new.json`, { cache: 'no-cache' })).json();
-    whatsNewList = Array.isArray(data.entries) ? data.entries.filter((e) => e && typeof e.id === 'string') : [];
-  } catch {
-    return [];
+  if (!whatsNewList) {
+    try {
+      const data = await (await fetch(`${SERVER}/whats-new.json`, { cache: 'no-cache' })).json();
+      whatsNewList = Array.isArray(data.entries) ? data.entries.filter((e) => e && typeof e.id === 'string') : [];
+    } catch {
+      return [];
+    }
   }
-  return whatsNewList;
+  // (Glow's things, where Glow isn't offered (Android's app from the Play Store, or a server without
+  // it): left out, and an entry with nothing else in it.)
+  if (glowShown()) return whatsNewList;
+  return whatsNewList.map((e) => ({ ...e, items: (Array.isArray(e.items) ? e.items : []).filter((i) => !i.glow) })).filter((e) => e.items.length);
 }
 
 async function maybeWhatsNew() {

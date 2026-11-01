@@ -1,6 +1,25 @@
 {
   "entries": [
     {
+      "id": "2026-10-31d",
+      "date": "2026-10-31",
+      "title": "More Glow for your pet",
+      "items": [
+        {
+          "title": "Lights and things for its room",
+          "glow": true,
+          "text": "Aurora and Disco lighting that moves, a plasma ball, a jukebox, a moon lamp, a UFO with its beam, nebula walls, a neon grid floor, and a meteor shower out the window.",
+          "media": "/whats-new/2026-10-31d-glow-room.webp"
+        },
+        {
+          "title": "Things to wear",
+          "glow": true,
+          "text": "The first things to wear that come with Glow: a wishing star over its head, LED shades, a neon collar and a galaxy sweater, each with a little sparkle or shimmer of its own.",
+          "media": "/whats-new/2026-10-31d-glow-wear.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-10-31c",
       "date": "2026-10-31",
       "title": "Lights, and more for your pet",
