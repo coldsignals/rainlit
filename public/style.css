@@ -2815,6 +2815,13 @@ button.person.open { background: var(--dusk-hi); }
 }
 .theme-try span { flex: 1; }
 .theme-try .primary-btn { flex: none; }
+/* (In the pet box, what's being tried on, and getting it: kept in sight at the box's foot as what's
+   to pick from scrolls by under it, not at the end of the list. The box's own colour round it, and
+   fading up from it, so what's under it doesn't show through.) */
+.pet-dialog .theme-try {
+  position: sticky; bottom: 12px; z-index: 3;
+  box-shadow: 0 0 0 12px var(--panel), 0 -12px 22px 10px var(--panel);
+}
 
 /* ----- Your pet ----- */
 /* Its button, by your profile: your pet, still (hungry, it looks it, with a little amber dot: a
