@@ -16351,8 +16351,8 @@ function renderPetWear() {
   if (!p || !window.Homepage || !Homepage.WEAR) return;
   if (S.wearTry && !Homepage.canWear(p.kind, S.wearTry.slot, S.wearTry.key)) S.wearTry = null;
   const shown = wearShown();
-  // (Only what suits it: a droplet's a drop all over, so not a sweater or a collar.)
-  const fits = (slot) => Object.keys(Homepage.WEAR[slot]).filter((key) => Homepage.canWear(p.kind, slot, key));
+  // (Only what suits it: a droplet's a drop all over, so not a sweater or a collar. Cheapest first.)
+  const fits = (slot) => Object.keys(Homepage.WEAR[slot]).filter((key) => Homepage.canWear(p.kind, slot, key)).sort((a, b) => wearPriceOf(slot, a) - wearPriceOf(slot, b));
   const rows = WEAR_ROWS.filter(([slot]) => fits(slot).length);
   const note = document.createElement('p');
   note.className = 'pet-note';

@@ -2231,7 +2231,7 @@
   };
   // (What each can't wear: the droplet's all drop, with no neck for a collar and no body for a
   // sweater, though a bowtie suits it. lib/pets.js says the same.)
-  const WEAR_NOT = { drop: { neck: ['collar', 'bandana', 'spiked', 'scarf'], body: true } };
+  const WEAR_NOT = { drop: { neck: ['collar', 'bandana', 'spiked', 'scarf', 'bell', 'lei', 'medal'], body: true } };
   const canWear = (kind, slot, key) => {
     const no = WEAR_NOT[kind] && WEAR_NOT[kind][slot];
     return !(no === true || (Array.isArray(no) && no.includes(key)));
@@ -2291,11 +2291,32 @@
         frames: [['PPPhCCC', ...['..RYB..', '.RRYBB.', 'RRRYBBB']], ['..PhC..', ...['..RYB..', '.RRYBB.', 'RRRYBBB']], ['CCChPPP', ...['..RYB..', '.RRYBB.', 'RRRYBBB']], ['..ChP..', ...['..RYB..', '.RRYBB.', 'RRRYBBB']]],
         colors: { P: '#ff5fa8', C: '#4fd1ff', h: '#3a3f4b', R: '#e04a4a', Y: '#ffd23a', B: '#3a7bd5' },
       },
+      sprout: { label: 'Sprout', rows: ['GG.gg', '.Gsg.', '..s..'], colors: { G: '#3f9e57', g: '#6ad07a', s: '#4f7a3a' } },
+      beret: { label: 'Beret', dx: -1, rows: ['....n..', '.BBBBBB', 'BBBBBBB', '.bbbbb.'], colors: { B: '#b8323a', b: '#8a242c', n: '#8a242c' } },
+      cowboy: { label: 'Cowboy hat', rows: ['...CCC...', '..CCCCC..', 'C.hhhhh.C', 'CCCCCCCCC'], colors: { C: '#9a6a42', h: '#3a2a22' } },
+      // (Floating over its head, a glint going round it.)
+      halo: {
+        label: 'Halo', rows: ['.YYYY.', 'Y....Y', '.YYYY.', '......'], anim: { n: 4, step: 4 },
+        frames: [['.WYYY.', 'Y....Y', '.YYYY.', '......'], ['.YWYY.', 'Y....Y', '.YYYY.', '......'], ['.YYWY.', 'Y....Y', '.YYYY.', '......'], ['.YYYW.', 'Y....Y', '.YYYY.', '......']],
+        colors: { Y: '#ffe680', W: '#ffffff' },
+      },
+      // (Its stars twinkling.)
+      wizard: {
+        label: 'Wizard hat', rows: ['...P...', '..PPS..', '.PSPPP.', 'BBBBBBB'], anim: { n: 2, step: 8 },
+        frames: [['...P...', '..PPS..', '.PSPPP.', 'BBBBBBB'], ['...P...', '..PPW..', '.PWPPP.', 'BBBBBBB']],
+        colors: { P: '#4a3a9a', S: '#ffe066', W: '#ffffff', B: '#2f2570' },
+      },
     },
     eyes: {
       round: { label: 'Round glasses', glasses: 'round', colors: { F: '#c9a86a' } },
       sun: { label: 'Sunglasses', glasses: 'sun', colors: { L: '#22253a', F: '#22253a', W: '#9fb4d6' } },
       star: { label: 'Star glasses', glasses: 'star', anim: { n: 2, step: 8 }, colors: { F: '#ffd23a', S: '#ffffff' } },
+      // (A gold bar along the top, dark lenses narrowing to a point, a glint.)
+      aviator: { label: 'Aviators', glasses: 'aviator', colors: { F: '#d9a13a', L: '#2f3a4a', l: '#4a5a6a', W: '#dfe9ff' } },
+      // (Red for the eye behind, blue for the one in front.)
+      three: { label: '3D glasses', glasses: '3d', colors: { F: '#f2f2f2', R: '#e84a4a', U: '#4ad8f2' } },
+      // (On the eye in front, and its chain hanging down.)
+      monocle: { label: 'Monocle', glasses: 'monocle', colors: { F: '#d9a13a', C: '#c8a050' } },
     },
     neck: {
       collar: { label: 'Collar', band: 'C', tag: 'Y', colors: { C: '#d94a4a', Y: '#ffd23a' } },
@@ -2304,6 +2325,9 @@
       spiked: { label: 'Spiked collar', band: 'KS', colors: { K: '#2a2a33', S: '#d0d6e0' } },
       // (Its end hanging down at the back, then caught by the wind: [x along, y down, which colour].)
       scarf: { label: 'Scarf', band: 'SQ', tail: true, anim: { n: 2, step: 8 }, tails: [[[0, 1, 0], [0, 2, 1], [1, 1, 1]], [[0, 1, 0], [-1, 1, 1], [-2, 2, 0]]], colors: { S: '#e05a4a', Q: '#f3e6d0' } },
+      bell: { label: 'Bell collar', band: 'C', hang: ['.Y.', 'YYY', '.D.'], colors: { C: '#3a7bd5', Y: '#ffd23a', D: '#8a6a1a' } },
+      lei: { label: 'Flower lei', band: 'PYOW', hang: ['PYO', '.W.'], colors: { P: '#ff6fae', Y: '#ffd23a', O: '#ff9a3d', W: '#ffffff' } },
+      medal: { label: 'Medal', band: 'R', hang: ['.R.', 'YYY', 'YWY', '.Y.'], colors: { R: '#d94a4a', Y: '#ffcf3a', W: '#fff6c0' } },
     },
     body: {
       stripes: { label: 'Striped sweater', reach: 4, paint: (x, y, part) => (part === 'body' ? (y % 2 ? 'X' : 'Y') : 'Z'), colors: { X: '#d9534f', Y: '#f3e6d0', Z: '#a8403c' } },
@@ -2320,6 +2344,15 @@
         paint: (x, y, part, at) => (part === 'collar' || (part === 'body' && sparkle(x - at.sx, y - at.my, at.f)) ? 'A' : part === 'body' ? 'R' : 'r'),
         colors: { R: '#24305a', r: '#3b4f8c', A: '#f9c862' },
       },
+      // (Buttons down its middle, and its hood down behind its head.)
+      raincoat: {
+        label: 'Raincoat', reach: 5, hood: 'C', paint: (x, y, part, at) => (part !== 'body' ? 'C' : x === at.mx && y % 2 === 0 ? 'D' : 'Y'),
+        colors: { Y: '#f2c230', C: '#c9961a', D: '#5a4a2a' },
+      },
+      // (Its sleeves another colour, its collar, cuffs and hem trimmed.)
+      varsity: { label: 'Varsity jacket', reach: 5, paint: (x, y, part) => (part === 'arm' ? 'W' : part === 'body' ? 'V' : 'S'), colors: { V: '#2a3a6a', W: '#ece6da', S: '#d9a13a' } },
+      // (A white shirt at its front, the rest black.)
+      tux: { label: 'Tuxedo', reach: 5, paint: (x, y, part, at) => (part === 'collar' || (part === 'body' && x > at.mx + 1) ? 'W' : 'K'), colors: { K: '#22222b', W: '#f2f0ea' } },
     },
   };
   const WEAR_SLOTS = ['head', 'eyes', 'neck', 'body'];
@@ -2365,21 +2398,32 @@
         rows.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x0 + j, cy - (rows.length - 1) + i, c); }));
       } else if (slot === 'eyes') {
         const ew = P.eyeW || 2;
-        P.eyes.forEach(([x, y]) => {
+        const front = P.eyes.length - 1;
+        P.eyes.forEach(([x, y], i) => {
+          if (item.glasses === 'monocle' && i !== front) return;
           for (let gx = x - 1; gx <= x + ew; gx++) {
             for (let gy = y - 1; gy <= y + 2; gy++) {
               const edge = gx === x - 1 || gx === x + ew || gy === y - 1 || gy === y + 2;
               if (item.glasses === 'sun' && gy >= y && gy <= y + 1) put(out.over, gx, gy, gx === x - 1 && gy === y ? 'W' : 'L');
+              else if (item.glasses === 'aviator') {
+                if (gy === y - 1) put(out.over, gx, gy, 'F');
+                else if (gy <= y + 1) put(out.over, gx, gy, gx === x - 1 && gy === y ? 'W' : 'L');
+                else if (gx >= x && gx < x + ew) put(out.over, gx, gy, 'l');
+              } else if (item.glasses === '3d') put(out.over, gx, gy, edge ? 'F' : i === front && P.eyes.length > 1 ? 'U' : 'R');
               else if (item.glasses !== 'sun' && edge) put(out.over, gx, gy, 'F');
             }
           }
           // (Star glasses: a twinkle off a top corner of each, one corner then the other.)
           if (item.glasses === 'star') put(out.over, f ? x + ew + 1 : x - 2, y - 2, 'S');
+          if (item.glasses === 'monocle') [[x + ew, y + 3], [x + ew - 1, y + 4], [x + ew - 2, y + 5]].forEach(([cx, cy]) => put(out.over, cx, cy, 'C'));
         });
-        // (Across between its eyes, and an arm back from the one behind.)
+        // (Across between its eyes, and an arm back from the one behind: aviators', along their top.)
         const [a, b] = P.eyes;
-        if (b) for (let gx = a[0] + ew + 1; gx < b[0] - 1; gx++) put(out.over, gx, a[1], 'F');
-        put(out.over, a[0] - 2, a[1], 'F');
+        const by = item.glasses === 'aviator' ? a[1] - 1 : a[1];
+        if (item.glasses !== 'monocle') {
+          if (b) for (let gx = a[0] + ew + 1; gx < b[0] - 1; gx++) put(out.over, gx, by, 'F');
+          put(out.over, a[0] - 2, by, 'F');
+        }
       } else if (slot === 'neck') {
         if (at.bow) {
           // (Face on, under its smile: the bow's `front`, its middle at x.)
