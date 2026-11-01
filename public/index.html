@@ -274,6 +274,7 @@
           <button class="icon-btn ghost" type="button" data-call="deafen"><svg class="icon"><use href="#i-headphones"/></svg></button>
           <button class="icon-btn ghost" type="button" data-call="cam"><svg class="icon"><use href="#i-cam-off"/></svg></button>
           <button class="icon-btn ghost" type="button" data-call="screen"><svg class="icon"><use href="#i-screen"/></svg></button>
+          <button class="icon-btn ghost" type="button" data-call="sounds" title="Soundboard" aria-label="Soundboard" aria-haspopup="dialog" aria-expanded="false" hidden><svg class="icon"><use href="#i-soundboard"/></svg></button>
           <button class="icon-btn ghost voice-leave" type="button" data-call="leave"><svg class="icon"><use href="#i-leave"/></svg></button>
         </div>
       </div>
@@ -291,6 +292,8 @@
           <button class="icon-btn ghost" type="button" data-voice="camera"><svg class="icon"><use href="#i-cam-off"/></svg></button>
           <button class="icon-btn ghost" type="button" data-voice="screen"><svg class="icon"><use href="#i-screen"/></svg></button>
           <button class="icon-btn ghost" type="button" data-voice="switch" hidden><svg class="icon"><use href="#i-screen-switch"/></svg></button>
+          <button class="icon-btn ghost" type="button" data-voice="sounds" aria-haspopup="dialog" aria-expanded="false" hidden><svg class="icon"><use href="#i-soundboard"/></svg></button>
+          <button class="icon-btn ghost" type="button" data-voice="invite" aria-haspopup="dialog" aria-expanded="false"><svg class="icon"><use href="#i-user-plus"/></svg></button>
           <button class="icon-btn ghost voice-leave" type="button" data-voice="leave"><svg class="icon"><use href="#i-leave"/></svg></button>
         </div>
         <button id="voice-hear" class="text-btn" type="button" data-voice="hear" hidden>Tap to hear everyone</button>
@@ -358,6 +361,7 @@
           <button class="voice-ctl" type="button" data-voice="screen"><svg class="icon"><use href="#i-screen"/></svg></button>
           <button class="voice-ctl" type="button" data-voice="switch" hidden><svg class="icon"><use href="#i-screen-switch"/></svg></button>
           <button class="voice-ctl" type="button" data-voice="sounds" aria-haspopup="dialog" aria-expanded="false" hidden><svg class="icon"><use href="#i-soundboard"/></svg></button>
+          <button class="voice-ctl" type="button" data-voice="invite" aria-haspopup="dialog" aria-expanded="false"><svg class="icon"><use href="#i-user-plus"/></svg></button>
           <button class="voice-ctl voice-leave" type="button" data-voice="leave"><svg class="icon"><use href="#i-leave"/></svg></button>
         </div>
       </div>
@@ -694,12 +698,19 @@
 
   <!-- Someone's menu: right-click them (on a phone, press and hold): a space's member, a name or
        picture by a message, someone in a voice channel. Only what you can do to them shows. -->
+  <!-- Invite to voice (app.js openVoiceInvite): who there is to ask into the voice channel you're in. -->
+  <div id="voice-invite" class="menu voice-invite" role="dialog" aria-label="Invite to voice" hidden>
+    <input id="voice-invite-find" type="search" placeholder="Find someone" aria-label="Find someone to invite" autocomplete="off" />
+    <div id="voice-invite-list" class="voice-invite-list"></div>
+    <p id="voice-invite-none" class="hint voice-invite-none" hidden></p>
+  </div>
   <div id="person-menu" class="menu person-menu" role="menu" hidden>
     <div role="group">
       <button id="pm-profile" type="button" role="menuitem">Profile</button>
       <button id="pm-mention" type="button" role="menuitem">Mention</button>
       <button id="pm-message" type="button" role="menuitem">Message</button>
       <button id="pm-call" type="button" role="menuitem">Call</button>
+      <button id="pm-voice" type="button" role="menuitem">Invite to voice</button>
       <button id="pm-add" type="button" role="menuitem">Add friend</button>
     </div>
     <div role="group">

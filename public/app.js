@@ -170,7 +170,7 @@ for (const id of [
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
   'msg-unread', 'msg-pin', 'pins-btn', 'pins-panel', 'pins-close', 'pins-list', 'call-panel', 'call-panel-where', 'call-panel-name', 'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
-  'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-add', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
+  'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-voice', 'pm-add', 'voice-invite', 'voice-invite-find', 'voice-invite-list', 'voice-invite-none', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -1927,6 +1927,10 @@ function handleServerMessage(msg) {
       return onVoiceState(msg);
     case 'group-ring':
       return onGroupRing(msg);
+    case 'voice-invite':
+      return onVoiceInvite(msg);
+    case 'voice-invite-sent':
+      return onVoiceInviteSent(msg);
     case 'group-ring-stop':
       return stopGroupRinging(msg.channel);
     case 'voice-alone':
@@ -7834,11 +7838,11 @@ function renderSoundButtons() {
   const here = soundboardHere();
   if (!here) closeSoundboard();
   el.soundsBtn.hidden = !(here && here.call);
-  for (const b of [el.soundsBtn, ...document.querySelectorAll('[data-voice="sounds"]')]) {
+  for (const b of [el.soundsBtn, ...document.querySelectorAll('[data-voice="sounds"], [data-call="sounds"]')]) {
     const open = !el.soundboard.hidden && S.soundboardAnchor === b;
     b.classList.toggle('lit', open);
     b.setAttribute('aria-expanded', String(open));
-    if (b !== el.soundsBtn) b.hidden = !(here && here.voice);
+    if (b !== el.soundsBtn) b.hidden = !(here && (b.dataset.call ? here.call : here.voice));
   }
 }
 
@@ -12998,6 +13002,7 @@ function onVoiceState({ channel, members }) {
 async function joinVoice(channelId) {
   const c = S.channels.get(channelId);
   if (!c || c.kind !== 'voice') return;
+  if (S.groupRing && S.groupRing.channel === channelId) stopGroupRinging(); // (rung to it, and here)
   if (S.voice && S.voice.channelId === channelId) return showVoiceView();
   if (c.gated) {
     if (await askAgeForVoice(c)) joinVoice(channelId);
@@ -13114,6 +13119,7 @@ function voiceBeacon() {
 }
 
 async function leaveVoice({ quiet = false } = {}) {
+  closeVoiceInvite();
   finishCamPreview(false);
   const v = S.voice;
   if (!v) return;
@@ -13357,6 +13363,98 @@ async function pinVideo(video) {
 const callVideoTitle = () => (S.peer ? (S.peer.state && S.peer.state.screen ? `${S.peer.name}'s screen` : S.peer.name) : 'Your call');
 const callVideoTracks = () => (el.remoteVideo.srcObject && !el.remoteVideo.hidden ? el.remoteVideo.srcObject.getVideoTracks() : []);
 
+// ----- Invite to voice -----
+// Asking someone into the voice channel you're in: someone in its space (or group) who can join it,
+// isn't in it, and isn't blocked. They're rung, with whose it is and where (lib/realtime.js
+// voiceInvite checks it all again). From the voice panel's button (who there is, found by name,
+// those online first) or someone's menu.
+const voiceInvites = new Map(); // `${channel}:${user id}` -> 'sending' | 'sent'
+let voiceInviteAnchor = null; // (the button it's open from)
+
+const voiceInviteSpace = () => (S.voice && S.voice.state === 'connected' && S.spaces.get(S.voice.spaceId)) || null;
+// (Who's in it: a group's people, or a space's members.)
+const voiceSpacePeople = (space) => (isGroupSpace(space) ? space.people : space.members) || [];
+function canInviteToVoice(id) {
+  const space = voiceInviteSpace();
+  if (!space || id === S.clientId || (S.blocked && S.blocked.has(id))) return false;
+  if ((S.voiceStates.get(S.voice.channelId) || []).some((m) => m.id === id)) return false;
+  return voiceSpacePeople(space).some((m) => m.id === id);
+}
+function inviteToVoice(id) {
+  if (!S.voice) return;
+  if (!wsOpen()) return toast("Can't reach Rainlit just now. Try again in a moment.");
+  voiceInvites.set(`${S.voice.channelId}:${id}`, 'sending');
+  wsSend({ type: 'voice-invite', channel: S.voice.channelId, to: id });
+  renderVoiceInvite();
+}
+function onVoiceInviteSent({ to, ok, why }) {
+  const key = S.voice && `${S.voice.channelId}:${to}`;
+  if (!key || !voiceInvites.has(key)) return;
+  if (ok) {
+    voiceInvites.set(key, 'sent');
+    if (el.voiceInvite.hidden) toast(`Invited ${friendName(to)} to voice.`);
+  } else {
+    voiceInvites.delete(key);
+    toast(why || "They couldn't be invited.");
+  }
+  renderVoiceInvite();
+}
+async function openVoiceInvite(anchor) {
+  const space = voiceInviteSpace();
+  if (!space) return;
+  if (!el.voiceInvite.hidden) return closeVoiceInvite();
+  el.voiceInviteFind.value = '';
+  el.voiceInvite.hidden = false;
+  voiceInviteAnchor = anchor;
+  anchor.setAttribute('aria-expanded', 'true');
+  renderVoiceInvite();
+  // (Over its button, or under it if there's no room over it.)
+  const r = anchor.getBoundingClientRect();
+  const h = el.voiceInvite.getBoundingClientRect().height;
+  placeMenu(el.voiceInvite, r.left, r.top - h - 8 >= 8 ? r.top - h - 8 : r.bottom + 8);
+  if (!isPhone()) el.voiceInviteFind.focus({ preventScroll: true });
+  if (!isGroupSpace(space) && !space.members) {
+    await loadMembers(space.id);
+    renderVoiceInvite();
+  }
+}
+function closeVoiceInvite() {
+  el.voiceInvite.hidden = true;
+  voiceInviteAnchor = null;
+  for (const b of document.querySelectorAll('[data-voice="invite"]')) b.setAttribute('aria-expanded', 'false');
+}
+function renderVoiceInvite() {
+  if (el.voiceInvite.hidden) return;
+  const space = voiceInviteSpace();
+  if (!space) return closeVoiceInvite();
+  const q = el.voiceInviteFind.value.trim().toLowerCase();
+  const stateOf = (id) => voiceInvites.get(`${S.voice.channelId}:${id}`);
+  const rank = (p) => ({ online: 0, away: 1, dnd: 2 }[p.presence] ?? 3);
+  const people = voiceSpacePeople(space).filter((m) => canInviteToVoice(m.id) || stateOf(m.id))
+    .map((m) => profileOf(m.id) || m)
+    .filter((p) => !q || `${p.displayName || ''} ${p.username || ''}`.toLowerCase().includes(q))
+    .sort((a, b) => rank(a) - rank(b) || String(a.displayName || '').localeCompare(String(b.displayName || ''), undefined, { numeric: true }))
+    .slice(0, 60);
+  el.voiceInviteList.replaceChildren(...people.map((p) => {
+    const state = stateOf(p.id);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'voice-invite-row';
+    b.dataset.id = p.id;
+    const name = document.createElement('span');
+    name.textContent = p.displayName || p.username || 'Someone';
+    const what = document.createElement('small');
+    what.textContent = state === 'sent' ? 'Invited' : state === 'sending' ? 'Inviting…' : 'Invite';
+    b.disabled = Boolean(state);
+    b.setAttribute('aria-label', `${state === 'sent' ? 'Invited' : 'Invite'} ${name.textContent}`);
+    b.append(makeFace(p, p.presence || null), name, what);
+    b.addEventListener('click', () => inviteToVoice(p.id));
+    return b;
+  }));
+  el.voiceInviteNone.hidden = people.length > 0;
+  el.voiceInviteNone.textContent = q ? 'Nobody by that name.' : !space.members && !isGroupSpace(space) ? 'Finding who there is…' : 'Everyone who can join is in it already.';
+}
+
 // A voice channel's (or group call's) tile, by its key: its video, and its name.
 const tileVideo = (key) => {
   const t = S.voice && S.voice.tiles.get(key);
@@ -13487,7 +13585,7 @@ function renderVoice() {
       const act = b.dataset.voice;
       const on = act === 'mute' ? v.muted || !v.speak || Boolean(S.micTesting) : act === 'deafen' ? v.deafened
         : act === 'camera' ? Boolean(me && me.isCameraEnabled) : act === 'screen' ? Boolean(me && me.isScreenShareEnabled) : false;
-      if (act !== 'sounds') { // (it opens the soundboard: see renderSoundButtons)
+      if (act !== 'sounds' && act !== 'invite') { // (they open the soundboard, and who to invite: see renderSoundButtons)
         b.classList.toggle('on', on);
         b.setAttribute('aria-pressed', String(on));
       }
@@ -13495,7 +13593,8 @@ function renderVoice() {
       if (icon && act === 'mute') icon.setAttribute('href', on ? '#i-mic-off' : '#i-mic');
       if (icon && act === 'deafen') icon.setAttribute('href', on ? '#i-headphones-off' : '#i-headphones');
       if (icon && act === 'camera') icon.setAttribute('href', on ? '#i-cam' : '#i-cam-off');
-      const label = { mute: S.micTesting ? 'Muted while you test your mic: click to stop the test' : on ? 'Unmute' : 'Mute', deafen: on ? 'Undeafen' : 'Deafen', camera: on ? 'Turn camera off' : 'Turn camera on', screen: on ? 'Stop sharing' : 'Share your screen', sounds: 'Soundboard', leave: 'Leave voice' }[act];
+      const label = { mute: S.micTesting ? 'Muted while you test your mic: click to stop the test' : on ? 'Unmute' : 'Mute', deafen: on ? 'Undeafen' : 'Deafen', camera: on ? 'Turn camera off' : 'Turn camera on', screen: on ? 'Stop sharing' : 'Share your screen', sounds: 'Soundboard', invite: 'Invite to voice', leave: 'Leave voice' }[act];
+      if (act === 'invite') b.disabled = v.state !== 'connected';
       if (label) {
         b.title = label;
         b.setAttribute('aria-label', label);
@@ -14266,6 +14365,7 @@ async function onGroupLeave() {
 function onGroupRing({ space: spaceId, channel, from }) {
   if (!from || (S.voice && S.voice.channelId === channel) || S.ringing) return;
   const space = S.spaces.get(spaceId);
+  clearTimeout(S.inviteRingTimer); // (over an invite to voice, ringing)
   S.groupRing = { spaceId, channel, from };
   const caller = from.displayName || 'Someone';
   const others = space ? (space.people || []).filter((p) => p.id !== S.clientId && p.id !== from.id).map((p) => friendName(p.id)) : [];
@@ -14281,9 +14381,39 @@ function onGroupRing({ space: spaceId, channel, from }) {
   S.ringTimer = setInterval(ringIn, RING_EVERY_MS);
 }
 
+// Someone in a voice channel inviting you into it ("Invite to voice"): rung, as for a group's call,
+// with whose it is and where. Not over a call ringing already; for 45 seconds.
+function onVoiceInvite({ space: spaceId, channel, name, place, group, from }) {
+  if (!from || (S.voice && S.voice.channelId === channel) || S.ringing || (S.groupRing && !S.groupRing.invite)) return;
+  const space = S.spaces.get(spaceId);
+  S.groupRing = { spaceId, channel, from, invite: true };
+  const caller = from.displayName || 'Someone';
+  const where = group ? (space ? `the call with ${groupTitle(space)}` : 'a call') : `#${name}${place ? ` in ${place}` : ''}`;
+  renderFace(el.ringFace, from, null);
+  el.ringName.textContent = caller;
+  // (The channel's name kept on one line: "#voice-" and "room" apart reads oddly.)
+  const channelName = document.createElement('span');
+  channelName.style.whiteSpace = 'nowrap';
+  channelName.textContent = `#${name}`;
+  el.ringSub.replaceChildren('invites you to voice: ', ...(group ? [where] : [channelName, place ? ` in ${place}` : '']));
+  el.ringJoin.title = 'Join voice';
+  el.ringJoin.setAttribute('aria-label', el.ringJoin.title);
+  el.ring.hidden = false;
+  document.title = `${caller} invites you to voice`;
+  appNotify({ title: `${caller} invites you to voice`, body: `${where}. ${ANDROID ? 'Tap' : 'Click'} to open Rainlit and join.`, call: true });
+  clearInterval(S.ringTimer);
+  ringIn();
+  S.ringTimer = setInterval(ringIn, RING_EVERY_MS);
+  clearTimeout(S.inviteRingTimer);
+  S.inviteRingTimer = setTimeout(() => stopGroupRinging(channel), 45_000);
+}
+
 function stopGroupRinging(channel = null) {
   if (!S.groupRing || (channel && S.groupRing.channel !== channel)) return;
   S.groupRing = null;
+  clearTimeout(S.inviteRingTimer);
+  el.ringJoin.title = 'Join the call';
+  el.ringJoin.setAttribute('aria-label', el.ringJoin.title);
   el.ring.hidden = true;
   clearInterval(S.ringTimer);
   if (ANDROID) ANDROID.clearRing().catch(() => {});
@@ -14672,6 +14802,7 @@ function renderPersonMenu() {
     el.pmCall.disabled = S.inCall && !here;
     el.pmCall.title = el.pmCall.disabled ? 'Leave your current call first' : '';
   }
+  show(el.pmVoice, canInviteToVoice(id));
   if (show(el.pmAdd, !self && !f && !blocked && Boolean(p.username))) {
     const sent = S.outgoing.some((u) => u.id === id);
     el.pmAdd.textContent = sent ? 'Friend request sent' : S.incoming.some((u) => u.id === id) ? 'Accept friend request' : 'Add friend';
@@ -18274,10 +18405,15 @@ function stopRinging(fromId) {
   updateTitle();
 }
 
-function onRingJoin() {
+async function onRingJoin() {
   if (S.groupRing) {
-    const { spaceId } = S.groupRing;
+    const { spaceId, channel, invite } = S.groupRing;
     stopGroupRinging();
+    // (Invited to a space's voice channel: there, and in it.)
+    if (invite && !isGroupSpace(S.spaces.get(spaceId))) {
+      await showSpace(spaceId);
+      return joinVoice(channel);
+    }
     openGroup(spaceId);
     return joinGroupCall(spaceId);
   }
@@ -18291,7 +18427,7 @@ function onRingJoin() {
 
 function onRingDecline() {
   if (S.groupRing) {
-    wsSend({ type: 'group-ring-decline', channel: S.groupRing.channel });
+    if (!S.groupRing.invite) wsSend({ type: 'group-ring-decline', channel: S.groupRing.channel });
     return stopGroupRinging();
   }
   if (!S.ringing) return;
@@ -18962,6 +19098,7 @@ async function init() {
   el.pmMention.addEventListener('click', personAction((t) => insertMention(t.p.username)));
   el.pmMessage.addEventListener('click', personAction((t) => openDm(t.id)));
   el.pmCall.addEventListener('click', personAction((t) => (S.inCall && S.callWith === t.id ? openDm(t.id) : startCall(t.id))));
+  el.pmVoice.addEventListener('click', personAction((t) => inviteToVoice(t.id)));
   el.pmAdd.addEventListener('click', personAction((t) => askToBeFriends(t.p)));
   el.pmTimeout.addEventListener('click', personAction((t) => (t.m.timeoutUntil > Date.now() ? endTimeout(t.space, t.m) : openModDialog('timeout', t.space, t.m))));
   el.pmKick.addEventListener('click', personAction((t) => openModDialog('kick', t.space, t.m)));
@@ -19092,7 +19229,18 @@ async function init() {
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-voice]');
     if (b && b.dataset.voice === 'sounds') toggleSoundboard(b, e.detail === 0);
+    else if (b && b.dataset.voice === 'invite') openVoiceInvite(b);
     else if (b) onVoiceControl(b.dataset.voice);
+    // (Invite to voice's list, open: closed by a click anywhere else. Its path, as the click began:
+    // a row clicked is redrawn, gone from it by now.)
+    if (!el.voiceInvite.hidden && !e.composedPath().includes(el.voiceInvite) && !(b && b.dataset.voice === 'invite')) closeVoiceInvite();
+  });
+  el.voiceInviteFind.addEventListener('input', renderVoiceInvite);
+  el.voiceInvite.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const a = voiceInviteAnchor;
+    closeVoiceInvite();
+    if (a && a.isConnected) a.focus();
   });
   el.voicePanelWhere.addEventListener('click', showVoiceView);
   el.voiceBack.addEventListener('click', hideVoiceView);
@@ -19434,6 +19582,7 @@ async function init() {
   el.callPanelWhere.addEventListener('click', () => { if (S.inCall && S.callWith) openDm(S.callWith); });
   el.callPanel.addEventListener('click', (e) => {
     const b = e.target.closest('[data-call]');
+    if (b && b.dataset.call === 'sounds') return toggleSoundboard(b, e.detail === 0);
     const to = b && { mic: el.micBtn, deafen: el.deafenBtn, cam: el.camBtn, screen: el.screenBtn, leave: el.leaveBtn }[b.dataset.call];
     if (to) to.click(); // (and its own sound: see the click sounds, below)
   });

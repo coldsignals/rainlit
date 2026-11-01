@@ -627,7 +627,8 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
 .voice-name { color: var(--mist); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice-where:hover .voice-name { color: var(--text); text-decoration: underline; }
 .voice-buttons { display: flex; gap: 2px; }
-.voice-buttons .icon-btn { width: 36px; height: 36px; }
+.voice-buttons .icon-btn { flex: 0 1 auto; min-width: 0; width: 36px; height: 36px; } /* (narrower when they'd not all fit) */
+.voice-buttons .icon-btn.lit { background: var(--text); color: var(--night); }
 .voice-buttons .icon { width: 19px; height: 19px; }
 [data-voice].on, [data-call].on { color: var(--danger); }
 [data-voice="camera"].on, [data-voice="screen"].on, [data-call="cam"].on, [data-call="screen"].on { color: var(--online); }
@@ -721,9 +722,10 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
 .tile-tools button[hidden] { display: none; }
 .tile-tools .icon { width: 17px; height: 17px; }
 @media (hover: none) { .tile-tools { opacity: 1; } }
-.voice-controls { display: flex; justify-content: center; gap: 12px; padding: 12px 16px calc(14px + var(--safe-area-inset-bottom, 0px)); }
+.voice-controls { display: flex; justify-content: center; align-items: center; gap: min(12px, 2.5vw); padding: 12px 16px calc(14px + var(--safe-area-inset-bottom, 0px)); }
+/* (Smaller on a narrow phone, so they all fit in a row.) */
 .voice-ctl {
-  width: 52px; height: 52px; display: grid; place-items: center;
+  flex: 0 1 52px; min-width: 0; aspect-ratio: 1; display: grid; place-items: center;
   border: 1px solid var(--line); border-radius: 50%; background: var(--dusk-hi);
 }
 .voice-ctl .icon { width: 22px; height: 22px; }
@@ -2628,6 +2630,17 @@ button.person.open { background: var(--dusk-hi); }
 .person-menu [role="group"][hidden] { display: none; }
 .person-menu [role="group"]:not([hidden]) ~ [role="group"]:not([hidden]) { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
 .person-menu button { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Invite to voice: who there is to ask into the channel, found by name, those online first. */
+.voice-invite { width: min(300px, calc(100vw / var(--zoom) - 16px)); max-height: min(420px, calc(100vh / var(--zoom) - 16px)); grid-template-rows: auto minmax(0, 1fr) auto; }
+.voice-invite input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font: inherit; font-size: 14px; }
+.voice-invite-list { display: grid; gap: 2px; overflow-y: auto; }
+.voice-invite .voice-invite-row { display: flex; align-items: center; gap: 10px; }
+.voice-invite-row .face { flex: none; width: 28px; height: 28px; font-size: 12px; }
+.voice-invite-row span:not(.face) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-invite-row small { flex: none; color: var(--lamp-text); font-size: 12.5px; font-weight: 700; }
+.voice-invite .voice-invite-row:disabled { opacity: 1; cursor: default; }
+.voice-invite-row:disabled small { color: var(--mist); }
+.voice-invite-none { margin: 4px 6px; }
 .person-menu button[hidden] { display: none; }
 .person-menu .pm-more { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .person-menu .pm-more::after { content: ""; width: 7px; height: 7px; margin-right: 3px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); opacity: 0.7; }
