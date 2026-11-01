@@ -3210,7 +3210,7 @@
 
   const ROOM_ROWS = 42;
   const WALL_ROWS = 26;
-  const ROOM_DEFAULT = { wall: 'stripes', floor: 'wood', sky: 'auto' };
+  const ROOM_DEFAULT = { wall: 'stripes', floor: 'wood', sky: 'auto', light: 'day' };
 
   // (Pixels made to a shape: a flat oval in rings, from the middle out.)
   function oval(w, h, rings) {
@@ -3522,7 +3522,7 @@
     },
     darts: { label: 'Dartboard', rows: dartboard(), colors: { K: '#26262b', c: '#efe6cf', r: '#d64545', g: '#3f9e57', s: '#cfd3dc', y: '#ffd84d' } },
     lights: {
-      label: 'Fairy lights', perk: true, glow: '#fff1a8', bare: true, frames: [fairyLights(false), fairyLights(true)],
+      label: 'Fairy lights', perk: true, glow: '#fff1a8', emit: 'ypcg', bare: true, frames: [fairyLights(false), fairyLights(true)],
       colors: { m: '#7a7a92', y: '#ffd84d', Y: '#8a7a3a', p: '#ff6fb5', P: '#7a3a5c', c: '#7fe3ff', C: '#3a6a7a', g: '#8dff7a', G: '#3f6a3a' },
     },
     neon: {
@@ -3552,7 +3552,7 @@
       colors: { g: '#6ad07a', G: '#3f9e57', o: '#e07a4a', O: '#b85a33' },
     },
     lamp: {
-      label: 'Lamp', glow: '#ffd27a',
+      label: 'Lamp', glow: '#ffd27a', emit: 'yY', lightY: 0.14,
       rows: ['..yyyyy..', '.yyyyyyy.', '.yyyyyyy.', 'yyyyyyyyy', 'yyyyyyyyy', 'YYYYYYYYY', ...Array(15).fill('....m....'), '...mmm...', '..mmmmm..', '.mmmmmmm.'],
       colors: { y: '#ffd27a', Y: '#e0a84a', m: '#6a6f80' },
     },
@@ -3572,7 +3572,7 @@
       colors: { a: '#6b7280', b: '#7d8492', c: '#565c68', l: '#4a3424' },
     },
     aquarium: {
-      label: 'Aquarium', perk: true, glow: '#8fd8ff',
+      label: 'Aquarium', perk: true, glow: '#8fd8ff', emit: 'caowgy', lightY: 0.35,
       frames: [
         ['mmmmmmmmmmmmmmmmmm', 'caaaaaaaaaaaaaaaac', 'caaaaaaaaaaawaaaac', 'caaaaaaaaaaaaaaaac', 'caaaooaaaaaaaawaac', 'caaoooooaaaaaaaaac', 'caaaooaaaaaaaaaaac', 'caaaaaaaaaaaaagaac', 'cagaaaaaaaaaaggaac', 'caggaaaaaaaaaagaac', 'cyyyyyyyyyyyyyyyyc', 'mmmmmmmmmmmmmmmmmm', '.bbbbbbbbbbbbbbbb.', '.b..............b.', '.b..............b.', '.bb............bb.'],
         ['mmmmmmmmmmmmmmmmmm', 'caaaaaaaaaaaaawaac', 'caaaaaaaaaaaaaaaac', 'caaaaaaaaaaaawaaac', 'caaaaaaooaaaaaaaac', 'caaaaaoooooaaaaaac', 'caaaaaaooaaaaaaaac', 'caaaaaaaaaaaaagaac', 'cagaaaaaaaaaaggaac', 'caggaaaaaaaaaagaac', 'cyyyyyyyyyyyyyyyyc', 'mmmmmmmmmmmmmmmmmm', '.bbbbbbbbbbbbbbbb.', '.b..............b.', '.b..............b.', '.bb............bb.'],
@@ -3580,12 +3580,12 @@
       colors: { m: '#8a8fa3', c: '#cdeeff', a: '#5fb4e8', o: '#ff9a3d', w: '#e6f7ff', g: '#4fbf6a', y: '#e3c27a', b: '#8a5c3a' },
     },
     lava: {
-      label: 'Lava lamp', perk: true, glow: '#c08aff',
+      label: 'Lava lamp', perk: true, glow: '#c08aff', emit: 'lo',
       frames: [lavaLamp([[2, 1, 0.6], [2, 4.6, 1.2]]), lavaLamp([[2, 2.2, 0.8], [2, 5.2, 1]])],
       colors: { m: '#9aa0b5', l: '#8a5cff', o: '#ff9a3d', t: '#9a6b45', T: '#7a5234', D: '#6b4a32', d: '#8a5f3d', y: '#e3c27a' },
     },
     arcade: {
-      label: 'Arcade machine', perk: true, glow: '#7fd8ff',
+      label: 'Arcade machine', perk: true, glow: '#7fd8ff', emit: 'mMsgy', lightY: 0.3,
       frames: [
         ['aaaaaaaaaaaa', 'ammmmmmmmmma', 'amMmmMmmMmma', 'aaaaaaaaaaaa', 'aAssssssssAa', 'aAssgsssssAa', 'aAsgggssssAa', 'aAssgsssysAa', 'aAssssssssAa', 'aAssssssssAa', 'aaaaaaaaaaaa', 'cccccccccccc', 'ccrccccbyccc', 'aaaaaaaaaaaa', 'aAAAAAAAAAAa', 'aAAAyyyyAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aaaaaaaaaaaa'],
         ['aaaaaaaaaaaa', 'aMmmMmmMmmma', 'ammmmmmmmmma', 'aaaaaaaaaaaa', 'aAssssssssAa', 'aAssssgsssAa', 'aAsssgggssAa', 'aAssssgsssAa', 'aAssyyssssAa', 'aAssssssssAa', 'aaaaaaaaaaaa', 'cccccccccccc', 'ccrccccbyccc', 'aaaaaaaaaaaa', 'aAAAAAAAAAAa', 'aAAAyyyyAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aAAAAAAAAAAa', 'aaaaaaaaaaaa'],
@@ -3613,7 +3613,7 @@
   // Hanging from the ceiling, on a cord as long as its owner likes.
   const CEILINGS = {
     pendant: {
-      label: 'Pendant lamp', glow: '#ffd27a',
+      label: 'Pendant lamp', glow: '#ffd27a', emit: 'y', lightY: 0.8,
       rows: ['....aaa....', '...abbba...', '..abbbbba..', '.abbbbbbba.', 'abbbbbbbbba', 'ccccccccccc', '...yyyyy...', '....yyy....'],
       colors: { a: '#2f6a5a', b: '#4f9a80', c: '#24524a', y: '#fff1b8' },
     },
@@ -3624,15 +3624,15 @@
       colors: { r: '#d8c8a8', g: '#6ad07a', G: '#3f9e57', O: '#b85a33', o: '#e07a4a' },
     },
     lantern: {
-      label: 'Paper lantern', glow: '#ff9a6a',
+      label: 'Paper lantern', glow: '#ff9a6a', emit: 'rR',
       rows: ['...yyyyy...', '.rrrrrrrrr.', 'rRRRRRRRRRr', 'rrrrrrrrrrr', 'rRRRRRRRRRr', 'rrrrrrrrrrr', 'rRRRRRRRRRr', '.rrrrrrrrr.', '...yyyyy...', '.....y.....'],
       colors: { r: '#e8504a', R: '#c43a3a', y: '#e8c23a' },
     },
     disco: {
-      label: 'Disco ball', perk: true, glow: '#cfe8ff', frames: [discoBall(0), discoBall(5)],
+      label: 'Disco ball', perk: true, glow: '#cfe8ff', emit: 'abABwcp', frames: [discoBall(0), discoBall(5)],
       colors: { m: '#6a6f80', a: '#dfe5ee', b: '#aab3c2', A: '#9aa3b2', B: '#6f7888', w: '#ffffff', c: '#7fe3ff', p: '#ff8fd6' },
     },
-    mobile: { label: 'Star mobile', perk: true, glow: '#ffe9a8', bare: true, frames: [mobile(0), mobile(1)], colors: { s: '#d8d0c0', t: '#c8a06a', y: '#ffe066', Y: '#fff6c0', m: '#fff1b8' } },
+    mobile: { label: 'Star mobile', perk: true, glow: '#ffe9a8', emit: 'yYm', bare: true, frames: [mobile(0), mobile(1)], colors: { s: '#d8d0c0', t: '#c8a06a', y: '#ffe066', Y: '#fff6c0', m: '#fff1b8' } },
     raincloud: { label: 'Rain cloud', dew: true, bare: true, frames: [rainCloud(0), rainCloud(1)], colors: { w: '#eef3f8', W: '#cfd8e2', b: '#7fd0ff' } },
   };
   // What's out its window: the weather. Its owner picks one, or it changes by itself (day or night
@@ -3695,10 +3695,32 @@
     },
   };
 
-  const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS, ceiling: CEILINGS, sky: WEATHER };
-  // (Which list each of the room's own picks from: its wallpaper, its floor, and the weather out its
-  // windows.)
-  const ROOM_SLOTS = { wall: 'wall', floor: 'floor', sky: 'sky' };
+  // The light in its room: daylight, just as it is; a little warmer or cooler; or dimmer (`dim`: the
+  // colour it all goes), lit by its windows and what glows in it (lamps, lanterns, an aquarium...),
+  // each a pool of light round it (`window`, `glow`: its colour; `reach`: how far it reaches, in the
+  // room's pixels). Candlelight flickers. (`dew`: one that dew brings, lib/pets.js DEW_ROOM.)
+  const LIGHTS = {
+    day: { label: 'Daylight' },
+    warm: { label: 'Warm', dim: '#ffe4c2' },
+    cool: { label: 'Cool', dim: '#d9e5ff' },
+    golden: { label: 'Golden hour', dew: true, dim: '#efb184', window: '#fff1d2', glow: '#ffe2b0', reach: 34 },
+    lamplit: { label: 'Lamplight', dew: true, dim: '#545878', window: '#8f98c8', glow: '#ffe7bd', reach: 28 },
+    moon: { label: 'Moonlight', dew: true, dim: '#4f5d92', window: '#e2ecff', glow: '#c9d6ff', reach: 32 },
+    candle: { label: 'Candlelight', dew: true, dim: '#4f3330', window: '#8a6a68', glow: '#ffcc8e', reach: 26, flicker: true },
+    neon: { label: 'Neon night', dew: true, dim: '#40306e', window: '#8ff3ff', glow: '#ff9fe8', reach: 28 },
+  };
+
+  const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS, ceiling: CEILINGS, sky: WEATHER, light: LIGHTS };
+  // (Which list each of the room's own picks from: its wallpaper, its floor, the weather out its
+  // windows, and its light.)
+  const ROOM_SLOTS = { wall: 'wall', floor: 'floor', sky: 'sky', light: 'light' };
+  // (A light's swatch: a little room for it to light, its window on the left, a lamp on the right,
+  // and a rug.)
+  const LIGHT_SWATCH = pixelsSrc([
+    'aaaaaaaaaaaa', 'abbbbbaaaaaa', 'abcbcbaayyya', 'abcbcbaaYYYa', 'abbbbbaaamaa', 'aaaaaaaaamaa', 'aaaaaaaaamaa', 'dddddddddmdd',
+    'eeeeeeeemmme', 'eeerrrrrreee', 'eerrrrrrrree', 'eeeeeeeeeeee',
+  ], { a: '#4b3f73', b: '#8a5a3c', c: '#8fd3ff', y: '#ffd27a', Y: '#e0a84a', m: '#6a6f80', d: '#c89a6a', e: '#a8744c', r: '#e8799f' });
+
   // Each thing's other colours, three of them, to pick from where it's put (arrange): each a name and
   // the colours it changes (the first its main one, for its swatch), and a `glow` of its own for
   // what glows. A wood's white, black or birch; a pot, a shade, a cushion, a neon tube its own.
@@ -3814,10 +3836,14 @@
         const frames = (t.frames || [t.rows]).map((f) => (t.bare ? f : outlined(f)));
         const colors = { k: '#2a1f33', ...t.colors, ...(pal || {}) };
         const fw = frames[0][0].length;
-        const rects = frames.map((f, i) => rectsOf(f, colors, i * fw)).join('');
-        const src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fw * frames.length} ${frames[0].length}" shape-rendering="crispEdges">${rects}</svg>`)}`;
+        const svg = (rects) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fw * frames.length} ${frames[0].length}" shape-rendering="crispEdges">${rects}</svg>`)}`;
+        const src = svg(frames.map((f, i) => rectsOf(f, colors, i * fw)).join(''));
         const still = frames.length > 1 ? pixelsSrc(frames[0], colors) : src;
-        thingSrc.set(id, { src, still, w: fw, h: frames[0].length, frames: frames.length, rows: frames[0] });
+        // (What in it gives its light, if that's not all of it (`emit`): the rest left out. That's
+        // what glows, not the whole of it: a lamp's shade, not its stand.)
+        const not = t.emit && new RegExp(`[^${t.emit}]`, 'g');
+        const emits = not ? svg(frames.map((f, i) => rectsOf(f.map((r) => r.replace(not, '.')), colors, i * fw)).join('')) : null;
+        thingSrc.set(id, { src, still, emits, w: fw, h: frames[0].length, frames: frames.length, rows: frames[0] });
       }
     }
     return thingSrc.get(id);
@@ -3915,6 +3941,44 @@
     n.classList.toggle('pr-flip', t.flip);
     // (What stands on the floor: in front of what's behind it, and its pet too: petLife's depth.)
     if (t.list === 'stand') n.style.zIndex = String(10 + Math.round(s.depth * 10));
+    const room = n.closest('.pr-room');
+    if (room) relight(room); // (its light goes where it goes)
+  }
+
+  // Its light (LIGHTS): a layer over everything in the room, its pet too, that each pixel's
+  // multiplied by: `dim` all over, and lighter in a pool round each window and whatever glows, where
+  // each is (as .pr-thing's placed: --x of the way across beside it, its middle, `lightY` of the way
+  // down it, its own pixels' size) so it moves with it, and stays put as the room's drawn bigger or
+  // smaller.
+  function relight(el) {
+    const r = el.prRoom;
+    const L = r && LIGHTS[r.light];
+    let layer = el.querySelector(':scope > .pr-light');
+    if (!L || !L.dim) {
+      if (layer) layer.remove();
+      return;
+    }
+    if (!layer) {
+      layer = document.createElement('i');
+      layer.className = 'pr-light';
+      layer.setAttribute('aria-hidden', 'true');
+    }
+    if (!layer.isConnected) el.append(layer);
+    layer.classList.toggle('pr-candle', Boolean(L.flicker));
+    const pools = [];
+    for (const n of el.querySelectorAll('.pr-thing')) {
+      const t = n.prThing;
+      const info = t && ROOM[t.list][t.key];
+      if (!info) continue;
+      const color = info.window ? L.window : (tintOf(t.list, t.key, t.tint) || {}).glow || info.glow ? L.glow : '';
+      if (!color) continue;
+      const s = spotOf(t);
+      const x = `calc((100% - var(--px) * ${s.w}) * ${t.x} + var(--px) * ${s.w / 2})`;
+      const y = `calc(var(--px) * ${s.top + s.h * (info.lightY ?? (info.window ? 0.42 : 0.5))})`;
+      const reach = L.reach * (info.window ? 1.15 : 1) * Math.sqrt(t.size);
+      pools.push(`radial-gradient(circle calc(var(--px) * ${reach.toFixed(2)}) at ${x} ${y}, ${color}, ${color} 18%, transparent)`);
+    }
+    layer.style.background = [...pools, L.dim].join(', ');
   }
   function thingNode(t, i, sky) {
     const info = ROOM[t.list][t.key];
@@ -3944,6 +4008,11 @@
     const glow = (tintOf(t.list, t.key, t.tint) || {}).glow || info.glow;
     n.classList.toggle('pr-glow', Boolean(glow));
     if (glow) n.style.setProperty('--glow', glow);
+    // (Only what gives its light glows, if that's not all of it: drawn again over it, glowing.)
+    n.classList.toggle('pr-emit', Boolean(glow && art.emits));
+    if (glow && art.emits) n.style.setProperty('--emit', `url("${art.emits}")`);
+    const room = n.closest('.pr-room');
+    if (room) relight(room);
   }
 
   // Furnishing a room (`room`: what's in it, as lib/pets.js keeps it; `tried`: one more thing in it,
@@ -4004,6 +4073,7 @@
     // (What stands on the floor is in the room itself, with its pet, not behind it with the rest.)
     for (const n of el.querySelectorAll(':scope > .pr-stand')) n.remove();
     scene.after(...of('stand'));
+    relight(el);
     if (el.prArrange) el.prArrange.drawn();
   }
 
@@ -4344,6 +4414,16 @@
         pane.style.backgroundPosition = shown.length > 1 && i ? `${s.fx ? '-18px 0, ' : ''}-18px 0` : '0 0';
         return pane;
       }));
+      return n;
+    }
+    // (A light: a little room in it, its window on the left and a lamp on the right.)
+    if (list === 'light') {
+      const L = LIGHTS[key];
+      n.style.backgroundImage = `url("${LIGHT_SWATCH}")`;
+      if (L && L.dim) {
+        const pool = (c, x, y) => `radial-gradient(circle 13px at ${x} ${y}, ${c}, ${c} 18%, transparent)`;
+        n.style.setProperty('--light', [...(L.window ? [pool(L.window, '29%', '28%')] : []), ...(L.glow ? [pool(L.glow, '79%', '22%')] : []), L.dim].join(', '));
+      }
       return n;
     }
     const t = thingOf(list, key, tint);

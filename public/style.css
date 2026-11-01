@@ -2891,11 +2891,23 @@ button.person.open { background: var(--dusk-hi); }
 .pr-room .pr-frames { background-size: 200% 100%; animation: pr-frames 1.3s steps(2) infinite; }
 @keyframes pr-frames { to { background-position-x: 200%; } }
 /* (Glow's things glow; the neon flickers now and then.) */
-.pr-glow { filter: drop-shadow(0 0 var(--px) var(--glow)) drop-shadow(0 0 calc(var(--px) * 3) color-mix(in srgb, var(--glow) 45%, transparent)); }
+.pr-glow:not(.pr-emit) { filter: drop-shadow(0 0 var(--px) var(--glow)) drop-shadow(0 0 calc(var(--px) * 3) color-mix(in srgb, var(--glow) 45%, transparent)); }
+/* (Only what gives the light glows, where that's not all of it (homepage.js: `emit`): a lamp's shade,
+   not its stand, drawn again over it, glowing. It moves as it does.) */
+.pr-room .pr-emit::after {
+  content: ''; position: absolute; inset: 0; background: var(--emit) 0 0 / 100% 100% no-repeat; image-rendering: pixelated;
+  filter: drop-shadow(0 0 var(--px) var(--glow)) drop-shadow(0 0 calc(var(--px) * 3) color-mix(in srgb, var(--glow) 45%, transparent));
+}
+.pr-room .pr-frames.pr-emit::after { background-size: 200% 100%; animation: pr-frames 1.3s steps(2) infinite; }
 .pr-room .pr-flicker { animation: pr-flicker 5s steps(1) infinite; }
 @keyframes pr-flicker { 0%, 88%, 92%, 100% { opacity: 1; } 90% { opacity: 0.4; } }
 .pet-room > * { z-index: 1; }
 .pet-room .hp-pet-live { z-index: 2; }
+/* Its light (homepage.js relight): over everything in it, its pet too (not what's to click, like a
+   rainbow drop, or the bar by what's picked), each pixel of it multiplied by its colours. */
+.pr-room > .pr-light { position: absolute; inset: 0; z-index: 900; display: block; pointer-events: none; mix-blend-mode: multiply; }
+.pr-room > .pr-light.pr-candle { animation: pr-candle 3.4s steps(1) infinite; }
+@keyframes pr-candle { 0%, 100% { opacity: 1; } 21% { opacity: 0.94; } 38% { opacity: 0.99; } 57% { opacity: 0.91; } 79% { opacity: 0.97; } }
 /* Doing it up (homepage.js arrange): its things dragged about, the one picked out with a dashed line
    round it and a little bar by it (flip it, smaller, bigger, put it away), and one tried on (not
    theirs yet) dotted round. Its pet keeps out of the way meanwhile. The room stays in view, under
@@ -3097,6 +3109,9 @@ button.person.open { background: var(--dusk-hi); }
 }
 .pr-swatch { display: block; width: 100%; height: 100%; image-rendering: pixelated; background-repeat: no-repeat; background-position: center; background-size: contain; }
 .pr-swatch-wall, .pr-swatch-floor { background-repeat: repeat; background-position: 0 0; }
+/* (A light: a little room, lit by it.) */
+.pr-swatch-light { position: relative; isolation: isolate; background-size: cover; }
+.pr-swatch-light::after { content: ''; position: absolute; inset: 0; background: var(--light, none); mix-blend-mode: multiply; }
 .pr-swatch.pr-none { background: linear-gradient(135deg, transparent 46%, var(--line) 46% 54%, transparent 54%); }
 /* (The weather: a little window, its sky as it is.) */
 .pr-swatch-sky { display: flex; width: 36px; height: 22px; margin: auto; outline: 2px solid #8a5a3c; }
@@ -3105,7 +3120,7 @@ button.person.open { background: var(--dusk-hi); }
   .pet-kind { width: calc(33.3% - 7px); }
   .pet-decor-row { grid-template-columns: minmax(0, 1fr); gap: 6px; }
 }
-@media (prefers-reduced-motion: reduce) { .pr-window::before, .pr-scene i, .pr-room .pr-thing, .pr-scene .pr-twinkle { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .pr-window::before, .pr-scene i, .pr-room .pr-thing, .pr-room .pr-thing::after, .pr-scene .pr-twinkle, .pr-room > .pr-light { animation: none !important; } }
 
 /* Push to talk: the mic button is held, not clicked. */
 .ctl.ptt { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }

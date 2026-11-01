@@ -16148,7 +16148,7 @@ function renderPetTabs() {
 // made bigger or smaller, or put away (Homepage.arrange). Glow's things, for anyone without Glow,
 // are there to try (in the room, never saved), wherever Glow's shown. So are the things dew brings,
 // each with what it costs, till you've got it with dew.
-const DECOR_ROWS = [['wall', 'Wallpaper'], ['sky', 'Out the window'], ['floor', 'Floor']];
+const DECOR_ROWS = [['wall', 'Wallpaper'], ['sky', 'Out the window'], ['floor', 'Floor'], ['light', 'Lighting']];
 const THING_ROWS = [['stand', 'On the floor'], ['hang', 'On the wall'], ['ceiling', 'From the ceiling'], ['rug', 'Rugs']];
 const dewTried = () => (S.dewTry ? { [S.dewTry.slot]: S.dewTry.key } : {});
 const furnishPetRoom = () => Homepage.furnish(el.petRoom, { ...(S.room || {}), ...(S.roomTry || {}), ...dewTried() }, { tried: S.thingTry });
