@@ -3075,7 +3075,7 @@
     node.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        petted();
+        if (!e.repeat) petted(); // (a key held down repeats: a pat a press, as a pat a click)
       }
     });
     node.addEventListener('pointerenter', updateTag);
