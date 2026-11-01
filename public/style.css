@@ -2819,8 +2819,8 @@ button.person.open { background: var(--dusk-hi); }
    to pick from scrolls by under it, not at the end of the list. The box's own colour round it, and
    fading up from it, so what's under it doesn't show through.) */
 .pet-dialog .theme-try {
-  position: sticky; bottom: 12px; z-index: 3;
-  box-shadow: 0 0 0 12px var(--panel), 0 -12px 22px 10px var(--panel);
+  position: sticky; bottom: 12px; z-index: 3; margin-top: 24px; /* (room over it at the list's end, so the last row's prices aren't under its fade) */
+  box-shadow: 0 0 0 12px var(--panel), 0 -10px 18px 6px var(--panel);
 }
 
 /* ----- Your pet ----- */
