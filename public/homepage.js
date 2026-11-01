@@ -5034,7 +5034,8 @@
     // as it was made, with those showing around it; one that'd be out of view there moves it over
     // just enough to show it (not to the middle of everything: on a screen a little narrower, a
     // piece hanging off one side would push the whole page well over to the other). On a screen
-    // too narrow for all of it, it's all shown, scaled down to fit. (Times the zoom, from
+    // too narrow for all of it (a phone), it's all shown, scaled down to fit with the page still in
+    // the middle: as far out each side as its farthest piece is on either. (Times the zoom, from
     // pinching.) The top is the page's edge: anything above it is cut off (a lamp hanging from
     // the ceiling, say), and putting something higher never moves the rest of the page down.
     const reach = () => {
@@ -5058,7 +5059,8 @@
     const fit = () => {
       const b = reach();
       const avail = page.clientWidth || WIDTH;
-      const fits = Math.min(1, avail / (b.right - b.left));
+      const half = Math.max(WIDTH / 2 - b.left, b.right - WIDTH / 2); // (from its middle to its farthest piece)
+      const fits = avail >= b.right - b.left ? 1 : Math.min(1, avail / (2 * half));
       const width = Math.max(avail / fits, b.right - b.left); // (the view, in the page's own pixels)
       const left = Math.min(Math.max((width - WIDTH) / 2, -b.left), width - b.right);
       const s = fits * (page.hpZoom || 1);

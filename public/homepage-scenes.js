@@ -300,8 +300,10 @@ function bubbles(g, c1, c2) {
 
 // ---------- Pipes ----------
 // The pipes screensaver: shiny pipes laid joint by joint through a box of space, a colour each,
-// turning now and then, till it's full enough; then it fades and they start again. A click or a
-// tap starts a new one there. (Now and then a joint's a teapot, as it was.)
+// turning now and then, each only so long before the next starts somewhere else, till there've been
+// enough of them (or it's full enough); then it fades and they start again. Eight cells across the
+// view's shorter side (more along its longer: a phone's tall), so they've room between them. A click
+// or a tap starts a new one there. (Now and then a joint's a teapot, as it was.)
 function pipes(g, c1, c2) {
   const back = rgbOf(c1);
   const COLORS = [rgbOf(c2), [235, 64, 64], [64, 200, 90], [70, 120, 245], [245, 205, 60], [60, 210, 225], [220, 80, 220], [245, 140, 50], [225, 225, 225]];
@@ -311,6 +313,9 @@ function pipes(g, c1, c2) {
   let NX = 16;
   let NY = 10;
   const NZ = 10;
+  const PIPE_LEN = [20, 46]; // (joints each, at most: then the next)
+  const ACROSS = 8; // (cells across the view's shorter side)
+  const PIPES = 8; // (and then it starts again)
   let filled = null;
   let pipe = null; // { at: [x, y, z], dir, color }
   let laid = 0;
@@ -327,7 +332,7 @@ function pipes(g, c1, c2) {
   const project = ([x, y, z]) => {
     const zc = z - (NZ - 1) / 2 + D;
     const s = f / zc;
-    return { x: w / 2 + (x - (NX - 1) / 2) * s, y: h / 2 + (y - (NY - 1) / 2) * s, r: 0.19 * s };
+    return { x: w / 2 + (x - (NX - 1) / 2) * s, y: h / 2 + (y - (NY - 1) / 2) * s, r: 0.18 * s };
   };
   const ball = (p, color, teapot) => {
     const r = p.r * 1.28;
@@ -399,14 +404,15 @@ function pipes(g, c1, c2) {
     if (!spot) return false;
     const color = COLORS[colorAt++ % COLORS.length];
     filled[idx(...spot)] = 1;
-    pipe = { at: spot, dir: DIRS[Math.floor(rand(0, 6))], color };
+    pipe = { at: spot, dir: DIRS[Math.floor(rand(0, 6))], color, left: Math.floor(rand(...PIPE_LEN)) };
     ball(project(spot), color, false);
     pipesLaid++;
     return true;
   };
-  // One joint further (or a turn, now and then, or when it must): false if it's stuck.
+  // One joint further (or a turn, now and then, or when it must): false if it's stuck, or long enough.
   const step = () => {
     const { at, color } = pipe;
+    if (--pipe.left < 0) return false;
     let dir = pipe.dir;
     const ahead = [at[0] + dir[0], at[1] + dir[1], at[2] + dir[2]];
     if (!free(...ahead) || Math.random() < 0.22) {
@@ -438,14 +444,16 @@ function pipes(g, c1, c2) {
     if (!step()) {
       ball(project(pipe.at), pipe.color, false);
       pipe = null;
-      if (laid > NX * NY * NZ * 0.32 || pipesLaid >= 7) fading = 1.4;
+      if (laid > NX * NY * NZ * 0.18 || pipesLaid >= PIPES) fading = 1.4;
     }
   };
   return {
     resize(nw, nh) {
       w = nw;
       h = nh;
-      NX = clamp(Math.round(NY * (w / h)), 6, 22);
+      const long = clamp(Math.round((ACROSS * Math.max(w, h)) / Math.max(1, Math.min(w, h))), ACROSS, 20);
+      NX = w >= h ? long : ACROSS;
+      NY = w >= h ? ACROSS : long;
       f = (w * 1.02 * (D - (NZ - 1) / 2)) / NX; // (its nearest side as wide as the view: none of it out of sight)
       restart();
     },
