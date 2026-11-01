@@ -35,6 +35,7 @@
   --online: #5bd18b;
   --away: #f5b94a;
   --offline: #6c768c;
+  --voice-live: #b08cff; /* someone in a space's voice channels: its dot in the rail */
   --rail: color-mix(in srgb, var(--deep) 72%, #000); /* your spaces, down the left */
   --panel: var(--dusk);  /* dialogs */
   --pop: var(--dusk-hi); /* menus and what pops up */
@@ -66,7 +67,7 @@
   --mist: #586173; --faint: #8b93a3; --text: #1b2130;
   --lamp: #f2a93b; --lamp-ink: #2b1a03; --lamp-text: #955800; --lamp-glow: rgba(242, 169, 59, 0.4);
   --danger: #d8453b; --danger-soft: rgba(216, 69, 59, 0.12); --danger-text: #b3261e;
-  --online: #1f9e57; --away: #de9612; --offline: #8b93a3;
+  --online: #1f9e57; --away: #de9612; --offline: #8b93a3; --voice-live: #7b4fe0;
   --rail: #e3e6ed; --panel: #fff; --pop: #fff; --scrim: rgba(26, 31, 45, 0.4);
   --rain: 64, 86, 122; --rain-blend: multiply; --tint-mix: 62%;
   --perk-ink: linear-gradient(115deg, #2f6fc4, #7d45cf 50%, #a86400);
@@ -401,6 +402,40 @@ a.x-link .icon { width: 16px; height: 16px; }
   background: var(--lamp);
   box-shadow: 0 0 0 3px var(--rail), 0 0 10px 2px var(--lamp-glow);
 }
+/* Someone in one of its voice channels (app.js: renderRail): a dot that breathes, top left. */
+.rail-voice {
+  position: absolute; top: -2px; left: -2px; z-index: 1;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--voice-live);
+  box-shadow: 0 0 0 3px var(--rail);
+  pointer-events: none;
+  animation: rail-voice-dot 2.8s ease-in-out infinite;
+}
+.rail-voice::before {
+  content: ''; position: absolute; inset: -5px; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--voice-live) 75%, transparent) 30%, transparent 70%);
+  animation: rail-voice-glow 2.8s ease-in-out infinite;
+}
+@keyframes rail-voice-dot { 0%, 100% { transform: scale(0.88); } 50% { transform: scale(1.06); } }
+@keyframes rail-voice-glow { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.3); } }
+@media (prefers-reduced-motion: reduce) { .rail-voice, .rail-voice::before { animation: none; } .rail-voice::before { opacity: 0.6; } }
+/* Over a space's icon (or it focused): its name, and who's in its voice channels. */
+.rail-tip {
+  position: fixed; z-index: 75; pointer-events: none;
+  display: grid; gap: 4px; max-width: 250px; padding: 8px 12px;
+  background: var(--pop); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+}
+.rail-tip[hidden] { display: none; }
+.rail-tip-name { font-size: 14px; overflow-wrap: anywhere; }
+.rail-tip-channel { display: flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--mist); font-weight: 700; min-width: 0; }
+.rail-tip-channel span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-tip-channel .icon { flex: none; width: 15px; height: 15px; color: var(--voice-live); }
+.rail-tip-person { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 2px; }
+.rail-tip-person .face { flex: none; width: 22px; height: 22px; font-size: 10px; }
+.rail-tip-person > span:not(.face):not(.live-tag) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail-tip-more { padding-left: 2px; color: var(--mist); }
 .rail-add { color: var(--lamp-text); }
 .rail-add:hover { background: var(--lamp); color: var(--lamp-ink); }
 .rail-add .icon { width: 22px; height: 22px; }
@@ -807,9 +842,11 @@ li.suspended > .grow { color: var(--danger-text); }
 .mention-pick .emoji-img { width: 24px; height: 24px; }
 .emoji-btn { flex: none; align-self: center; }
 .record-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-/* Your camera, before it turns on: as in a mirror, like your own picture in a call. */
+/* Your camera, before it turns on: as in a mirror (unless you've said not to), like your own
+   picture in a call. */
 .cam-preview-frame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #000; border-radius: 12px; }
-.cam-preview-frame video { display: block; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.cam-preview-frame video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cam-preview-frame video.mirror { transform: scaleX(-1); }
 .cam-preview-status { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 16px; color: #fff; text-align: center; font-size: 14px; }
 .cam-preview-status[hidden] { display: none; }
 .cam-preview-row { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
@@ -1622,7 +1659,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .stage.grid > #popout-btn, .stage.grid > #pin-btn { display: none !important; }
 .stage.grid > #fullscreen-btn { top: auto; bottom: 12px; }
 .call-grid .voice-strip > .voice-tile { width: 150px; }
-.call-grid .voice-tile.mirror video { transform: scaleX(-1); }
+.voice-tile.mirror video { transform: scaleX(-1); } /* (your own camera, in a call or a voice channel: mirrorMe) */
 /* (Their screen's sound, in its tile: top left, as in a voice channel.) */
 .voice-tile .stream-audio { left: 8px; top: 8px; bottom: auto; }
 .voice-strip .stream-audio input, .voice-strip .stream-audio output { display: none; }

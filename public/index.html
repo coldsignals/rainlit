@@ -698,6 +698,8 @@
 
   <!-- Someone's menu: right-click them (on a phone, press and hold): a space's member, a name or
        picture by a message, someone in a voice channel. Only what you can do to them shows. -->
+  <!-- A space's name, and who's in its voice channels, over its icon in the rail (app.js renderRailTip). -->
+  <div id="rail-tip" class="rail-tip" role="tooltip" hidden></div>
   <!-- Invite to voice (app.js openVoiceInvite): who there is to ask into the voice channel you're in. -->
   <div id="voice-invite" class="menu voice-invite" role="dialog" aria-label="Invite to voice" hidden>
     <input id="voice-invite-find" type="search" placeholder="Find someone" aria-label="Find someone to invite" autocomplete="off" />
@@ -1242,6 +1244,7 @@
         <p id="cam-preview-status" class="cam-preview-status" role="status"></p>
       </div>
       <label class="field"><span>Camera</span><select id="cam-preview-select"></select></label>
+      <label class="toggle"><input id="cam-preview-mirror" type="checkbox" /><span>Mirror my camera <small class="toggle-note">(only as you see yourself: everyone else sees you the right way round)</small></span></label>
       <label class="toggle"><input id="cam-preview-always" type="checkbox" /><span>Show this each time my camera turns on</span></label>
       <div class="cam-preview-row">
         <button id="cam-preview-cancel" class="text-btn" type="button">Cancel</button>
@@ -1687,6 +1690,10 @@
             <label id="cam-preview-field" class="toggle">
               <input id="cam-preview-input" type="checkbox" />
               <span>Show my camera before it turns on <small class="toggle-note">(how you look, and which camera, each time you turn it on in a call)</small></span>
+            </label>
+            <label class="toggle">
+              <input id="cam-mirror-input" type="checkbox" />
+              <span>Mirror my camera <small class="toggle-note">(only as you see yourself: everyone else sees you the right way round)</small></span>
             </label>
             <label class="field">
               <span>Screen share quality</span>

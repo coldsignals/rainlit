@@ -148,7 +148,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -163,7 +163,7 @@ for (const id of [
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
-  'cam-preview-field', 'cam-preview-input',
+  'cam-preview-field', 'cam-preview-input', 'cam-mirror-input', 'cam-preview-mirror',
   'sound-trim', 'sound-trim-form', 'sound-trim-file', 'sound-trim-all', 'sound-trim-all-canvas', 'sound-trim-all-view', 'sound-trim-wave', 'sound-trim-canvas',
   'sound-trim-pick', 'sound-trim-playhead', 'sound-trim-play', 'sound-trim-times', 'sound-trim-hint', 'sound-trim-emoji', 'sound-trim-name', 'sound-trim-error', 'sound-trim-save',
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
@@ -1411,6 +1411,7 @@ function previewCamera() {
   return new Promise((resolve) => {
     camPeek = { track: null, asked: 0, changed: false, resolve };
     el.camPreviewAlways.checked = true;
+    renderMirrorSetting();
     el.camPreviewSelect.replaceChildren();
     el.camPreview.showModal();
     fillCamPreviewList(S.devices.cam);
@@ -1481,6 +1482,22 @@ function finishCamPreview(go) {
 function renderCamPreviewSetting() {
   el.camPreviewField.hidden = isPhone();
   el.camPreviewInput.checked = store.get('camPreview', 'on') !== 'off';
+  renderMirrorSetting();
+}
+
+// Your own camera, as you see it (before it turns on, in a call, in a voice channel): as in a
+// mirror, unless you've said not to (Settings, or before it turns on). Everyone else always sees
+// you the right way round; and never your back camera, mirrored.
+const mirrorMe = () => store.get('camMirror', 'on') !== 'off';
+function renderMirrorSetting() {
+  el.camMirrorInput.checked = el.camPreviewMirror.checked = mirrorMe();
+  el.camPreviewVideo.classList.toggle('mirror', mirrorMe());
+}
+function setMirrorMe(on) {
+  store.set('camMirror', on ? 'on' : 'off');
+  renderMirrorSetting();
+  if (S.local.cam) renderSelf();
+  if (S.voice) renderVoice();
 }
 
 // Phones with a front and a back camera can flip between them.
@@ -3212,7 +3229,7 @@ function renderSelf() {
   el.selfView.hidden = !v;
   if (!v) el.stage.classList.remove('self-big');
   el.selfView.title = el.stage.classList.contains('self-big') ? 'Click to make it small again' : 'Click to see it big';
-  el.selfView.classList.toggle('mirror', Boolean(S.local.cam && !S.local.screen && S.facing !== 'environment'));
+  el.selfView.classList.toggle('mirror', Boolean(S.local.cam && !S.local.screen && S.facing !== 'environment' && mirrorMe()));
   renderCallGrid(); // (and your video in the corner: placeCallVideos)
 }
 
@@ -3250,7 +3267,7 @@ function renderCallGrid() {
   const tiles = [
     theirs.screen && { key: 'peer:screen', track: theirs.screen, name: `${p.name}'s screen`, screen: true },
     { key: 'peer:cam', track: theirs.cam, person: friend, name: p.name, muted: !p.state.mic, deaf: p.state.deaf, away: (S.friends.get(p.id) || {}).presence === 'away' },
-    { key: 'me:cam', track: mine.cam, person: profileOf(S.me.id) || S.me, name: 'You', muted: !me.mic, deaf: me.deaf, mirror: S.facing !== 'environment' },
+    { key: 'me:cam', track: mine.cam, person: profileOf(S.me.id) || S.me, name: 'You', muted: !me.mic, deaf: me.deaf, mirror: S.facing !== 'environment' && mirrorMe() },
     mine.screen && { key: 'me:screen', track: mine.screen, name: 'Your screen', screen: true },
   ].filter(Boolean);
   const keep = new Set();
@@ -10521,10 +10538,16 @@ function renderRail() {
     const open = S.view === space.id;
     const mentions = spaceMentions(space.id);
     const dot = !open && !mentions && space.notify !== 'none' && spaceUnread(space.id);
+    const talking = space.voiceCount = spaceVoice(space).reduce((n, x) => n + x.members.length, 0);
     b.className = `rail-btn rail-space${open ? ' open' : ''}${dot ? ' unread' : ''}`;
-    b.title = space.name;
-    b.setAttribute('aria-label', `${space.name}${mentions ? ` (${mentions} mention${mentions === 1 ? '' : 's'})` : dot ? ' (unread)' : ''}`);
+    b.dataset.space = space.id; // (its name shows over it: renderRailTip)
+    b.setAttribute('aria-label', `${space.name}${mentions ? ` (${mentions} mention${mentions === 1 ? '' : 's'})` : dot ? ' (unread)' : ''}${talking ? `, ${talking} in voice` : ''}`);
     paintSpaceIcon(b, space);
+    if (talking) {
+      const live = document.createElement('span');
+      live.className = 'rail-voice';
+      b.append(live);
+    }
     if (mentions) {
       const pill = document.createElement('span');
       pill.className = 'rail-mentions';
@@ -10534,6 +10557,83 @@ function renderRail() {
     b.addEventListener('click', () => showSpace(space.id));
     return b;
   }));
+  if (railTipFor) renderRailTip();
+}
+
+// Who's in a space's voice channels: each with anyone in it, and who.
+function spaceVoice(space) {
+  return (space.channels || []).filter((c) => c.kind === 'voice')
+    .map((c) => ({ channel: c, members: S.voiceStates.get(c.id) || [] }))
+    .filter((x) => x.members.length);
+}
+
+// ----- Over a space's icon -----
+// Its name, and who's in its voice channels (channel by channel), while the pointer's over it or
+// it's focused from the keyboard. (Not for a tap: that opens it.)
+let railTipFor = ''; // (the space it's showing)
+let railTipLoading = '';
+
+function showRailTip(spaceId) {
+  railTipFor = spaceId;
+  renderRailTip();
+  // (Someone in voice there whose name isn't known yet: its members, then again.)
+  const space = S.spaces.get(spaceId);
+  if (!space || space.members || railTipLoading === spaceId) return;
+  if (!spaceVoice(space).some(({ members }) => members.some((m) => !profileOf(m.id)))) return;
+  railTipLoading = spaceId;
+  loadMembers(spaceId).finally(() => {
+    railTipLoading = '';
+    if (railTipFor === spaceId) renderRailTip();
+  });
+}
+
+function hideRailTip() {
+  railTipFor = '';
+  el.railTip.hidden = true;
+}
+
+function renderRailTip() {
+  const space = S.spaces.get(railTipFor);
+  const b = space && [...el.railSpaces.querySelectorAll('.rail-space')].find((x) => x.dataset.space === space.id);
+  if (!b) return hideRailTip();
+  const name = document.createElement('strong');
+  name.className = 'rail-tip-name';
+  name.textContent = space.name;
+  const parts = [name];
+  for (const { channel, members } of spaceVoice(space)) {
+    const head = document.createElement('div');
+    head.className = 'rail-tip-channel';
+    head.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-speaker"/></svg>';
+    const label = document.createElement('span');
+    label.textContent = channel.name;
+    head.append(label);
+    parts.push(head);
+    const shown = members.slice(0, 8);
+    for (const m of shown) {
+      const person = profileOf(m.id) || { id: m.id, displayName: 'Someone', username: '' };
+      const row = document.createElement('div');
+      row.className = 'rail-tip-person';
+      const nm = document.createElement('span');
+      nm.textContent = person.displayName || person.username || 'Someone';
+      row.append(makeFace(person, null), nm);
+      if (m.screen) row.insertAdjacentHTML('beforeend', '<span class="live-tag">LIVE</span>');
+      parts.push(row);
+    }
+    if (members.length > shown.length) {
+      const more = document.createElement('div');
+      more.className = 'rail-tip-more';
+      more.textContent = `and ${members.length - shown.length} more`;
+      parts.push(more);
+    }
+  }
+  el.railTip.replaceChildren(...parts);
+  el.railTip.hidden = false;
+  // (Beside its icon, level with its middle, but never off the window.)
+  const r = b.getBoundingClientRect();
+  const z = uiZoom();
+  const h = el.railTip.getBoundingClientRect().height;
+  el.railTip.style.left = `${(r.right + 12) / z}px`;
+  el.railTip.style.top = `${Math.max(8, Math.min(innerHeight - h - 8, r.top + r.height / 2 - h / 2)) / z}px`;
 }
 
 function renderSide() {
@@ -12991,6 +13091,11 @@ function onVoiceState({ channel, members }) {
   S.voiceStates.set(channel, members);
   const c = S.channels.get(channel);
   if (c && S.view === c.spaceId) renderSide();
+  const space = c && S.spaces.get(c.spaceId);
+  if (space && !isGroupSpace(space)) {
+    if (spaceVoice(space).reduce((n, x) => n + x.members.length, 0) !== space.voiceCount) renderRail();
+    else if (railTipFor === space.id) renderRailTip();
+  }
   if (S.voice && S.voice.channelId === channel) renderVoiceView();
   if (groupOfChannel(channel)) {
     renderGroups();
@@ -13700,6 +13805,7 @@ function renderVoiceView() {
     const person = profileOf(p.identity) || { id: p.identity, displayName: p.name || 'Someone', username: '' };
     const pub = p.getTrackPublication(source === 'screen' ? VK.Track.Source.ScreenShare : VK.Track.Source.Camera);
     const track = pub && !pub.isMuted ? pub.track : null;
+    tile.classList.toggle('mirror', Boolean(track) && source === 'camera' && p.identity === S.clientId && S.facing !== 'environment' && mirrorMe());
     let video = tile.querySelector('video');
     if (track) {
       if (!video || video.dataset.sid !== track.sid) {
@@ -19226,6 +19332,24 @@ async function init() {
     if (dm) jumpToNewest(dm);
   });
   el.addVoiceBtn.addEventListener('click', () => startNewChannel('voice'));
+  // (A space's name, and who's in its voice channels, over its icon: renderRailTip.)
+  el.railSpaces.addEventListener('pointerover', (e) => {
+    const b = e.target.closest('.rail-space');
+    if (b && e.pointerType !== 'touch' && railTipFor !== b.dataset.space) showRailTip(b.dataset.space);
+  });
+  el.railSpaces.addEventListener('pointerout', (e) => {
+    const b = e.target.closest('.rail-space');
+    if (b && !(e.relatedTarget && b.contains(e.relatedTarget))) hideRailTip();
+  });
+  el.railSpaces.addEventListener('focusin', (e) => {
+    const b = e.target.closest('.rail-space');
+    if (b && b.matches(':focus-visible')) showRailTip(b.dataset.space);
+  });
+  el.railSpaces.addEventListener('focusout', (e) => {
+    const b = e.target.closest('.rail-space');
+    if (b && railTipFor === b.dataset.space && !b.matches(':hover')) hideRailTip();
+  });
+  el.rail.addEventListener('scroll', hideRailTip, { passive: true });
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-voice]');
     if (b && b.dataset.voice === 'sounds') toggleSoundboard(b, e.detail === 0);
@@ -19774,6 +19898,8 @@ async function init() {
   el.noiseStrength.addEventListener('change', onNoiseChange);
   el.camSelect.addEventListener('change', onCamChange);
   el.camPreviewInput.addEventListener('change', () => store.set('camPreview', el.camPreviewInput.checked ? 'on' : 'off'));
+  el.camMirrorInput.addEventListener('change', () => setMirrorMe(el.camMirrorInput.checked));
+  el.camPreviewMirror.addEventListener('change', () => setMirrorMe(el.camPreviewMirror.checked));
   el.camPreviewSelect.addEventListener('change', () => {
     if (!camPeek) return;
     camPeek.changed = true;
