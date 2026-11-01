@@ -156,7 +156,32 @@ async function runningContext() {
   }
   // (Paused by something else meanwhile, a phone call say: going again when it can.)
   ctx.addEventListener('statechange', () => { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); });
+  // (Something played, if only a whisper: a millionth, far below anything a speaker can make, so
+  // the device's own clock keeps running it. One that plays nothing at all is, after half a minute,
+  // run by a stand-in clock instead, and on some phones that goes too fast (two or six times), so the
+  // track it feeds carries more sound than there was, and a call's other end hears it chopped up.)
+  const keep = ctx.createConstantSource();
+  keep.offset.value = 1e-6;
+  keep.connect(ctx.destination);
+  keep.start();
   return ctx;
+}
+
+// How fast a context's clock goes by the wall's (1: just as it should), looked at every few
+// seconds: `fast(rate)` once it's been too fast (a quarter more) twice running. Returns a stop.
+const CLOCK_EVERY = 5000;
+function watchClock(ctx, fast) {
+  let at = { clock: ctx.currentTime, wall: performance.now() };
+  let over = 0;
+  const timer = setInterval(() => {
+    if (ctx.state !== 'running') return;
+    const now = { clock: ctx.currentTime, wall: performance.now() };
+    const rate = (now.clock - at.clock) / Math.max(0.001, (now.wall - at.wall) / 1000);
+    at = now;
+    over = rate > 1.25 ? over + 1 : 0;
+    if (over === 2) fast(rate);
+  }, CLOCK_EVERY);
+  return () => clearInterval(timer);
 }
 
 // What `raw` (a microphone's track) hears, cleaned up: a track of its own, that passes for the mic's
@@ -184,10 +209,13 @@ export async function cleanTrack(raw, { engine = 'gtcrn', strength = 0.8, wait =
   src.connect(s.input);
   s.output.connect(dest);
   const track = dest.stream.getAudioTracks()[0];
+  // (Its clock, to keep an eye on: too fast, the track says so, for the app to start it again.)
+  const unwatch = watchClock(ctx, (rate) => track.dispatchEvent(new CustomEvent('rainlitfast', { detail: rate })));
   let stopped = false;
   const stopAll = () => {
     if (stopped) return;
     stopped = true;
+    unwatch();
     try { src.disconnect(); } catch {}
     s.dispose();
     ctx.close().catch(() => {});
@@ -200,6 +228,7 @@ export async function cleanTrack(raw, { engine = 'gtcrn', strength = 0.8, wait =
   track.getSettings = () => ({ ...raw.getSettings(), noiseSuppression: true });
   track.getCapabilities = () => raw.getCapabilities();
   track.rainlitNoise = engine;
+  track.rainlitTime = () => ctx.currentTime; // (its clock: the call debug log notes how far it goes)
   track.stop = () => {
     stop();
     raw.stop();
@@ -212,7 +241,7 @@ export async function cleanTrack(raw, { engine = 'gtcrn', strength = 0.8, wait =
 // The same for a voice channel's microphone, which LiveKit opens (and keeps) itself: a processor for
 // its LocalAudioTrack.setProcessor. (LiveKit gives it a context: ours, from contextForLivekit and
 // setAudioContext, closed when it's done with.)
-export function livekitProcessor({ engine = 'gtcrn', strength = 0.8 } = {}) {
+export function livekitProcessor({ engine = 'gtcrn', strength = 0.8, fast = () => {} } = {}) {
   let ctx = null;
   let current = null;
   const start = async (track, ctx) => {
@@ -222,11 +251,12 @@ export function livekitProcessor({ engine = 'gtcrn', strength = 0.8 } = {}) {
     dest.channelCount = 1;
     src.connect(s.input);
     s.output.connect(dest);
-    current = { s, src };
+    current = { s, src, unwatch: watchClock(ctx, fast) };
     return dest.stream.getAudioTracks()[0];
   };
   const end = () => {
     if (!current) return;
+    current.unwatch();
     try { current.src.disconnect(); } catch {}
     current.s.dispose();
     current = null;

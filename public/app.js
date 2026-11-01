@@ -609,6 +609,18 @@ function syncMicFx() {
   S.micFx.noiseSuppression = S.noise.mode !== 'off' && !noiseRuns();
 }
 syncMicFx();
+// Its clock running too fast (on some phones, now and then: the other end hears it chopped up): it's
+// started again, and a third time in ten minutes, the browser's own from then on (this time the app's
+// open). `again(done)` starts it again (`done`: the browser's own now).
+function noiseTooFast(rate, again) {
+  const now = Date.now();
+  S.noiseFast = (S.noiseFast || []).filter((t) => now - t < 10 * 60_000);
+  S.noiseFast.push(now);
+  trace('noise-fast', { x: rate.toFixed(2), times: S.noiseFast.length });
+  const done = S.noiseFast.length >= 3;
+  if (done) noiseFailed(new Error(`its clock ran ${rate.toFixed(2)} times too fast, again`));
+  again(done);
+}
 // It couldn't run: the browser's own from now on (this time the app's open).
 function noiseFailed(err) {
   trace('noise-failed', { why: String((err && err.message) || err).slice(0, 80) });
@@ -626,6 +638,15 @@ async function cleanMic(raw, deviceId, android) {
     const track = await N.cleanTrack(raw, { engine: noiseEngine(), strength: S.noise.strength / 100 });
     // (Strong, not fetched yet: Standard till it is, then the mic's opened again with it.)
     if (track.rainlitNoise !== noiseEngine()) prepareNoise();
+    // (Running too fast, as a call's mic: opened again. For the browser's own, closed first: a mic
+    // that's open already is opened again just as it is.)
+    track.addEventListener('rainlitfast', (e) => {
+      if (S.local.mic !== track) return;
+      noiseTooFast(e.detail, (done) => {
+        if (done) track.stop();
+        restartMic();
+      });
+    });
     return track;
   } catch (err) {
     if (err.name === 'NotRunning') trace('noise-later', {});
@@ -647,6 +668,7 @@ async function cleanVoiceMic(raw) {
     const N = await loadNoise();
     const track = await N.cleanTrack(raw, { engine: noiseEngine(), strength: S.noise.strength / 100 });
     if (track.rainlitNoise !== noiseEngine()) prepareNoise();
+    track.addEventListener('rainlitfast', (e) => noiseTooFast(e.detail, voiceDevicesChanged));
     return track;
   } catch (err) {
     noiseFailed(err);
@@ -671,7 +693,13 @@ async function noiseForVoice(room) {
     } else {
       if (engine !== noiseEngine()) prepareNoise();
       track.setAudioContext(await N.contextForLivekit());
-      await track.setProcessor(N.livekitProcessor({ engine, strength: S.noise.strength / 100 }));
+      // (Running too fast: set up again.)
+      const fast = (rate) => noiseTooFast(rate, (done) => {
+        if (done) return voiceDevicesChanged(); // (opened again, with the browser's own)
+        track.rainlitNoise = '';
+        noiseForVoice(room);
+      });
+      await track.setProcessor(N.livekitProcessor({ engine, strength: S.noise.strength / 100, fast }));
     }
     track.rainlitNoise = want;
   } catch (err) {
@@ -18435,6 +18463,16 @@ async function traceStatus() {
     if (S.traceBoostClock !== undefined && S.traceBoostCtx === S.boostCtx) s.boostS = Math.round(clock - S.traceBoostClock);
     S.traceBoostClock = clock;
     S.traceBoostCtx = S.boostCtx;
+  }
+  // (Rainlit's noise suppression on your mic: which, and how far its clock went meanwhile, as the
+  // boost's: a minute's 60.)
+  const mic = S.local.mic;
+  if (mic && mic.rainlitTime) {
+    const clock = mic.rainlitTime();
+    s.noise = mic.rainlitNoise;
+    if (S.traceNoiseClock !== undefined && S.traceNoiseMic === mic) s.noiseS = Math.round(clock - S.traceNoiseClock);
+    S.traceNoiseClock = clock;
+    S.traceNoiseMic = mic;
   }
   if (ANDROID) {
     try { s.duck = (await ANDROID.duckStatus()).state; } catch {}
