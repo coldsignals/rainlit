@@ -16151,6 +16151,11 @@ function renderPetTabs() {
 const DECOR_ROWS = [['wall', 'Wallpaper'], ['sky', 'Out the window'], ['floor', 'Floor'], ['light', 'Lighting']];
 const THING_ROWS = [['stand', 'On the floor'], ['hang', 'On the wall'], ['ceiling', 'From the ceiling'], ['rug', 'Rugs']];
 const dewTried = () => (S.dewTry ? { [S.dewTry.slot]: S.dewTry.key } : {});
+// (What's to pick, in order: everyone's and Glow's as they come, then dew's, cheapest first.)
+const decorOrder = (list, keys) => {
+  const things = Homepage.ROOM[list];
+  return [...keys.filter((k) => !things[k].dew), ...keys.filter((k) => things[k].dew).sort((a, b) => dewPriceOf(list, a) - dewPriceOf(list, b))];
+};
 const furnishPetRoom = () => Homepage.furnish(el.petRoom, { ...(S.room || {}), ...(S.roomTry || {}), ...dewTried() }, { tried: S.thingTry });
 const arrangeRoom = () => Homepage.arrange(el.petRoom, roomArranged);
 const roomThings = () => (S.room && Array.isArray(S.room.things) ? S.room.things : []);
@@ -16171,7 +16176,7 @@ function renderPetDecor() {
   el.petDecorRows.replaceChildren(...DECOR_ROWS.map(([slot, label]) => {
     const list = Homepage.ROOM_SLOTS[slot];
     const things = Homepage.ROOM[list];
-    const opts = Object.keys(things).filter((key) => !things[key].perk || supporting() || glowShown() || theirs(slot, key)).map((key) => {
+    const opts = decorOrder(list, Object.keys(things).filter((key) => !things[key].perk || supporting() || glowShown() || theirs(slot, key))).map((key) => {
       const t = things[key];
       const locked = t.perk && !supporting() && !theirs(slot, key);
       const dewLocked = Boolean(t.dew) && !hasDewThing(list, key) && !theirs(slot, key);
@@ -16209,7 +16214,7 @@ function renderPetDecor() {
   note.textContent = `Pick one to put it in (as many as you like, up to ${Homepage.THINGS_MAX}). Then drag things about in the room, and tap or click one to flip it, make it bigger or smaller, or put it away.`;
   el.petDecorRows.append(head, note, ...THING_ROWS.map(([list, label]) => {
     const things = Homepage.ROOM[list];
-    const opts = Object.keys(things).filter((key) => key !== 'none' && (!things[key].perk || supporting() || glowShown() || count(list, key))).map((key) => {
+    const opts = decorOrder(list, Object.keys(things).filter((key) => key !== 'none' && (!things[key].perk || supporting() || glowShown() || count(list, key)))).map((key) => {
       const t = things[key];
       const n = count(list, key);
       const dewLocked = Boolean(t.dew) && !hasDewThing(list, key);

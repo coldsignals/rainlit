@@ -3467,6 +3467,13 @@
     city: { label: 'City at night', perk: true, twinkle: 'y', tile: cityTile(), colors: { a: '#0f1530', b: '#1a2246', s: '#cfd8ff', h: '#0a0d1c', y: '#ffd76a' } },
     leaves: { label: 'Dewy leaves', dew: true, tile: leavesTile(), colors: { a: '#284a37', b: '#3f7a4f', c: '#5fa36a', d: '#cfeeff' } },
     retro: { label: 'Seventies', dew: true, tile: ['aaabbbcccdddcccbbb'], colors: { a: '#4a2c1a', b: '#b5562a', c: '#d99a34', d: '#efd29a' } },
+    raindrops: { label: 'Raindrops', dew: true, tile: ['aaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa', 'aaaabaaaaaaaaaaa', 'aaaabaaaaaaadaaa', 'aaabbbaaaaaaaaaa', 'aabbbbbaaaaaaaaa', 'aabcbbbadaaaaaaa',
+      'aaabbbaaaaaaaaaa', 'aaaaaaaaaaaaaaaa', 'aaaaaaaaaaaabaaa', 'aaaaaaaaaaaabaaa', 'aaaaaaaaaaabbbaa', 'aaaaadaaaabbbbba', 'aaaaaaaaaabcbbba',
+      'aaaaaaaaaaabbbaa', 'aaaaaaaaaaaaaada'], colors: { a: '#3a5272', b: '#6f9fcf', c: '#cdeaff', d: '#4f6a8e' } },
+    cabin: { label: 'Log cabin', dew: true, tile: ['cccccccccccccccc', 'aaaaaaaaaaaaaaaa', 'aaaaadaaaaaaaaaa', 'bbbbbbbbbbbbbbbb', 'eeeeeeeeeeeeeeee', 'cccccccccccccccc', 'aaaaaaaaaaaaaaaa',
+      'aaaaaaaaaaaadaaa', 'bbbbbbbbbbbbbbbb', 'eeeeeeeeeeeeeeee'], colors: { c: '#b07a4a', a: '#94603a', b: '#6e4428', d: '#5a3820', e: '#d8c8a8' } },
+    waves: { label: 'Waves', dew: true, tile: ['bbbcaaaaaaaacbbb', 'bbbbbaccccabbbbb', 'ccbbbbcbbcbbbbcc', 'aaccbbbbbbbbccaa', 'aaaacbbbbbbcaaaa', 'ccabbbbbbbbbbacc', 'bcbbbbccccbbbbcb',
+      'bbbbccaaaaccbbbb'], colors: { a: '#22405f', b: '#2b4f78', c: '#6f9fc8' } },
   };
   const FLOORS = {
     wood: { label: 'Wood', tile: ['aaaaaaaaaaaaaaab', 'acaaaaaaaaaaaaab', 'aaaaaaaaaaaaaaab', 'bbbbbbbbbbbbbbbb', 'aaaaaaabaaaaaaaa', 'aaaaaaabaaaaacaa', 'aaaaaaabaaaaaaaa', 'bbbbbbbbbbbbbbbb'], colors: { a: '#a8744c', b: '#8a5c3a', c: '#b8845a' } },
@@ -3484,6 +3491,14 @@
     crystal: { label: 'Crystal', perk: true, twinkle: 'c', tile: ['aaabbaaa', 'aabbbbaa', 'abbcbbba', 'bbcbbbbb', 'abbbbbba', 'aabbbbaa', 'aaabbaaa', 'aaaaaaaa'], colors: { a: '#5a3fa0', b: '#8a6fd6', c: '#e2d4ff' } },
     moss: { label: 'Moss', dew: true, tile: ['abaacaba', 'baabaaab', 'acbaabca', 'abaacaba', 'baaabaab', 'aadbaaba', 'cabaabaa', 'abaabcab'], colors: { a: '#3d6b38', b: '#4b8043', c: '#5c9650', d: '#d6f2ff' } },
     checker: { label: 'Checkerboard', dew: true, tile: ['aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'aaaabbbb', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa', 'bbbbaaaa'], colors: { a: '#26262e', b: '#e6e6ea' } },
+    pebbles: { label: 'River stones', dew: true, tile: ['gaaaaggggbbbgggg', 'aaaaaagbbhbbbbgg', 'gaaaaggbbbbbbbgg', 'gggggggggbbbgggg', 'bgggcccccggggaag', 'bbbcccccccggahbb', 'bbbgcccccgggaabb',
+      'bggggggggggggaag'], colors: { g: '#3a3632', a: '#8a8680', b: '#a09486', c: '#7a7f86', h: '#c2bdb4' } },
+    parquet: { label: 'Parquet', dew: true, tile: ['aaaaaaaaaaadbbbd', 'aaacaaaaaaadbbbd', 'aaaaaaaaaaadbbbd', 'ddddddddacadbbbd', 'bbbbbbbbaaadbbbd', 'bbbbbcbbaaadbcbd', 'bbbbbbbbaaadbbbd',
+      'ddddddddaaadbbbd', 'aaadbbbdaaaaaaaa', 'aaadbbbdaaacaaaa', 'aaadbbbdaaaaaaaa', 'acadbbbddddddddd', 'aaadbbbdbbbbbbbb', 'aaadbcbdbbbbbcbb',
+      'aaadbbbdbbbbbbbb', 'aaadbbbddddddddd'], colors: { a: '#b3804f', b: '#a5733f', c: '#c4935e', d: '#7d5530' } },
+    marble: { label: 'Marble', dew: true, tile: ['aaaaaaaaaaaaaaag', 'aaabbaaaaaaaavag', 'aabbbbaaaaaaavag', 'aaabbaaaaaaavaag', 'aaaaaaaaaaavvaag', 'aaaaaaaaaavaaaag', 'vaaaaaaaaavaaaag',
+      'avaaaaaaavaabbag', 'aavaaaaavaabbbbg', 'aaavvaavaaaabbag', 'aaaaavvaaaaaaaag', 'aaaaaavaaaaaaaag', 'aaaaaaavaaawaaag', 'abbaaaaavaawaaag',
+      'bbbbaaaaavawaaag', 'gggggggggggggggg'], colors: { a: '#ece9e4', b: '#dedad4', v: '#9a9aa8', w: '#c8c6ce', g: '#cdc8bf' } },
   };
   // Rugs, things on the wall, and things for the corners: a picture each (or two, taking turns),
   // with a line round it unless it glows (`bare`).
@@ -3495,6 +3510,23 @@
     charcoal: { label: 'Charcoal', rows: oval(36, 10, 'bbababa'), colors: { a: '#4a4e57', b: '#5d626c' } },
     magic: { label: 'Magic circle', perk: true, glow: '#9ae8ff', bare: true, rows: oval(38, 10, '...c.b.a').map((r, y) => (y === 4 || y === 5 ? r.replace(/c/g, 'w') : r)), colors: { a: '#7efaff', b: '#b58cff', c: '#b58cff', w: '#ffffff' } },
     leaf: { label: 'Leaf', dew: true, rows: leafRug(), colors: { a: '#2f6a3a', b: '#4f9a5a', c: '#3a7a45' } },
+    puddle: {
+      label: 'Puddle', dew: true, bare: true,
+      frames: [
+        ['......BBBBBBBBBBBBBBBBBB......', '...BBBbbbbbbbbbbbbbbbbbbBB....', '..BBbbbbbwwwwbbbbbbbbWWbbbBB..', '.BBbbbbwwbbbbwwbbbbbbbbbbbbBB.',
+         '.BBbbbbwwbbbbwwbbbbbbbbbbbbBB.', '..BBbbbbbwwwwbbbbbbbbbbbbbBB..', '...BBBbbbbbbbbbbbbbbbbbbBB....', '......BBBBBBBBBBBBBBBBBB......'],
+        ['......BBBBBBBBBBBBBBBBBB......', '...BBBbbwwwwwwbbbbbbbbbbBB....', '..BBbwwwwwbbwwwwwbbbbWWbbbBB..', '.BBbwwwbbbbbbbbwwwbbbbbbbbbBB.',
+         '.BBbwwwbbbbbbbbwwwbbbbbbbbbBB.', '..BBbwwwwwbbwwwwwbbbbbbbbbBB..', '...BBBbbwwwwwwbbbbbbbbbbBB....', '......BBBBBBBBBBBBBBBBBB......'],
+      ],
+      colors: { b: '#5f9fd6', B: '#4a80b5', w: '#a9d4f5', W: '#e6f6ff' },
+    },
+    persian: {
+      label: 'Persian rug', dew: true,
+      rows: ['wbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbw', '.bcbbcbbcbbcbbcbbcbbcbbcbbcbbcbbcbbcb.', 'wbbddddddddddddddddddddddddddddddddbbw', '.bbdaaaaaeaaaaaaccccccaeaaaaaaeaaadbb.',
+        'wbcdaeaaaaaaecccbbbbbbcccaeaaaaaaedcbw', '.bbdaaaaeacccbbbddddddbbbcccaeaaaadbb.', 'wbbdeaaaaaaeacccbbbbbbccceaaaaaaeadbbw', '.bcdaaaeaaaaaaeaccccccaaaaaaeaaaaadcb.',
+        'wbbddddddddddddddddddddddddddddddddbbw', '.bbcbbcbbcbbcbbcbbcbbcbbcbbcbbcbbcbbb.', 'wbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbw'],
+      colors: { a: '#8a2a2a', b: '#1f2f55', c: '#d9a13a', d: '#f2e2c0', e: '#a8403a', w: '#f2e2c0' },
+    },
   };
   const HANGS = {
     none: { label: 'None' },
@@ -3542,6 +3574,36 @@
       rows: ['wwwwwwwwwwwww', 'wkkkkkkkkkkkw', 'wkkkkkkyykkkw', 'wkkkkkyykkkkw', 'wkkkkyykkkkkw', 'wkkkyyyyyykkw', 'wkkkkkkyykkkw', 'wkkkkkyykkkkw',
         'wkkkkyykkkkkw', 'wkkkkykkkkkkw', 'wkkkkkkkkkkkw', 'wkpppkpppkppw', 'wkkkkkkkkkkkw', 'wkkpppppppkkw', 'wkkkkkkkkkkkw', 'wwwwwwwwwwwww'],
       colors: { w: '#ece6da', k: '#1d1b26', y: '#ffd23a', p: '#ff5fa8' },
+    },
+    mirror: {
+      label: 'Round mirror', dew: true,
+      rows: ['....ffff....', '..ffffffff..', '.ffggggggff.', '.fggwgwgggf.', 'ffgwgwggggff', 'ffggwgggggff', 'fggwggggggGf', 'fggggggggGGf', 'ffggggggGGff',
+        'ffgggggGGGff', '.fggggGGGGf.', '.ffggGGGGff.', '..ffffffff..', '....ffff....'],
+      colors: { f: '#d9a13a', g: '#bcd9e8', G: '#9fc2d6', w: '#ffffff' },
+    },
+    map: {
+      label: 'Map', dew: true,
+      rows: ['ffffffffffffffffff', 'fssssssssssssssssf', 'fsgggssssssggggssf', 'fsgGggsssssgGgggsf', 'fssgggsssssggGgssf', 'fssggssrssssgggssf', 'fsssgssssssssgsssf',
+        'fsssggsssssssssgsf', 'fssssgsssgggsssssf', 'fsssssssssGgssssff', 'fssssssssssssssssf', 'ffffffffffffffffff'],
+      colors: { f: '#8a5c3a', s: '#9fd0e8', g: '#7cc07a', G: '#5a9a58', r: '#e04a4a' },
+    },
+    rainbow: {
+      label: 'Rainbow', dew: true,
+      rows: ['......................', '........rrrrrr........', '.....rrroooooorrr.....', '....rrooyyyyyyoorr....', '...rooyyggggggyyoor...', '..rooyggbbbbbbggyoor..',
+        '.rroyggbbppppbbggyorr.', '.royggbpp....ppbggyor.', '.roygbp........pbgyor.', 'rwwwbbp........pbbwwwr', 'wwwwwp..........pwwwww', 'WWWWWW..........WWWWWW'],
+      colors: { r: '#e8504a', o: '#f2903a', y: '#f2d23a', g: '#5fb85a', b: '#4a8ae0', p: '#9a6ad8', w: '#ffffff', W: '#dfe8f0' },
+    },
+    cuckoo: {
+      label: 'Cuckoo clock', dew: true,
+      frames: [
+        ['......rr......', '.....rrrr.....', '....rrddrr....', '...rrrddrrr...', '..rrrrrrrrrr..', '.rrrrrrrrrrrr.', '...hhhhhhhh...', '...hhwwwwhh...',
+         '...hwwwnwwwh..', '...hwwwnnnwh..', '...hwwwwwwwh..', '...hhwwwwwhh..', '...hhhhhhhhh..', '..hhhhhhhhhhh.', '......c...e.e.', '.....c........',
+         '....c.........', '...oo.........', '..........e.e.', '.........eeeee', '..........eee.'],
+        ['......rr......', '.....rrrr.....', '....rrddrr....', '...rrrddrrr...', '..rrrrrrrrrr..', '.rrrrrrrrrrrr.', '...hhhhhhhh...', '...hhwwwwhh...',
+         '...hwwwnwwwh..', '...hwwwnnnwh..', '...hwwwwwwwh..', '...hhwwwwwhh..', '...hhhhhhhhh..', '..hhhhhhhhhhh.', '......c...e.e.', '.......c......',
+         '........c.....', '........oo....', '..........e.e.', '.........eeeee', '..........eee.'],
+      ],
+      colors: { r: '#5e3f2c', R: '#7a5234', h: '#9a6b45', d: '#ffd84d', w: '#f2ecdc', n: '#2a1f33', c: '#b8a070', o: '#d9a13a', e: '#5a3a26' },
     },
   };
   const STANDS = {
@@ -3609,6 +3671,42 @@
       label: 'Terrarium', dew: true, frames: [terrarium(2), terrarium(4)],
       colors: { c: '#bfe3ee', q: 'rgba(191, 231, 240, 0.22)', d: '#f0fcff', g: '#5fae5a', G: '#3f8a45', p: '#ff8fc6', m: '#4f8a3f', s: '#6b4a32', T: '#7a5234' },
     },
+    boots: {
+      label: 'Rain boots', dew: true,
+      rows: ['rrrr...rrrr...', 'yYyy...yYyy...', 'yYyy...yYyy...', 'yyyy...yyyy...', 'yyyy...yyyy...', 'yyyy...yyyy...', 'yyyyy..yyyyy..', 'yyyyyy.yyyyyy.',
+        'ssssss.ssssss.'],
+      colors: { y: '#f2c230', Y: '#ffe68a', r: '#c9961a', s: '#4a3a2a' },
+    },
+    cactus: {
+      label: 'Cactus', dew: true,
+      rows: ['....p......', '...gGg.....', '...gGg.....', 'g..gGg.....', 'g..gGg..g..', 'gg.gGg..g..', 'gggggg.gg..', '.ggGgggg...', '...gGg.....',
+        '...gGg.....', '...gGg.....', 'OOOOOOOOO..', '.ooooooo...', '.ooooooo...', '..ooooo....'],
+      colors: { g: '#5aa650', G: '#3f8a45', p: '#ff8fc6', o: '#e07a4a', O: '#b85a33' },
+    },
+    stove: {
+      label: 'Wood stove', dew: true, glow: '#ff9a4a', emit: 'fFy', lightY: 0.66,
+      frames: [
+        ['....pp......', '....pp......', '....pp......', '....pp......', '....pp......', '....pp......', '....pp......', '..iiiiiiii..', '.iIIIIIIIIi.',
+         '.iiiiiiiiii.', '.ihhhhhhhhi.', '.ihfFf.Ffhi.', '.ihFyFfFyhi.', '.ihyyyyyyhi.', '.ihhhhhhhhi.', '.iiiiiiiiii.', '.i........i.'],
+        ['....pp......', '....pp......', '....pp......', '....pp......', '....pp......', '....pp......', '....pp......', '..iiiiiiii..', '.iIIIIIIIIi.',
+         '.iiiiiiiiii.', '.ihhhhhhhhi.', '.ih.FfF.fhi.', '.ihfFyFyFhi.', '.ihyyyyyyhi.', '.ihhhhhhhhi.', '.iiiiiiiiii.', '.i........i.'],
+      ],
+      colors: { p: '#3a3a44', i: '#2f2f38', I: '#4a4a55', h: '#55555f', f: '#e8504a', F: '#ff9a3d', y: '#ffe066' },
+    },
+    telescope: {
+      label: 'Telescope', dew: true,
+      rows: ['...................', '.................b.', '................Bl.', '..............BBbl.', '............BBbbbl.', '..........BBbbbb.b.',
+        '........BBbbbb.....', '......BBbbbb.......', '....BBbbbm.........', '...cbbbb.m.........', '..ccbb...m.........', '..c......m.........',
+        '........mmm........', '.......m.m.m.......', '......m..m..m......', '.....m...m...m.....', '....m....m....m....', '...m.....m.....m...'],
+      colors: { b: '#d9a13a', B: '#f3cf7a', c: '#5a4632', m: '#4a3424', l: '#cfe9ff' },
+    },
+    piano: {
+      label: 'Piano', dew: true,
+      rows: ['..bbbbbbbbbbbbbbbbbb..', '..BBBBBBBBBBBBBBBBBB..', '..bbbbbbbbbbbbbbbbbb..', '..bbbbbbwwwwwwbbbbbb..', '..bbbbbbwnnnnwbbbbbb..', '..bbbbbbwwwwwwbbbbbb..',
+        '..bbbbbbbbbbbbbbbbbb..', 'bbbbbbbbbbbbbbbbbbbbbb', 'wqwqwwqwqwqwwqwqwwqwqw', 'wwwwwwwwwwwwwwwwwwwwww', 'BBBBBBBBBBBBBBBBBBBBBB', '.bbbbbbbbbbbbbbbbbbbb.',
+        '.bBbbbbbbbbbbbbbbbbBb.', '.bBbbbbbbbbbbbbbbbbBb.', '.bbbbbbbbggbbbbbbbbbb.', '.bb................bb.'],
+      colors: { b: '#2a2833', B: '#45424f', w: '#f2f0ea', q: '#1d1b26', n: '#a8a4b0', g: '#d9a13a' },
+    },
   };
   // Hanging from the ceiling, on a cord as long as its owner likes.
   const CEILINGS = {
@@ -3634,6 +3732,28 @@
     },
     mobile: { label: 'Star mobile', perk: true, glow: '#ffe9a8', emit: 'yYm', bare: true, frames: [mobile(0), mobile(1)], colors: { s: '#d8d0c0', t: '#c8a06a', y: '#ffe066', Y: '#fff6c0', m: '#fff1b8' } },
     raincloud: { label: 'Rain cloud', dew: true, bare: true, frames: [rainCloud(0), rainCloud(1)], colors: { w: '#eef3f8', W: '#cfd8e2', b: '#7fd0ff' } },
+    chimes: {
+      label: 'Wind chimes', dew: true,
+      frames: [
+        ['.ttttttttttt.', '..TTTTTTTTT..', '..s.s.s.s.s..', '..A.A.s.A.A..', '..a.a.s.a.a..', '..a.a.s.a.a..', '..a.a.s.a.a..', '..a.a.s.a.a..',
+         '..a.a.s.a.a..', '..a.a.s.a.a..', '..a.a.s.a.a..', '..a.as..a.a..', '..a.aw..a.a..', '....aw..a....', '....aw..a....', '.............',
+         '.............'],
+        ['.ttttttttttt.', '..TTTTTTTTT..', '..s.s.s.s.s..', '..A.A.s.A.A..', '..a.a.s.a.a..', '..a.a.s.a.a..', '..a.a.s.a.a..', '..a.a.s.a.a..',
+         '..a.a.s.a.a..', '..a.a.s.a.a..', '..a.a.s.a.a..', '..a.a..sa.a..', '..a.a..wa.a..', '....a..wa....', '....a..wa....', '.............',
+         '.............'],
+      ],
+      colors: { t: '#8a5c3a', T: '#b8845a', s: '#d8c8a8', a: '#c8d0dc', A: '#9aa3b2', w: '#e8504a' },
+    },
+    chandelier: {
+      label: 'Chandelier', dew: true, glow: '#ffd27a', emit: 'fy', lightY: 0.25,
+      frames: [
+        ['..........m..........', '..........m..........', '..y....f..g..f....y..', '..c....c..g..c....c..', '.ggg..ggg.g.ggg..ggg.', '..g....g..g..g....g..',
+         '..gg...gg.g.gg...gg..', '...gg...ggggg...gg...', '....ggggggggggggg....', '.........ggg.........', '..........d..........', '.........d.d.........'],
+        ['..........m..........', '..........m..........', '..f....y..g..y....f..', '..c....c..g..c....c..', '.ggg..ggg.g.ggg..ggg.', '..g....g..g..g....g..',
+         '..gg...gg.g.gg...gg..', '...gg...ggggg...gg...', '....ggggggggggggg....', '.........ggg.........', '..........d..........', '.........d.d.........'],
+      ],
+      colors: { m: '#6a6f80', g: '#d9a13a', c: '#f2ecdc', f: '#ffb347', y: '#fff1a8', d: '#cfeeff' },
+    },
   };
   // What's out its window: the weather. Its owner picks one, or it changes by itself (day or night
   // by their own clock, and the hour's weather: weatherNow). Each is the sky through the window (18
@@ -3692,6 +3812,18 @@
       fx: 'drift',
       tile: Array.from({ length: SKY_H }, (_, y) => Array.from({ length: 24 }, (_, x) => ((y === 3 && x >= 1 && x <= 10) || (y === 4 && x >= 3 && x <= 14) || (y === 7 && x >= 12 && x <= 22) || (y === 8 && x >= 10 && x <= 19) ? 'w' : '.')).join('')),
       tileColors: { w: '#e6ecf1' },
+    },
+    fireflies: {
+      label: 'Fireflies', dew: true, scene: ['aaaaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbb', 'bbbbbbbbbbbbbbbbbb', 'bbbbbbbbbbbbbbbbbb', 'cccccccccccccccccc',
+      'ccccctcccccccccctc', 'ctcctttcccttcccttt', 'tttcttttcttttctttt', 'tttttttttttttttttt'], colors: { a: '#1d2a4a', b: '#26405a', c: '#2f5560', t: '#14261f' },
+      fx: 'twinkle', tile: dotted(SKY_W, SKY_H, [[2, 5], [5, 7], [9, 4], [12, 6], [15, 3], [7, 2], [16, 6]], 't'), tileColors: { t: '#eaff7a' },
+    },
+    rainbow: {
+      label: 'Rainbow', dew: true, scene: ['aaaaaaaaaaaaaaaaaa', 'aaaaarrrrrrrraaaaa', 'aaarrroooooorrraaa', 'arroooyyyyyyooorra', 'rroyyyggggggyyyorr', 'royyggbbbbbbggyyor', 'oyggbbccccccbbggyo',
+      'yggbccccccccccbggy', 'ygbccccccccccccbgy', 'gbccccccccccccccbg', 'gbccccccccccccccbg'], colors: { a: '#7cc3ff', c: '#a9dbff', r: '#ef6a5a', o: '#f5a04a', y: '#f5d65a', g: '#7ccf6a', b: '#6aa8f0' },
+      fx: 'drift', tile: ['........................', '...www..................', '.wwwwwww................', '..WWWWW.................', '........................',
+      '...............www......', '.............wwwwwww....', '..............WWWWW.....', '........................', '........................',
+      '........................'], tileColors: { w: '#ffffff', W: '#e6f2ff' },
     },
   };
 
@@ -3783,6 +3915,19 @@
     ],
     'ceiling:mobile': [{ name: 'Pastel', y: '#ffb0c8', Y: '#ffe0ec', m: '#c8f0ff', glow: '#ffd0e0' }, { name: 'Ocean', y: '#7fd0ff', Y: '#d0f0ff', m: '#ffffff', glow: '#a8e0ff' }, { name: 'Sunset', y: '#ff9a3d', Y: '#ffd8a8', m: '#ffe066', glow: '#ffc890' }],
     'ceiling:raincloud': [{ name: 'Storm', w: '#8a93a3', W: '#6a7383', b: '#9fd8ff' }, { name: 'Sunset', w: '#ffd8c0', W: '#f0b090', b: '#ffe9a8' }, { name: 'Candy', w: '#ffd8ea', W: '#f0aed0', b: '#ff8fd6' }],
+    'stand:boots': [{ name: 'Red', y: '#e04a4a', Y: '#ff9a9a', r: '#a83434' }, { name: 'Navy', y: '#34508a', Y: '#7090c8', r: '#22355f' }, { name: 'Green', y: '#4f9a5a', Y: '#9ad49e', r: '#3a7a45' }],
+    'stand:cactus': [{ name: 'Blue pot', o: '#3a7bd5', O: '#2c5fa8' }, { name: 'White pot', o: '#ece6da', O: '#c8c0b0' }, { name: 'Black pot', o: '#3a3a44', O: '#26262e' }],
+    'stand:stove': [{ name: 'Red', i: '#8a2a24', I: '#b8443a', h: '#5a1a16', p: '#5a1a16' }, { name: 'Green', i: '#2f5a3a', I: '#4f8a5a', h: '#1f3a28', p: '#1f3a28' }, { name: 'Cream', i: '#d8cbb0', I: '#f0e6d0', h: '#a89a80', p: '#a89a80' }],
+    'stand:telescope': [{ name: 'Silver', b: '#9aa3b2', B: '#dfe5ee' }, { name: 'Black', b: '#2f2f38', B: '#5a5a66' }, { name: 'White', b: '#e8e4dc', B: '#ffffff' }],
+    'stand:piano': [{ name: 'White', b: '#e6e2da', B: '#ffffff' }, { name: 'Wood', b: '#6b4a32', B: '#8a5f3d' }, { name: 'Red', b: '#7a2424', B: '#a83a3a' }],
+    'hang:mirror': [{ name: 'Silver', f: '#b8c0cc' }, { name: 'Black', f: '#2f2f38' }, { name: 'Wood', f: '#8a5c3a' }],
+    'hang:map': [{ name: 'Old', s: '#e8d8b0', g: '#b89a60', G: '#8a6a40', f: '#5e3f2c' }, { name: 'Night', s: '#1f2c5a', g: '#3f7a8a', G: '#2a5a6a', f: '#3a3a44' }, { name: 'Bright', s: '#4a8ae0', g: '#f2e2b0', G: '#d8c08a', f: '#f2f2f2' }],
+    'hang:rainbow': [{ name: 'Pastel', r: '#f5a9b8', o: '#f9c99a', y: '#f9e9a0', g: '#b0e0b0', b: '#a9c9f5', p: '#d0b8f0' }, { name: 'Sunset', r: '#ff6f4f', o: '#ff9a5a', y: '#ffc46a', g: '#e8789a', b: '#b05a9a', p: '#6a3f8a' }, { name: 'Silver', r: '#f2f2f5', o: '#d8dae0', y: '#bfc2cc', g: '#a5a9b5', b: '#8c90a0', p: '#73788a' }],
+    'hang:cuckoo': [{ name: 'White', h: '#ece6da', r: '#a8a094', R: '#c8c0b0' }, { name: 'Black', h: '#3a3a44', r: '#26262e', R: '#2f2f38' }, { name: 'Red', h: '#b84040', r: '#7a2424', R: '#9a3030' }],
+    'ceiling:chimes': [{ name: 'Gold', a: '#f3cf7a', A: '#d9a13a' }, { name: 'Copper', a: '#e0956a', A: '#b06a40' }, { name: 'Glass', a: '#bfe8ff', A: '#7fc0e8', w: '#7fc0e8' }],
+    'ceiling:chandelier': [{ name: 'Silver', g: '#b8c0cc' }, { name: 'Black', g: '#2f2f38' }, { name: 'Crystal', g: '#cfe8f5', d: '#ffffff' }],
+    'rug:puddle': [{ name: 'Muddy', b: '#8a6a4a', B: '#6e5236', w: '#b09070' }, { name: 'Night', b: '#2f3f6a', B: '#22305a', w: '#5a6aa0', W: '#c8d0f0' }, { name: 'Teal', b: '#3fa39a', B: '#2f857c', w: '#8fdcd2' }],
+    'rug:persian': [{ name: 'Navy', a: '#1f2f55', b: '#8a2a2a', e: '#2f4070' }, { name: 'Green', a: '#2f5a3a', b: '#5a2a2a', e: '#3f6a4a' }, { name: 'Gold', a: '#c08a2a', b: '#3a2a5a', e: '#d09a3a', c: '#f2e2c0', d: '#3a2a5a' }],
   };
   // (One of its other colours, if it has it: `tint` 1 to 3. Its main colour, for a swatch: the
   // first that its other colours change.)
