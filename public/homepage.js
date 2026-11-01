@@ -2218,7 +2218,8 @@
   // on its eyes, one round its neck and one on its body. Each is drawn into its pixels, so it's
   // there in every frame (lying down, eating, hopping) and wherever it goes. A hat sits on its head
   // (`crown`: its head's top middle), glasses on its eyes (wherever they are), a collar goes round
-  // its neck (`neck`: the row, from x0 to x1; a fish's `ring` is up and down; a droplet's bowtie
+  // its neck (`neck`: the row, from x0 round to its front, what hangs from it just behind x1; a
+  // fish's `ring` is up and down; a droplet's bowtie
   // goes under its smile, `bow`), and a sweater on its body (JUMPER_AT; `coat`: which of its letters
   // are coat, not face). All in its pixels, standing and facing right.
   const WEAR_AT = {
@@ -2451,7 +2452,9 @@
           const [x0, x1, y] = at.neck;
           const front = x1 - 1;
           const band = item.bands ? item.bands[f] : item.band;
-          if (band) for (let x = x0; x <= x1; x++) put(out.band, x, y, band[(x - x0) % band.length]);
+          // (All the way round to the front of its neck, however far that is: a band's only drawn
+          // where it is.)
+          if (band) for (let x = x0; x < P.rows[y].length; x++) put(out.band, x, y, band[(x - x0) % band.length]);
           if (item.tag) put(out.over, front, y + 1, item.tag);
           if (item.hang) item.hang.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, front - 1 + j, y + 1 + i, c); }));
           if (item.bow) item.bow.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, front - 1 + j, y + i, c); }));
