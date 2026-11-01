@@ -1,6 +1,28 @@
 {
   "entries": [
     {
+      "id": "2026-10-31c",
+      "date": "2026-10-31",
+      "title": "Lights, and more for your pet",
+      "items": [
+        {
+          "title": "Lighting",
+          "text": "Pick a light for your pet's room in Decorate: daylight, warmer, cooler, or ones dew brings, like golden hour, lamplight, moonlight, candlelight and neon night, where its lamps and windows light up the room around them.",
+          "media": "/whats-new/2026-10-31c-lights.webp"
+        },
+        {
+          "title": "More for its room",
+          "text": "21 more things dew brings: a wood stove, a piano, a telescope, a chandelier, a cuckoo clock, rain boots, a puddle, new wallpapers and floors, fireflies and a rainbow out the window, and more.",
+          "media": "/whats-new/2026-10-31c-room.webp"
+        },
+        {
+          "title": "More to wear",
+          "text": "Aviators, a wizard hat, a halo, a cowboy hat, a raincoat, a tuxedo, 3D glasses, a monocle and more, in the Wear tab.",
+          "media": "/whats-new/2026-10-31c-wear.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-10-31b",
       "date": "2026-10-31",
       "title": "Thanks for finding bugs",
