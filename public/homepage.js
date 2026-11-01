@@ -2231,7 +2231,7 @@
   };
   // (What each can't wear: the droplet's all drop, with no neck for a collar and no body for a
   // sweater, though a bowtie suits it. lib/pets.js says the same.)
-  const WEAR_NOT = { drop: { neck: ['collar', 'bandana', 'spiked', 'scarf', 'bell', 'lei', 'medal'], body: true } };
+  const WEAR_NOT = { drop: { neck: ['collar', 'bandana', 'spiked', 'scarf', 'bell', 'lei', 'medal', 'neon'], body: true } };
   const canWear = (kind, slot, key) => {
     const no = WEAR_NOT[kind] && WEAR_NOT[kind][slot];
     return !(no === true || (Array.isArray(no) && no.includes(key)));
@@ -2300,6 +2300,12 @@
         frames: [['.WYYY.', 'Y....Y', '.YYYY.', '......'], ['.YWYY.', 'Y....Y', '.YYYY.', '......'], ['.YYWY.', 'Y....Y', '.YYYY.', '......'], ['.YYYW.', 'Y....Y', '.YYYY.', '......']],
         colors: { Y: '#ffe680', W: '#ffffff' },
       },
+      // (Glow's: a star floating over its head, twinkling, a + then an x.)
+      wish: {
+        label: 'Wishing star', perk: true, rows: ['..S..', '.SWS.', '..S..', '.....'], anim: { n: 2, step: 6 },
+        frames: [['..S..', '.SWS.', '..S..', '.....'], ['.S.S.', '..W..', '.S.S.', '.....']],
+        colors: { S: '#ffe066', W: '#ffffff' },
+      },
       // (Its stars twinkling.)
       wizard: {
         label: 'Wizard hat', rows: ['...P...', '..PPS..', '.PSPPP.', 'BBBBBBB'], anim: { n: 2, step: 8 },
@@ -2311,6 +2317,8 @@
       round: { label: 'Round glasses', glasses: 'round', colors: { F: '#c9a86a' } },
       sun: { label: 'Sunglasses', glasses: 'sun', colors: { L: '#22253a', F: '#22253a', W: '#9fb4d6' } },
       star: { label: 'Star glasses', glasses: 'star', anim: { n: 2, step: 8 }, colors: { F: '#ffd23a', S: '#ffffff' } },
+      // (Glow's: dark shades, a light going along them.)
+      led: { label: 'LED shades', perk: true, glasses: 'led', anim: { n: 4, step: 2 }, colors: { L: '#16161e', F: '#16161e', G: '#4dffb8' } },
       // (A gold bar along the top, dark lenses narrowing to a point, a glint.)
       aviator: { label: 'Aviators', glasses: 'aviator', colors: { F: '#d9a13a', L: '#2f3a4a', l: '#4a5a6a', W: '#dfe9ff' } },
       // (Red for the eye behind, blue for the one in front.)
@@ -2325,6 +2333,8 @@
       spiked: { label: 'Spiked collar', band: 'KS', colors: { K: '#2a2a33', S: '#d0d6e0' } },
       // (Its end hanging down at the back, then caught by the wind: [x along, y down, which colour].)
       scarf: { label: 'Scarf', band: 'SQ', tail: true, anim: { n: 2, step: 8 }, tails: [[[0, 1, 0], [0, 2, 1], [1, 1, 1]], [[0, 1, 0], [-1, 1, 1], [-2, 2, 0]]], colors: { S: '#e05a4a', Q: '#f3e6d0' } },
+      // (Glow's: lit up, its lights going round it.)
+      neon: { label: 'Neon collar', perk: true, bands: ['Nn', 'nN'], band: 'Nn', anim: { n: 2, step: 4 }, colors: { N: '#ff5fd0', n: '#6a2a5e' } },
       bell: { label: 'Bell collar', band: 'C', hang: ['.Y.', 'YYY', '.D.'], colors: { C: '#3a7bd5', Y: '#ffd23a', D: '#8a6a1a' } },
       lei: { label: 'Flower lei', band: 'PYOW', hang: ['PYO', '.W.'], colors: { P: '#ff6fae', Y: '#ffd23a', O: '#ff9a3d', W: '#ffffff' } },
       medal: { label: 'Medal', band: 'R', hang: ['.R.', 'YYY', 'YWY', '.Y.'], colors: { R: '#d94a4a', Y: '#ffcf3a', W: '#fff6c0' } },
@@ -2343,6 +2353,12 @@
         label: 'Rainlit sweater', reach: 4, anim: { n: 2, step: 8 },
         paint: (x, y, part, at) => (part === 'collar' || (part === 'body' && sparkle(x - at.sx, y - at.my, at.f)) ? 'A' : part === 'body' ? 'R' : 'r'),
         colors: { R: '#24305a', r: '#3b4f8c', A: '#f9c862' },
+      },
+      // (Glow's: the night sky, its stars twinkling.)
+      galaxy: {
+        label: 'Galaxy sweater', perk: true, reach: 5, anim: { n: 2, step: 8 },
+        paint: (x, y, part, at) => (part !== 'body' ? 'C' : (x * 3 + y * 5 + at.f * 4) % 11 === 0 ? 'S' : (x + y * 2) % 7 === 0 ? 'P' : 'G'),
+        colors: { G: '#1d1a4a', P: '#3f2a80', S: '#ffffff', C: '#7a6ad8' },
       },
       // (Buttons down its middle, and its hood down behind its head.)
       raincoat: {
@@ -2405,12 +2421,13 @@
             for (let gy = y - 1; gy <= y + 2; gy++) {
               const edge = gx === x - 1 || gx === x + ew || gy === y - 1 || gy === y + 2;
               if (item.glasses === 'sun' && gy >= y && gy <= y + 1) put(out.over, gx, gy, gx === x - 1 && gy === y ? 'W' : 'L');
+              else if (item.glasses === 'led' && gy >= y && gy <= y + 1) put(out.over, gx, gy, gy === y && gx === x - 1 + ((f + i) % (ew + 2)) ? 'G' : 'L');
               else if (item.glasses === 'aviator') {
                 if (gy === y - 1) put(out.over, gx, gy, 'F');
                 else if (gy <= y + 1) put(out.over, gx, gy, gx === x - 1 && gy === y ? 'W' : 'L');
                 else if (gx >= x && gx < x + ew) put(out.over, gx, gy, 'l');
               } else if (item.glasses === '3d') put(out.over, gx, gy, edge ? 'F' : i === front && P.eyes.length > 1 ? 'U' : 'R');
-              else if (item.glasses !== 'sun' && edge) put(out.over, gx, gy, 'F');
+              else if (item.glasses !== 'sun' && item.glasses !== 'led' && edge) put(out.over, gx, gy, 'F');
             }
           }
           // (Star glasses: a twinkle off a top corner of each, one corner then the other.)
@@ -2433,14 +2450,16 @@
         } else if (at.neck) {
           const [x0, x1, y] = at.neck;
           const front = x1 - 1;
-          if (item.band) for (let x = x0; x <= x1; x++) put(out.band, x, y, item.band[(x - x0) % item.band.length]);
+          const band = item.bands ? item.bands[f] : item.band;
+          if (band) for (let x = x0; x <= x1; x++) put(out.band, x, y, band[(x - x0) % band.length]);
           if (item.tag) put(out.over, front, y + 1, item.tag);
           if (item.hang) item.hang.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, front - 1 + j, y + 1 + i, c); }));
           if (item.bow) item.bow.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, front - 1 + j, y + i, c); }));
           if (item.tail) for (const [dx, dy, c] of item.tails[f]) put(out.over, x0 + dx, y + dy, item.band[c] || item.band[0]);
         } else if (at.ring) {
           const [x, y0, y1] = at.ring;
-          if (item.band) for (let y = y0; y <= y1; y++) put(out.band, x, y, item.band[(y - y0) % item.band.length]);
+          const band = item.bands ? item.bands[f] : item.band;
+          if (band) for (let y = y0; y <= y1; y++) put(out.band, x, y, band[(y - y0) % band.length]);
           if (item.tag) put(out.over, x, y1 + 1, item.tag);
           if (item.hang) item.hang.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x - 1 + j, y1 + 1 + i, c); }));
           if (item.bow) item.bow.forEach((row, i) => [...row].forEach((c, j) => { if (c !== '.') put(out.over, x - 1 + j, y1 - 1 + i, c); }));
@@ -3518,6 +3537,9 @@
       'aaaaaaaaaaaadaaa', 'bbbbbbbbbbbbbbbb', 'eeeeeeeeeeeeeeee'], colors: { c: '#b07a4a', a: '#94603a', b: '#6e4428', d: '#5a3820', e: '#d8c8a8' } },
     waves: { label: 'Waves', dew: true, tile: ['bbbcaaaaaaaacbbb', 'bbbbbaccccabbbbb', 'ccbbbbcbbcbbbbcc', 'aaccbbbbbbbbccaa', 'aaaacbbbbbbcaaaa', 'ccabbbbbbbbbbacc', 'bcbbbbccccbbbbcb',
       'bbbbccaaaaccbbbb'], colors: { a: '#22405f', b: '#2b4f78', c: '#6f9fc8' } },
+    nebula: { label: 'Nebula', perk: true, twinkle: 's', tile: ['nmmmnaaaaaaaaaaa', 'mmmmnataaaasaann', 'mmmnnnnaaaaanmma', 'nnsaanaaaanmmmma', 'aaaaaaaaaanmmmna', 'aaaaaaaaatmmmnna', 'aaaaaaaaanmmnaaa',
+      'aaaaaaaaaanaataa', 'nnaaaaaaaaaaaaaa', 'mnaaaaasaaaaaaaa', 'ntaaaannaaaaaaaa', 'aaaannnnnaaaaaaa', 'aaaannnnnmnnaasa', 'aaaannnmmmmaaaaa',
+      'aaaasanmmmnaaaan', 'aaaaaanmmnaaaanm'], colors: { a: '#120e2c', n: '#2a1d58', m: '#46286e', s: '#ffffff', t: '#8f9be0' } },
   };
   const FLOORS = {
     wood: { label: 'Wood', tile: ['aaaaaaaaaaaaaaab', 'acaaaaaaaaaaaaab', 'aaaaaaaaaaaaaaab', 'bbbbbbbbbbbbbbbb', 'aaaaaaabaaaaaaaa', 'aaaaaaabaaaaacaa', 'aaaaaaabaaaaaaaa', 'bbbbbbbbbbbbbbbb'], colors: { a: '#a8744c', b: '#8a5c3a', c: '#b8845a' } },
@@ -3543,6 +3565,7 @@
     marble: { label: 'Marble', dew: true, tile: ['aaaaaaaaaaaaaaag', 'aaabbaaaaaaaavag', 'aabbbbaaaaaaavag', 'aaabbaaaaaaavaag', 'aaaaaaaaaaavvaag', 'aaaaaaaaaavaaaag', 'vaaaaaaaaavaaaag',
       'avaaaaaaavaabbag', 'aavaaaaavaabbbbg', 'aaavvaavaaaabbag', 'aaaaavvaaaaaaaag', 'aaaaaavaaaaaaaag', 'aaaaaaavaaawaaag', 'abbaaaaavaawaaag',
       'bbbbaaaaavawaaag', 'gggggggggggggggg'], colors: { a: '#ece9e4', b: '#dedad4', v: '#9a9aa8', w: '#c8c6ce', g: '#cdc8bf' } },
+    neongrid: { label: 'Neon grid', perk: true, twinkle: 'c', tile: ['cbbbbbbb', 'baaaaaaa', 'baaaaaaa', 'baaaaaaa', 'baaaaaaa', 'baaaaaaa', 'baaaaaaa', 'baaaaaaa'], colors: { a: '#160c2c', b: '#ff3fd0', c: '#ffffff' } },
   };
   // Rugs, things on the wall, and things for the corners: a picture each (or two, taking turns),
   // with a line round it unless it glows (`bare`).
@@ -3649,6 +3672,12 @@
       ],
       colors: { r: '#5e3f2c', R: '#7a5234', h: '#9a6b45', d: '#ffd84d', w: '#f2ecdc', n: '#2a1f33', c: '#b8a070', o: '#d9a13a', e: '#5a3a26' },
     },
+    moonlamp: {
+      label: 'Moon lamp', perk: true, glow: '#fff2c4', bare: true,
+      rows: ['....mmmm....', '..mmmmmmmm..', '.mmmmmmmmmm.', '.mmccmmmmmm.', 'mmmmmmmccmmm', 'mmmmmmmcmmmM', 'mmcmmmmmmmMM', 'mmmmcmmmmMMM', '.mmmmcmmcMM.',
+        '.mmmmmmMMMM.', '..mmmmMMMM..', '....mMMM....'],
+      colors: { m: '#fff4d6', M: '#ecdcae', c: '#dcc898' },
+    },
   };
   const STANDS = {
     none: { label: 'None' },
@@ -3751,6 +3780,28 @@
         '.bBbbbbbbbbbbbbbbbbBb.', '.bBbbbbbbbbbbbbbbbbBb.', '.bbbbbbbbggbbbbbbbbbb.', '.bb................bb.'],
       colors: { b: '#2a2833', B: '#45424f', w: '#f2f0ea', q: '#1d1b26', n: '#a8a4b0', g: '#d9a13a' },
     },
+    plasma: {
+      label: 'Plasma ball', perk: true, glow: '#c58aff', emit: 'pPw', lightY: 0.42,
+      frames: [
+        ['....ggggg....', '...ggpddgg...', '..gddpddddg..', '.gddpdddddpg.', 'ggdddpddpddgg', 'gdddddPdpdddg', 'gddddPwPddddg', 'gdddpdPdpdddg',
+         'ggdpddddddpgg', '.gpddddddddg.', '..gdddddddg..', '...ggdddgg...', '....ggggg....', '...bbbbbbb...', '..bbbbbbbbb..'],
+        ['....ggggg....', '...ggddpgg...', '..gdddddpdg..', '.gdddddpdddg.', 'ggdddddpdddgg', 'gpdppdPdddddg', 'gddddPwPppdpg', 'gdddddPdddddg',
+         'ggdddddpdddgg', '.gdddddpdddg.', '..gdddddpdg..', '...ggddpgg...', '....ggggg....', '...bbbbbbb...', '..bbbbbbbbb..'],
+      ],
+      colors: { d: '#1f1238', g: '#6f5f9e', p: '#e07aff', P: '#f4c8ff', w: '#ffffff', b: '#26262e' },
+    },
+    jukebox: {
+      label: 'Jukebox', perk: true, glow: '#ff8ad8', emit: 'nm', lightY: 0.35,
+      frames: [
+        ['...ttttttt...', '.ntttttttttn.', 'tmtttttttttmt', 'tmtwwrrrwwtmt', 'tntwrryrrwtnt', 'tntwrrrrrwtnt', 'tmtwwrrrwwtmt', 'tmtwwwwwwwtmt',
+         'tntttttttttnt', 'tntcBcBcBctnt', 'tmtttttttttmt', 'tmtgggggggtmt', 'tntGGGGGGGtnt', 'tntgggggggtnt', 'tmtGGGGGGGtmt', 'tmtgggggggtmt',
+         'ttttttttttttt', 'ttttttttttttt', 'TTTTTTTTTTTTT'],
+        ['...ttttttt...', '.mtttttttttm.', 'tntttttttttnt', 'tntwwrrrwwtnt', 'tmtwrryrrwtmt', 'tmtwrrrrrwtmt', 'tntwwrrrwwtnt', 'tntwwwwwwwtnt',
+         'tmtttttttttmt', 'tmtcBcBcBctmt', 'tntttttttttnt', 'tntgggggggtnt', 'tmtGGGGGGGtmt', 'tmtgggggggtmt', 'tntGGGGGGGtnt', 'tntgggggggtnt',
+         'ttttttttttttt', 'ttttttttttttt', 'TTTTTTTTTTTTT'],
+      ],
+      colors: { t: '#7a3a2a', T: '#5a2a1e', n: '#ff5fd0', m: '#5ff0ff', w: '#1a1630', r: '#2a2a33', y: '#ffd84d', c: '#c8ccd4', B: '#ff5f5f', g: '#3a3038', G: '#9a8a7a' },
+    },
   };
   // Hanging from the ceiling, on a cord as long as its owner likes.
   const CEILINGS = {
@@ -3797,6 +3848,16 @@
          '..gg...gg.g.gg...gg..', '...gg...ggggg...gg...', '....ggggggggggggg....', '.........ggg.........', '..........d..........', '.........d.d.........'],
       ],
       colors: { m: '#6a6f80', g: '#d9a13a', c: '#f2ecdc', f: '#ffb347', y: '#fff1a8', d: '#cfeeff' },
+    },
+    ufo: {
+      label: 'UFO', perk: true, glow: '#7fffd0', emit: 'lLq', lightY: 0.7, bare: true,
+      frames: [
+        ['.......kkk.......', '.....kkdddkk.....', '...kkddDDDddkk...', '..ksssssssssssk..', '.ksSlSSSLSSSlSsk.', 'ksssssssssssssssk', '.kkkssssssssskkk.',
+         '....kkkkkkkkk....', '......qqqqq......', '.....qqqqqqq.....', '....qqqqqqqqq....', '...qqqqqqqqqqq...', '..qqqqqqqqqqqqq..', '.qqqqqqqqqqqqqqq.'],
+        ['.......kkk.......', '.....kkdddkk.....', '...kkddDDDddkk...', '..ksssssssssssk..', '.ksSLSSSlSSSLSsk.', 'ksssssssssssssssk', '.kkkssssssssskkk.',
+         '....kkkkkkkkk....', '......qqqqq......', '.....qqqqqqq.....', '....qqqqqqqqq....', '...qqqqqqqqqqq...', '..qqqqqqqqqqqqq..', '.qqqqqqqqqqqqqqq.'],
+      ],
+      colors: { k: '#2a1f33', d: '#9fe6ff', D: '#dff6ff', s: '#9aa3b8', S: '#c8cede', l: '#7fffd0', L: '#2f6a5a', q: 'rgba(160, 255, 215, 0.28)' },
     },
   };
   // What's out its window: the weather. Its owner picks one, or it changes by itself (day or night
@@ -3869,12 +3930,23 @@
       '...............www......', '.............wwwwwww....', '..............WWWWW.....', '........................', '........................',
       '........................'], tileColors: { w: '#ffffff', W: '#e6f2ff' },
     },
+    // (Shooting stars, one after another, across the night.)
+    meteors: {
+      label: 'Meteor shower', perk: true, scene: ['aaaaaaaaaaaaaaaaaa', 'aaaaaaasaaaaaaaaaa', 'aasaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaasaaaa', 'aaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbb', 'bbbbbbbbbbsbbbbbbb',
+      'bbbbbbbbbbbbbbbbsb', 'bbbbsbbbbbbbbbbbbb', 'bbbbbbbbbbbbbbbbbb', 'bbbbbbbbbbbbbbbbbb'], colors: { a: '#0e0a28', b: '#1c1440', s: '#b8c4ff' },
+      fx: 'meteor', tile: ['........................', '........................', '........................', '........................', '.........u..............',
+      '........v...............', '.......v................', '......w.................', '........................', '........................',
+      '........................', '........................', '........................', '........................', '........................',
+      '....................u...', '...................v....', '..................v.....', '.................w......', '........................',
+      '........................', '........................'], tileColors: { w: '#ffffff', v: '#c8d4ff', u: '#6a74b0' },
+    },
   };
 
   // The light in its room: daylight, just as it is; a little warmer or cooler; or dimmer (`dim`: the
   // colour it all goes), lit by its windows and what glows in it (lamps, lanterns, an aquarium...),
   // each a pool of light round it (`window`, `glow`: its colour; `reach`: how far it reaches, in the
-  // room's pixels). Candlelight flickers. (`dew`: one that dew brings, lib/pets.js DEW_ROOM.)
+  // room's pixels). Candlelight flickers; Glow's (`perk`) move (`fx`). (`dew`: one that dew brings,
+  // lib/pets.js DEW_ROOM.)
   const LIGHTS = {
     day: { label: 'Daylight' },
     warm: { label: 'Warm', dim: '#ffe4c2' },
@@ -3884,6 +3956,9 @@
     moon: { label: 'Moonlight', dew: true, dim: '#4f5d92', window: '#e2ecff', glow: '#c9d6ff', reach: 32 },
     candle: { label: 'Candlelight', dew: true, dim: '#4f3330', window: '#8a6a68', glow: '#ffcc8e', reach: 26, flicker: true },
     neon: { label: 'Neon night', dew: true, dim: '#40306e', window: '#8ff3ff', glow: '#ff9fe8', reach: 28 },
+    // (Glow's: the aurora's colours drifting through greens and violets; a disco's going round.)
+    aurora: { label: 'Aurora', perk: true, dim: '#3d6270', window: '#c8fff0', glow: '#d8c8ff', reach: 30, fx: 'aurora' },
+    disco: { label: 'Disco', perk: true, dim: '#5c3c80', window: '#ffffff', glow: '#ffd8f4', reach: 30, fx: 'disco' },
   };
 
   const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS, ceiling: CEILINGS, sky: WEATHER, light: LIGHTS };
@@ -3959,6 +4034,10 @@
     ],
     'ceiling:mobile': [{ name: 'Pastel', y: '#ffb0c8', Y: '#ffe0ec', m: '#c8f0ff', glow: '#ffd0e0' }, { name: 'Ocean', y: '#7fd0ff', Y: '#d0f0ff', m: '#ffffff', glow: '#a8e0ff' }, { name: 'Sunset', y: '#ff9a3d', Y: '#ffd8a8', m: '#ffe066', glow: '#ffc890' }],
     'ceiling:raincloud': [{ name: 'Storm', w: '#8a93a3', W: '#6a7383', b: '#9fd8ff' }, { name: 'Sunset', w: '#ffd8c0', W: '#f0b090', b: '#ffe9a8' }, { name: 'Candy', w: '#ffd8ea', W: '#f0aed0', b: '#ff8fd6' }],
+    'stand:plasma': [{ name: 'Blue', p: '#6ac8ff', P: '#c8ecff', glow: '#7ac8ff' }, { name: 'Green', p: '#6aff9a', P: '#c8ffd8', glow: '#7aff9a' }, { name: 'Red', p: '#ff6a6a', P: '#ffc8c8', glow: '#ff7a7a' }],
+    'stand:jukebox': [{ name: 'Black', t: '#26262e', T: '#16161c' }, { name: 'White', t: '#e8e2d6', T: '#c8c0b0' }, { name: 'Teal', t: '#2f6a6a', T: '#1f4a4a' }],
+    'hang:moonlamp': [{ name: 'Blue', m: '#dbe8ff', M: '#b8ccf0', c: '#a8bce6', glow: '#c8dcff' }, { name: 'Pink', m: '#ffe0ee', M: '#f2c0d8', c: '#e6aac8', glow: '#ffc8e4' }, { name: 'Harvest', m: '#ffd29a', M: '#f0b070', c: '#d89a5a', glow: '#ffc07a' }],
+    'ceiling:ufo': [{ name: 'Pink', l: '#ff8ad8', L: '#6a2a5a', q: 'rgba(255, 160, 220, 0.28)', glow: '#ff9ae0' }, { name: 'Gold', l: '#ffd84d', L: '#6a5a2a', q: 'rgba(255, 230, 150, 0.28)', glow: '#ffe07a' }, { name: 'Red', l: '#ff6a5a', L: '#6a2a2a', q: 'rgba(255, 150, 140, 0.28)', glow: '#ff7a6a' }],
     'stand:boots': [{ name: 'Red', y: '#e04a4a', Y: '#ff9a9a', r: '#a83434' }, { name: 'Navy', y: '#34508a', Y: '#7090c8', r: '#22355f' }, { name: 'Green', y: '#4f9a5a', Y: '#9ad49e', r: '#3a7a45' }],
     'stand:cactus': [{ name: 'Blue pot', o: '#3a7bd5', O: '#2c5fa8' }, { name: 'White pot', o: '#ece6da', O: '#c8c0b0' }, { name: 'Black pot', o: '#3a3a44', O: '#26262e' }],
     'stand:stove': [{ name: 'Red', i: '#8a2a24', I: '#b8443a', h: '#5a1a16', p: '#5a1a16' }, { name: 'Green', i: '#2f5a3a', I: '#4f8a5a', h: '#1f3a28', p: '#1f3a28' }, { name: 'Cream', i: '#d8cbb0', I: '#f0e6d0', h: '#a89a80', p: '#a89a80' }],
@@ -4154,6 +4233,7 @@
     }
     if (!layer.isConnected) el.append(layer);
     layer.classList.toggle('pr-candle', Boolean(L.flicker));
+    layer.dataset.fx = L.fx || '';
     const pools = [];
     for (const n of el.querySelectorAll('.pr-thing')) {
       const t = n.prThing;

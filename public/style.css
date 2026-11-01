@@ -2886,6 +2886,9 @@ button.person.open { background: var(--dusk-hi); }
 @keyframes pr-drift { to { background-position-x: calc(var(--u) * var(--fx-w)); } }
 .pr-window[data-fx="twinkle"]::before { background-size: 100% 100%; background-repeat: no-repeat; animation: pr-twinkle 2.6s steps(2) infinite; }
 .pr-window[data-fx="aurora"]::before { animation: pr-drift 18s steps(36) infinite, pr-aurora 6s ease-in-out infinite; }
+/* (Shooting stars: down across the window, one after another.) */
+.pr-window[data-fx="meteor"]::before { animation: pr-meteor 2.8s steps(14) infinite; }
+@keyframes pr-meteor { to { background-position: calc(var(--u) * var(--fx-w) * -1) calc(var(--u) * var(--fx-h)); } }
 @keyframes pr-aurora { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.95; } }
 .pr-window::after { content: ''; position: absolute; inset: 0; background: var(--frame) 0 0 / 100% 100% no-repeat; image-rendering: pixelated; }
 .pr-room .pr-frames { background-size: 200% 100%; animation: pr-frames 1.3s steps(2) infinite; }
@@ -2908,6 +2911,11 @@ button.person.open { background: var(--dusk-hi); }
 .pr-room > .pr-light { position: absolute; inset: 0; z-index: 900; display: block; pointer-events: none; mix-blend-mode: multiply; }
 .pr-room > .pr-light.pr-candle { animation: pr-candle 3.4s steps(1) infinite; }
 @keyframes pr-candle { 0%, 100% { opacity: 1; } 21% { opacity: 0.94; } 38% { opacity: 0.99; } 57% { opacity: 0.91; } 79% { opacity: 0.97; } }
+/* (Glow's lights move: the aurora's colours drifting through greens and violets, a disco's going round.) */
+.pr-room > .pr-light[data-fx="aurora"] { animation: pr-light-aurora 16s ease-in-out infinite; }
+@keyframes pr-light-aurora { 0%, 100% { filter: hue-rotate(-35deg); } 50% { filter: hue-rotate(75deg); } }
+.pr-room > .pr-light[data-fx="disco"] { animation: pr-light-disco 3s steps(6) infinite; }
+@keyframes pr-light-disco { to { filter: hue-rotate(360deg); } }
 /* Doing it up (homepage.js arrange): its things dragged about, the one picked out with a dashed line
    round it and a little bar by it (flip it, smaller, bigger, put it away), and one tried on (not
    theirs yet) dotted round. Its pet keeps out of the way meanwhile. The room stays in view, under

@@ -157,7 +157,7 @@ for (const id of [
   'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
-  'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn',
+  'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
   'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
@@ -16379,8 +16379,13 @@ function renderPetWear() {
   if (!p || !window.Homepage || !Homepage.WEAR) return;
   if (S.wearTry && !Homepage.canWear(p.kind, S.wearTry.slot, S.wearTry.key)) S.wearTry = null;
   const shown = wearShown();
-  // (Only what suits it: a droplet's a drop all over, so not a sweater or a collar. Cheapest first.)
-  const fits = (slot) => Object.keys(Homepage.WEAR[slot]).filter((key) => Homepage.canWear(p.kind, slot, key)).sort((a, b) => wearPriceOf(slot, a) - wearPriceOf(slot, b));
+  // (Only what suits it: a droplet's a drop all over, so not a sweater or a collar. Glow's first (if
+  // they're shown), then dew's, cheapest first.)
+  const glow = (slot, key) => Boolean(Homepage.WEAR[slot][key].perk);
+  const fits = (slot) => {
+    const keys = Object.keys(Homepage.WEAR[slot]).filter((key) => Homepage.canWear(p.kind, slot, key) && (!glow(slot, key) || supporting() || glowShown() || (p.wear || {})[slot] === key));
+    return [...keys.filter((k) => glow(slot, k)), ...keys.filter((k) => !glow(slot, k)).sort((a, b) => wearPriceOf(slot, a) - wearPriceOf(slot, b))];
+  };
   const rows = WEAR_ROWS.filter(([slot]) => fits(slot).length);
   const note = document.createElement('p');
   note.className = 'pet-note';
@@ -16388,15 +16393,16 @@ function renderPetWear() {
   el.petWearRows.replaceChildren(...rows.map(([slot, label]) => {
     const opts = ['', ...fits(slot)].map((key) => {
       const item = key && Homepage.WEAR[slot][key];
-      const got = !key || hasDewThing('wear', key) || (p.wear || {})[slot] === key;
-      const price = got ? 0 : wearPriceOf(slot, key);
+      const perk = Boolean(item && item.perk);
+      const got = !key || (perk ? supporting() : hasDewThing('wear', key)) || (p.wear || {})[slot] === key;
+      const price = got || perk ? 0 : wearPriceOf(slot, key);
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = `pet-decor-opt pet-wear-opt${key ? ' dew' : ''}${got ? '' : ' locked'}${S.wearTry && S.wearTry.slot === slot && S.wearTry.key === key ? ' trying' : ''}`;
+      b.className = `pet-decor-opt pet-wear-opt${key ? (perk ? ' glow' : ' dew') : ''}${got ? '' : ' locked'}${S.wearTry && S.wearTry.slot === slot && S.wearTry.key === key ? ' trying' : ''}`;
       b.dataset.wear = `${slot}:${key || 'none'}`;
       if (price) b.dataset.price = dewShort(price);
       b.setAttribute('aria-pressed', String((shown[slot] || '') === key));
-      b.title = !key ? 'Nothing' : got ? item.label : `${item.label}: ${price ? `${dewWords(price)} dew` : 'dew brings it'} (try it on)`;
+      b.title = !key ? 'Nothing' : got ? item.label : perk ? `${item.label} (comes with Glow: try it on)` : `${item.label}: ${price ? `${dewWords(price)} dew` : 'dew brings it'} (try it on)`;
       b.setAttribute('aria-label', b.title);
       if (key) {
         b.append(Homepage.petEl(p.kind, p.coat, { [slot]: key }));
@@ -16420,8 +16426,13 @@ function renderPetWear() {
   }));
   if (note.textContent) el.petWearRows.append(note);
   const t = S.wearTry;
-  el.petWearDew.hidden = !t;
-  if (t) {
+  // (One of Glow's tried on: what it is, and Glow; one of dew's: what it costs, and getting it.)
+  const tGlow = Boolean(t && Homepage.WEAR[t.slot][t.key].perk);
+  el.petWearTry.hidden = !tGlow;
+  if (tGlow) withGlow(el.petWearTryText, `${Homepage.WEAR[t.slot][t.key].label}: one of Glow's. ${petName(p)} has it on, to see, but it isn't kept.`);
+  el.petWearTryBtn.hidden = !glowShown();
+  el.petWearDew.hidden = !t || tGlow;
+  if (t && !tGlow) {
     const price = wearPriceOf(t.slot, t.key);
     el.petWearDewText.textContent = `${Homepage.WEAR[t.slot][t.key].label}: ${dewWords(price)} dew. ${petName(p)} has it on, to see.`;
     el.petWearDewBtn.dataset.dewPrice = String(price);
@@ -16432,7 +16443,8 @@ function renderPetWear() {
 async function pickWear(slot, key) {
   const p = S.pet;
   if (!p) return;
-  if (key && !hasDewThing('wear', key) && (p.wear || {})[slot] !== key) {
+  const perk = Boolean(key && Homepage.WEAR[slot][key].perk);
+  if (key && !(perk ? supporting() : hasDewThing('wear', key)) && (p.wear || {})[slot] !== key) {
     S.wearTry = S.wearTry && S.wearTry.slot === slot && S.wearTry.key === key ? null : { slot, key };
     dressPet();
     renderPetWear();
@@ -19355,6 +19367,7 @@ async function init() {
   el.petRelease.addEventListener('click', releasePet);
   el.petTryBtn.addEventListener('click', () => openGlow({ because: S.petTry ? `The ${Homepage.PETS[S.petTry].label.toLowerCase()} comes with Glow.` : '' }));
   el.petDecorTryBtn.addEventListener('click', () => openGlow());
+  el.petWearTryBtn.addEventListener('click', () => openGlow());
   el.petDecorDewBtn.addEventListener('click', getDewThing);
   el.petWearDewBtn.addEventListener('click', getWear);
   for (const b of el.pet.querySelectorAll('[data-pet-tab]')) {
