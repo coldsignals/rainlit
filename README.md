@@ -358,6 +358,14 @@ at the top closes it (on a phone, the back arrow).
   search, and click one to send it. They play in the conversation (only while
   they're on screen, and not at all if your device is set to reduce motion,
   then click one to play it). See step 4 to turn this on.
+- **Emoji:** drawn with Twemoji (as Discord's are), a color font served from
+  your Rainlit server itself (public/fonts/twemoji.woff2, about 600 KB, fetched
+  the first time there's an emoji to show), so they look the same on every
+  device and newer ones never show as empty boxes (Windows 10's own emoji stop
+  at 2019's). The picker shows every emoji there is. "Use my device's emoji" in
+  Settings shows your device's own instead, with Twemoji for any it hasn't got.
+  Rebuild it for newer emoji with scripts' tools/emoji-font.py (Twemoji's
+  graphics are CC-BY 4.0: credited in Settings).
 - **Custom emoji:** a space's owner and admins (and roles with "Manage emoji")
   add up to 50 in the space's settings: PNG, GIF (they can move), WebP or JPG.
   Everyone in the space can use them anywhere they chat, in a DM too (on Discord

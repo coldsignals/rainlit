@@ -1,6 +1,7 @@
 :root {
   --zoom: 1; /* Settings > Size, set on <html> with the zoom itself. Lengths that go by the window (vw, vh) divide by it. */
-  --font: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font: "Bricolage Grotesque", var(--emoji-font), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --emoji-font: "Twemoji Rainlit"; /* (Twemoji, fonts.css; after the device's own with "Use my device's emoji") */
   --radius-lg: 18px;
   --radius: 12px;
 
@@ -49,6 +50,9 @@
   --perk-stroke: linear-gradient(115deg, #5aa9ff, #b77bff 50%, #f5b94a); /* what supporters get (.perk-box) */
   --perk-ink: linear-gradient(115deg, #7dbbff, #c49bff 50%, #ffcf6b); /* "Glow", said in a line (.glow-word) */
 }
+/* "Use my device's emoji" (Settings): its own emoji first, Twemoji for any it hasn't got. */
+:root.device-emoji { --emoji-font: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Twemoji Rainlit"; }
+emoji-picker { --emoji-font-family: var(--emoji-font); }
 /* Dark: plain greys, like most apps' dark mode. */
 :root[data-theme="dark"], [data-theme-preview="dark"] {
   --night: #1e1f22; --deep: #18191c; --dusk: #27292d; --dusk-hi: #313338; --line: #3c3e44;

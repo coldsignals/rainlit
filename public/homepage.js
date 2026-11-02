@@ -12,20 +12,20 @@
 
   // Everything a piece can be. lib/homepages.js has the same lists.
   const FONTS = {
-    rainlit: { label: 'Rainlit', css: '"Bricolage Grotesque", system-ui, sans-serif' },
-    times: { label: 'Old web', css: '"Times New Roman", Times, "Liberation Serif", "Noto Serif", serif' },
-    comic: { label: 'Comic', css: '"Comic Neue", "Comic Sans MS", cursive' },
-    pixel: { label: 'Pixel', css: '"Pixelify Sans", monospace' },
-    terminal: { label: 'Terminal', css: 'VT323, monospace', scale: 1.3 },
-    tiny: { label: 'Tiny pixel', css: 'Silkscreen, monospace' },
-    hand: { label: 'Handwriting', css: 'Caveat, cursive', scale: 1.25 },
-    script: { label: 'Script', css: 'Pacifico, cursive' },
-    typewriter: { label: 'Typewriter', css: '"Special Elite", monospace' },
-    gothic: { label: 'Gothic', css: 'UnifrakturMaguntia, serif', scale: 1.1 },
-    neon: { label: 'Neon', css: 'Monoton, sans-serif' },
-    bubble: { label: 'Bubble', css: '"Rubik Bubbles", sans-serif' },
-    spooky: { label: 'Spooky', css: 'Creepster, sans-serif', scale: 1.1 },
-    marker: { label: 'Marker', css: '"Permanent Marker", sans-serif' },
+    rainlit: { label: 'Rainlit', css: '"Bricolage Grotesque", var(--emoji-font, "Twemoji Rainlit"), system-ui, sans-serif' },
+    times: { label: 'Old web', css: '"Times New Roman", var(--emoji-font, "Twemoji Rainlit"), Times, "Liberation Serif", "Noto Serif", serif' },
+    comic: { label: 'Comic', css: '"Comic Neue", var(--emoji-font, "Twemoji Rainlit"), "Comic Sans MS", cursive' },
+    pixel: { label: 'Pixel', css: '"Pixelify Sans", var(--emoji-font, "Twemoji Rainlit"), monospace' },
+    terminal: { label: 'Terminal', css: 'VT323, var(--emoji-font, "Twemoji Rainlit"), monospace', scale: 1.3 },
+    tiny: { label: 'Tiny pixel', css: 'Silkscreen, var(--emoji-font, "Twemoji Rainlit"), monospace' },
+    hand: { label: 'Handwriting', css: 'Caveat, var(--emoji-font, "Twemoji Rainlit"), cursive', scale: 1.25 },
+    script: { label: 'Script', css: 'Pacifico, var(--emoji-font, "Twemoji Rainlit"), cursive' },
+    typewriter: { label: 'Typewriter', css: '"Special Elite", var(--emoji-font, "Twemoji Rainlit"), monospace' },
+    gothic: { label: 'Gothic', css: 'UnifrakturMaguntia, var(--emoji-font, "Twemoji Rainlit"), serif', scale: 1.1 },
+    neon: { label: 'Neon', css: 'Monoton, var(--emoji-font, "Twemoji Rainlit"), sans-serif' },
+    bubble: { label: 'Bubble', css: '"Rubik Bubbles", var(--emoji-font, "Twemoji Rainlit"), sans-serif' },
+    spooky: { label: 'Spooky', css: 'Creepster, var(--emoji-font, "Twemoji Rainlit"), sans-serif', scale: 1.1 },
+    marker: { label: 'Marker', css: '"Permanent Marker", var(--emoji-font, "Twemoji Rainlit"), sans-serif' },
   };
   const EFFECTS = { none: 'Plain', shadow: 'Shadow', outline: 'Outline', glow: 'Glow', rainbow: 'Rainbow', blink: 'Blink', marquee: 'Scrolling', wave: 'Wavy', shimmer: 'Shimmer', lamplight: 'Lamplight' };
   const BOXES = { none: 'None', note: 'Sticky note', label: 'Label', box: 'Box', highlight: 'Highlighter', hazard: 'Caution', bubble: 'Speech bubble' };

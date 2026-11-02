@@ -163,7 +163,7 @@ for (const id of [
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
-  'cam-preview-field', 'cam-preview-input', 'cam-mirror-input', 'cam-preview-mirror',
+  'cam-preview-field', 'cam-preview-input', 'cam-mirror-input', 'cam-preview-mirror', 'device-emoji-input',
   'sound-trim', 'sound-trim-form', 'sound-trim-file', 'sound-trim-all', 'sound-trim-all-canvas', 'sound-trim-all-view', 'sound-trim-wave', 'sound-trim-canvas',
   'sound-trim-pick', 'sound-trim-playhead', 'sound-trim-play', 'sound-trim-times', 'sound-trim-hint', 'sound-trim-emoji', 'sound-trim-name', 'sound-trim-error', 'sound-trim-save',
   'record-dialog', 'record-form', 'record-title', 'record-about', 'record-from', 'record-to', 'record-messages', 'record-error', 'record-save',
@@ -1491,6 +1491,14 @@ function renderCamPreviewSetting() {
 // mirror, unless you've said not to (Settings, or before it turns on). Everyone else always sees
 // you the right way round; and never your back camera, mirrored.
 const mirrorMe = () => store.get('camMirror', 'on') !== 'off';
+
+// Emoji: Rainlit's (Twemoji), or your device's own (with Twemoji for any it hasn't got).
+const deviceEmoji = () => store.get('deviceEmoji', 'off') === 'on';
+function applyEmojiStyle() {
+  document.documentElement.classList.toggle('device-emoji', deviceEmoji());
+  if (el.deviceEmojiInput) el.deviceEmojiInput.checked = deviceEmoji();
+}
+applyEmojiStyle();
 function renderMirrorSetting() {
   el.camMirrorInput.checked = el.camPreviewMirror.checked = mirrorMe();
   el.camPreviewVideo.classList.toggle('mirror', mirrorMe());
@@ -3980,7 +3988,10 @@ const JUMBO_RE = /^(?:\s|<a?:[A-Za-z0-9_]{2,32}:[a-f0-9]{8,32}>|\p{Extended_Pict
 function isJumbo(text) {
   const t = String(text || '').trim();
   if (!t || !JUMBO_RE.test(t) || /^[\d#*\s]+$/.test(t)) return false; // (digits and # count as emoji parts)
-  const n = (t.match(EMOJI_TOKEN_RE) || []).length + (t.replace(EMOJI_TOKEN_RE, '').match(/\p{Extended_Pictographic}/gu) || []).length;
+  const rest = t.replace(EMOJI_TOKEN_RE, '');
+  // (Custom emoji, pictures, and flags (two letters) and keycaps (#️⃣), which aren't pictures by themselves.)
+  const n = (t.match(EMOJI_TOKEN_RE) || []).length + (rest.match(/\p{Extended_Pictographic}/gu) || []).length
+    + (rest.match(/\p{Regional_Indicator}{2}/gu) || []).length + (rest.match(/[\d#*]\ufe0f?\u20e3/gu) || []).length;
   return n > 0 && n <= 27;
 }
 
@@ -4336,6 +4347,7 @@ function onDmReactions({ dm: dmId, id, reactions }) {
 // to put in the message box (li null). Your spaces' own emoji come first.
 let emojiTarget = null;
 let emojiCaret = null;
+const EMOJI_VERSION = 17; // (the newest emoji in the picker's data, and Twemoji's: Emoji 17.0)
 let emojiPick = null; // (someone else wants the emoji: a sticker for a homepage)
 async function openEmojiPicker(li, onPick = null) {
   closeMessageMenu();
@@ -4348,8 +4360,12 @@ async function openEmojiPicker(li, onPick = null) {
     } catch {
       return toast("Couldn't open the emoji picker. Try again.");
     }
+    // (Twemoji has every emoji there is: none left out for the device not having them. Loaded
+    // first, or the picker would measure them without it.)
+    await document.fonts.load('1em "Twemoji Rainlit"', '\u{1F600}').catch(() => {});
     const picker = document.createElement('emoji-picker');
     picker.className = 'dark';
+    picker.emojiVersion = EMOJI_VERSION;
     picker.dataSource = '/vendor/emoji-picker/data.json';
     picker.addEventListener('emoji-click', (e) => {
       const d = e.detail || {};
@@ -20736,6 +20752,10 @@ async function init() {
   el.camSelect.addEventListener('change', onCamChange);
   el.camPreviewInput.addEventListener('change', () => store.set('camPreview', el.camPreviewInput.checked ? 'on' : 'off'));
   el.camMirrorInput.addEventListener('change', () => setMirrorMe(el.camMirrorInput.checked));
+  el.deviceEmojiInput.addEventListener('change', () => {
+    store.set('deviceEmoji', el.deviceEmojiInput.checked ? 'on' : 'off');
+    applyEmojiStyle();
+  });
   el.camPreviewMirror.addEventListener('change', () => setMirrorMe(el.camPreviewMirror.checked));
   el.camPreviewSelect.addEventListener('change', () => {
     if (!camPeek) return;
