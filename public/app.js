@@ -18313,6 +18313,10 @@ const dropInfo = (kind) => ((S.dewShop && S.dewShop.drops) || []).find((x) => x.
 // ("×2 collecting for 30 seconds")
 const boostWords = (b) => `×${b.x} ${b.on === 'pats' ? 'pats' : b.on === 'all' ? 'everything' : 'collecting'}${b.for ? ` for ${b.for >= 60 ? `${b.for / 60} minute${b.for > 60 ? 's' : ''}` : `${b.for} seconds`}` : ''}`;
 let dropLookTimer = 0;
+// (The one just caught, by when it was due: an answer from before the catch, like the pats sent
+// just as it was clicked, still says it's due, and it mustn't come again.)
+let dropCaughtDue = -Infinity;
+const dropCaught = (r) => Math.abs(S.dewAt + r.in - dropCaughtDue) < 3000;
 
 // The next one: when it comes (if you're there to see it: its room open, or anywhere, if asked).
 function planRainbow() {
@@ -18325,6 +18329,10 @@ function planRainbow() {
   const anywhere = !room && dropsAnywhere() && Boolean(S.pet);
   if (!r || !(room || anywhere)) return;
   const inNow = r.in - (performance.now() - S.dewAt);
+  if (dropCaught(r)) {
+    if (anywhere) dropLookTimer = setTimeout(loadDew, 6000);
+    return;
+  }
   // (Away from its room, the server's asked again once this one's over, for the next one (in its
   // room that's every 20 seconds anyway); and every 10 minutes, to keep in step.)
   if (anywhere) dropLookTimer = setTimeout(loadDew, Math.min(10 * 60_000, Math.max(0, inNow + r.for) + 6000));
@@ -18336,7 +18344,7 @@ function showRainbow() {
   rainbowTimer = 0;
   const r = S.dew && S.dew.rainbow;
   const room = el.pet.open;
-  if (!r || !S.pet || (room ? S.petTry : !dropsAnywhere())) return;
+  if (!r || !S.pet || (room ? S.petTry : !dropsAnywhere()) || dropCaught(r)) return;
   if ((room ? el.petRoom : el.dropSky).querySelector('.dew-rainbow:not(.caught), .dew-falling:not(.caught)')) return;
   const left = r.in + r.for - (performance.now() - S.dewAt);
   if (left < 1500) return;
@@ -18390,6 +18398,7 @@ async function catchRainbow(b) {
   if (b.disabled) return;
   b.disabled = true;
   const inRoom = el.petRoom.contains(b);
+  if (S.dew && S.dew.rainbow) dropCaughtDue = S.dewAt + S.dew.rainbow.in;
   const at = b.getBoundingClientRect();
   // (Kept where it is as it pops: its fall stopped there.)
   const now = getComputedStyle(b);
