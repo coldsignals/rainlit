@@ -574,7 +574,11 @@ To change the 30 minutes, set `RECONNECT_MINUTES` (for example `60`; see
   back on). On a phone it goes straight on; **Flip** switches cameras.
 - **Pick a headset or webcam:** the settings button. You can also turn your
   friend's volume down there, and switch the browser's noise suppression, echo
-  cancellation and automatic mic volume on or off.
+  cancellation and automatic mic volume on or off. **Audio output** says which
+  one your computer's default is, and **Test** plays a sound through the one
+  picked, so a headset that isn't it is plain to see. With a Bluetooth
+  headset's mic on Windows it says to pick the headset's "Hands-Free" output
+  (Windows plays nothing through its "Stereo" one while the mic's on).
 - **Test your mic:** in settings, under the microphone. Say something: a bar
   shows it hearing you for a few seconds, then what it heard plays back (with
   the clean-up that's on, as in a call), so you hear yourself as others will. If

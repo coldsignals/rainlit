@@ -1799,10 +1799,16 @@
               </div>
               <small id="mic-test-hint" class="hint" aria-live="polite"></small>
             </div>
-            <label class="field" id="speaker-field">
-              <span>Speaker</span>
-              <select id="speaker-select"></select>
-            </label>
+            <!-- Where sound comes out (app.js fillDeviceLists, renderSpeakerHint, testSpeaker): the
+                 system default named, a sound to hear through it, and a Bluetooth headset's catch. -->
+            <div class="field" id="speaker-field">
+              <span><label for="speaker-select">Audio output</label></span>
+              <div class="field-row">
+                <select id="speaker-select"></select>
+                <button id="speaker-test" class="primary-btn ghost-btn small" type="button">Test</button>
+              </div>
+              <small id="speaker-hint" class="hint" aria-live="polite"></small>
+            </div>
             <label class="field">
               <span>Camera</span>
               <select id="cam-select"></select>

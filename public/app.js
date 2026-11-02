@@ -170,7 +170,7 @@ for (const id of [
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
   'msg-unread', 'msg-pin', 'pins-btn', 'pins-panel', 'pins-close', 'pins-list', 'call-panel', 'call-panel-where', 'call-panel-name', 'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
-  'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-sound', 'pm-volume-field', 'pm-volume', 'pm-volume-value', 'pm-mute-them', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-voice', 'pm-add', 'voice-invite', 'voice-invite-find', 'voice-invite-list', 'voice-invite-none', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
+  'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'speaker-test', 'speaker-hint', 'person-menu', 'pm-sound', 'pm-volume-field', 'pm-volume', 'pm-volume-value', 'pm-mute-them', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-voice', 'pm-add', 'voice-invite', 'voice-invite-find', 'voice-invite-list', 'voice-invite-none', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -9470,8 +9470,12 @@ async function fillDeviceLists() {
     const list = devices.filter((d) => d.kind === kind);
     const def = document.createElement('option');
     def.value = '';
-    // (On Android, a wired headset's microphone when one's plugged in: see pickMic.)
-    def.textContent = ANDROID && kind === 'audioinput' ? 'Automatic' : 'System default';
+    // (On Android, a wired headset's microphone when one's plugged in: see pickMic. Elsewhere, which
+    // one the system default is, when the browser says: a headset that isn't it is plain to see.)
+    const named = defaultLabel(devices, kind);
+    def.textContent = ANDROID && kind === 'audioinput' ? 'Automatic' : named ? `Default: ${named}` : 'System default';
+    def.dataset.label = named;
+    def.dataset.group = (devices.find((x) => x.kind === kind && x.deviceId === 'default') || {}).groupId || '';
     select.append(def);
     list.forEach((d, i) => {
       if (d.deviceId === 'default' || d.deviceId === 'communications' || !d.deviceId) return;
@@ -9479,6 +9483,7 @@ async function fillDeviceLists() {
       o.value = d.deviceId;
       o.textContent = d.label || `${fallbackLabel} ${i + 1}`;
       o.dataset.label = d.label || '';
+      o.dataset.group = d.groupId || '';
       select.append(o);
     });
     select.value = [...select.options].some((o) => o.value === current) ? current : '';
@@ -9489,7 +9494,8 @@ async function fillDeviceLists() {
   renderCamPreviewSetting();
   const canPickSpeaker = 'setSinkId' in HTMLMediaElement.prototype;
   el.speakerField.hidden = !canPickSpeaker;
-  if (canPickSpeaker) fill(el.speakerSelect, 'audiooutput', S.devices.speaker, 'Speaker');
+  if (canPickSpeaker) fill(el.speakerSelect, 'audiooutput', S.devices.speaker, 'Output');
+  renderSpeakerHint();
   el.shareQuality.value = S.shareQuality;
   renderVolumeCap();
   el.soundsInput.checked = S.sounds;
@@ -9712,6 +9718,7 @@ function renderMicTest(note = null, tone = '') {
 }
 
 function onMicChange() {
+  renderSpeakerHint();
   stopMicTest(); // (the next test is with the new one)
   S.devices.mic = el.micSelect.value;
   store.set('mic', S.devices.mic);
@@ -9753,7 +9760,64 @@ async function onCamChange() {
   }
 }
 
+// (Which one the system default is, by its name: the browser lists it first, as "Default - " and its
+// name. '' if it doesn't say.)
+function defaultLabel(devices, kind) {
+  const d = devices.find((x) => x.kind === kind && x.deviceId === 'default' && x.label);
+  return d ? d.label.replace(/^[^-]*\S - /, '') : '';
+}
+
+// Under where sound comes out: what it's for; or, using a Bluetooth headset's mic on Windows, its
+// catch: while its mic is on, Windows plays sound only through its "Hands-Free" output, and the
+// other one ("Stereo") goes quiet, so you'd hear nobody.
+function renderSpeakerHint(said = '') {
+  const mic = el.micSelect.selectedOptions[0];
+  const out = el.speakerSelect.selectedOptions[0];
+  const micName = (mic && mic.dataset.label) || '';
+  const outName = (out && out.dataset.label) || '';
+  const handsFree = /hands-?free/i;
+  // (The same headset: the same device to the system, or its name the same, but for which half.)
+  const model = (name) => ((/\(([^()]*)\)\s*$/.exec(name) || [])[1] || '').replace(/hands-?free( ag audio)?|stereo/gi, '').trim().toLowerCase();
+  const same = (mic && out && mic.dataset.group && mic.dataset.group === out.dataset.group) || (model(micName) && model(micName) === model(outName));
+  const bluetooth = handsFree.test(micName) && outName && !handsFree.test(outName) && same;
+  el.speakerHint.dataset.tone = bluetooth ? 'bad' : '';
+  el.speakerHint.textContent = bluetooth
+    ? `Your mic is a Bluetooth headset's. While it's on, Windows plays sound only through the headset's "Hands-Free" output, so pick that one here, or you may hear nobody.`
+    : said || (out && !out.value && outName ? `Sound comes out of ${outName}, your computer's default. Using a headset? Pick it here.`
+      : "Your speakers or headset: where everyone in a call, and Rainlit's sounds, come out.");
+}
+
+// A sound through where you picked, the way a call's comes (a player, to that output), so you can
+// hear it's the right one. (In a call, with your mic on, it's just as the call is.)
+let speakerTestUrl = '';
+function testSpeaker() {
+  if (!speakerTestUrl) {
+    // Two soft notes, going up (A5, then E6), made here: half a second, as a WAV.
+    const rate = 24000;
+    const n = Math.round(rate * 0.62);
+    const data = new DataView(new ArrayBuffer(44 + n * 2));
+    const text = (at, s) => { for (let i = 0; i < s.length; i++) data.setUint8(at + i, s.charCodeAt(i)); };
+    text(0, 'RIFF'); data.setUint32(4, 36 + n * 2, true); text(8, 'WAVEfmt '); data.setUint32(16, 16, true); data.setUint16(20, 1, true);
+    data.setUint16(22, 1, true); data.setUint32(24, rate, true); data.setUint32(28, rate * 2, true); data.setUint16(32, 2, true); data.setUint16(34, 16, true);
+    text(36, 'data'); data.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) {
+      const t = i / rate;
+      const note = (start, f) => (t < start ? 0 : Math.sin(2 * Math.PI * f * (t - start)) * Math.exp(-(t - start) * 7) * Math.min(1, (t - start) * 200));
+      data.setInt16(44 + i * 2, Math.round((note(0, 880) + note(0.22, 1318.5)) * 0.3 * 32767), true);
+    }
+    speakerTestUrl = URL.createObjectURL(new Blob([data], { type: 'audio/wav' }));
+  }
+  const audio = new Audio(speakerTestUrl);
+  const out = el.speakerSelect.selectedOptions[0];
+  const name = (out && (out.value ? out.dataset.label || out.textContent : out.dataset.label)) || 'the system default';
+  const go = () => audio.play().catch(() => {});
+  if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).then(go, go);
+  else go();
+  renderSpeakerHint(`Playing a sound through ${name}. Hear nothing? Pick your headset here, and check Rainlit isn't turned down in your computer's volume mixer.`);
+}
+
 function onSpeakerChange() {
+  renderSpeakerHint();
   S.devices.speaker = el.speakerSelect.value;
   store.set('speaker', S.devices.speaker);
   store.set('speakerLabel', pickedLabel(el.speakerSelect));
@@ -20981,6 +21045,7 @@ async function init() {
   el.soundTrim.addEventListener('close', () => finishTrim(false));
   addEventListener('resize', () => { if (trim) drawTrim(); });
   el.speakerSelect.addEventListener('change', onSpeakerChange);
+  el.speakerTest.addEventListener('click', testSpeaker);
   el.volumeInput.addEventListener('input', onVolumeChange);
   el.soundsBtn.addEventListener('click', (e) => toggleSoundboard(el.soundsBtn, e.detail === 0));
   el.sbVolume.addEventListener('input', () => setSoundboardVolume(el.sbVolume.value));
