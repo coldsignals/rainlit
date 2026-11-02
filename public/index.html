@@ -1951,6 +1951,8 @@
         <p id="pet-dew" class="pet-dew" title="Dew: pat your pet for it" hidden><i class="dew-drop" aria-hidden="true"></i><span id="pet-dew-n">0</span></p>
         <!-- (Boosts going, from drops caught: app.js renderDewBoosts.) -->
         <div id="dew-boosts" class="dew-boosts" hidden></div>
+        <!-- (A milestone just reached: app.js sayMilestones.) -->
+        <p id="dew-news" class="dew-news" role="status" hidden></p>
       </div>
       <nav class="pet-tabs" role="tablist" aria-label="Your pet">
         <button class="pet-tab" type="button" role="tab" data-pet-tab="care">Care</button>
@@ -1992,6 +1994,13 @@
           <span>Let drops fall anywhere in Rainlit <small class="toggle-note">(now and then one falls wherever you are, slowly: catch it, or let it go)</small></span>
         </label>
         <div id="dew-drops" class="dew-drops"></div>
+        <!-- Milestones (app.js renderDewMilestones; lib/dew.js MILESTONES): each makes everything collect 1% more. -->
+        <h3 class="pet-pick-title">Milestones</h3>
+        <details id="dew-milestones" class="dew-milestones">
+          <summary id="dew-milestones-sum"></summary>
+          <div id="dew-milestone-grid" class="dew-milestone-grid"></div>
+          <p id="dew-milestone-said" class="pet-note dew-milestone-said"></p>
+        </details>
         <p id="dew-msg" class="pet-msg" role="status" hidden></p>
       </section>
       <section id="pet-decor" class="pet-decor" aria-label="Doing up its room" data-pet-pane="decor">

@@ -159,7 +159,7 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
-  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'drop-sky', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'drop-sky', 'dew-news', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -17451,6 +17451,9 @@ function renderPetTabs() {
     b.setAttribute('aria-selected', String(S.petTab === b.dataset.petTab));
   }
   for (const pane of el.pet.querySelectorAll('[data-pet-pane]')) pane.hidden = pane.dataset.petPane !== S.petTab;
+  const alive = el.pet.open && S.petTab === 'dew' && Boolean(p) && !S.petTry;
+  if (alive && !dewStage.on) dewStage.start();
+  else if (!alive && dewStage.on) dewStage.stop();
   if (S.petTab === 'care') el.petCare.hidden = !p || Boolean(S.petTry);
   if (S.petTab === 'dew') el.petDewPane.hidden = !p || Boolean(S.petTry);
   if (S.petTab === 'wear') el.petWear.hidden = !p || Boolean(S.petTry);
@@ -18032,6 +18035,11 @@ async function loadDew() {
 function setDew(state) {
   const was = S.dew;
   if (was && state.at < was.at) return; // (an older answer, overtaken by a newer on the way)
+  if (was && was.milestones && state.milestones) {
+    const had = new Set(was.milestones);
+    const news = state.milestones.filter((k) => !had.has(k));
+    if (news.length) sayMilestones(news);
+  }
   S.dew = state;
   S.dewAt = performance.now();
   dewOnline = 0;
@@ -18187,7 +18195,9 @@ function renderDew() {
   renderDewCollectors();
   renderDewBoosts();
   renderDewDrops();
+  renderDewMilestones();
   renderDewCount();
+  if (dewStage.on) dewStage.measure();
 }
 
 // Upgrades ready to get (patted enough, enough of a collector, or of them all, made enough, caught
@@ -18401,6 +18411,242 @@ async function catchRainbow(b) {
     toast(err.message);
   }
 }
+
+// ----- Milestones (lib/dew.js MILESTONES) -----
+// Things done along the way, each making everything collect 1% more, for good: in the Dew tab, a
+// grid of them (each saying what it took; a secret one, just "?", till it's reached), and said on its
+// room as one's reached.
+const MILESTONE_ICON = { pats: 'pat', earned: 'drop', rate: 'cloud', upgrades: 'heart', things: 'garden', secret: 'star' };
+const milestoneIcon = (m) => (m.of ? m.of : m.group === 'collectors' ? 'leaf' : m.key === 'drops-all' ? 'star' : m.group === 'drops' ? 'rainbow' : MILESTONE_ICON[m.group] || 'drop');
+function renderDewMilestones() {
+  const d = S.dew;
+  const list = (S.dewShop && S.dewShop.milestones) || [];
+  if (!d || !list.length) return;
+  const have = new Set(d.milestones || []);
+  const n = list.filter((m) => have.has(m.key)).length;
+  el.dewMilestonesSum.textContent = `${n} of ${list.length} reached: everything collects ${n}% more`;
+  // (Its badges made once, then only lit as they're reached.)
+  if (el.dewMilestoneGrid.childElementCount !== list.length) {
+    el.dewMilestoneGrid.replaceChildren(...list.map((m) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'dew-milestone';
+      b.dataset.key = m.key;
+      const icon = document.createElement('i');
+      icon.className = 'dew-icon';
+      icon.style.backgroundImage = `url("${Homepage.dewIcon(milestoneIcon(m))}")`;
+      b.append(icon);
+      return b;
+    }));
+  }
+  for (const b of el.dewMilestoneGrid.children) {
+    const m = list.find((x) => x.key === b.dataset.key);
+    const got = have.has(m.key);
+    const secret = m.hidden && !got;
+    b.classList.toggle('got', got);
+    b.classList.toggle('secret', secret);
+    const words = secret ? 'A secret one: reach it to find out.' : `${m.label}: ${m.about}${got ? ' Reached.' : ''}`;
+    b.title = words;
+    b.setAttribute('aria-label', secret ? 'A secret milestone' : `${m.label}${got ? ', reached' : ''}`);
+    b.dataset.said = words;
+  }
+}
+// (One said aloud, on its room, as it's reached: a few at once, together.)
+let dewNewsTimer = 0;
+function sayMilestones(keys) {
+  const list = (S.dewShop && S.dewShop.milestones) || [];
+  const names = keys.map((k) => (list.find((m) => m.key === k) || {}).label).filter(Boolean);
+  if (!names.length || !el.pet.open) return;
+  el.dewNews.textContent = names.length === 1 ? `★ Milestone: ${names[0]}` : `★ ${names.length} milestones: ${names.slice(0, 2).join(', ')}${names.length > 2 ? `, and ${names.length - 2} more` : ''}`;
+  el.dewNews.hidden = false;
+  el.dewNews.classList.remove('in');
+  void el.dewNews.offsetWidth; // (its little rise, again)
+  el.dewNews.classList.add('in');
+  clearTimeout(dewNewsTimer);
+  dewNewsTimer = setTimeout(() => { el.dewNews.hidden = true; }, 4200);
+}
+
+// ----- Its room, alive (the Dew tab) -----
+// With the Dew tab open, its room comes alive with how far you've come (as Cookie Clicker's milk
+// does): dew drips down the wallpaper and motes rise, more the more it collects; sparkles, then
+// shooting stars and an aurora along the top, further along; and on the floor, a pool of dew that
+// rises with the milestones reached, its colour changing as more are (dew, honeydew, moonlight,
+// aurora, starlight, rainbow). Drawn small, in the room's own pixels (one layer on the wallpaper,
+// behind what's hung or stands there; the pool in front of what stands, behind its pet). Only while
+// it's showing; still, for anyone who'd rather things didn't move.
+const POOLS = [[0, [127, 208, 255]], [40, [255, 214, 102]], [80, [208, 220, 240]], [110, [111, 224, 192]], [140, [143, 160, 255]], [170, 'rainbow']];
+const dewStage = {
+  on: false,
+  frame: 0,
+  wall: null,
+  pool: null,
+  bits: null,
+  // How alive: from how much it collects a second (its tens), and the milestones reached (of all).
+  measure() {
+    const d = S.dew;
+    const rate = d ? d.perSecond * dewBoostX('collect') : 0;
+    this.tens = rate > 1 ? Math.log10(rate) : 0;
+    const all = ((S.dewShop && S.dewShop.milestones) || []).length || 1;
+    this.reached = d && d.milestones ? d.milestones.length : 0;
+    this.share = this.reached / all;
+    this.kind = POOLS.filter(([n]) => this.reached >= n).pop()[1];
+    if (this.wall) this.bits = null; // (made again, for as many as there should be now)
+  },
+  start() {
+    if (!this.wall) {
+      this.wall = document.createElement('canvas');
+      this.wall.className = 'dew-stage';
+      this.wall.setAttribute('aria-hidden', 'true');
+      this.pool = document.createElement('canvas');
+      this.pool.className = 'dew-pool';
+      this.pool.setAttribute('aria-hidden', 'true');
+    }
+    this.on = true;
+    this.measure();
+    el.petRoom.classList.add('dew-alive');
+    this.last = performance.now();
+    // (Still, for anyone who'd rather things didn't move: drawn as it is every second, put back if
+    // its room's been done up again since, nothing moving.)
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const paint = () => { if (this.on && !document.hidden) this.draw(0, 0, true); };
+      this.frame = 0;
+      paint();
+      this.stillTimer = setInterval(paint, 1000);
+      return;
+    }
+    const step = (now) => {
+      if (!this.on) return;
+      this.frame = requestAnimationFrame(step);
+      if (now - this.last < 33) return; // (30 a second is plenty, in pixels this big)
+      const dt = Math.min(0.1, (now - this.last) / 1000);
+      this.last = now;
+      if (!document.hidden) this.draw(dt, now / 1000, false);
+    };
+    this.frame = requestAnimationFrame(step);
+  },
+  stop() {
+    this.on = false;
+    cancelAnimationFrame(this.frame);
+    clearInterval(this.stillTimer);
+    el.petRoom.classList.remove('dew-alive');
+    if (this.wall) this.wall.remove();
+    if (this.pool) this.pool.remove();
+  },
+  // (Where they go: on the wallpaper, just after the baseboard, before what's hung; the pool, after
+  // what stands. Put back if the room's been done up again since.)
+  place() {
+    const scene = el.petRoom.querySelector('.pr-scene');
+    const base = scene && scene.querySelector('.pr-base');
+    if (base && base.nextSibling !== this.wall) base.after(this.wall);
+    if (this.pool.parentNode !== el.petRoom) el.petRoom.append(this.pool);
+    const px = parseFloat(getComputedStyle(el.petRoom).getPropertyValue('--px')) || 6;
+    const w = Math.max(20, Math.round(el.petRoom.clientWidth / px));
+    const h = Math.max(20, Math.round(el.petRoom.clientHeight / px));
+    for (const c of [this.wall, this.pool]) if (c.width !== w || c.height !== h) { c.width = w; c.height = h; this.bits = null; }
+    return { w, h };
+  },
+  // What's in it (made again when it changes size, or how alive it is does).
+  make(w, h) {
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const t = this.tens;
+    const wallH = Math.round(h * 0.6);
+    this.bits = {
+      drips: Array.from({ length: t > 0 ? Math.min(18, 2 + Math.floor(t * 1.6)) : 0 }, () => ({ x: Math.floor(rnd(1, w - 1)), y: rnd(0, wallH), v: rnd(1.5, 4.5), len: Math.random() < 0.4 ? 2 : 1 })),
+      motes: Array.from({ length: t >= 3 ? Math.min(28, Math.floor((t - 2) * 2.5)) : 0 }, () => ({ x: rnd(0, w), y: rnd(0, h), v: rnd(1.5, 4), ph: rnd(0, 6.3) })),
+      sparks: Array.from({ length: t >= 6 ? Math.min(14, Math.floor((t - 5) * 2)) : 0 }, () => ({ x: Math.floor(rnd(2, w - 2)), y: Math.floor(rnd(2, wallH - 2)), ph: rnd(0, 6.3), rate: rnd(1.2, 2.6) })),
+      stars: [],
+      starAt: 0,
+      wallH,
+    };
+  },
+  draw(dt, now, still) {
+    const { w, h } = this.place();
+    if (!this.bits) this.make(w, h);
+    const b = this.bits;
+    const g = this.wall.getContext('2d');
+    g.clearRect(0, 0, w, h);
+    const rgb = this.kind === 'rainbow' ? null : this.kind;
+    const col = (a, x = 0) => (rgb ? `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a})` : `hsla(${(x * 9 + now * 40) % 360}, 90%, 72%, ${a})`);
+    // An aurora along the top, further along (a thousand trillion a second).
+    if (this.tens >= 15) {
+      for (let x = 0; x < w; x++) {
+        const y = 1 + Math.round(Math.sin(x * 0.18 + now * 0.7) * 1.2 + Math.sin(x * 0.07 - now * 0.4));
+        const hue = 150 + 70 * Math.sin(x * 0.05 + now * 0.3);
+        g.fillStyle = `hsla(${hue}, 80%, 65%, 0.22)`;
+        g.fillRect(x, Math.max(0, y), 1, 3);
+      }
+    }
+    // Drips down the wallpaper.
+    for (const p of b.drips) {
+      if (!still) p.y += p.v * dt;
+      if (p.y > b.wallH) { p.y = -Math.random() * b.wallH * 0.3; p.x = Math.floor(Math.random() * (w - 2)) + 1; }
+      if (p.y < 0) continue;
+      g.fillStyle = 'rgba(160, 220, 255, 0.55)';
+      g.fillRect(p.x, Math.floor(p.y) - p.len + 1, 1, p.len);
+      g.fillStyle = 'rgba(230, 248, 255, 0.8)';
+      g.fillRect(p.x, Math.floor(p.y) + 1, 1, 1);
+    }
+    // Sparkles on it, coming and going.
+    for (const s of b.sparks) {
+      const a = Math.max(0, Math.sin(now * s.rate + s.ph));
+      if (a < 0.15) continue;
+      g.fillStyle = `rgba(255, 255, 255, ${(a * 0.9).toFixed(2)})`;
+      g.fillRect(s.x, s.y, 1, 1);
+      if (a > 0.75) {
+        g.fillStyle = `rgba(255, 255, 255, ${((a - 0.75) * 1.6).toFixed(2)})`;
+        g.fillRect(s.x - 1, s.y, 3, 1);
+        g.fillRect(s.x, s.y - 1, 1, 3);
+      }
+    }
+    // Shooting stars across the top, now and then (a trillion a second).
+    if (this.tens >= 12 && !still) {
+      if (now > b.starAt) {
+        b.stars.push({ x: Math.random() * w * 0.6, y: Math.random() * b.wallH * 0.4, life: 0 });
+        b.starAt = now + 3 + Math.random() * 5 - Math.min(2, this.tens - 12);
+      }
+      for (const s of b.stars) {
+        s.life += dt;
+        s.x += 26 * dt;
+        s.y += 9 * dt;
+        const a = Math.max(0, 1 - s.life / 1.2);
+        for (let i = 0; i < 5; i++) {
+          g.fillStyle = `rgba(255, 250, 220, ${(a * (1 - i / 5)).toFixed(2)})`;
+          g.fillRect(Math.round(s.x - i * 1.5), Math.round(s.y - i * 0.5), 1, 1);
+        }
+      }
+      b.stars = b.stars.filter((s) => s.life < 1.2);
+    }
+    // Motes rising, the pool's colour.
+    for (const m of b.motes) {
+      if (!still) m.y -= m.v * dt;
+      if (m.y < -1) { m.y = h + 1; m.x = Math.random() * w; }
+      const x = Math.round(m.x + Math.sin(now * 0.9 + m.ph) * 1.5);
+      g.fillStyle = col((0.35 + 0.35 * Math.sin(now * 2 + m.ph)).toFixed(2), x);
+      g.fillRect(x, Math.round(m.y), 1, 1);
+    }
+    // The pool, rising with the milestones (up to a fifth of the room).
+    const p = this.pool.getContext('2d');
+    p.clearRect(0, 0, w, h);
+    const depth = this.reached ? Math.max(1, Math.round(this.share * h * 0.2)) : 0;
+    if (depth) {
+      for (let x = 0; x < w; x++) {
+        // (Ripples as deep as it is: a shallow one barely moves, and never dries up between them.)
+        const wave = still || depth < 3 ? 0 : Math.round(Math.sin(x * 0.35 + now * 1.6) * 0.6 + Math.sin(x * 0.12 - now) * 0.5);
+        const top = Math.min(h - 1, h - depth + wave);
+        p.fillStyle = col(0.5, x);
+        p.fillRect(x, top + 1, 1, h - top);
+        p.fillStyle = col(0.85, x);
+        p.fillRect(x, top, 1, 1);
+      }
+      // (A glint going along it.)
+      if (!still) {
+        const gx = Math.floor((now * 9) % (w + 20)) - 10;
+        p.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        for (const dx of [0, 1, 6]) if (gx + dx >= 0 && gx + dx < w) p.fillRect(gx + dx, h - depth + (dx === 6 ? 1 : 0), 1, 1);
+      }
+    }
+  },
+};
 
 // Boosts going (from drops caught), on its room: which, how many times as much, and a bar of how
 // long's left. Over, gone (and what it all brings, said again).
@@ -20937,6 +21183,14 @@ async function init() {
       renderPetTabs();
     });
   }
+  el.dewMilestoneGrid.addEventListener('click', (e) => {
+    const b = e.target.closest('.dew-milestone');
+    if (b) el.dewMilestoneSaid.textContent = b.dataset.said || '';
+  });
+  el.dewMilestoneGrid.addEventListener('pointerover', (e) => {
+    const b = e.target.closest('.dew-milestone');
+    if (b) el.dewMilestoneSaid.textContent = b.dataset.said || '';
+  });
   // Drops falling anywhere, or not.
   el.dropsAnywhere.addEventListener('change', () => {
     store.set('dropsAnywhere', el.dropsAnywhere.checked ? 'on' : 'off');
@@ -20952,6 +21206,7 @@ async function init() {
     S.wearTry = null;
     if (roomSave) saveRoom();
     arrangeRoom().set(false);
+    if (dewStage.on) dewStage.stop();
     stopDew();
     if (el.petRoom.hpPet) el.petRoom.hpPet.stop();
   });

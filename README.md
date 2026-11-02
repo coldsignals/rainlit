@@ -296,9 +296,14 @@ Visit other people's pets too: their profile card says **Visit** and its name,
 and opens its room as they've done it up, where you can pet it (their friends
 and people in a space with them can; how full or happy it is stays theirs).
 
-**Dew:** pat your pet and it shakes off dew (its room's **Dew** tab). Things
-that collect it (a leaf, an acorn cup, a spiderweb... up to a rainbow loom)
-bring more while Rainlit's open, and upgrades come along as you go. Spend it on
+**Dew:** pat your pet and it shakes off dew (its room's **Dew** tab). Twenty
+things collect it (a leaf, an acorn cup, a spiderweb... a rainbow loom, a comet
+catcher, all the way to the first rain) while Rainlit's open, and upgrades come
+along as you go (each collector brings twice as much at 1, 5, 25... up to 400
+of it). Milestones along the way (about 180, a few of them secret) each make
+everything collect 1% more, for good; with the Dew tab open, its room comes
+alive the further you get: dew dripping down the walls, sparkles, shooting stars
+and a pool of dew on the floor that rises with your milestones. Spend it on
 things for its room, and for it to wear, that only dew brings (just for looks:
 dew's never bought or sold). Now and then a drop rolls down its room's window:
 catch it before it's gone. There are eight kinds, from common Dewdrops and

@@ -3366,6 +3366,31 @@ button.person.open { background: var(--dusk-hi); }
 .dew-drop-kind span span { display: block; color: var(--mist); font-size: 12.5px; line-height: 1.35; }
 .dew-drop-kind em { color: var(--mist); font-size: 12px; font-style: normal; font-weight: 600; white-space: nowrap; }
 .dew-drop-kind.unseen em { opacity: 0.7; }
+/* Milestones (app.js renderDewMilestones): a grid of them, lit as they're reached (a secret one,
+   "?"), what one took said below; and one just reached, said on its room. */
+.dew-milestones summary { cursor: pointer; color: var(--mist); font-size: 13.5px; font-weight: 650; }
+.dew-milestone-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 4px; margin-top: 8px; }
+.dew-milestone { position: relative; display: grid; place-items: center; aspect-ratio: 1; padding: 0; border: 2px solid var(--line); background: var(--deep); cursor: pointer; }
+.dew-milestone .dew-icon { width: 70%; height: 70%; filter: grayscale(1) brightness(0.45); opacity: 0.55; }
+.dew-milestone.got { border-color: color-mix(in srgb, var(--lamp) 55%, var(--line)); background: color-mix(in srgb, var(--lamp) 10%, var(--deep)); }
+.dew-milestone.got .dew-icon { filter: none; opacity: 1; }
+.dew-milestone.secret .dew-icon { visibility: hidden; }
+.dew-milestone.secret::after { content: "?"; position: absolute; color: var(--mist); font: 400 13px/1 Silkscreen, var(--font, sans-serif); }
+.dew-milestone:hover, .dew-milestone:focus-visible { border-color: var(--lamp); outline: none; }
+.dew-milestone-said { min-height: 1.4em; margin: 6px 0 0; }
+.dew-news {
+  position: absolute; left: 50%; top: 8px; z-index: 1002; margin: 0; padding: 5px 10px; translate: -50% 0; pointer-events: none;
+  border: 2px solid #2a1f33; background: rgba(20, 24, 38, 0.88); box-shadow: inset 0 0 0 1px #ffd23a;
+  color: #fff4b0; font: 400 13px/1.2 Silkscreen, var(--font, sans-serif); white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis;
+}
+.dew-news[hidden] { display: none; }
+.dew-news.in { animation: dew-news 4.2s ease-out forwards; }
+@keyframes dew-news { 0% { opacity: 0; transform: translateY(-6px); } 8%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+/* Its room, alive (app.js dewStage): one layer on its wallpaper (behind what's hung and stands
+   there), the pool in front of what stands, its pet in front of that. */
+.pet-room .pr-scene > .dew-stage { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+.pet-room > .dew-pool { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+.pet-room.dew-alive .hp-pet-live { z-index: 3; }
 .dew-burst {
   position: absolute; z-index: 1001; left: calc(var(--px) * 14); top: calc(var(--px) * 7); margin: 0; pointer-events: none;
   color: #fff; font: 400 18px/1 Silkscreen, var(--font, sans-serif); text-shadow: 0 2px 0 #2a1f33, 0 0 8px #b07bff;

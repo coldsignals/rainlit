@@ -4732,6 +4732,14 @@
       }).join('')),
       colors: { r: '#ff5f6d', o: '#ffa24a', y: '#ffe066', g: '#6fe08a', b: '#5fb4ff', p: '#b07bff' },
     },
+    // (The collectors after the loom: a comet, a star sieve, a nebula, an aurora harp, an ocean up in
+    // the clouds, and the first rain, shining.)
+    comet: { rows: ['T.........', '.Tt.......', '.tTt......', '..ttTt....', '...ttyy...', '....yYYy..', '....yYYy..', '.....yy...'], colors: { T: '#4fa3d9', t: '#7fd0ff', y: '#ffe9a8', Y: '#ffffff' } },
+    sieve: { rows: ['.rrrrrrrr.', 'rmmmmmmmmr', 'rmsmmsmmmr', '.rmmmmsmr.', '..rrrrrr..', '...b..b...', '.....b....', '..b.....b.'], colors: { r: '#c8a060', m: '#5a6272', s: '#fff4b0', b: '#7fd0ff' } },
+    nebula: { rows: ['...pppp...', '.ppPPPpp..', 'pPPsPPPPp.', 'pPPPvvPPpp', '.pPvvsvPPp', '..pPvvvPp.', '...ppPPp..', '.....pp...'], colors: { p: '#b07bff', P: '#d17bff', v: '#5fb4ff', s: '#ffffff' } },
+    harp: { rows: ['gg........', 'g.g.......', 'g.a.g.....', 'g.ab.g....', 'g.abc.g...', 'g.abcd.g..', 'g.abcde.g.', 'g.abcdef.g', 'gggggggggg'], colors: { g: '#d9a13a', a: '#6fe0a0', b: '#4fd1c5', c: '#5fb4ff', d: '#8a7bff', e: '#d17bff', f: '#ff6f91' } },
+    ocean: { rows: ['.bB..bB...', 'bBbbBBbbB.', 'bbbbbbbbbb', 'wwwwwwwwww', 'wWwwwwwWww', '.wwwwwwww.', '..b..b..b.', '.b..b..b..'], colors: { b: '#4fa3d9', B: '#7fd0ff', w: '#eef3f8', W: '#cfd8e2' } },
+    first: { rows: ['y...w...y.', '.y..w..y..', '....b.....', '...bbb....', '..bbwbb...', '..bwbbb...', '..bbbbB...', '...bbB....', 'y.......y.'], colors: { b: '#9fe3ff', B: '#5fb4ff', w: '#ffffff', y: '#fff4b0' } },
     // (A heart, for the upgrades for a happy pet; a paw, for the upgrades to pats; and a rainbow
     // drop, rolling down the window now and then.)
     heart: { rows: ['.hh...hh.', 'hHhh.hhhh', 'hhhhhhhhh', 'hhhhhhhhh', '.hhhhhhh.', '..hhhhh..', '...hhh...', '....h....'], colors: { h: '#ff6f91', H: '#ffd0dc' } },
