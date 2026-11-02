@@ -508,7 +508,9 @@ function mediaErrorText(err, what) {
   if (err && err.name === 'NotReadableError') {
     return `Your ${what.toLowerCase()} is being used by another app. Close that app, then try again.`;
   }
-  return `Couldn't start your ${what.toLowerCase()}.`;
+  // (Something else: what, so it can be told to whoever runs Rainlit if it keeps happening.)
+  const why = err && (err.status !== undefined ? err.message : err.name && err.name !== 'Error' ? err.name : err.message);
+  return `Couldn't start your ${what.toLowerCase()}${why ? ` (${String(why).slice(0, 90).replace(/[.!\s]+$/, '')})` : ''}.`;
 }
 
 // ---------------- Media ----------------

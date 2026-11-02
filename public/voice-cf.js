@@ -416,11 +416,57 @@
         this.pubPc = null;
         return;
       }
-      const offer = await this.pubPc.createOffer();
-      await this.pubPc.setLocalDescription(offer);
-      const r = await this.api('POST', `/channels/${this.channelId}/voice/unpublish`, { sdp: this.pubPc.localDescription.sdp, kinds: have }).catch(() => ({}));
-      if (r.sdp) await this.pubPc.setRemoteDescription({ type: 'answer', sdp: r.sdp });
-      else await this.pubPc.setLocalDescription({ type: 'rollback' }).catch(() => {});
+      let r;
+      try {
+        const offer = await this.pubPc.createOffer();
+        await this.pubPc.setLocalDescription(offer);
+        r = await this.api('POST', `/channels/${this.channelId}/voice/unpublish`, { sdp: this.pubPc.localDescription.sdp, kinds: have });
+        if (r.sdp) await this.pubPc.setRemoteDescription({ type: 'answer', sdp: r.sdp });
+      } catch {
+        return this.sendAfresh([], have); // (stuck partway: see sendAfresh)
+      }
+      // (None of them at Cloudflare's end, as far as the server knows: as it was.)
+      if (!r.sdp) await this.pubPc.setLocalDescription({ type: 'rollback' }).catch(() => {});
+    }
+
+    // Starts sending these (as publishNow); failing, once more on a fresh connection (sendAfresh),
+    // unless it's that you can't (not allowed to talk here).
+    async publishOrAfresh(list) {
+      try {
+        await this.queue(() => this.publishNow(list));
+      } catch (err) {
+        if (err && (err.status === 403 || err.name === 'NotAllowedError')) throw err;
+        await this.queue(() => this.sendAfresh(list)).catch(() => {
+          throw err;
+        });
+      }
+    }
+
+    // Everything still being sent (but `without`), and `more`, sent again on a fresh sending
+    // connection. A change to the old one that failed partway (Cloudflare took it but its answer
+    // wasn't taken here, or the request or its answer was lost on the way) leaves it out of step
+    // with Cloudflare, and every change after fails as well: an iPhone's camera, turned off and on,
+    // wouldn't come back ("Couldn't start your camera.") without leaving and joining again. If this
+    // fails too, everything starts again (rejoin), for what was being sent. (In the queue.)
+    async sendAfresh(more = [], without = []) {
+      const skip = new Set([...without, ...more.map((m) => m.kind)]);
+      const list = this.sending().filter((x) => !skip.has(x.kind));
+      this.local.clear();
+      this.names = {};
+      this.closePc(this.pubPc);
+      this.pubPc = null;
+      if (!list.length && !more.length) {
+        // (Nothing left to send: the server stops what it had.)
+        await this.api('POST', `/channels/${this.channelId}/voice/unpublish`, { kinds: without }).catch(() => {});
+        return;
+      }
+      try {
+        await this.publishNow([...list, ...more]);
+      } catch (err) {
+        if (list.length) this.rejoin();
+        throw err;
+      }
+      this.sendersFor(list);
     }
 
     addLocal(kind, mst) {
@@ -488,7 +534,7 @@
         return;
       }
       try {
-        await this.queue(() => this.publishNow([{ kind: 'mic', mst }]));
+        await this.publishOrAfresh([{ kind: 'mic', mst }]);
       } catch (err) {
         mst.stop();
         throw err;
@@ -503,15 +549,19 @@
     async setCamera(on, options) {
       const lp = this.localParticipant;
       if (!on) {
-        await this.queue(() => this.unpublishNow(['cam']));
-        return this.dropLocal(['cam']);
+        try {
+          await this.queue(() => this.unpublishNow(['cam']));
+        } finally {
+          this.dropLocal(['cam']); // (off, whatever happened on the way)
+        }
+        return;
       }
       if (lp.pubs.has(Source.Camera)) return;
       if (!lp.permissions.canPublish) throw cantTalk();
       const stream = await navigator.mediaDevices.getUserMedia({ video: { ...this.camConstraints, ...(options || {}) } });
       const mst = stream.getVideoTracks()[0];
       try {
-        await this.queue(() => this.publishNow([{ kind: 'cam', mst }]));
+        await this.publishOrAfresh([{ kind: 'cam', mst }]);
       } catch (err) {
         mst.stop();
         throw err;
@@ -525,8 +575,12 @@
     async setScreen(on, options = {}) {
       const lp = this.localParticipant;
       if (!on) {
-        await this.queue(() => this.unpublishNow(['screen', 'screenAudio']));
-        return this.dropLocal(['screen', 'screenAudio']);
+        try {
+          await this.queue(() => this.unpublishNow(['screen', 'screenAudio']));
+        } finally {
+          this.dropLocal(['screen', 'screenAudio']);
+        }
+        return;
       }
       if (lp.pubs.has(Source.ScreenShare)) return;
       if (!lp.permissions.canPublish) throw cantTalk();
@@ -537,7 +591,7 @@
       const audio = stream.getAudioTracks()[0];
       const list = [{ kind: 'screen', mst: video, smooth }, ...(audio ? [{ kind: 'screenAudio', mst: audio }] : [])];
       try {
-        await this.queue(() => this.publishNow(list));
+        await this.publishOrAfresh(list);
       } catch (err) {
         for (const t of stream.getTracks()) t.stop();
         throw err;
