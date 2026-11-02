@@ -3012,6 +3012,14 @@ button.person.open { background: var(--dusk-hi); }
   background-repeat: no-repeat; background-size: 100% 100%; image-rendering: pixelated; pointer-events: none;
 }
 .pr-room .pr-flip { transform: scaleX(-1); }
+/* A mirror (homepage.js thingOf: glass, sheen): its room's pet in its glass as it passes (petLife's
+   reflect: a copy of it, where it is), a little faint, under the glass's shine. */
+.pr-room .pr-reflect { position: absolute; inset: 0; overflow: hidden; -webkit-mask: var(--glass) 0 0 / 100% 100% no-repeat; mask: var(--glass) 0 0 / 100% 100% no-repeat; }
+.pr-room .pr-reflect-in { position: absolute; inset: 0; }
+.pr-room .pr-flip .pr-reflect-in { transform: scaleX(-1); }
+.pr-room .pr-reflect-pet { position: absolute; left: 0; top: 0; opacity: 0.78; pointer-events: none; }
+.pr-room .pr-reflect-pet[hidden] { display: none; }
+.pr-room .pr-sheen { position: absolute; inset: 0; background-repeat: no-repeat; background-size: 100% 100%; image-rendering: pixelated; opacity: 0.85; }
 /* (Hanging from the ceiling, on a cord.) */
 .pr-room .pr-ceiling::before { content: ''; position: absolute; left: 50%; bottom: 100%; width: var(--u); height: calc(var(--px) * var(--t)); margin-left: calc(var(--u) / -2); background: #2a1f33; }
 /* (A window's weather, homepage.js paintSky: the sky in its panes, and over it, in ::before, rain or

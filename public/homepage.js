@@ -2758,7 +2758,7 @@
         // (Its feet on the open floor, in front of the furniture, which stands 13 rows up from the
         // bottom (a bed, 10): never up on the skirting or a desk. A pet that floats can go anywhere.)
         const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, P * (ROOM_ROWS - 10));
-        return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + P, x1: Math.max(w / 2 + P, W - w / 2 - P), y0, y1: Math.max(y0, H - P * 2), P };
+        return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + P, x1: Math.max(w / 2 + P, W - w / 2 - P), y0, y1: Math.max(y0, H - P * 2), P, W };
       },
       nap() {
         const beds = room.prRoom ? room.prRoom.things.filter((t) => t.list === 'stand' && !t.tried && STANDS[t.key] && STANDS[t.key].nap) : [];
@@ -3024,6 +3024,58 @@
       const k = Math.min(0.5, me.z / (me.w * 0.6));
       shadow.style.transform = k ? `scale(${(1 - k).toFixed(3)})` : '';
       shadow.style.opacity = k ? String(1 - k) : '';
+      reflect();
+    }
+
+    // In its room, in front of a mirror: in it too, as it passes (a copy of it, where it is, doing
+    // what it does, facing as it faces: the mirror's glass is its mask, its shine over it; level
+    // with the glass's middle, so it's seen in it however high the mirror's hung).
+    function reflect() {
+      const room = me.where && me.where.box;
+      if (!room || !room.prRoom || !me.v || !me.v.P) return;
+      const mirrors = room.prMirrors || (room.prMirrors = room.getElementsByClassName('pr-reflects')); // (a live list: kept up to date as it's done up)
+      if (!mirrors.length) return;
+      const { P } = me.v;
+      const W = me.v.W || room.clientWidth;
+      const pw = me.w;
+      const ph = me.w * PET_H;
+      for (const m of mirrors) {
+        const t = m.prThing;
+        const art = t && thingOf(t.list, t.key, t.tint);
+        const inside = m.querySelector('.pr-reflect-in');
+        if (!art || !art.glass || !inside) continue;
+        const s = spotOf(t);
+        const x = me.x - leftOf(t, s, P, W) * P; // (its middle, from the mirror's left)
+        let copy = inside.firstElementChild;
+        if (x + pw / 2 <= 0 || x - pw / 2 >= s.w * P) {
+          if (copy && !copy.hidden) copy.hidden = true;
+          continue;
+        }
+        if (!copy) {
+          copy = node.cloneNode(true);
+          for (const extra of copy.querySelectorAll('.hp-pet-tag, .hp-pet-think, .hp-pet-shadow, .hp-pet-bits, .hp-pet-care')) extra.remove();
+          for (const a of ['tabindex', 'role', 'aria-label', 'title']) copy.removeAttribute(a);
+          copy.setAttribute('aria-hidden', 'true');
+          copy.style.zIndex = '';
+          inside.append(copy);
+        }
+        copy.hidden = false;
+        const cls = `${node.className.replace(/\b(hp-pet-live|tagged)\b/g, '').trim()} pr-reflect-pet`;
+        if (copy.className !== cls) copy.className = cls;
+        if (copy.style.width !== node.style.width) {
+          copy.style.width = node.style.width;
+          copy.style.height = node.style.height;
+          copy.style.setProperty('--pw', node.style.getPropertyValue('--pw'));
+        }
+        const sprite = node.querySelector('.hp-pet-sprite');
+        const itsSprite = copy.querySelector('.hp-pet-sprite');
+        if (itsSprite && sprite && itsSprite.style.backgroundImage !== sprite.style.backgroundImage) itsSprite.style.backgroundImage = sprite.style.backgroundImage;
+        const itsInner = copy.querySelector('.hp-pet-in');
+        if (itsInner) itsInner.classList.toggle('left', me.dir < 0);
+        const itsLift = copy.querySelector('.hp-pet-lift');
+        if (itsLift && itsLift.style.transform !== lift.style.transform) itsLift.style.transform = lift.style.transform;
+        copy.style.transform = `translate(${(x - pw / 2).toFixed(1)}px, ${(art.glassY * t.size * P - ph / 2).toFixed(1)}px)`;
+      }
     }
 
     function frame(ms) {
@@ -3655,6 +3707,7 @@
       rows: ['....ffff....', '..ffffffff..', '.ffggggggff.', '.fggwgwgggf.', 'ffgwgwggggff', 'ffggwgggggff', 'fggwggggggGf', 'fggggggggGGf', 'ffggggggGGff',
         'ffgggggGGGff', '.fggggGGGGf.', '.ffggGGGGff.', '..ffffffff..', '....ffff....'],
       colors: { f: '#d9a13a', g: '#bcd9e8', G: '#9fc2d6', w: '#ffffff' },
+      glass: 'gGw', sheen: 'w', // (its pet shows in its glass as it passes: petLife's reflect)
     },
     map: {
       label: 'Map', dew: true,
@@ -4119,7 +4172,15 @@
         // what glows, not the whole of it: a lamp's shade, not its stand.)
         const not = t.emit && new RegExp(`[^${t.emit}]`, 'g');
         const emits = not ? svg(frames.map((f, i) => rectsOf(f.map((r) => r.replace(not, '.')), colors, i * fw)).join('')) : null;
-        thingSrc.set(id, { src, still, emits, w: fw, h: frames[0].length, frames: frames.length, rows: frames[0] });
+        // (A mirror: its glass (`glass`), where its room's pet shows as it passes (petLife's reflect),
+        // as a mask; the middle of the glass, from its top; and its shine (`sheen`), over that.)
+        const only = (letters) => frames[0].map((r) => r.replace(new RegExp(`[^${letters}]`, 'g'), '.'));
+        const glassRows = t.glass ? only(t.glass) : null;
+        const lit = glassRows ? glassRows.map((r, i) => (/[^.]/.test(r) ? i : -1)).filter((i) => i >= 0) : [];
+        const glass = glassRows ? svg(rectsOf(glassRows, Object.fromEntries([...t.glass].map((c) => [c, '#fff'])), 0)) : null;
+        const sheen = t.sheen ? svg(rectsOf(only(t.sheen), colors, 0)) : null;
+        const glassY = lit.length ? (lit[0] + lit[lit.length - 1] + 1) / 2 : 0;
+        thingSrc.set(id, { src, still, emits, glass, sheen, glassY, w: fw, h: frames[0].length, frames: frames.length, rows: frames[0] });
       }
     }
     return thingSrc.get(id);
@@ -4288,6 +4349,20 @@
     // (Only what gives its light glows, if that's not all of it: drawn again over it, glowing.)
     n.classList.toggle('pr-emit', Boolean(glow && art.emits));
     if (glow && art.emits) n.style.setProperty('--emit', `url("${art.emits}")`);
+    // (A mirror: its glass, where its pet's copy goes (petLife's reflect), and its shine over it.)
+    n.classList.toggle('pr-reflects', Boolean(art.glass));
+    if (art.glass && !n.querySelector(':scope > .pr-reflect')) {
+      n.style.setProperty('--glass', `url("${art.glass}")`);
+      const glass = document.createElement('i');
+      glass.className = 'pr-reflect';
+      const inside = document.createElement('i');
+      inside.className = 'pr-reflect-in';
+      glass.append(inside);
+      const sheen = document.createElement('i');
+      sheen.className = 'pr-sheen';
+      if (art.sheen) sheen.style.backgroundImage = `url("${art.sheen}")`;
+      n.append(glass, sheen);
+    }
     const room = n.closest('.pr-room');
     if (room) relight(room);
   }
