@@ -2900,6 +2900,19 @@ button.person.open { background: var(--dusk-hi); }
 /* (The box stays its size, beside the first line of words that run onto more.) */
 .toggle { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .toggle input { flex: none; width: 18px; height: 18px; margin: 1.5px 0 0; accent-color: var(--lamp); cursor: pointer; }
+/* On or off, as a switch (plainer to read at a glance than a tick box): its knob drawn as its own
+   background, so it's the same in every browser (Firefox draws nothing before or after a checkbox). */
+.toggle input[type="checkbox"]:not(.switch-input) {
+  -webkit-appearance: none; appearance: none; width: 38px; height: 22px; margin: -1px 0 0; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--mist) 45%, transparent);
+  background: radial-gradient(circle closest-side, #ffffff 86%, transparent 100%) 2px 50% / 16px 16px no-repeat, color-mix(in srgb, var(--mist) 28%, var(--deep));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: background-position 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+.toggle input[type="checkbox"]:not(.switch-input):checked { background-position: 18px 50%; background-color: var(--lamp); border-color: var(--lamp); }
+.toggle input[type="checkbox"]:not(.switch-input):focus-visible { outline: 2px solid var(--lamp); outline-offset: 2px; }
+.toggle input[type="checkbox"]:not(.switch-input):disabled { opacity: 0.45; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .toggle input[type="checkbox"]:not(.switch-input) { transition: none; } }
 .toggle-group { display: grid; gap: 10px; margin-top: -6px; }
 .ptt-field { display: grid; gap: 10px; }
 .ptt-details { display: grid; gap: 6px; padding-left: 28px; }
@@ -3356,7 +3369,32 @@ button.person.open { background: var(--dusk-hi); }
 .dew-boost em i { display: block; height: 100%; background: var(--glow, #7fd0ff); transition-property: width; transition-timing-function: linear; }
 /* The kinds, in the Dew tab: each one's picture (only its shape, till it's caught), how rare, what
    it brings, and how many caught. */
-.dew-anywhere { margin: 2px 0 4px; }
+/* Drops falling anywhere: a box of its own, its switch a pixel slide switch (the old kind, ON and OFF
+   on it, its knob a block that steps across). The real checkbox is there, just not seen. */
+.dew-anywhere { align-items: center; gap: 12px; margin: 2px 0 4px; padding: 10px 12px; border: 2px solid var(--line); background: var(--deep); box-shadow: inset 0 0 0 1px color-mix(in srgb, #7fd0ff 18%, transparent); }
+.dew-anywhere:has(.switch-input:checked) { border-color: color-mix(in srgb, #7fd0ff 55%, var(--line)); }
+.dew-anywhere .switch-input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.pixel-switch {
+  position: relative; flex: none; width: 60px; height: 28px; overflow: hidden;
+  border: 2px solid #2a1f33; background: #3b3552; box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.35), 0 0 0 2px color-mix(in srgb, #ffffff 10%, transparent);
+}
+.pixel-switch b {
+  position: absolute; top: 50%; translate: 0 -50%; font: 400 10px/1 Silkscreen, var(--font, sans-serif); letter-spacing: 0.04em; text-transform: uppercase;
+  transition: opacity 0.16s steps(2);
+}
+.pixel-switch b:first-child { left: 7px; color: #e6f6ff; opacity: 0; }
+.pixel-switch b:nth-child(2) { right: 6px; color: #a49fbd; }
+.pixel-switch i {
+  position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  background: #ece8f6; box-shadow: inset -3px -3px 0 #a9a3bf, inset 3px 3px 0 #ffffff, 0 0 0 2px #2a1f33;
+  transition: translate 0.18s steps(4);
+}
+.switch-input:checked + .pixel-switch { background: #2f8fd8; box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.25), 0 0 8px 1px color-mix(in srgb, #7fd0ff 45%, transparent); }
+.switch-input:checked + .pixel-switch b:first-child { opacity: 1; }
+.switch-input:checked + .pixel-switch b:nth-child(2) { opacity: 0; }
+.switch-input:checked + .pixel-switch i { translate: 32px 0; }
+.switch-input:focus-visible + .pixel-switch { outline: 2px solid var(--lamp); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .pixel-switch i, .pixel-switch b { transition: none; } }
 .dew-drops { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
 .dew-drop-kind { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 8px; border: 2px solid var(--line); background: var(--deep); }
 .dew-drop-kind .dew-icon { width: 28px; height: 28px; filter: drop-shadow(0 0 4px var(--glow, #7fd0ff)); }
