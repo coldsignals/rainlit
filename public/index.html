@@ -654,6 +654,8 @@
   </div>
 
   <canvas id="rain" class="rain" aria-hidden="true"></canvas>
+  <!-- Drops falling anywhere, for anyone who's asked for them (app.js showRainbow, dropSky). -->
+  <div id="drop-sky" class="drop-sky"></div>
   <div id="starting" class="starting" role="status" hidden>
     <img src="/icons/mark.svg" alt="" width="64" height="64" />
     <p>Connecting to Rainlit…</p>
@@ -1947,6 +1949,8 @@
       <div id="pet-room" class="pet-room" aria-label="Your pet's room">
         <p id="pet-room-empty" class="pet-room-empty">Pick a pet, and it moves in here.</p>
         <p id="pet-dew" class="pet-dew" title="Dew: pat your pet for it" hidden><i class="dew-drop" aria-hidden="true"></i><span id="pet-dew-n">0</span></p>
+        <!-- (Boosts going, from drops caught: app.js renderDewBoosts.) -->
+        <div id="dew-boosts" class="dew-boosts" hidden></div>
       </div>
       <nav class="pet-tabs" role="tablist" aria-label="Your pet">
         <button class="pet-tab" type="button" role="tab" data-pet-tab="care">Care</button>
@@ -1980,6 +1984,14 @@
         <h3 class="pet-pick-title">Collect it with</h3>
         <div id="dew-collectors" class="dew-collectors"></div>
         <p class="pet-note">These collect it from here: none of them go in its room. Spend it in Decorate, on things for its room that only dew brings (just for looks).</p>
+        <!-- Drops (app.js renderDewDrops; lib/dew.js DROPS): each kind, how many caught, and whether they fall anywhere. -->
+        <h3 class="pet-pick-title">Drops</h3>
+        <p class="pet-note">Now and then one rolls down its room's window: catch it before it's gone. The rarer it is, the bigger and brighter, and the more it brings.</p>
+        <label class="toggle dew-anywhere">
+          <input id="drops-anywhere" type="checkbox" />
+          <span>Let drops fall anywhere in Rainlit <small class="toggle-note">(now and then one falls wherever you are, slowly: catch it, or let it go)</small></span>
+        </label>
+        <div id="dew-drops" class="dew-drops"></div>
         <p id="dew-msg" class="pet-msg" role="status" hidden></p>
       </section>
       <section id="pet-decor" class="pet-decor" aria-label="Doing up its room" data-pet-pane="decor">

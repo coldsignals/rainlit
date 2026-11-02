@@ -159,7 +159,7 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
-  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'drop-sky', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -17270,6 +17270,7 @@ async function loadPet() {
   }
   renderPetButton();
   if (!petTimer) petTimer = setInterval(() => { if (S.me) loadPet(); }, 30 * 60_000); // (it gets hungry as time goes by)
+  if (S.pet && dropsAnywhere() && !S.dew) loadDew(); // (drops falling anywhere: when the next comes)
 }
 
 // (Hidden, if you'd rather not see it: Settings > Look. Your pet's room is still in your homepage's
@@ -17970,7 +17971,23 @@ function dewShort(n) {
 }
 // How much there is right now: as the server last said, what's been collected since, and pats it
 // hasn't counted yet.
-const dewNow = () => (S.dew ? S.dew.dew + (S.dew.perSecond * dewOnlineMs()) / 1000 + (dewPats + dewFlying) * S.dew.perPat : 0);
+const dewNow = () => (S.dew ? S.dew.dew + (S.dew.perSecond * dewCollectedMs()) / 1000 + (dewPats + dewFlying) * S.dew.perPat * dewBoostX('pats') : 0);
+// (How many times as much right now, collecting or pats: boosts going, added up, as lib/dew.js
+// counts them.)
+function dewBoostX(on) {
+  const d = S.dew;
+  if (!d || !d.boosts) return 1;
+  const since = performance.now() - S.dewAt;
+  return 1 + d.boosts.filter((b) => b.left > since && (b.on === on || b.on === 'all')).reduce((n, b) => n + b.x - 1, 0);
+}
+// (The time collecting since it last said, and each collecting boost's more, for as much of that
+// as it was going.)
+function dewCollectedMs() {
+  const ms = dewOnlineMs();
+  let more = 0;
+  for (const b of S.dew.boosts || []) if (b.on !== 'pats') more += (b.x - 1) * Math.max(0, Math.min(ms, b.left));
+  return ms + more;
+}
 
 // Whether the server's collecting for you now, as lib/realtime.js counts it: connected (and heard
 // from lately: it answers a ping every 10 seconds), and not in the background on a phone.
@@ -18031,6 +18048,7 @@ function stopDew() {
   rainbowTimer = 0;
   for (const n of el.petRoom.querySelectorAll('.dew-rainbow, .dew-burst')) n.remove();
   sendPats();
+  planRainbow(); // (falling anywhere now, for anyone who's asked)
 }
 
 // A pat (in its room: homepage.js onPat): counted now, sent in a moment. What it brought, to show.
@@ -18041,7 +18059,7 @@ function patForDew() {
   dewPats++;
   if (!dewSendTimer) dewSendTimer = setTimeout(sendPats, 800);
   renderDewCount();
-  return `+${dewWords(S.dew.perPat)}`;
+  return `+${dewWords(S.dew.perPat * dewBoostX('pats'))}`;
 }
 // (How many more would count now: as many as the server said, and more as it'd let them in since
 // (never sooner), less those it hasn't had yet.)
@@ -18141,12 +18159,17 @@ function renderDew() {
   el.petDew.hidden = !d || !S.pet || Boolean(S.petTry);
   if (!d || !shop) return;
   const p = S.pet;
-  el.dewRates.textContent = d.perSecond ? `${dewWords(d.perSecond)} a second, and ${dewWords(d.perPat)} a pat` : `${dewWords(d.perPat)} a pat`;
+  const cx = dewBoostX('collect');
+  const px = dewBoostX('pats');
+  el.dewRates.textContent = (d.perSecond ? `${dewWords(d.perSecond * cx)} a second, and ${dewWords(d.perPat * px)} a pat` : `${dewWords(d.perPat * px)} a pat`)
+    + (cx > 1 || px > 1 ? ' (a drop\'s boost)' : '');
   el.dewNote.textContent = !d.pats ? `Pat ${p ? petCalled(p) : 'your pet'} up there in its room, and it shakes some off.`
     : d.happyMore >= 0.005 && p ? `${petName(p)} is happy, so what collects it brings ${Math.round(d.happyMore * 100)}% more.`
       : 'A happy pet means what collects it brings more: up to a quarter more.';
   renderDewUpgrades();
   renderDewCollectors();
+  renderDewBoosts();
+  renderDewDrops();
   renderDewCount();
 }
 
@@ -18187,7 +18210,7 @@ function renderDewUpgrades() {
     const none = document.createElement('p');
     none.className = 'pet-note';
     const have = d.upgrades.length;
-    none.textContent = have ? `You've ${have} of ${S.dewShop.upgrades.length} so far. More come along as you pat it, get more to collect it with, and catch rainbow drops.` : 'They come along as you pat it, get things to collect it with, and catch rainbow drops.';
+    none.textContent = have ? `You've ${have} of ${S.dewShop.upgrades.length} so far. More come along as you pat it, get more to collect it with, and catch drops.` : 'They come along as you pat it, get things to collect it with, and catch drops.';
     items.push(none);
   }
   el.dewUpgrades.replaceChildren(...items);
@@ -18230,58 +18253,199 @@ function renderDewCollectors() {
   }));
 }
 
-// The next rainbow drop: rolling down the window when it comes (if you're there to see it).
+// ----- Drops (lib/dew.js DROPS) -----
+// Now and then a drop rolls down the room's window: catch it. Which kind, the server's picked: the
+// small ones often, the big ones seldom (and the rarer, the bigger and brighter). Caught, it brings
+// dew at once, or more for a while (its boost, on the room, with how long's left). For anyone who's
+// asked (the Dew tab's Drops: off to start with), they fall anywhere in Rainlit too while its room
+// isn't open, from up high, slowly, for as long as each is there (a call on or not). Missed, it's
+// gone.
+const DROP_TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'];
+const DROP_GLOW = { dew: '#7fd0ff', firefly: '#d8f070', rainbow: '#b07bff', lava: '#ff7a2a', storm: '#8fa0ff', aurora: '#6fe0c0', golden: '#ffd23a', star: '#fff4b0' };
+const dropsAnywhere = () => store.get('dropsAnywhere', 'off') === 'on';
+const dropInfo = (kind) => ((S.dewShop && S.dewShop.drops) || []).find((x) => x.key === kind) || { key: 'rainbow', label: 'Rainbow drop', tier: 2, about: '' };
+// ("×2 collecting for 30 seconds")
+const boostWords = (b) => `×${b.x} ${b.on === 'pats' ? 'pats' : b.on === 'all' ? 'everything' : 'collecting'}${b.for ? ` for ${b.for >= 60 ? `${b.for / 60} minute${b.for > 60 ? 's' : ''}` : `${b.for} seconds`}` : ''}`;
+let dropLookTimer = 0;
+
+// The next one: when it comes (if you're there to see it: its room open, or anywhere, if asked).
 function planRainbow() {
   clearTimeout(rainbowTimer);
   rainbowTimer = 0;
+  clearTimeout(dropLookTimer);
+  dropLookTimer = 0;
   const r = S.dew && S.dew.rainbow;
-  if (!r || !el.pet.open || r.in + r.for < 2000 || r.in > 30 * 60_000 || el.petRoom.querySelector('.dew-rainbow')) return;
-  rainbowTimer = setTimeout(showRainbow, Math.max(0, r.in));
+  const room = el.pet.open;
+  const anywhere = !room && dropsAnywhere() && Boolean(S.pet);
+  if (!r || !(room || anywhere)) return;
+  const inNow = r.in - (performance.now() - S.dewAt);
+  // (Away from its room, the server's asked again once this one's over, for the next one (in its
+  // room that's every 20 seconds anyway); and every 10 minutes, to keep in step.)
+  if (anywhere) dropLookTimer = setTimeout(loadDew, Math.min(10 * 60_000, Math.max(0, inNow + r.for) + 6000));
+  if (inNow + r.for < 2000 || inNow > 30 * 60_000) return;
+  if ((room ? el.petRoom : el.dropSky).querySelector('.dew-rainbow:not(.caught), .dew-falling:not(.caught)')) return;
+  rainbowTimer = setTimeout(showRainbow, Math.max(0, inNow));
 }
 function showRainbow() {
   rainbowTimer = 0;
   const r = S.dew && S.dew.rainbow;
-  if (!r || !el.pet.open || !S.pet || S.petTry || el.petRoom.querySelector('.dew-rainbow')) return;
+  const room = el.pet.open;
+  if (!r || !S.pet || (room ? S.petTry : !dropsAnywhere())) return;
+  if ((room ? el.petRoom : el.dropSky).querySelector('.dew-rainbow:not(.caught), .dew-falling:not(.caught)')) return;
   const left = r.in + r.for - (performance.now() - S.dewAt);
   if (left < 1500) return;
+  const info = dropInfo(r.kind);
   const b = document.createElement('button');
   b.type = 'button';
-  b.className = 'dew-rainbow';
-  b.title = 'A rainbow drop! Catch it';
-  b.setAttribute('aria-label', 'Catch the rainbow drop');
-  b.style.animationDuration = `${Math.round(left)}ms`;
-  const win = el.petRoom.querySelector('.pr-window');
-  if (win) {
-    b.style.left = `${win.offsetLeft + (win.offsetWidth * 14) / 22}px`;
-    b.style.top = `${win.offsetTop + win.offsetHeight / 17}px`;
+  b.className = room ? 'dew-rainbow' : 'dew-falling';
+  b.dataset.kind = info.key;
+  b.dataset.tier = String(info.tier);
+  b.style.backgroundImage = `url("${Homepage.dewIcon(info.key)}")`;
+  b.style.setProperty('--glow', DROP_GLOW[info.key] || '#b07bff');
+  b.title = `A ${info.label.toLowerCase()}! Catch it`;
+  b.setAttribute('aria-label', `Catch the ${info.label.toLowerCase()}`);
+  // (Its fall (or roll) lasts as long as it's there; its sway and glow go round meanwhile.)
+  b.style.animationDuration = room ? `${Math.round(left)}ms, 1.6s` : `${Math.round(left)}ms, 2.8s, 1.6s`;
+  if (room) {
+    const win = el.petRoom.querySelector('.pr-window');
+    if (win) {
+      b.style.left = `${win.offsetLeft + (win.offsetWidth * 14) / 22}px`;
+      b.style.top = `${win.offsetTop + win.offsetHeight / 17}px`;
+    }
+    el.petRoom.append(b);
+  } else {
+    b.style.left = `${8 + Math.random() * 84}%`; // (anywhere across, but not right at the edges)
+    dropSky().append(b);
   }
-  b.addEventListener('animationend', () => { if (!b.classList.contains('caught')) b.remove(); });
+  b.addEventListener('animationend', (e) => {
+    if ((e.animationName === 'dew-roll' || e.animationName === 'dew-fall' || e.animationName === 'dew-stay') && !b.classList.contains('caught')) b.remove();
+  });
   b.addEventListener('click', () => catchRainbow(b));
-  el.petRoom.append(b);
 }
+
+// Where they fall away from its room: over everything, an open box too (or it'd be behind it, out
+// of reach).
+function dropSky() {
+  const modal = (d) => {
+    try {
+      return d.matches(':modal');
+    } catch {
+      return true; // (an older browser, without :modal: Rainlit's boxes open as modal ones)
+    }
+  };
+  const top = [...document.querySelectorAll('dialog[open]')].filter(modal).pop();
+  const host = top || document.body;
+  if (el.dropSky.parentNode !== host) host.append(el.dropSky);
+  return el.dropSky;
+}
+
+// Caught: what it brought, where it was (dew at once, or its boost); and the next one planned.
 async function catchRainbow(b) {
   if (b.disabled) return;
   b.disabled = true;
-  await sendPats();
+  const inRoom = el.petRoom.contains(b);
+  const at = b.getBoundingClientRect();
+  // (Kept where it is as it pops: its fall stopped there.)
+  const now = getComputedStyle(b);
+  b.style.transform = now.transform === 'none' ? '' : now.transform;
+  b.style.translate = now.translate === 'none' ? '' : now.translate;
+  b.style.animationDuration = ''; // (its pop, quick)
   b.classList.add('caught');
   setTimeout(() => b.remove(), 500);
+  if (inRoom) await sendPats();
   try {
-    const d = (await api('POST', '/dew/rainbow')).dew;
+    const d = (await api('POST', '/dew/drop')).dew;
+    const info = dropInfo(d.kind);
     const burst = document.createElement('p');
     burst.className = 'dew-burst';
-    // (Where it was caught.)
-    if (b.style.left) {
-      const px = parseFloat(getComputedStyle(el.petRoom).getPropertyValue('--px')) || 6;
-      burst.style.left = `${Math.max(4, parseFloat(b.style.left) - 7 * px)}px`;
-      burst.style.top = `${parseFloat(b.style.top) + 3 * px}px`;
-    }
-    burst.textContent = `+${dewWords(d.got)} dew!`;
+    burst.dataset.tier = String(info.tier);
+    burst.style.setProperty('--glow', DROP_GLOW[info.key] || '#b07bff');
+    burst.textContent = d.got ? `+${dewWords(d.got)} dew!` : `${info.label}: ${boostWords(info)}`;
     burst.addEventListener('animationend', () => burst.remove());
-    el.petRoom.append(burst);
+    if (inRoom) {
+      // (Where it was caught.)
+      if (b.style.left) {
+        const px = parseFloat(getComputedStyle(el.petRoom).getPropertyValue('--px')) || 6;
+        burst.style.left = `${Math.max(4, parseFloat(b.style.left) - 7 * px)}px`;
+        burst.style.top = `${parseFloat(b.style.top) + 3 * px}px`;
+      }
+      el.petRoom.append(burst);
+    } else {
+      const sky = dropSky();
+      const box = sky.getBoundingClientRect();
+      const z = uiZoom();
+      burst.classList.add('far');
+      burst.style.left = `${(Math.max(130, Math.min(at.left + at.width / 2, innerWidth - 130)) - box.left) / z}px`;
+      burst.style.top = `${(at.top - box.top) / z}px`;
+      sky.append(burst);
+    }
     setDew(d);
   } catch (err) {
     toast(err.message);
   }
+}
+
+// Boosts going (from drops caught), on its room: which, how many times as much, and a bar of how
+// long's left. Over, gone (and what it all brings, said again).
+let dewBoostTimer = 0;
+function renderDewBoosts() {
+  clearTimeout(dewBoostTimer);
+  const d = S.dew;
+  const since = performance.now() - (S.dewAt || 0);
+  const going = d && d.boosts ? d.boosts.map((b) => ({ ...b, now: b.left - since })).filter((b) => b.now > 250) : [];
+  el.dewBoosts.replaceChildren(...going.map((b) => {
+    const info = dropInfo(b.kind);
+    const chip = document.createElement('span');
+    chip.className = 'dew-boost';
+    chip.dataset.kind = b.kind;
+    chip.style.setProperty('--glow', DROP_GLOW[b.kind] || '#b07bff');
+    chip.title = `${info.label}: ${boostWords({ x: b.x, on: b.on })}, ${Math.ceil(b.now / 1000)} more seconds`;
+    const icon = document.createElement('i');
+    icon.className = 'dew-icon';
+    icon.style.backgroundImage = `url("${Homepage.dewIcon(b.kind)}")`;
+    const x = document.createElement('b');
+    x.textContent = `×${b.x}`;
+    const bar = document.createElement('em');
+    const fill = document.createElement('i');
+    fill.style.width = `${Math.min(100, (b.now / b.for) * 100)}%`;
+    fill.style.transitionDuration = `${Math.round(b.now)}ms`;
+    bar.append(fill);
+    chip.append(icon, x, bar);
+    requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = '0%'; }));
+    return chip;
+  }));
+  el.dewBoosts.hidden = !going.length;
+  if (going.length) dewBoostTimer = setTimeout(renderDew, Math.min(...going.map((b) => b.now)) + 50);
+}
+
+// The kinds there are: how rare each is, what it brings, and how many you've caught (one not caught
+// yet, just its shape); and whether they fall anywhere in Rainlit.
+function renderDewDrops() {
+  const d = S.dew;
+  el.dropsAnywhere.checked = dropsAnywhere();
+  el.dewDrops.replaceChildren(...((S.dewShop && S.dewShop.drops) || []).map((x) => {
+    const n = Number(d.drops && d.drops[x.key]) || 0;
+    const row = document.createElement('div');
+    row.className = `dew-drop-kind${n ? '' : ' unseen'}`;
+    row.dataset.kind = x.key;
+    row.dataset.tier = String(x.tier);
+    row.style.setProperty('--glow', DROP_GLOW[x.key] || '#b07bff');
+    const icon = document.createElement('i');
+    icon.className = 'dew-icon';
+    icon.style.backgroundImage = `url("${Homepage.dewIcon(x.key)}")`;
+    const words = document.createElement('span');
+    const name = document.createElement('strong');
+    name.textContent = x.label;
+    const tier = document.createElement('small');
+    tier.textContent = DROP_TIERS[x.tier] || '';
+    const about = document.createElement('span');
+    about.textContent = x.about;
+    words.append(name, tier, about);
+    const count = document.createElement('em');
+    count.textContent = n ? `${n.toLocaleString()} caught` : 'Not yet';
+    row.append(icon, words, count);
+    return row;
+  }));
 }
 
 // ----- Supporting Rainlit (lib/supporters.js) -----
@@ -20756,6 +20920,13 @@ async function init() {
       renderPetTabs();
     });
   }
+  // Drops falling anywhere, or not.
+  el.dropsAnywhere.addEventListener('change', () => {
+    store.set('dropsAnywhere', el.dropsAnywhere.checked ? 'on' : 'off');
+    if (!el.dropsAnywhere.checked) for (const n of el.dropSky.querySelectorAll('.dew-falling')) n.remove();
+    if (el.dropsAnywhere.checked && !S.dew) loadDew();
+    planRainbow();
+  });
   el.pet.addEventListener('close', () => {
     S.petTry = '';
     S.roomTry = null;

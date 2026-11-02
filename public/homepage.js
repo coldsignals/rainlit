@@ -4740,6 +4740,27 @@
       rows: ['....r....', '...ror...', '...ooo...', '..oyyyo..', '.wyyggyy.', '.wgggggg.', '.bbbbbbb.', '..pbbbp..', '...ppp...'],
       colors: { r: '#ff5f6d', o: '#ffa24a', y: '#ffe066', g: '#6fe08a', b: '#5fb4ff', p: '#b07bff', w: '#ffffff' },
     },
+    // (The other drops (lib/dew.js DROPS; a dewdrop is dew's own drop): the rarer, the bigger.)
+    firefly: { rows: ['....g....', '...ggg...', '...gyg...', '..gyyyg..', '.gwyYyyg.', '.gwYYYyg.', '.gyYYYyG.', '..gyyyG..', '...GGG...'], colors: { g: '#b6e35a', y: '#f2ff8a', Y: '#ffffd8', w: '#ffffff', G: '#7fb239' } },
+    lava: { rows: ['....r....', '...rrr...', '...ror...', '..royor..', '.rwoyyor.', '.rwyyyor.', '.royyooR.', '..rooRR..', '...RRR...'], colors: { r: '#e8452c', o: '#ff8a2a', y: '#ffd23a', R: '#a8281c', w: '#ffe9b0' } },
+    storm: {
+      rows: ['.....b.....', '....bbb....', '....bbb....', '...bbbbb...', '..bbbbyyb..', '..bwbbybb..', '.bwbbyybbb.', '.bwbyyyybb.', '.bbbbbybbB.', '.bbbbybbbB.', '..bbbybbB..', '...BBBBB...'],
+      colors: { b: '#4a5ba8', B: '#2c3570', y: '#ffe066', w: '#a8b8ff' },
+    },
+    aurora: {
+      rows: ['.....g.....', '....ggg....', '....gwg....', '...ggtgg...', '..gwttttg..', '..wtttvtt..', '.gttvvvvtt.', '.tvvvpvvvV.', '.vvppppvvV.', '.vpppppvvV.', '..vpppvvV..', '...VVVVV...'],
+      colors: { g: '#6fe0a0', t: '#4fd1c5', v: '#8a7bff', p: '#d17bff', V: '#5a4bb0', w: '#e8fff6' },
+    },
+    golden: {
+      rows: ['......y......', '.....yyy.....', '.....yYy.....', '....yyYyy....', '...yyYYYyy...', '..yWyYYYYyy..', '..yWYYYYYYy..', '.yWYYYYYYYyO.', '.yWYYYYYYYYO.', '.yYYYYYYYYyO.',
+        '.yyYYYYYYyyO.', '..yyYYYYyyO..', '...yyyyyOO...', '....OOOOO....'],
+      colors: { y: '#ffcc33', Y: '#ffe680', W: '#ffffff', O: '#c8901a' },
+    },
+    star: {
+      rows: ['......n......', '.....nnn.....', '.....nnn.....', '....nnnnn....', '...nnnsnnn...', '..nwnnsnnnn..', '..nwsssssnn..', '.nwnnsssnnnN.', '.nnnnsnsnnnN.', '.nnnsnnnsnnN.',
+        '.nnnnnnnnnnN.', '..nnnnnnnnN..', '...nnnnnNN...', '....NNNNN....'],
+      colors: { n: '#2d3a8c', N: '#1a2260', s: '#fff4b0', w: '#8fa0ff' },
+    },
   };
   const dewIconSrc = new Map();
   function dewIcon(key) {

@@ -3302,7 +3302,70 @@ button.person.open { background: var(--dusk-hi); }
   100% { transform: translate(0, calc(var(--px) * 10)); opacity: 0; }
 }
 .dew-rainbow.caught { animation: dew-caught 0.45s ease-out forwards; }
-@keyframes dew-caught { to { transform: scale(2.4); opacity: 0; } }
+@keyframes dew-caught { to { scale: 2.4; opacity: 0; } }
+/* Drops of every kind (app.js showRainbow; lib/dew.js DROPS): the rarer, the bigger and brighter,
+   in a glow of its own colour (--glow) that breathes. In its room, rolling down the window; or (for
+   anyone who's asked) falling anywhere in Rainlit, slowly, swaying a little as they go. */
+.dew-rainbow { --glow-r: calc(var(--px) * 2); background-color: transparent; background-repeat: no-repeat; background-position: center; background-size: contain; animation-name: dew-roll, drop-glow; animation-timing-function: linear, ease-in-out; animation-iteration-count: 1, infinite; animation-direction: normal, alternate; animation-fill-mode: forwards, none; }
+.dew-rainbow[data-tier="1"] { width: calc(var(--px) * 4); height: calc(var(--px) * 4); --glow-r: var(--px); }
+.dew-rainbow[data-tier="3"] { width: calc(var(--px) * 6); height: calc(var(--px) * 6); --glow-r: calc(var(--px) * 3); }
+.dew-rainbow[data-tier="4"] { width: calc(var(--px) * 7); height: calc(var(--px) * 7); --glow-r: calc(var(--px) * 4); }
+@keyframes drop-glow {
+  from { filter: drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 var(--glow-r) var(--glow, #b07bff)); }
+  to { filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 calc(var(--glow-r) * 1.8) var(--glow, #b07bff)); }
+}
+.drop-sky { position: fixed; inset: 0; z-index: 85; overflow: hidden; pointer-events: none; }
+.dew-falling {
+  --glow-r: 6px;
+  position: absolute; top: 3%; width: 28px; height: 28px; margin: 0 0 0 -14px; padding: 0; border: 0; border-radius: 0;
+  background-color: transparent; background-repeat: no-repeat; background-position: center; background-size: contain; image-rendering: pixelated;
+  cursor: pointer; pointer-events: auto;
+  animation-name: dew-fall, dew-sway, drop-glow; animation-timing-function: linear, ease-in-out, ease-in-out; animation-iteration-count: 1, infinite, infinite;
+  animation-direction: normal, alternate, alternate; animation-fill-mode: forwards, none, none; animation-duration: 15s, 2.8s, 1.6s;
+}
+.dew-falling[data-tier="1"] { width: 22px; height: 22px; margin-left: -11px; --glow-r: 4px; }
+.dew-falling[data-tier="3"] { width: 38px; height: 38px; margin-left: -19px; --glow-r: 9px; }
+.dew-falling[data-tier="4"] { width: 48px; height: 48px; margin-left: -24px; --glow-r: 13px; }
+@keyframes dew-fall { 0% { transform: translateY(0); opacity: 0; } 6% { opacity: 1; } 92% { opacity: 1; } 100% { transform: translateY(58vh); opacity: 0; } }
+@keyframes dew-sway { from { translate: -10px 0; } to { translate: 10px 0; } }
+.dew-falling.caught { animation: dew-caught 0.45s ease-out forwards; }
+/* (The rare ones twinkle: a glint either side, coming and going.) */
+:is(.dew-rainbow, .dew-falling):is([data-tier="3"], [data-tier="4"])::before,
+:is(.dew-rainbow, .dew-falling):is([data-tier="3"], [data-tier="4"])::after {
+  content: ""; position: absolute; width: 12%; height: 12%; background: #ffffff; box-shadow: 0 0 4px var(--glow, #ffffff);
+  animation: drop-glint 1.3s ease-in-out infinite; pointer-events: none;
+}
+:is(.dew-rainbow, .dew-falling):is([data-tier="3"], [data-tier="4"])::before { left: -8%; top: 30%; }
+:is(.dew-rainbow, .dew-falling):is([data-tier="3"], [data-tier="4"])::after { right: -6%; top: 62%; animation-delay: 0.65s; }
+@keyframes drop-glint { 0%, 100% { opacity: 0; scale: 0.4; } 50% { opacity: 1; scale: 1; } }
+.dew-burst[data-tier="3"], .dew-burst[data-tier="4"] { text-shadow: 0 2px 0 #2a1f33, 0 0 10px var(--glow, #b07bff); }
+.dew-burst[data-tier="4"] { font-size: 21px; }
+.drop-sky .dew-burst { position: absolute; z-index: 1; translate: -50% 0; white-space: nowrap; }
+/* Boosts going, on its room: which drop's, how many times as much, and how long's left. */
+.dew-boosts { position: absolute; left: 8px; top: 40px; z-index: 1000; display: grid; justify-items: start; gap: 4px; pointer-events: auto; }
+.dew-boosts[hidden] { display: none; }
+.dew-boost {
+  display: flex; align-items: center; gap: 5px; padding: 3px 7px 3px 4px; border: 2px solid #2a1f33; background: rgba(20, 24, 38, 0.82);
+  box-shadow: inset 0 0 0 1px var(--glow, #7fd0ff); color: #ffffff; font: 400 12px/1 Silkscreen, var(--font, sans-serif);
+}
+.dew-boost .dew-icon { width: 16px; height: 16px; filter: drop-shadow(0 0 3px var(--glow, #7fd0ff)); }
+.dew-boost em { display: block; width: 44px; height: 5px; overflow: hidden; background: rgba(255, 255, 255, 0.16); }
+.dew-boost em i { display: block; height: 100%; background: var(--glow, #7fd0ff); transition-property: width; transition-timing-function: linear; }
+/* The kinds, in the Dew tab: each one's picture (only its shape, till it's caught), how rare, what
+   it brings, and how many caught. */
+.dew-anywhere { margin: 2px 0 4px; }
+.dew-drops { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.dew-drop-kind { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 8px; border: 2px solid var(--line); background: var(--deep); }
+.dew-drop-kind .dew-icon { width: 28px; height: 28px; filter: drop-shadow(0 0 4px var(--glow, #7fd0ff)); }
+.dew-drop-kind.unseen .dew-icon { filter: brightness(0) opacity(0.35); }
+.dew-drop-kind strong { display: block; font: 400 13px/1.2 Silkscreen, var(--font, sans-serif); letter-spacing: 0.02em; }
+.dew-drop-kind small { display: block; margin: 1px 0 2px; color: var(--mist); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.dew-drop-kind[data-tier="2"] small { color: #6fe08a; }
+.dew-drop-kind[data-tier="3"] small { color: #7fb8ff; }
+.dew-drop-kind[data-tier="4"] small { color: #ffd23a; }
+.dew-drop-kind span span { display: block; color: var(--mist); font-size: 12.5px; line-height: 1.35; }
+.dew-drop-kind em { color: var(--mist); font-size: 12px; font-style: normal; font-weight: 600; white-space: nowrap; }
+.dew-drop-kind.unseen em { opacity: 0.7; }
 .dew-burst {
   position: absolute; z-index: 1001; left: calc(var(--px) * 14); top: calc(var(--px) * 7); margin: 0; pointer-events: none;
   color: #fff; font: 400 18px/1 Silkscreen, var(--font, sans-serif); text-shadow: 0 2px 0 #2a1f33, 0 0 8px #b07bff;
@@ -3310,7 +3373,9 @@ button.person.open { background: var(--dusk-hi); }
 }
 @keyframes dew-burst { from { transform: translateY(0); opacity: 1; } 70% { opacity: 1; } to { transform: translateY(-36px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .dew-rainbow { animation-name: dew-stay; }
+  .dew-rainbow { animation-name: dew-stay, none; }
+  .dew-falling { animation-name: dew-stay, none, none; top: 18%; }
+  :is(.dew-rainbow, .dew-falling)::before, :is(.dew-rainbow, .dew-falling)::after { animation: none; opacity: 0; }
   @keyframes dew-stay { 0%, 94% { opacity: 1; } 100% { opacity: 0; } }
 }
 .pr-swatch { display: block; width: 100%; height: 100%; image-rendering: pixelated; background-repeat: no-repeat; background-position: center; background-size: contain; }

@@ -1648,8 +1648,8 @@ api.post('/users/:id/pet', needUser, (req, res) => {
 
 // ----- Dew -----
 // (lib/dew.js) What your pet shakes off when you pat it: how much you have, and everything there
-// is to get with it; pats; another collector, an upgrade or a thing for its room; and a rainbow
-// drop caught.
+// is to get with it; pats; another collector, an upgrade or a thing for its room; and a drop caught
+// (whichever kind it is: /dew/rainbow, as it was first, too).
 const dewRoute = (fn) => (req, res) => {
   try {
     res.json(fn(req, req.body || {}));
@@ -1663,7 +1663,7 @@ api.post('/dew/pats', needUser, dewRoute((req, b) => ({ dew: dew.pat(req.user.id
 api.post('/dew/collectors', needUser, dewRoute((req, b) => ({ dew: dew.buy(req.user.id, String(b.key || '')) })));
 api.post('/dew/upgrades', needUser, dewRoute((req, b) => ({ dew: dew.upgrade(req.user.id, String(b.key || '')) })));
 api.post('/dew/items', needUser, dewRoute((req, b) => dew.unlock(req.user, b)));
-api.post('/dew/rainbow', needUser, dewRoute((req) => ({ dew: dew.rainbow(req.user.id) })));
+api.post(['/dew/drop', '/dew/rainbow'], needUser, dewRoute((req) => ({ dew: dew.catchDrop(req.user.id) })));
 api.post('/dew/wear', needUser, dewRoute((req, b) => dew.wearIt(req.user, String(b.slot || ''), String(b.key || ''))));
 
 // ----- Conversations -----

@@ -296,6 +296,18 @@ Visit other people's pets too: their profile card says **Visit** and its name,
 and opens its room as they've done it up, where you can pet it (their friends
 and people in a space with them can; how full or happy it is stays theirs).
 
+**Dew:** pat your pet and it shakes off dew (its room's **Dew** tab). Things
+that collect it (a leaf, an acorn cup, a spiderweb... up to a rainbow loom)
+bring more while Rainlit's open, and upgrades come along as you go. Spend it on
+things for its room, and for it to wear, that only dew brings (just for looks:
+dew's never bought or sold). Now and then a drop rolls down its room's window:
+catch it before it's gone. There are eight kinds, from common Dewdrops and
+Firefly drops to legendary Golden and Star drops; the rarer, the bigger and
+brighter, and the more it brings: dew at once, or a boost for a while (a Firefly
+drop doubles what's collected for 30 seconds). **Let drops fall anywhere in
+Rainlit** (the Dew tab; off to start with) has them fall wherever you are, slowly,
+to catch or let go.
+
 ## Feedback
 
 Settings > **Feedback** sends a bug, an idea or anything else straight to
