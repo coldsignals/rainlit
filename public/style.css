@@ -3025,6 +3025,20 @@ button.person.open { background: var(--dusk-hi); }
   position: sticky; bottom: 12px; z-index: 3; margin-top: 24px; /* (room over it at the list's end, so the last row's prices aren't under its fade) */
   box-shadow: 0 0 0 12px var(--panel), 0 -10px 18px 6px var(--panel);
 }
+/* (Your profile's Save, the same way: only once something's changed, at the box's foot wherever
+   it's scrolled to, rising into sight.) */
+.profile-save-bar {
+  position: sticky; bottom: 14px; z-index: 3; flex-wrap: wrap; row-gap: 6px;
+  box-shadow: 0 0 0 14px var(--panel), 0 -10px 18px 8px var(--panel);
+  animation: save-bar-in 0.22s ease-out;
+}
+.profile-save-bar[hidden] { display: none; }
+.profile-save-bar .form-error { flex: 1 0 100%; margin: 0; }
+.profile-save-bar .text-btn { flex: none; }
+.profile-save-bar.saved #profile-save-text { color: var(--lamp); font-weight: 650; }
+.profile-save-bar.saved :is(#profile-undo, #profile-save) { visibility: hidden; }
+@keyframes save-bar-in { from { translate: 0 12px; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .profile-save-bar { animation: none; } }
 
 /* ----- Your pet ----- */
 /* Its button, by your profile: your pet, still (hungry, it looks it, with a little amber dot: a
@@ -3357,6 +3371,48 @@ button.person.open { background: var(--dusk-hi); }
 .dew-burst[data-tier="4"] { font-size: 21px; }
 .dew-burst.missed { color: #c8d0dc; font-size: 15px; text-shadow: 0 2px 0 #2a1f33; }
 .drop-sky .dew-burst { position: absolute; z-index: 1; translate: -50% 0; white-space: nowrap; }
+/* Caught (app.js splashDrop): it bursts where it was, in its own colour: a flash, a ring rippling
+   out (two for the rare ones), and droplets thrown up and falling. In its room, in the room's own
+   pixels (--u); anywhere else, a little bigger. */
+.dew-splash { --u: var(--px, 4px); position: absolute; z-index: 1001; width: 0; height: 0; pointer-events: none; }
+.dew-splash.far { --u: 4px; z-index: 1; }
+.dew-splash > i { position: absolute; left: 0; top: 0; display: block; }
+.ds-flash {
+  width: calc(var(--u) * 12); height: calc(var(--u) * 12); margin: calc(var(--u) * -6) 0 0 calc(var(--u) * -6); border-radius: 50%;
+  background: radial-gradient(closest-side, #ffffff, var(--glow) 45%, transparent);
+  animation: ds-flash 0.38s ease-out forwards;
+}
+.dew-splash[data-tier="4"] .ds-flash { width: calc(var(--u) * 18); height: calc(var(--u) * 18); margin: calc(var(--u) * -9) 0 0 calc(var(--u) * -9); }
+@keyframes ds-flash { from { scale: 0.3; opacity: 0.95; } to { scale: 1.2; opacity: 0; } }
+.ds-ring {
+  width: calc(var(--u) * 4); height: calc(var(--u) * 4); margin: calc(var(--u) * -2) 0 0 calc(var(--u) * -2); border-radius: 50%;
+  border: max(1px, calc(var(--u) * 0.5)) solid var(--glow); box-shadow: 0 0 calc(var(--u) * 1.5) var(--glow);
+  animation: ds-ring 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+.ds-ring.late { animation-delay: 0.12s; opacity: 0; }
+@keyframes ds-ring { from { scale: 0.4; opacity: 1; } to { scale: 4; opacity: 0; } }
+.ds-bit {
+  width: var(--u); height: var(--u); margin: calc(var(--u) * -0.5) 0 0 calc(var(--u) * -0.5);
+  background: var(--glow); box-shadow: 0 0 calc(var(--u) * 1.2) var(--glow);
+  animation: ds-bit 0.75s ease-out forwards;
+}
+.ds-bit.white { background: #ffffff; }
+.dew-splash.far .ds-bit { --dxp: calc(var(--dx) * 1px); --dyp: calc(var(--dy) * 1px); }
+.dew-splash:not(.far) .ds-bit { --dxp: calc(var(--dx) * var(--u)); --dyp: calc(var(--dy) * var(--u)); }
+@keyframes ds-bit {
+  0% { transform: translate(0, 0); opacity: 1; }
+  45% { transform: translate(calc(var(--dxp) * 0.8), calc(var(--dyp) * 0.8)); opacity: 1; }
+  100% { transform: translate(var(--dxp), calc(var(--dyp) + var(--u) * 6)); opacity: 0; scale: 0.5; }
+}
+/* (Its count, on the room, hops as it's added to.) */
+.pet-dew.bump { animation: dew-count-hop 0.4s ease-out; }
+@keyframes dew-count-hop { 30% { scale: 1.18; } }
+@media (prefers-reduced-motion: reduce) {
+  .ds-ring, .ds-bit { display: none; }
+  .ds-flash { animation-name: ds-fade; }
+  .pet-dew.bump { animation: none; }
+}
+@keyframes ds-fade { from { opacity: 0.8; } to { opacity: 0; } }
 /* Boosts going, on its room: which drop's, how many times as much, and how long's left. */
 .dew-boosts { position: absolute; left: 8px; top: 40px; z-index: 1000; display: grid; justify-items: start; gap: 4px; pointer-events: auto; }
 .dew-boosts[hidden] { display: none; }

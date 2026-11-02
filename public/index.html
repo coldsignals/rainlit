@@ -959,7 +959,6 @@
         <button id="email-confirm-btn" class="text-btn" type="button">Send me a link to confirm it</button>
       </p>
       <p id="profile-error" class="form-error" role="alert" hidden></p>
-      <button class="primary-btn" type="submit">Save</button>
       <details class="pw-details">
         <summary>Change password</summary>
         <div class="pw-fields">
@@ -1047,6 +1046,14 @@
         </div>
       </details>
       <button id="signout-btn" class="text-btn danger signout" type="button">Sign out</button>
+      <!-- Saving (app.js: renderProfileSave): only once something's changed, and kept in sight at
+           the box's foot as the rest scrolls by, as getting something for your pet's room is. -->
+      <div id="profile-save-bar" class="theme-try profile-save-bar" hidden>
+        <p id="profile-save-error" class="form-error" role="alert" hidden></p>
+        <span id="profile-save-text">You've changed things. Save them?</span>
+        <button id="profile-undo" class="text-btn" type="button">Undo</button>
+        <button id="profile-save" class="primary-btn small" type="submit">Save</button>
+      </div>
     </form>
   </dialog>
 

@@ -133,7 +133,7 @@ for (const id of [
   'card-patterns', 'card-glow-patterns-box', 'card-glow-patterns', 'card-fonts', 'card-skies', 'card-glow-skies-box', 'card-glow-skies',
   'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-homepage-new', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block', 'mp-sound', 'mp-mute-them', 'mp-volume', 'mp-volume-value',
-  'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
+  'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name', 'profile-save-bar', 'profile-save-error', 'profile-save-text', 'profile-undo', 'profile-save',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'export-btn', 'export-note', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
   'support-card', 'support-badge', 'support-title', 'support-note', 'support-btn', 'support-link', 'support-admin', 'support-state', 'support-costs',
@@ -10408,6 +10408,10 @@ function setMe(user) {
   S.name = user.displayName;
   renderMe();
   for (const dm of S.dms.values()) refreshFaces(dm, user.id);
+  if (updateMembers(user)) {
+    if (el.spaceMembers.open) renderMembers();
+    if (!el.memberPanel.hidden) renderMemberPanel();
+  }
   if (el.miniProfile.open && miniProfileId === user.id) renderMiniProfile();
   if (el.profile.open) {
     renderProfileBadges();
@@ -15299,11 +15303,28 @@ function showPageNew(node, p) {
   node.title = on ? `Updated ${hitWhen(p.homepageAt).replace(/^(Today|Yesterday)/, (w) => w.toLowerCase())}` : '';
 }
 
+// Someone's name, status, picture or card changed: in each space's list of its members too (they're
+// drawn from those, not from S.people), so the members panel shows it at once.
+function updateMembers(user) {
+  const fresh = {};
+  for (const k of ['username', 'displayName', 'statusText', 'avatar', 'badges', 'card']) if (k in user) fresh[k] = user[k];
+  let changed = false;
+  for (const space of S.spaces.values()) {
+    const m = space.members && space.members.find((x) => x.id === user.id);
+    if (m) {
+      Object.assign(m, fresh);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 function onProfile(user) {
   const known = S.people.get(user.id);
   if (known) Object.assign(known, user);
   const f = S.friends.get(user.id);
   if (f) Object.assign(f, user);
+  updateMembers(user);
   for (const dm of S.dms.values()) refreshNames(dm, user.id);
   if (el.spaceMembers.open) renderMembers();
   if (!el.memberPanel.hidden) renderMemberPanel();
@@ -17182,6 +17203,11 @@ function openProfile() {
   showDeleteError('');
   updateStatusCount();
   showProfileError('');
+  profileWas = profileAsTyped();
+  clearTimeout(profileSavedTimer);
+  el.profileSaveBar.classList.remove('saved');
+  el.profileSaveText.textContent = "You've changed things. Save them?";
+  renderProfileSave();
   el.profile.showModal();
 }
 
@@ -18453,6 +18479,7 @@ function showRainbow() {
   b.type = 'button';
   b.className = room ? 'dew-rainbow' : 'dew-falling';
   b.dataset.kind = info.key;
+  b.dataset.sound = ''; // (its own sound, not a button's click: catchRainbow)
   b.dataset.tier = String(info.tier);
   b.style.backgroundImage = `url("${Homepage.dewIcon(info.key)}")`;
   b.style.setProperty('--glow', DROP_GLOW[info.key] || '#b07bff');
@@ -18501,12 +18528,19 @@ async function catchRainbow(b) {
   if (S.dew && S.dew.rainbow) [dropCaughtDue, dropCaughtKind] = [S.dewAt + S.dew.rainbow.in, S.dew.rainbow.kind];
   const at = b.getBoundingClientRect();
   // (Kept where it is as it pops: its fall stopped there.)
+  // (All of where it's got to as one translate: its pop's scale comes after that, so it grows where
+  // it is, rather than scaling how far it had fallen and sliding off.)
   const now = getComputedStyle(b);
-  b.style.transform = now.transform === 'none' ? '' : now.transform;
-  b.style.translate = now.translate === 'none' ? '' : now.translate;
+  const m = now.transform === 'none' ? { e: 0, f: 0 } : new DOMMatrix(now.transform);
+  const [tx = 0, ty = 0] = now.translate === 'none' ? [] : now.translate.split(' ').map(parseFloat);
+  b.style.transform = 'none';
+  b.style.translate = `${m.e + tx}px ${m.f + ty}px`;
   b.style.animationDuration = ''; // (its pop, quick)
   b.classList.add('caught');
   setTimeout(() => b.remove(), 500);
+  const info0 = dropInfo(b.dataset.kind);
+  splashDrop(at, inRoom, DROP_GLOW[info0.key] || '#b07bff', info0.tier);
+  playDropPlink();
   if (inRoom) await sendPats();
   let d;
   try {
@@ -18542,8 +18576,105 @@ async function catchRainbow(b) {
       burst.style.top = `${(at.top - box.top) / z}px`;
       sky.append(burst);
     }
-    if (!d.said) setDew(d);
+    if (!d.said) {
+      setDew(d);
+      playDropChime(info.tier);
+      // (Its count, on the room, gives a little hop as it's added to.)
+      el.petDew.classList.remove('bump');
+      void el.petDew.offsetWidth;
+      el.petDew.classList.add('bump');
+    }
   }
+}
+
+// A drop caught: it bursts where it was, in its own colour (a flash, a ring rippling out, and
+// droplets thrown up and falling, more the rarer it was). In its room, in the room's own pixels.
+function splashDrop(at, inRoom, glow, tier = 1) {
+  const box = inRoom ? el.petRoom : dropSky();
+  const r = box.getBoundingClientRect();
+  const z = uiZoom();
+  const s = document.createElement('div');
+  s.className = `dew-splash${inRoom ? '' : ' far'}`;
+  s.dataset.tier = String(tier);
+  s.style.setProperty('--glow', glow);
+  s.style.left = `${(at.left + at.width / 2 - r.left) / z}px`;
+  s.style.top = `${(at.top + at.height / 2 - r.top) / z}px`;
+  const flash = document.createElement('i');
+  flash.className = 'ds-flash';
+  const ring = document.createElement('i');
+  ring.className = 'ds-ring';
+  s.append(flash, ring);
+  if (tier >= 3) {
+    const ring2 = document.createElement('i');
+    ring2.className = 'ds-ring late';
+    s.append(ring2);
+  }
+  const n = 6 + tier * 3;
+  for (let i = 0; i < n; i++) {
+    const bit = document.createElement('i');
+    bit.className = `ds-bit${i % 3 === 0 ? ' white' : ''}`;
+    const a = (i / n) * Math.PI * 2 + Math.random() * 0.5;
+    const far = (inRoom ? 5 : 22) + Math.random() * (inRoom ? 5 + tier : 18 + tier * 6); // (in the room: in its pixels)
+    bit.style.setProperty('--dx', (Math.cos(a) * far).toFixed(1));
+    bit.style.setProperty('--dy', (Math.sin(a) * far - (inRoom ? 3 : 16)).toFixed(1)); // (thrown up a little more than down)
+    bit.style.animationDelay = `${Math.round(Math.random() * 60)}ms`;
+    s.append(bit);
+  }
+  box.append(s);
+  setTimeout(() => s.remove(), 1100);
+}
+
+// Its sound: a water drop's plink as it's clicked (at once, so it feels caught), then, once it's
+// counted, a little chime, a note more for each tier (one for dew, four and a shimmer for the
+// rarest). Only with click sounds on (Settings), as the milestone chime is.
+function dropSounds() {
+  if (!S.clickSounds) return null;
+  unlockSounds();
+  const ctx = S.soundCtx;
+  return ctx && ctx.state === 'running' ? ctx : null;
+}
+
+function playDropPlink() {
+  const ctx = dropSounds();
+  if (!ctx) return;
+  const t = ctx.currentTime + 0.005;
+  for (const [at, from, to, level] of [[0, 620, 1500, 0.11], [0.075, 1100, 2300, 0.035]]) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(from, t + at);
+    o.frequency.exponentialRampToValueAtTime(to, t + at + 0.07); // (a drop's sound rises)
+    g.gain.setValueAtTime(0.0001, t + at);
+    g.gain.exponentialRampToValueAtTime(level, t + at + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.16);
+    o.connect(g).connect(ctx.destination);
+    o.start(t + at);
+    o.stop(t + at + 0.2);
+  }
+}
+
+function playDropChime(tier = 1) {
+  const ctx = dropSounds();
+  if (!ctx) return;
+  const t = ctx.currentTime + 0.03;
+  const bell = (f, at, level, length) => {
+    for (const [mul, part] of [[1, 1], [2.01, 0.22], [3.03, 0.07]]) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * mul;
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(level * part, at + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + length / mul);
+      o.connect(g).connect(ctx.destination);
+      o.start(at);
+      o.stop(at + length + 0.05);
+    }
+  };
+  const notes = [1318.5, 1568, 1975.5, 2637]; // E6 G6 B6 E7
+  const many = Math.max(1, Math.min(4, tier));
+  for (let i = 0; i < many; i++) bell(notes[i], t + i * 0.065, 0.045, 0.55 + i * 0.1);
+  if (tier >= 4) for (let i = 0; i < 5; i++) bell(3136 + i * 260, t + 0.3 + i * 0.04, 0.012, 0.35); // (a shimmer)
 }
 
 // Caught on another of your devices (lib/dew.js, through Rainlit): gone from here too, and what's
@@ -19341,9 +19472,38 @@ function renderAdminDot() {
   el.adminBtn.setAttribute('aria-label', label);
 }
 
+// What Save saves, as it is in the box now; and as it was when the box opened (or last saved).
+const profileAsTyped = () => JSON.stringify([el.profileName.value, el.profileStatus.value, el.profilePresence.value, birthdayPicked(), el.profileBdayShown.checked]);
+let profileWas = '';
+let profileSavedTimer = 0;
+
+// The save bar, at the box's foot: only once something's changed (gone again if it's changed back).
+function renderProfileSave() {
+  if (el.profileSaveBar.classList.contains('saved')) return;
+  const changed = profileAsTyped() !== profileWas;
+  el.profileSaveBar.hidden = !changed;
+  if (!changed) showSaveError('');
+}
+
+function showSaveError(text) {
+  el.profileSaveError.textContent = text;
+  el.profileSaveError.hidden = !text;
+}
+
+function undoProfile() {
+  el.profileName.value = S.me.displayName;
+  el.profileStatus.value = S.me.statusText;
+  el.profilePresence.value = S.me.presence;
+  fillProfileBirthday();
+  updateStatusCount();
+  renderProfileSave();
+}
+
 async function onProfileSave(e) {
   e.preventDefault();
-  showProfileError('');
+  if (profileAsTyped() === profileWas) return; // (nothing to save: Enter in a box)
+  showSaveError('');
+  el.profileSave.disabled = true;
   try {
     const { user } = await api('PATCH', '/me', {
       displayName: el.profileName.value,
@@ -19354,10 +19514,20 @@ async function onProfileSave(e) {
       tz: myTz(),
     });
     setMe(user);
-    el.profile.close();
-    toast('Profile saved.');
+    profileWas = profileAsTyped();
+    // (Said on the bar, then it goes: a toast would be behind the box.)
+    el.profileSaveBar.classList.add('saved');
+    el.profileSaveText.textContent = 'Saved!';
+    clearTimeout(profileSavedTimer);
+    profileSavedTimer = setTimeout(() => {
+      el.profileSaveBar.classList.remove('saved');
+      el.profileSaveText.textContent = "You've changed things. Save them?";
+      renderProfileSave();
+    }, 1400);
   } catch (err) {
-    showProfileError(err.message);
+    showSaveError(err.message);
+  } finally {
+    el.profileSave.disabled = false;
   }
 }
 
@@ -21365,6 +21535,9 @@ async function init() {
   el.callElsewhereBtn.addEventListener('click', () => openDm(S.callWith));
   el.mpRemove.addEventListener('click', onRemoveFriend);
   el.profileForm.addEventListener('submit', onProfileSave);
+  el.profileForm.addEventListener('input', renderProfileSave);
+  el.profileForm.addEventListener('change', renderProfileSave);
+  el.profileUndo.addEventListener('click', undoProfile);
   el.profileBdayMonth.addEventListener('change', () => {
     fillProfileBirthdayDays();
     syncBirthdayShown();

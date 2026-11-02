@@ -309,7 +309,8 @@ dew's never bought or sold). Now and then a drop rolls down its room's window:
 catch it before it's gone. There are eight kinds, from common Dewdrops and
 Firefly drops to legendary Golden and Star drops; the rarer, the bigger and
 brighter, and the more it brings: dew at once, or a boost for a while (a Firefly
-drop doubles what's collected for 30 seconds). **Let drops fall anywhere in
+drop doubles what's collected for 30 seconds). Caught, one bursts in a splash
+of its own colour, with a little chime (with click sounds on). **Let drops fall anywhere in
 Rainlit** (the Dew tab; off to start with) has them fall wherever you are, slowly,
 to catch or let go.
 
