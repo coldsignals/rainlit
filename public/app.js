@@ -18437,7 +18437,11 @@ async function renderFeedbackAdmin() {
 // The admin's key button has a dot while something's waiting: a report, a flagged account, or
 // new feedback.
 function renderAdminDot() {
-  el.adminBtn.classList.toggle('has-reports', (S.openReports || 0) + (S.openFlags || 0) + (S.newFeedback || 0) > 0);
+  const waiting = (S.openReports || 0) + (S.openFlags || 0) + (S.newFeedback || 0);
+  el.adminBtn.classList.toggle('has-reports', waiting > 0);
+  const label = waiting ? `Invites and accounts (${waiting} waiting: reports, flagged accounts or feedback)` : 'Invites and accounts';
+  el.adminBtn.title = label;
+  el.adminBtn.setAttribute('aria-label', label);
 }
 
 async function onProfileSave(e) {

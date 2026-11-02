@@ -1016,7 +1016,18 @@ li.suspended > .grow { color: var(--danger-text); }
 .report > small { color: var(--mist); font-size: 12px; }
 .report-by { align-self: center; color: var(--mist); font-size: 12px; }
 #admin-btn { position: relative; }
-#admin-btn.has-reports::after { content: ""; position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+/* Something waiting (a report, a flagged account, new feedback): a red dot, glowing gently, at the
+   key's top left (at its top right it sat on the key's end, and looked like part of it), with a
+   ring of the card behind it round it. */
+#admin-btn.has-reports::after {
+  content: ""; position: absolute; top: 6px; left: 6px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 0 2px var(--admin-dot-ring, color-mix(in srgb, var(--dusk) 50%, var(--deep))), 0 0 7px 2px color-mix(in srgb, var(--danger) 70%, transparent);
+  animation: admin-dot 2.4s ease-in-out infinite;
+}
+@keyframes admin-dot { 50% { box-shadow: 0 0 0 2px var(--admin-dot-ring, color-mix(in srgb, var(--dusk) 50%, var(--deep))), 0 0 13px 5px color-mix(in srgb, var(--danger) 50%, transparent); } }
+@media (prefers-reduced-motion: reduce) { #admin-btn.has-reports::after { animation: none; } }
+.me-card.carded #admin-btn { --admin-dot-ring: color-mix(in srgb, var(--card-c1) 45%, var(--card-c2)); }
 .mod-text { margin: -6px 0 0; color: var(--mist); font-size: 14px; }
 .mod-list { list-style: none; margin: -6px 0 0; padding: 0; display: grid; gap: 4px; }
 .mod-row { display: flex; align-items: center; gap: 10px; padding: 6px 4px; }
