@@ -1779,6 +1779,8 @@
             <label class="field">
               <span>Microphone</span>
               <select id="mic-select"></select>
+              <!-- (On a phone, before Rainlit's used the mic: Android names nothing till then. app.js fillDeviceLists.) -->
+              <small id="mic-hint" class="hint" hidden>Your headset and the speakerphone show up here once Rainlit's used your mic: tap Test your mic, below (or join a call), and they're here to pick.</small>
             </label>
             <!-- Rainlit's own noise suppression (public/noise.js; app.js renderNoise): Standard, Strong
                  or Off, and how strongly. -->
