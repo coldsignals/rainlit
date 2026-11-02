@@ -1907,6 +1907,16 @@
         <span id="feedback-what">What happened?</span>
         <textarea id="feedback-text" maxlength="2000" rows="5"></textarea>
       </label>
+      <!-- A screenshot to go with it (app.js setFeedbackShot): picked, pasted or dropped. -->
+      <div class="feedback-shot">
+        <button id="feedback-shot-btn" class="small-btn" type="button"><svg class="icon"><use href="#i-clip"/></svg>Add a screenshot</button>
+        <input id="feedback-shot-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+        <span id="feedback-shot-preview" class="feedback-shot-preview" hidden>
+          <img id="feedback-shot-img" alt="Your screenshot" />
+          <button id="feedback-shot-remove" class="icon-btn ghost" type="button" aria-label="Take the screenshot off" title="Take it off"><svg class="icon"><use href="#i-close"/></svg></button>
+        </span>
+        <small class="hint">Or paste one (Ctrl+V), or drop it here.</small>
+      </div>
       <div id="feedback-diag-field" class="feedback-diag">
         <label class="toggle">
           <input id="feedback-diag" type="checkbox" />

@@ -436,6 +436,28 @@ api.post('/feedback', needUser, feedbackRoute((req) => {
   }
   return { feedback: made };
 }));
+// Its screenshot: sent just after it, as the picture itself; seen by whoever sent it, and admins.
+api.post('/feedback/:id/image', needUser, express.raw({ type: () => true, limit: '12mb' }), async (req, res) => {
+  const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  if (!imageKind(buf)) return fail(res, 400, 'A screenshot can be PNG, JPG, GIF or WebP.');
+  let shot;
+  try {
+    shot = await images.screenshot(buf);
+  } catch {
+    return fail(res, 400, "That picture couldn't be read.");
+  }
+  try {
+    res.json({ feedback: feedback.setImage(req.params.id, req.user.id, shot) });
+  } catch (err) {
+    if (err instanceof feedback.FeedbackError) return fail(res, err.status, err.message);
+    throw err;
+  }
+});
+api.get('/feedback/:id/image', needUser, (req, res) => {
+  const img = feedback.image(req.params.id, req.user.id, Boolean(req.user.is_admin));
+  if (!img) return fail(res, 404, "That screenshot isn't there.");
+  res.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' }).send(img.data);
+});
 api.get('/admin/feedback', needAdmin, (_req, res) => res.json({ feedback: feedback.all() }));
 api.post('/admin/feedback/:id/done', needAdmin, feedbackRoute((req) => {
   const done = Boolean((req.body || {}).done);

@@ -153,7 +153,7 @@ for (const id of [
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
   'glow', 'glow-because', 'glow-get', 'glow-price',
-  'feedback', 'feedback-form', 'feedback-btn', 'feedback-note', 'feedback-what', 'feedback-text', 'feedback-diag-field', 'feedback-diag',
+  'feedback', 'feedback-form', 'feedback-shot-btn', 'feedback-shot-input', 'feedback-shot-preview', 'feedback-shot-img', 'feedback-shot-remove', 'feedback-btn', 'feedback-note', 'feedback-what', 'feedback-text', 'feedback-diag-field', 'feedback-diag',
   'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
@@ -19042,7 +19042,19 @@ async function onFeedbackSubmit(e) {
   el.feedbackSend.disabled = true;
   try {
     const diagnostics = kind === 'bug' && el.feedbackDiag.checked ? await feedbackDiagnostics() : undefined;
-    await api('POST', '/feedback', { kind, text, diagnostics });
+    const made = (await api('POST', '/feedback', { kind, text, diagnostics })).feedback;
+    // (Its screenshot, just after: said if that didn't go, the words having gone.)
+    if (feedbackShot) {
+      try {
+        await api('POST', `/feedback/${made.id}/image`, feedbackShot);
+      } catch (err) {
+        el.feedbackText.value = '';
+        setFeedbackShot(null);
+        loadMyFeedback();
+        return showFeedbackError(`It's sent, but its screenshot didn't go: ${err.message}`);
+      }
+    }
+    setFeedbackShot(null);
     el.feedbackText.value = '';
     el.feedbackDiag.checked = false;
     el.feedbackDiagWhat.open = false;
@@ -19069,6 +19081,23 @@ async function loadMyFeedback() {
 
 // One piece of feedback: what it is, when, its words and any reply (and for the admin, who sent
 // it, and its diagnostics).
+// A screenshot to go with it: one, a picture (12 MB at most), shown small before it's sent.
+const FEEDBACK_SHOT_MAX = 12 * 1024 * 1024;
+let feedbackShot = null;
+function setFeedbackShot(file) {
+  if (file && (!/^image\/(png|jpeg|webp|gif)$/.test(file.type) || file.size > FEEDBACK_SHOT_MAX)) {
+    return showFeedbackError(file.size > FEEDBACK_SHOT_MAX ? 'That picture is too big to send (12 MB at most).' : 'A screenshot can be PNG, JPG, GIF or WebP.');
+  }
+  if (el.feedbackShotImg.src) URL.revokeObjectURL(el.feedbackShotImg.src);
+  feedbackShot = file || null;
+  el.feedbackShotImg.removeAttribute('src');
+  if (feedbackShot) el.feedbackShotImg.src = URL.createObjectURL(feedbackShot);
+  el.feedbackShotPreview.hidden = !feedbackShot;
+  el.feedbackShotBtn.hidden = Boolean(feedbackShot);
+  el.feedbackShotInput.value = '';
+}
+const imageIn = (list) => [...(list || [])].find((f) => f.kind ? f.kind === 'file' && /^image\//.test(f.type) : /^image\//.test(f.type));
+
 function feedbackItem(f, admin = false) {
   const li = document.createElement('li');
   li.className = `feedback-item${f.done ? ' done' : ''}${f.isNew ? ' new' : ''}`;
@@ -19096,6 +19125,20 @@ function feedbackItem(f, admin = false) {
   words.className = 'feedback-words';
   words.textContent = f.text;
   li.append(head, words);
+  // (Its screenshot, small: opened full size in a new tab.)
+  if (f.image) {
+    const a = document.createElement('a');
+    a.className = 'feedback-shot-thumb';
+    a.href = `${SERVER}/api/feedback/${f.id}/image`;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.alt = 'The screenshot sent with it';
+    img.src = a.href;
+    a.append(img);
+    li.append(a);
+  }
   if (admin && f.details) {
     const d = document.createElement('details');
     d.className = 'feedback-details';
@@ -21693,6 +21736,23 @@ async function init() {
     : 'Found a bug, or have an idea? Send it straight to whoever runs this Rainlit server.';
   el.feedbackBtn.addEventListener('click', openFeedback);
   el.feedbackForm.addEventListener('submit', onFeedbackSubmit);
+  // A screenshot: picked, pasted (Ctrl+V in the box), or dropped on it.
+  el.feedbackShotBtn.addEventListener('click', () => el.feedbackShotInput.click());
+  el.feedbackShotInput.addEventListener('change', () => { if (el.feedbackShotInput.files[0]) setFeedbackShot(el.feedbackShotInput.files[0]); });
+  el.feedbackShotRemove.addEventListener('click', () => setFeedbackShot(null));
+  el.feedback.addEventListener('paste', (e) => {
+    const item = imageIn(e.clipboardData && e.clipboardData.items);
+    if (!item) return;
+    e.preventDefault();
+    setFeedbackShot(item.getAsFile());
+  });
+  el.feedback.addEventListener('dragover', (e) => { if ([...(e.dataTransfer.types || [])].includes('Files')) e.preventDefault(); });
+  el.feedback.addEventListener('drop', (e) => {
+    const file = imageIn(e.dataTransfer && e.dataTransfer.files);
+    if (!file) return;
+    e.preventDefault();
+    setFeedbackShot(file);
+  });
   el.feedbackForm.addEventListener('change', (e) => { if (e.target.name === 'feedback-kind') renderFeedbackKind(); });
   el.feedbackDiagWhat.addEventListener('toggle', () => { if (el.feedbackDiagWhat.open) showDiagnostics(); });
   lightDevice.addEventListener('change', () => { if ((S.themeTry || S.theme) === 'auto') showTheme(); });

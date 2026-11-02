@@ -3712,6 +3712,17 @@ button.person.open { background: var(--dusk-hi); }
 .feedback-kind input:focus-visible + span { outline: 2px solid var(--lamp); outline-offset: 2px; }
 .feedback-diag { display: grid; gap: 8px; }
 .feedback-diag[hidden] { display: none; }
+/* A screenshot to go with it: picked, pasted or dropped, shown small; and with what's been sent. */
+.feedback-shot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.feedback-shot .small-btn { display: inline-flex; align-items: center; gap: 6px; }
+.feedback-shot .small-btn[hidden] { display: none; }
+.feedback-shot .small-btn .icon { width: 16px; height: 16px; }
+.feedback-shot-preview { position: relative; display: inline-block; }
+.feedback-shot-preview[hidden] { display: none; }
+.feedback-shot-preview img { display: block; max-width: 180px; max-height: 110px; border: 1px solid var(--line); border-radius: 8px; object-fit: cover; }
+.feedback-shot-preview .icon-btn { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; background: var(--pop); border: 1px solid var(--line); border-radius: 50%; }
+.feedback-shot-thumb { justify-self: start; }
+.feedback-shot-thumb img { display: block; max-width: 220px; max-height: 140px; border: 1px solid var(--line); border-radius: 8px; object-fit: cover; }
 .feedback-details summary { cursor: pointer; color: var(--mist); font-size: 13px; font-weight: 650; }
 .feedback-pre {
   max-height: 240px; overflow: auto; margin: 8px 0 0; padding: 10px 12px;
