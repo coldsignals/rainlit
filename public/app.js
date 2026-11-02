@@ -18316,7 +18316,8 @@ let dropLookTimer = 0;
 // (The one just caught, by when it was due: an answer from before the catch, like the pats sent
 // just as it was clicked, still says it's due, and it mustn't come again.)
 let dropCaughtDue = -Infinity;
-const dropCaught = (r) => Math.abs(S.dewAt + r.in - dropCaughtDue) < 3000;
+let dropCaughtKind = '';
+const dropCaught = (r) => r.kind === dropCaughtKind && Math.abs(S.dewAt + r.in - dropCaughtDue) < 3000;
 
 // The next one: when it comes (if you're there to see it: its room open, or anywhere, if asked).
 function planRainbow() {
@@ -18398,7 +18399,7 @@ async function catchRainbow(b) {
   if (b.disabled) return;
   b.disabled = true;
   const inRoom = el.petRoom.contains(b);
-  if (S.dew && S.dew.rainbow) dropCaughtDue = S.dewAt + S.dew.rainbow.in;
+  if (S.dew && S.dew.rainbow) [dropCaughtDue, dropCaughtKind] = [S.dewAt + S.dew.rainbow.in, S.dew.rainbow.kind];
   const at = b.getBoundingClientRect();
   // (Kept where it is as it pops: its fall stopped there.)
   const now = getComputedStyle(b);
