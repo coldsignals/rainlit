@@ -53,6 +53,10 @@
       <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
       <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
       <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></symbol>
+      <symbol id="i-place" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+      <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+      <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
       <symbol id="i-headphones-off" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 14.5-7.1M21 12v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/><path d="M3 3l18 18"/></symbol>
       <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
       <symbol id="i-speaker-off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
@@ -214,6 +218,12 @@
 
       <div id="space-side" class="side-body" hidden>
         <div class="side-scroll">
+          <!-- Its events (app.js renderEventsEntry): how many are coming up, and if one's on now -->
+          <button id="events-btn" class="channel events-btn" type="button" aria-haspopup="dialog">
+            <svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg><span class="channel-name">Events</span>
+            <span id="events-now" class="events-now" hidden>On now</span>
+            <span id="events-count" class="events-count" hidden></span>
+          </button>
           <section class="side-section" aria-labelledby="channels-title">
             <h2 class="side-title side-title-row"><span id="channels-title">Text channels</span>
               <button id="add-channel-btn" class="icon-btn ghost side-add" type="button" aria-label="Add a channel" title="Add a channel" hidden><svg class="icon"><use href="#i-plus"/></svg></button>
@@ -1253,6 +1263,72 @@
     </form>
   </dialog>
 
+  <!-- A space's events (app.js renderEvents): what's planned, when, where, and who's going -->
+  <dialog id="events" class="settings space-dialog events-dialog" aria-labelledby="events-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="events-title">Events</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <div class="events-bar">
+        <button id="events-new" class="primary-btn small" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Plan an event</button>
+        <button id="events-free" class="text-btn" type="button">Your free times</button>
+      </div>
+      <ol id="events-list" class="events-list"></ol>
+      <p id="events-none" class="hint events-none" hidden></p>
+    </div>
+  </dialog>
+
+  <!-- Planning an event, or changing one (app.js openEventEdit), with who's free (renderFreeWeek) -->
+  <dialog id="event-edit" class="settings space-dialog event-edit" aria-labelledby="event-edit-title">
+    <form id="event-edit-form" class="settings-inner" novalidate>
+      <div class="settings-head"><h2 id="event-edit-title">Plan an event</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <label class="field"><span>Name</span><input id="event-name" maxlength="80" autocomplete="off" placeholder="Movie night" /></label>
+      <div class="event-when-row">
+        <label class="field"><span>Day</span><input id="event-day" type="date" /></label>
+        <label class="field"><span>Starts</span><input id="event-start" type="time" step="300" /></label>
+        <label class="field"><span>Ends <small class="toggle-note">(if you like)</small></span><input id="event-end" type="time" step="300" /></label>
+      </div>
+      <details id="event-free" class="event-free" open>
+        <summary>Who's free</summary>
+        <div class="free-week-head">
+          <button id="free-week-prev" class="icon-btn ghost" type="button" aria-label="The week before"><svg class="icon"><use href="#i-chevron-left"/></svg></button>
+          <span id="free-week-label" class="free-week-label"></span>
+          <button id="free-week-next" class="icon-btn ghost" type="button" aria-label="The week after"><svg class="icon"><use href="#i-chevron-right"/></svg></button>
+        </div>
+        <div id="free-week" class="free-grid free-week"></div>
+        <p id="free-week-note" class="hint free-week-note"></p>
+      </details>
+      <label class="field"><span>Where</span><select id="event-where"></select></label>
+      <label id="event-place-field" class="field" hidden><span>Where's that?</span><input id="event-place" maxlength="80" autocomplete="off" placeholder="The usual spot" /></label>
+      <label class="field"><span>About it <small class="toggle-note">(if you like)</small></span><textarea id="event-about" maxlength="1000" rows="3"></textarea></label>
+      <p id="event-error" class="form-error" role="alert" hidden></p>
+      <div class="event-edit-row">
+        <button id="event-delete" class="text-btn danger" type="button" hidden>Cancel the event</button>
+        <button id="event-save" class="primary-btn" type="submit">Plan it</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Your free times (app.js openFreeTimes): the hours of the week you're usually free -->
+  <dialog id="free-times" class="settings space-dialog free-times" aria-labelledby="free-times-title">
+    <form id="free-times-form" class="settings-inner" novalidate>
+      <div class="settings-head"><h2 id="free-times-title">Your free times</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p class="hint">The hours you're usually free, week to week. People in your spaces see them when they plan events, to pick a time most of you can make. Drag across the hours to mark them, or to unmark them.</p>
+      <div id="free-edit" class="free-grid free-edit" aria-label="Your free times"></div>
+      <p id="free-tz" class="hint"></p>
+      <div class="event-edit-row">
+        <button id="free-clear" class="text-btn" type="button">Clear them all</button>
+        <button id="free-save" class="primary-btn" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- An event you're going to (or might), starting (app.js onEventStart) -->
+  <div id="event-bar" class="event-bar" role="status" hidden>
+    <svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>
+    <div class="event-bar-text"><strong id="event-bar-title"></strong><span id="event-bar-sub"></span></div>
+    <button id="event-bar-join" class="primary-btn small" type="button" hidden>Join</button>
+    <button id="event-bar-x" class="icon-btn ghost" type="button" aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button>
+  </div>
+
   <!-- A sound to add to a space's soundboard: the part of it to keep, and its name and emoji -->
   <dialog id="sound-trim" class="settings space-dialog" aria-labelledby="sound-trim-title">
     <form id="sound-trim-form" class="settings-inner" novalidate>
@@ -1612,6 +1688,11 @@
             <h3 id="set-feedback">Feedback</h3>
             <p id="feedback-note" class="hint">Found a bug, or have an idea? Send it straight to whoever runs this Rainlit server.</p>
             <button id="feedback-btn" class="small-btn feedback-open" type="button">Send feedback</button>
+          </section>
+          <section class="settings-sec" aria-labelledby="set-events">
+            <h3 id="set-events">Events</h3>
+            <p class="hint">When you're usually free, so people in your spaces can plan events for when most of you can come.</p>
+            <button id="free-times-btn" class="small-btn" type="button">Your free times</button>
           </section>
           <section id="activity-field" class="settings-sec activity-field" aria-labelledby="set-activity" hidden>
             <h3 id="set-activity">Activity</h3>

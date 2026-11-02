@@ -462,6 +462,13 @@ a.x-link .icon { width: 16px; height: 16px; }
 }
 .channel .icon { flex: none; width: 17px; height: 17px; opacity: 0.75; }
 .channel-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Events, at the top of a space's channels (app.js renderEventsEntry): how many, and if one's on. */
+.events-btn { margin-bottom: 10px; }
+.events-count {
+  flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
+  display: grid; place-items: center; background: var(--dusk-hi); color: var(--text); font-size: 12px; font-weight: 700;
+}
+.events-now { flex: none; padding: 1px 7px; border-radius: 9px; background: color-mix(in srgb, var(--online) 18%, transparent); color: var(--online); font-size: 11.5px; font-weight: 750; }
 .channel:hover { background: var(--dusk); color: var(--text); }
 .channel.open { background: var(--dusk-hi); color: var(--text); }
 .channel.unread { color: var(--text); font-weight: 650; }
@@ -842,6 +849,79 @@ li.suspended > .grow { color: var(--danger-text); }
 .mention-pick .emoji-img { width: 24px; height: 24px; }
 .emoji-btn { flex: none; align-self: center; }
 .record-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* ----- Events (app.js: renderEvents, openEventEdit, renderFreeWeek, openFreeTimes, onEventStart) ----- */
+.events-dialog, .event-edit { width: min(560px, calc(100vw / var(--zoom) - 32px)); }
+.events-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.events-bar .primary-btn { display: inline-flex; align-items: center; gap: 6px; }
+.events-bar .primary-btn .icon { width: 17px; height: 17px; }
+.events-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.events-none { margin: 8px 0; text-align: center; }
+/* Each: when (in your own time), what, where, about it, who's going, and yours to say. */
+.event-card { display: grid; gap: 7px; min-width: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--deep); }
+.event-card.on { border-color: color-mix(in srgb, var(--online) 55%, var(--line)); }
+.event-when { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--lamp-text); font-size: 13.5px; font-weight: 700; }
+.event-live { padding: 1px 8px; border-radius: 9px; background: var(--online); color: #08301b; font-size: 11.5px; font-weight: 800; }
+.event-title { margin: 0; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.event-where { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--mist); font-size: 14px; }
+.event-where .icon { flex: none; width: 16px; height: 16px; }
+.event-where span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-about { margin: 0; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.event-people { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--mist); font-size: 13px; }
+.event-faces { display: flex; flex: none; }
+.event-faces .face { width: 24px; height: 24px; font-size: 10px; box-shadow: 0 0 0 2px var(--deep); }
+.event-faces .face + .face { margin-left: -6px; }
+.event-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.event-answers { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.event-answer { padding: 6px 13px; border: 0; background: none; color: var(--mist); font: inherit; font-size: 13.5px; font-weight: 700; }
+.event-answer + .event-answer { border-left: 1px solid var(--line); }
+.event-answer:hover { background: var(--dusk); color: var(--text); }
+.event-answer[aria-pressed="true"] { background: var(--dusk-hi); color: var(--text); }
+.event-answer.going[aria-pressed="true"] { background: color-mix(in srgb, var(--online) 22%, transparent); color: var(--online); }
+.event-answer.no[aria-pressed="true"] { background: var(--danger-soft); color: var(--danger-text); }
+.event-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+/* Planning one: a name, when, who's free, where, and about it. */
+/* (Its day on a line of its own, its start and end side by side: room for "01:00 PM", in any language.) */
+.event-when-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.event-when-row > :first-child { grid-column: 1 / -1; }
+.event-when-row input { width: 100%; min-width: 0; }
+.event-free summary { cursor: pointer; font-size: 14px; font-weight: 600; }
+.free-week-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+.free-week-head .icon-btn { width: 32px; height: 32px; }
+.free-week-head .icon-btn:disabled { opacity: 0.3; }
+.free-week-label { color: var(--mist); font-size: 13.5px; font-weight: 700; }
+.free-week-note { margin: 8px 0 0; }
+.free-week-note .text-btn { padding: 0; font-size: inherit; }
+.event-edit-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.event-edit-row .primary-btn { margin-left: auto; }
+/* A week, an hour a row: who's free then (the more, the brighter), or your own free hours. */
+.free-grid { display: grid; grid-template-columns: 44px repeat(7, minmax(0, 1fr)); gap: 2px; user-select: none; -webkit-user-select: none; }
+.free-day, .free-hour { padding: 0; border: 0; background: none; color: var(--mist); font: inherit; font-size: 11px; font-weight: 700; }
+.free-day { padding: 2px 0 4px; text-align: center; white-space: nowrap; overflow: hidden; }
+.free-hour { justify-self: end; align-self: center; padding-right: 6px; line-height: 1; white-space: nowrap; }
+.free-edit .free-day:hover, .free-edit .free-hour:hover { color: var(--text); }
+.free-cell {
+  min-width: 0; height: 15px; padding: 0; border: 0; border-radius: 3px;
+  background: color-mix(in srgb, var(--lamp) calc(var(--heat, 0) * 85%), var(--deep));
+}
+.free-cell:disabled { opacity: 0.3; cursor: default; }
+.free-cell.picked { outline: 2px solid var(--text); outline-offset: 0; }
+.free-week .free-cell:not(:disabled):hover { outline: 2px solid var(--mist); outline-offset: 0; }
+.free-edit .free-cell { height: 18px; touch-action: none; }
+.free-edit .free-cell.on { background: var(--lamp); }
+/* An event you're going to (or might), starting: over the top of the window. */
+.event-bar {
+  position: fixed; top: 14px; left: 50%; z-index: 80; transform: translateX(-50%);
+  width: min(460px, calc(100vw / var(--zoom) - 24px));
+  display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 14px;
+  background: var(--pop); border: 1px solid color-mix(in srgb, var(--online) 50%, var(--line)); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.event-bar[hidden] { display: none; }
+.event-bar > .icon { flex: none; color: var(--online); }
+.event-bar-text { flex: 1; min-width: 0; display: grid; }
+.event-bar-text strong, .event-bar-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-bar-text span { color: var(--mist); font-size: 13px; }
+
 /* Your camera, before it turns on: as in a mirror (unless you've said not to), like your own
    picture in a call. */
 .cam-preview-frame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: #000; border-radius: 12px; }

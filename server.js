@@ -35,6 +35,7 @@ const pets = require('./lib/pets');
 const announcements = require('./lib/announcements');
 const whatsNew = require('./lib/whatsnew');
 const dew = require('./lib/dew');
+const events = require('./lib/events');
 const blobs = require('./lib/blobs');
 const abuse = require('./lib/abuse');
 // (A new flag: the admin hears, wherever they are in the app.)
@@ -2719,6 +2720,116 @@ api.post('/space-invites/:code', needUser, needConfirmed, (req, res) => {
   }
   res.json({ space: mySpace(req.user.id, space.id) });
 });
+
+// ----- Events -----
+// (lib/events.js) A space's events: anyone allowed to ("Plan events", everyone by default) plans
+// one, and is going; everyone there says if they're going, might, or can't; its planner (or anyone
+// who can manage events) changes or cancels it. Every change goes to the space's members as it
+// happens. When one starts, those going (or who might) are told, with a way in if it's in a voice
+// channel. And each person's free times (theirs to set), for the members of a space they're in to
+// see when planning.
+
+const eventRoute = (fn) => (req, res) => {
+  try {
+    fn(req, res);
+  } catch (err) {
+    if (err instanceof events.EventError) return fail(res, err.status, err.message);
+    throw err;
+  }
+};
+// (The voice channels someone can see in a space: for an event to be in.)
+const voiceChannelsFor = (spaceId, member) => spaces.channelsOf(spaceId)
+  .filter((c) => c.kind === 'voice' && spaces.channelAccess(c, member).see).map((c) => c.id);
+
+function needEvent(req, res, next) {
+  const e = events.get(req.params.eventId);
+  const member = e && spaces.memberOf(e.space_id, req.user.id);
+  if (!member) return fail(res, 404, "That event isn't there.");
+  req.event = e;
+  req.member = member;
+  next();
+}
+const mayChangeEvent = (req) => (req.event.creator_id === req.user.id && spaces.can(req.member, 'events')) || spaces.can(req.member, 'manageEvents');
+const tellEvent = (event) => tellSpace(event.spaceId, { type: 'event', space: event.spaceId, event });
+
+api.get('/spaces/:spaceId/events', needUser, needMember, (req, res) => res.json({ events: events.coming(req.space.id) }));
+
+api.post('/spaces/:spaceId/events', needUser, needMember, eventRoute((req, res) => {
+  if (spaces.isGroup(req.space)) return fail(res, 400, "Groups don't have events.");
+  if (!spaces.can(req.member, 'events')) return fail(res, 403, "You don't have permission to plan events here.");
+  if (req.member.timeoutUntil) return fail(res, 403, TIMED_OUT);
+  const event = events.create(req.space.id, req.user.id, events.clean(req.body || {}, voiceChannelsFor(req.space.id, req.member)));
+  spaces.log(req.space.id, req.user.id, 'event-add', null, { name: event.title });
+  tellEvent(event);
+  watchEvents();
+  res.json({ event });
+}));
+
+api.put('/events/:eventId', needUser, needEvent, eventRoute((req, res) => {
+  if (!mayChangeEvent(req)) return fail(res, 403, "You can't change this event.");
+  const event = events.update(req.event.id, events.clean(req.body || {}, voiceChannelsFor(req.event.space_id, req.member), req.event));
+  if (req.event.creator_id !== req.user.id) spaces.log(req.event.space_id, req.user.id, 'event-change', null, { name: event.title });
+  tellEvent(event);
+  watchEvents();
+  res.json({ event });
+}));
+
+api.delete('/events/:eventId', needUser, needEvent, (req, res) => {
+  if (!mayChangeEvent(req)) return fail(res, 403, "You can't cancel this event.");
+  events.remove(req.event.id);
+  spaces.log(req.event.space_id, req.user.id, 'event-cancel', null, { name: req.event.title });
+  tellSpace(req.event.space_id, { type: 'event-gone', space: req.event.space_id, id: req.event.id });
+  res.json({ ok: true });
+});
+
+// Going, maybe, can't ('no'), or nothing said ('').
+api.put('/events/:eventId/answer', needUser, needEvent, eventRoute((req, res) => {
+  events.answer(req.event.id, req.user.id, String((req.body || {}).answer || ''));
+  const event = events.one(req.event.id);
+  tellEvent(event);
+  res.json({ event });
+}));
+
+// Your free times, and those of a space's members (who've set theirs, and haven't blocked you or
+// been blocked by you).
+api.get('/me/free-times', needUser, (req, res) => res.json({ free: events.freeTimes(req.user.id) }));
+api.put('/me/free-times', needUser, eventRoute((req, res) => {
+  const b = req.body || {};
+  const tz = people.cleanTz(b.tz);
+  if (!tz) return fail(res, 400, "That time zone isn't one Rainlit knows.");
+  events.setFreeTimes(req.user.id, tz, b.hours);
+  res.json({ free: events.freeTimes(req.user.id) });
+}));
+api.get('/spaces/:spaceId/free-times', needUser, needMember, (req, res) => {
+  const free = events.freeTimesIn(req.space.id)
+    .filter((f) => f.id === req.user.id || !(safety.hasBlocked(f.id, req.user.id) || safety.hasBlocked(req.user.id, f.id)));
+  res.json({ free, members: spaces.memberIds(req.space.id).length });
+});
+
+// Starting: those going (or who might be) are told, wherever they are; a phone with Rainlit in the
+// background gets a notification. Woken for the next to start (a minute at most, to look again),
+// and now and then the long-over ones go.
+let eventTimer = 0;
+function watchEvents() {
+  clearTimeout(eventTimer);
+  const now = Date.now();
+  for (const event of events.starting(now)) {
+    const space = spaces.getSpace(event.spaceId);
+    for (const id of new Set([...event.going, ...event.maybe])) {
+      realtime.sendToUser(id, { type: 'event-start', space: event.spaceId, event });
+      if (!realtime.isOnline(id)) {
+        push.send(id, { type: 'message', from: { id: `ev:${event.id}`, name: `${event.title} is starting${space && space.name ? ` in ${space.name}` : ''}` } },
+          { topic: `event${event.id}`, ttl: 30 * 60 });
+      }
+    }
+  }
+  const next = events.nextStart(now);
+  eventTimer = setTimeout(watchEvents, next ? Math.max(100, Math.min(next - now, 60_000)) : 60_000);
+  eventTimer.unref();
+}
+watchEvents();
+events.prune();
+setInterval(() => events.prune(), 6 * 3_600_000).unref();
 
 // ----- Group chats -----
 // A few friends with a chat and a call of their own (lib/spaces.js). You can only put your

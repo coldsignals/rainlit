@@ -148,7 +148,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -1912,6 +1912,12 @@ function handleServerMessage(msg) {
       return onSpaceChanged(msg.space);
     case 'space-removed':
       return onSpaceRemoved(msg.space, msg.why);
+    case 'event':
+      return onEvent(msg.space, msg.event);
+    case 'event-gone':
+      return onEventGone(msg.space, msg.id);
+    case 'event-start':
+      return onEventStart(msg.space, msg.event);
     case 'me':
       return setMe(msg.user);
     case 'badge-new':
@@ -10406,6 +10412,7 @@ async function onSpaceChanged(spaceId) {
   else paintNames(spaceId);
   if (el.spaceMembers.open) renderMembers();
   if (el.spaceSettings.open) renderSpaceSettings();
+  if (el.events.open) renderEvents();
   if (el.groupInfo.open) renderGroupInfo();
   if (el.miniProfile.open) renderMiniProfile(); // (their roles there, as they are now)
   if (!el.soundboard.hidden) renderSoundboard(); // (its sounds, or whether you can play them, changed)
@@ -10644,6 +10651,7 @@ function renderSide() {
   el.spaceHead.hidden = !space;
   if (!space) return;
   el.spaceTitle.textContent = space.name;
+  renderEventsEntry();
   el.addChannelBtn.hidden = !canIn(space, 'manageChannels');
   const adding = el.channelList.querySelector('.channel-new');
   el.channelList.replaceChildren(...space.channels.filter((c) => c.kind !== 'voice').map(channelItem), ...(adding ? [adding] : []));
@@ -11813,6 +11821,9 @@ function spaceLogText(e) {
     case 'emoji-remove': return `${who} deleted the emoji :${d.name}:`;
     case 'sound-add': return `${who} added the sound "${d.name}"`;
     case 'sound-rename': return `${who} renamed the sound "${d.from}" to "${d.to}"`;
+    case 'event-add': return `${who} planned the event "${d.name}"`;
+    case 'event-change': return `${who} changed the event "${d.name}"`;
+    case 'event-cancel': return `${who} cancelled the event "${d.name}"`;
     case 'sound-remove': return `${who} deleted the sound "${d.name}"`;
     case 'space-import': return `${who} brought the space over from ${d.from || 'Discord'} (${d.channels} channels, ${d.roles} roles)`;
     case 'owner-deleted': return `The owner deleted their account, so the space passed to ${d.user || 'its most senior member'}`;
@@ -12618,6 +12629,623 @@ function ageTag() {
   return tag;
 }
 
+// ----- Events -----
+// A space's events (lib/events.js): what's planned, when (in your own time) and where, and who's
+// going. Events, at the top of its channels, says how many are coming up (and if one's on now). In
+// it, each says when, where and who, with Going, Maybe and Can't, and Join while one in a voice
+// channel's on; whoever planned it (or can manage events) changes or cancels it. Planning one,
+// who's free is there to see a week at a time (everyone's free times, in your own time), and a
+// click on an hour picks it. When one you're going to starts, a bar over the top says so.
+
+const EVENT_NO_END = 3_600_000; // (one with no end set is on for an hour, as lib/events.js has it)
+const eventEnd = (e) => e.endsAt || e.startsAt + EVENT_NO_END;
+const eventOn = (e, now = serverNow()) => e.startsAt <= now && now < eventEnd(e);
+const comingEvents = (space) => ((space && space.events) || []).filter((e) => eventEnd(e) > serverNow()).sort((a, b) => a.startsAt - b.startsAt);
+const canPlanIn = (space) => canIn(space, 'events') && !(space.timeoutUntil > Date.now());
+const mayChangeEvent = (space, e) => (e.creatorId === S.clientId && canIn(space, 'events')) || canIn(space, 'manageEvents');
+const personOf = (id) => profileOf(id) || { id, displayName: 'Someone', username: '' };
+let eventsFor = ''; // (the space whose events are open)
+let eventsShown = ''; // (which were on, last drawn: drawn again when that changes)
+let eventEditing = null; // { spaceId, event } while planning one (event null) or changing one
+let eventStarting = null; // { id, spaceId, channelId } while the bar says it's starting
+let eventStartingTimer = 0;
+
+// One planned, changed, or said yes or no to; or cancelled.
+function onEvent(spaceId, event) {
+  const space = S.spaces.get(spaceId);
+  if (!space || !event) return;
+  space.events = [...(space.events || []).filter((e) => e.id !== event.id), event].sort((a, b) => a.startsAt - b.startsAt);
+  eventsChanged(spaceId);
+}
+
+function onEventGone(spaceId, id) {
+  const space = S.spaces.get(spaceId);
+  if (space) space.events = (space.events || []).filter((e) => e.id !== id);
+  if (eventStarting && eventStarting.id === id) hideEventBar();
+  if (eventEditing && eventEditing.event && eventEditing.event.id === id && el.eventEdit.open) {
+    el.eventEdit.close();
+    toast('That event was cancelled.');
+  }
+  eventsChanged(spaceId);
+}
+
+function eventsChanged(spaceId) {
+  if (S.view === spaceId) renderEventsEntry();
+  if (el.events.open && eventsFor === spaceId) renderEvents();
+}
+
+// Events, at the top of a space's channels.
+function renderEventsEntry() {
+  const space = S.view !== 'home' && S.spaces.get(S.view);
+  if (!space) return;
+  const list = comingEvents(space);
+  const on = list.filter((e) => eventOn(e)).length;
+  el.eventsCount.hidden = !list.length;
+  el.eventsCount.textContent = list.length > 99 ? '99+' : String(list.length);
+  el.eventsNow.hidden = !on;
+  el.eventsBtn.classList.toggle('open', el.events.open && eventsFor === space.id);
+  el.eventsBtn.setAttribute('aria-label', `Events${list.length ? ` (${list.length} coming up${on ? `, ${on} on now` : ''})` : ''}`);
+}
+
+// (Every half a minute: one starting or ending shows.)
+function eventsTick() {
+  if (S.view !== 'home') renderEventsEntry();
+  const space = el.events.open && S.spaces.get(eventsFor);
+  if (space && comingEvents(space).map((e) => `${e.id}:${eventOn(e)}`).join() !== eventsShown) renderEvents();
+}
+
+function openEvents(spaceId) {
+  const space = S.spaces.get(spaceId);
+  if (!space) return;
+  eventsFor = spaceId;
+  renderEvents();
+  if (!el.events.open) el.events.showModal();
+  renderEventsEntry();
+  // (Names, for who's going.)
+  if (!space.members) loadMembers(spaceId).then(() => { if (el.events.open && eventsFor === spaceId) renderEvents(); });
+}
+
+function renderEvents() {
+  const space = S.spaces.get(eventsFor);
+  if (!space) {
+    if (el.events.open) el.events.close();
+    return;
+  }
+  const list = comingEvents(space);
+  eventsShown = list.map((e) => `${e.id}:${eventOn(e)}`).join();
+  el.eventsTitle.textContent = `Events in ${space.name}`;
+  el.eventsNew.hidden = !canPlanIn(space);
+  // (Drawn again: the button that had the focus keeps it.)
+  const had = el.eventsList.contains(document.activeElement) && document.activeElement.dataset.act
+    ? [document.activeElement.closest('.event-card').dataset.id, document.activeElement.dataset.act] : null;
+  el.eventsList.replaceChildren(...list.map((e) => eventCard(space, e)));
+  if (had) {
+    const back = [...el.eventsList.querySelectorAll('[data-act]')].find((b) => b.dataset.act === had[1] && b.closest('.event-card').dataset.id === had[0]);
+    if (back) back.focus({ preventScroll: true });
+  }
+  el.eventsNone.hidden = list.length > 0;
+  el.eventsNone.textContent = canPlanIn(space) ? 'Nothing planned yet. Plan something!' : 'Nothing planned yet.';
+}
+
+// "Today · 7:00 PM – 9:00 PM", "Saturday · 7:00 PM", "Sat, Nov 22 · 7:00 PM": in your own time.
+function eventWhen(e) {
+  const today = new Date(serverNow());
+  today.setHours(0, 0, 0, 0);
+  const day = (d) => {
+    const that = new Date(d);
+    that.setHours(0, 0, 0, 0);
+    const n = Math.round((that - today) / 86_400_000);
+    if (n === 0) return 'Today';
+    if (n === 1) return 'Tomorrow';
+    if (n > 1 && n < 7) return d.toLocaleDateString([], { weekday: 'long' });
+    return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}) });
+  };
+  const time = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const start = new Date(e.startsAt);
+  if (!e.endsAt) return `${day(start)} · ${time(start)}`;
+  const end = new Date(e.endsAt);
+  return start.toDateString() === end.toDateString() ? `${day(start)} · ${time(start)} – ${time(end)}` : `${day(start)} ${time(start)} – ${day(end)} ${time(end)}`;
+}
+
+function eventCard(space, e) {
+  const li = document.createElement('li');
+  const on = eventOn(e);
+  li.className = `event-card${on ? ' on' : ''}`;
+  li.dataset.id = e.id;
+  const when = document.createElement('div');
+  when.className = 'event-when';
+  if (on) when.insertAdjacentHTML('beforeend', '<span class="event-live">On now</span>');
+  when.append(eventWhen(e));
+  const title = document.createElement('h3');
+  title.className = 'event-title';
+  title.textContent = e.title;
+  li.append(when, title);
+  // Where: one of its voice channels, or somewhere else.
+  const c = e.channelId && S.channels.get(e.channelId);
+  if (e.channelId || e.place) {
+    const where = document.createElement('div');
+    where.className = 'event-where';
+    where.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#${e.channelId ? 'i-speaker' : 'i-place'}"/></svg>`;
+    const words = document.createElement('span');
+    words.textContent = e.channelId ? (c ? c.name : "A voice channel you can't see") : e.place;
+    where.append(words);
+    li.append(where);
+  }
+  if (e.about) {
+    const about = document.createElement('p');
+    about.className = 'event-about';
+    about.textContent = e.about;
+    li.append(about);
+  }
+  // Who's going (and who might, or can't), and who planned it.
+  const people = document.createElement('div');
+  people.className = 'event-people';
+  const faces = document.createElement('span');
+  faces.className = 'event-faces';
+  faces.append(...e.going.slice(0, 6).map((id) => makeFace(personOf(id), null)));
+  const counts = document.createElement('span');
+  counts.textContent = [e.going.length && `${e.going.length} going`, e.maybe.length && `${e.maybe.length} maybe`, e.no.length && `${e.no.length} can't`]
+    .filter(Boolean).join(' · ') || "Nobody's said yet";
+  const names = (ids) => listNames(ids.map((id) => personOf(id).displayName || 'Someone'));
+  people.title = [e.going.length && `Going: ${names(e.going)}`, e.maybe.length && `Maybe: ${names(e.maybe)}`, e.no.length && `Can't: ${names(e.no)}`,
+    e.creatorId && `Planned by ${personOf(e.creatorId).displayName || 'someone'}`].filter(Boolean).join('\n');
+  people.append(...(e.going.length ? [faces] : []), counts);
+  li.append(people);
+  // Yours to say; and Change (its planner's, or a manager's), and Join (while it's on, in a voice
+  // channel you can join).
+  const mine = e.going.includes(S.clientId) ? 'going' : e.maybe.includes(S.clientId) ? 'maybe' : e.no.includes(S.clientId) ? 'no' : '';
+  const foot = document.createElement('div');
+  foot.className = 'event-foot';
+  const answers = document.createElement('div');
+  answers.className = 'event-answers';
+  answers.setAttribute('role', 'group');
+  answers.setAttribute('aria-label', 'Are you going?');
+  for (const [a, label] of [['going', 'Going'], ['maybe', 'Maybe'], ['no', "Can't"]]) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `event-answer ${a}`;
+    b.dataset.act = a;
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(mine === a));
+    b.addEventListener('click', () => answerEvent(e, mine === a ? '' : a));
+    answers.append(b);
+  }
+  const actions = document.createElement('div');
+  actions.className = 'event-actions';
+  if (mayChangeEvent(space, e)) {
+    const change = document.createElement('button');
+    change.type = 'button';
+    change.className = 'text-btn';
+    change.dataset.act = 'change';
+    change.textContent = 'Change';
+    change.addEventListener('click', () => openEventEdit(space.id, e));
+    actions.append(change);
+  }
+  if (on && c && c.can && c.can.connect && !(S.voice && S.voice.channelId === c.id)) {
+    const join = document.createElement('button');
+    join.type = 'button';
+    join.className = 'primary-btn small';
+    join.dataset.act = 'join';
+    join.textContent = 'Join';
+    join.addEventListener('click', () => joinEvent(space.id, c.id));
+    actions.append(join);
+  }
+  foot.append(answers, actions);
+  li.append(foot);
+  return li;
+}
+
+async function answerEvent(e, answer) {
+  try {
+    const { event } = await api('PUT', `/events/${e.id}/answer`, { answer });
+    onEvent(event.spaceId, event);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+async function joinEvent(spaceId, channelId) {
+  if (el.events.open) el.events.close();
+  hideEventBar();
+  if (S.view !== spaceId) await showSpace(spaceId);
+  joinVoice(channelId);
+}
+
+// ----- Planning one, or changing it -----
+
+const pad2 = (n) => String(n).padStart(2, '0');
+const dayValue = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const timeValue = (d) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+// A day ("2026-11-08") and a time ("19:30") here, as a Date (null if either isn't one).
+function localTime(day, time) {
+  const [y, m, d] = String(day || '').split('-').map(Number);
+  const [hh, mm] = String(time || '').split(':').map(Number);
+  return [y, m, d, hh, mm].every(Number.isFinite) && y > 0 ? new Date(y, m - 1, d, hh, mm) : null;
+}
+// The Monday (midnight, here) of a day's week.
+function mondayOf(d) {
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  day.setDate(day.getDate() - ((day.getDay() + 6) % 7));
+  return day;
+}
+
+function openEventEdit(spaceId, event = null) {
+  const space = S.spaces.get(spaceId);
+  if (!space) return;
+  eventEditing = { spaceId, event };
+  el.eventEditTitle.textContent = event ? 'Change the event' : 'Plan an event';
+  el.eventSave.textContent = event ? 'Save' : 'Plan it';
+  el.eventDelete.hidden = !event;
+  el.eventDelete.dataset.confirm = '';
+  el.eventDelete.textContent = 'Cancel the event';
+  el.eventError.hidden = true;
+  // Where: its voice channels (those you can see), or somewhere else.
+  const voice = space.channels.filter((c) => c.kind === 'voice' && !c.gated);
+  const options = voice.map((c) => new Option(c.name, c.id));
+  if (event && event.channelId && !voice.some((c) => c.id === event.channelId)) options.push(new Option("A voice channel you can't see", event.channelId));
+  options.push(new Option('Somewhere else', ''));
+  el.eventWhere.replaceChildren(...options);
+  // When: as it is, or the next whole hour.
+  const start = event ? new Date(event.startsAt) : new Date(serverNow() + 3_600_000);
+  if (!event) start.setMinutes(0, 0, 0);
+  el.eventName.value = event ? event.title : '';
+  el.eventDay.value = dayValue(start);
+  el.eventDay.min = dayValue(new Date(Math.min(serverNow(), event ? event.startsAt : Infinity)));
+  el.eventDay.max = dayValue(new Date(serverNow() + 365 * 86_400_000));
+  el.eventStart.value = timeValue(start);
+  el.eventEnd.value = event && event.endsAt ? timeValue(new Date(event.endsAt)) : '';
+  el.eventWhere.value = event ? event.channelId || '' : voice.length ? voice[0].id : '';
+  el.eventPlace.value = event ? event.place : '';
+  el.eventAbout.value = event ? event.about : '';
+  syncEventPlace();
+  freeWeek.start = mondayOf(start);
+  if (!el.eventEdit.open) el.eventEdit.showModal();
+  loadFreeWeek(spaceId);
+  if (!space.members) loadMembers(spaceId).then(() => renderFreeWeek());
+  if (!isPhone() && !event) el.eventName.focus({ preventScroll: true });
+}
+
+function syncEventPlace() {
+  el.eventPlaceField.hidden = Boolean(el.eventWhere.value);
+}
+
+function showEventError(text) {
+  el.eventError.textContent = text;
+  el.eventError.hidden = false;
+}
+
+async function onEventSave(e) {
+  e.preventDefault();
+  const ed = eventEditing;
+  if (!ed) return;
+  const start = localTime(el.eventDay.value, el.eventStart.value);
+  if (!start) return showEventError('Pick a day, and when it starts.');
+  // (Its start, left as it was: as it was to the millisecond, even if that's gone by.)
+  const was = ed.event && new Date(ed.event.startsAt);
+  const startsAt = was && dayValue(was) === el.eventDay.value && timeValue(was) === el.eventStart.value ? ed.event.startsAt : start.getTime();
+  let endsAt = null;
+  if (el.eventEnd.value) {
+    const end = localTime(el.eventDay.value, el.eventEnd.value);
+    if (!end || end.getTime() === start.getTime()) return showEventError('It has to end after it starts.');
+    if (end < start) end.setDate(end.getDate() + 1); // (past midnight: the next day)
+    endsAt = end.getTime();
+  }
+  const where = el.eventWhere.value;
+  const body = { title: el.eventName.value, startsAt, endsAt, channelId: where || null, place: where ? '' : el.eventPlace.value, about: el.eventAbout.value };
+  el.eventSave.disabled = true;
+  el.eventError.hidden = true;
+  try {
+    const { event } = ed.event ? await api('PUT', `/events/${ed.event.id}`, body) : await api('POST', `/spaces/${ed.spaceId}/events`, body);
+    onEvent(event.spaceId, event);
+    eventEditing = null;
+    el.eventEdit.close();
+    if (!ed.event) openEvents(event.spaceId); // (to see it there)
+  } catch (err) {
+    showEventError(err.message);
+  } finally {
+    el.eventSave.disabled = false;
+  }
+}
+
+// Cancelling it, for everyone: asked first.
+async function onEventDelete() {
+  const ed = eventEditing;
+  if (!ed || !ed.event) return;
+  if (el.eventDelete.dataset.confirm !== 'yes') {
+    el.eventDelete.dataset.confirm = 'yes';
+    el.eventDelete.textContent = 'Cancel it for everyone?';
+    return;
+  }
+  try {
+    await api('DELETE', `/events/${ed.event.id}`);
+    eventEditing = null;
+    onEventGone(ed.spaceId, ed.event.id);
+    el.eventEdit.close();
+  } catch (err) {
+    showEventError(err.message);
+  }
+}
+
+// ----- Who's free -----
+// The members' free times (those who've said), a week at a time, in your own time: each hour as
+// bright as how many are free then, with who on hover. A click on one picks it (keeping how long it
+// was to be). Their hours are in their own time zones, so each hour here is looked up in each of
+// theirs (summer time and all).
+
+const freeWeek = { spaceId: '', start: new Date(), list: null, members: 0 };
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const zoneFormats = new Map();
+// Which of someone's free hours (Monday midnight first, in time zone tz) a moment's in (-1: a time
+// zone this browser doesn't know).
+function hourIn(tz, t) {
+  if (!zoneFormats.has(tz)) {
+    let f = null;
+    try {
+      f = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: 'numeric', hourCycle: 'h23' });
+    } catch {}
+    zoneFormats.set(tz, f);
+  }
+  const f = zoneFormats.get(tz);
+  if (!f) return -1;
+  const parts = f.formatToParts(t);
+  const day = WEEKDAYS.indexOf((parts.find((p) => p.type === 'weekday') || {}).value);
+  const hour = Number((parts.find((p) => p.type === 'hour') || {}).value) % 24;
+  return day < 0 || !Number.isFinite(hour) ? -1 : day * 24 + hour;
+}
+const hourName = (h) => new Date(2000, 0, 1, h).toLocaleTimeString([], { hour: 'numeric' });
+// (Hour h of day d, Monday first, of the week shown.)
+const freeSlot = (d, h) => new Date(freeWeek.start.getFullYear(), freeWeek.start.getMonth(), freeWeek.start.getDate() + d, h);
+
+async function loadFreeWeek(spaceId) {
+  freeWeek.spaceId = spaceId;
+  freeWeek.list = null;
+  renderFreeWeek();
+  let r = null;
+  try {
+    r = await api('GET', `/spaces/${spaceId}/free-times`);
+  } catch {}
+  if (freeWeek.spaceId !== spaceId) return;
+  freeWeek.list = r ? r.free : [];
+  freeWeek.members = r ? r.members : 0;
+  renderFreeWeek();
+}
+
+function renderFreeWeek() {
+  if (!eventEditing) return;
+  const list = freeWeek.list || [];
+  const start = freeWeek.start;
+  const thisWeek = mondayOf(new Date(serverNow()));
+  const weeks = Math.round((start - thisWeek) / (7 * 86_400_000));
+  const last = freeSlot(6, 0);
+  el.freeWeekLabel.textContent = weeks === 0 ? 'This week' : weeks === 1 ? 'Next week'
+    : `${start.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${last.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+  el.freeWeekPrev.disabled = weeks <= 0;
+  el.freeWeekNext.disabled = weeks >= 52;
+  const zones = new Map();
+  for (const f of list) {
+    if (!zones.has(f.tz)) zones.set(f.tz, []);
+    zones.get(f.tz).push(f);
+  }
+  const picked = localTime(el.eventDay.value, el.eventStart.value);
+  const now = serverNow();
+  const cells = [document.createElement('span')];
+  for (let d = 0; d < 7; d++) {
+    const day = document.createElement('span');
+    day.className = 'free-day';
+    const date = freeSlot(d, 0);
+    day.textContent = `${date.toLocaleDateString([], { weekday: 'short' })} ${date.getDate()}`;
+    cells.push(day);
+  }
+  for (let h = 0; h < 24; h++) {
+    const label = document.createElement('span');
+    label.className = 'free-hour';
+    label.textContent = h % 3 === 0 ? hourName(h) : '';
+    cells.push(label);
+    for (let d = 0; d < 7; d++) {
+      const t = freeSlot(d, h);
+      const free = [];
+      for (const [tz, people] of zones) {
+        const k = hourIn(tz, t);
+        if (k >= 0) for (const p of people) if (p.hours[k] === '1') free.push(p.id);
+      }
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'free-cell';
+      b.dataset.t = String(t.getTime());
+      b.style.setProperty('--heat', list.length ? (free.length / list.length).toFixed(3) : '0');
+      b.disabled = t.getTime() + 3_600_000 <= now; // (gone by)
+      if (picked && t <= picked && picked < t.getTime() + 3_600_000) b.classList.add('picked');
+      const who = free.map((id) => personOf(id).displayName || 'Someone').sort((x, y) => x.localeCompare(y));
+      b.title = `${t.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}, ${hourName(h)}: `
+        + (list.length ? `${free.length} of ${list.length} free${who.length ? ` (${listNames(who)})` : ''}` : 'nobody has said');
+      b.setAttribute('aria-label', b.title);
+      cells.push(b);
+    }
+  }
+  el.freeWeek.replaceChildren(...cells);
+  el.freeWeekNote.replaceChildren(freeWeek.list === null ? "Finding who's free…"
+    : !list.length ? "Nobody here has said when they're usually free yet. "
+      : `${list.length} of ${freeWeek.members} people here have said when they're usually free: the brighter an hour, the more of them are free then. `);
+  if (freeWeek.list !== null && !list.some((f) => f.id === S.clientId)) {
+    const yours = document.createElement('button');
+    yours.type = 'button';
+    yours.className = 'text-btn';
+    yours.textContent = 'Say when you are';
+    yours.addEventListener('click', openFreeTimes);
+    el.freeWeekNote.append(yours);
+  }
+}
+
+// An hour picked: it starts then (and ends as long after as it was to).
+function onFreeWeekPick(e) {
+  const b = e.target.closest('.free-cell');
+  if (!b || b.disabled) return;
+  const t = new Date(Number(b.dataset.t));
+  const before = localTime(el.eventDay.value, el.eventStart.value);
+  const end = before && el.eventEnd.value ? localTime(el.eventDay.value, el.eventEnd.value) : null;
+  let length = end ? end - before : 0;
+  if (length < 0) length += 86_400_000;
+  el.eventDay.value = dayValue(t);
+  el.eventStart.value = timeValue(t);
+  if (length) el.eventEnd.value = timeValue(new Date(t.getTime() + length));
+  renderFreeWeek();
+}
+
+// ----- Your free times -----
+// The hours of the week you're usually free (in your time zone, or the one you set them in), for
+// people in your spaces to see when they plan. Dragged across, a box of hours is marked (or
+// unmarked, starting on a marked one), as on When2meet; a day's name or an hour marks (or unmarks)
+// all of it; from the keyboard, the arrow keys and Space.
+
+let freeDraft = '0'.repeat(168);
+let freeTz = '';
+let freePaint = null; // { from, value, before } while dragging
+const hereTz = () => myTz() || 'UTC';
+
+async function openFreeTimes() {
+  freeDraft = '0'.repeat(168);
+  freeTz = hereTz();
+  buildFreeEdit();
+  renderFreeEdit();
+  if (!el.freeTimes.open) el.freeTimes.showModal();
+  try {
+    const { free } = await api('GET', '/me/free-times');
+    if (free) {
+      freeDraft = free.hours;
+      freeTz = free.tz;
+    }
+  } catch {}
+  renderFreeEdit();
+}
+
+function buildFreeEdit() {
+  if (el.freeEdit.childElementCount) return;
+  const dayName = (d, weekday) => new Date(2024, 0, 1 + d).toLocaleDateString([], { weekday }); // (Jan 1, 2024: a Monday)
+  const cells = [document.createElement('span')];
+  for (let d = 0; d < 7; d++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'free-day';
+    b.dataset.day = String(d);
+    b.textContent = dayName(d, 'short');
+    b.title = `All of ${dayName(d, 'long')}`;
+    cells.push(b);
+  }
+  for (let h = 0; h < 24; h++) {
+    const label = document.createElement('button');
+    label.type = 'button';
+    label.className = 'free-hour';
+    label.dataset.hour = String(h);
+    label.textContent = hourName(h);
+    label.title = `${hourName(h)} every day`;
+    cells.push(label);
+    for (let d = 0; d < 7; d++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'free-cell';
+      b.dataset.i = String(d * 24 + h);
+      b.tabIndex = d === 0 && h === 0 ? 0 : -1;
+      b.setAttribute('aria-label', `${dayName(d, 'long')}, ${hourName(h)}`);
+      cells.push(b);
+    }
+  }
+  el.freeEdit.replaceChildren(...cells);
+}
+
+function renderFreeEdit() {
+  for (const b of el.freeEdit.querySelectorAll('.free-cell')) {
+    const on = freeDraft[Number(b.dataset.i)] === '1';
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', String(on));
+  }
+  const tz = freeTz.replace(/_/g, ' ');
+  el.freeTz.textContent = freeTz === hereTz() ? `In your time zone (${tz}).` : `In ${tz} time, where you set them. (This device is on ${hereTz().replace(/_/g, ' ')} time.)`;
+}
+
+// From the hour the drag began on to this one: a box of hours, all marked (or all unmarked).
+function paintFree(to) {
+  const p = freePaint;
+  const [d0, h0, d1, h1] = [Math.floor(p.from / 24), p.from % 24, Math.floor(to / 24), to % 24];
+  const hours = p.before.split('');
+  for (let d = Math.min(d0, d1); d <= Math.max(d0, d1); d++) for (let h = Math.min(h0, h1); h <= Math.max(h0, h1); h++) hours[d * 24 + h] = p.value;
+  freeDraft = hours.join('');
+  renderFreeEdit();
+}
+
+// (These hours: all marked, unless they all are already: then unmarked.)
+function toggleFree(indexes) {
+  const value = indexes.every((i) => freeDraft[i] === '1') ? '0' : '1';
+  const hours = freeDraft.split('');
+  for (const i of indexes) hours[i] = value;
+  freeDraft = hours.join('');
+  renderFreeEdit();
+}
+
+function onFreeEditKey(e) {
+  const b = e.target.closest('.free-cell');
+  if (!b) return;
+  const i = Number(b.dataset.i);
+  const to = { ArrowUp: i - 1, ArrowDown: i + 1, ArrowLeft: i - 24, ArrowRight: i + 24 }[e.key];
+  if (to === undefined) return;
+  e.preventDefault();
+  const sameDay = e.key === 'ArrowUp' || e.key === 'ArrowDown' ? Math.floor(to / 24) === Math.floor(i / 24) : true;
+  const next = sameDay && to >= 0 && to < 168 && el.freeEdit.querySelector(`.free-cell[data-i="${to}"]`);
+  if (!next) return;
+  b.tabIndex = -1;
+  next.tabIndex = 0;
+  next.focus();
+}
+
+async function onFreeSave(e) {
+  e.preventDefault();
+  el.freeSave.disabled = true;
+  try {
+    await api('PUT', '/me/free-times', { tz: freeTz, hours: freeDraft });
+    el.freeTimes.close();
+    toast(freeDraft.includes('1') ? 'Your free times are saved.' : 'Your free times are cleared.');
+    if (eventEditing && freeWeek.spaceId) loadFreeWeek(freeWeek.spaceId);
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    el.freeSave.disabled = false;
+  }
+}
+
+// ----- Starting -----
+// One you're going to (or might): a bar over the top (with Join, if it's in a voice channel you can
+// join), a chime, and the desktop or Android app's notification. Gone after ten minutes.
+
+function onEventStart(spaceId, event) {
+  onEvent(spaceId, event);
+  const space = S.spaces.get(spaceId);
+  const c = event.channelId && S.channels.get(event.channelId);
+  const canJoin = Boolean(c && c.can && c.can.connect);
+  eventStarting = { id: event.id, spaceId, channelId: canJoin ? c.id : '' };
+  el.eventBarTitle.textContent = `${event.title} is starting`;
+  el.eventBarSub.textContent = [c ? `#${c.name}` : event.place, space && space.name].filter(Boolean).join(' · ');
+  el.eventBarJoin.hidden = !canJoin || Boolean(S.voice && S.voice.channelId === c.id);
+  el.eventBar.hidden = false;
+  barOverDialogs();
+  playChime();
+  appNotify({ title: el.eventBarTitle.textContent, body: el.eventBarSub.textContent || 'On Rainlit' });
+  clearTimeout(eventStartingTimer);
+  eventStartingTimer = setTimeout(hideEventBar, 10 * 60_000);
+}
+
+function hideEventBar() {
+  clearTimeout(eventStartingTimer);
+  eventStarting = null;
+  el.eventBar.hidden = true;
+}
+
+// (A box open, like Settings, leaves everything else out of reach: the bar goes in the topmost,
+// so Join can be pressed, and back out when it closes.)
+function barOverDialogs() {
+  const top = [...document.querySelectorAll('dialog[open]')].filter((d) => d.matches(':modal')).pop();
+  const host = top || document.body;
+  if (el.eventBar.parentNode !== host) host.append(el.eventBar);
+}
+
 // ----- Roles -----
 
 const PERM_INFO = [
@@ -12633,9 +13261,11 @@ const PERM_INFO = [
   ['mentionEveryone', 'Mention @everyone', 'Notify everyone who can see a channel at once.'],
   ['manageEmoji', 'Manage emoji', "Add, rename and delete the space's own emoji."],
   ['manageSoundboard', 'Manage soundboard', "Add, change and delete the space's own sounds."],
+  ['manageEvents', 'Manage events', "Change and cancel anyone's events."],
   ['connect', 'Join voice channels', ''],
   ['speak', 'Talk in voice channels', 'And share their camera or screen there.'],
   ['soundboard', 'Use the soundboard', 'Play sounds for everyone in the voice channels they can talk in.'],
+  ['events', 'Plan events', 'Plan events for everyone here, and change or cancel their own.'],
   ['invite', 'Invite people', 'Make invite links.'],
   ['send', 'Send messages', ''],
   ['files', 'Send files', ''],
@@ -19332,6 +19962,63 @@ async function init() {
     if (dm) jumpToNewest(dm);
   });
   el.addVoiceBtn.addEventListener('click', () => startNewChannel('voice'));
+  // (Events: openEvents, openEventEdit, renderFreeWeek, openFreeTimes, onEventStart.)
+  el.eventsBtn.addEventListener('click', () => openEvents(S.view));
+  el.events.addEventListener('close', renderEventsEntry);
+  el.eventsNew.addEventListener('click', () => openEventEdit(eventsFor));
+  el.eventsFree.addEventListener('click', openFreeTimes);
+  el.freeTimesBtn.addEventListener('click', openFreeTimes);
+  el.eventEditForm.addEventListener('submit', onEventSave);
+  el.eventEdit.addEventListener('close', () => { eventEditing = null; });
+  el.eventDelete.addEventListener('click', onEventDelete);
+  el.eventWhere.addEventListener('change', syncEventPlace);
+  el.eventDay.addEventListener('change', () => {
+    const d = localTime(el.eventDay.value, '00:00');
+    if (d) freeWeek.start = mondayOf(d);
+    renderFreeWeek();
+  });
+  el.eventStart.addEventListener('change', renderFreeWeek);
+  const weekBy = (n) => () => {
+    freeWeek.start = new Date(freeWeek.start.getFullYear(), freeWeek.start.getMonth(), freeWeek.start.getDate() + 7 * n);
+    renderFreeWeek();
+  };
+  el.freeWeekPrev.addEventListener('click', weekBy(-1));
+  el.freeWeekNext.addEventListener('click', weekBy(1));
+  el.freeWeek.addEventListener('click', onFreeWeekPick);
+  el.freeTimesForm.addEventListener('submit', onFreeSave);
+  el.freeClear.addEventListener('click', () => {
+    freeDraft = '0'.repeat(168);
+    renderFreeEdit();
+  });
+  el.freeEdit.addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.free-cell');
+    if (!b || e.button !== 0) return;
+    e.preventDefault();
+    const i = Number(b.dataset.i);
+    freePaint = { from: i, value: freeDraft[i] === '1' ? '0' : '1', before: freeDraft };
+    el.freeEdit.setPointerCapture(e.pointerId);
+    paintFree(i);
+  });
+  el.freeEdit.addEventListener('pointermove', (e) => {
+    if (!freePaint) return;
+    const at = document.elementFromPoint(e.clientX, e.clientY);
+    const b = at && at.closest && at.closest('.free-cell');
+    if (b && el.freeEdit.contains(b)) paintFree(Number(b.dataset.i));
+  });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) el.freeEdit.addEventListener(type, () => { freePaint = null; });
+  el.freeEdit.addEventListener('click', (e) => {
+    const cell = e.target.closest('.free-cell');
+    const day = e.target.closest('.free-day');
+    const hour = e.target.closest('.free-hour');
+    if (cell && e.detail === 0) toggleFree([Number(cell.dataset.i)]); // (from the keyboard: a pointer's was on pointerdown)
+    else if (day) toggleFree(Array.from({ length: 24 }, (_, h) => Number(day.dataset.day) * 24 + h));
+    else if (hour) toggleFree(Array.from({ length: 7 }, (_, d) => d * 24 + Number(hour.dataset.hour)));
+  });
+  el.freeEdit.addEventListener('keydown', onFreeEditKey);
+  el.eventBarJoin.addEventListener('click', () => { if (eventStarting && eventStarting.channelId) joinEvent(eventStarting.spaceId, eventStarting.channelId); });
+  el.eventBarX.addEventListener('click', hideEventBar);
+  document.addEventListener('close', (e) => { if (e.target.contains && e.target.contains(el.eventBar)) setTimeout(barOverDialogs); }, true);
+  setInterval(eventsTick, 30_000);
   // (A space's name, and who's in its voice channels, over its icon: renderRailTip.)
   el.railSpaces.addEventListener('pointerover', (e) => {
     const b = e.target.closest('.rail-space');
@@ -19621,7 +20308,7 @@ async function init() {
   // needs an answer: 18+, an announcement, sharing what you're doing).
   el.whatsNew.addEventListener('close', onWhatsNewClosed);
   el.whatsNewBtn.addEventListener('click', openWhatsNew);
-  for (const d of [el.whatsNew, el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim]) {
+  for (const d of [el.whatsNew, el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim, el.events, el.eventEdit, el.freeTimes]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 

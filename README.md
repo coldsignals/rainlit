@@ -376,6 +376,15 @@ at the top closes it (on a phone, the back arrow).
   one stops your last), and "Use the soundboard" is a permission (everyone has
   it to start with). Set how loud they are for
   you, or turn them off, in settings.
+- **Events:** at the top of a space's channels. Plan one (a name, when, one of
+  its voice channels or somewhere else, and a little about it) and everyone in
+  the space sees it, in their own time, and says Going, Maybe or Can't. While
+  you plan, **Who's free** shows the week, each hour as bright as how many people
+  are usually free then (from their **free times**: the hours of the week each
+  person marks, in Settings or by Events, in their own time zone); click an hour
+  to pick it. When one starts, those going (or maybe) are told, with **Join** if
+  it's in a voice channel. "Plan events" is a permission (everyone has it to
+  start with), and "Manage events" changes or cancels anyone's.
 - **Voice channels:** click one to join it and see everyone there (their
   cameras and shared screens, big when you click them). Off looking at a text
   channel, **Open** by it (and in the "Voice connected" panel) takes you back.
