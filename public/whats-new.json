@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-01b",
+      "date": "2026-11-01",
+      "title": "Twemoji, and events that repeat",
+      "items": [
+        {
+          "title": "Emoji that look the same everywhere",
+          "text": "Rainlit now uses Twemoji for every emoji, so they look the same on every device, and the newest ones never show up as empty boxes. The emoji picker has them all too. Rather have your device's own? Turn on \"Use my device's emoji\" in Settings.",
+          "media": "/whats-new/2026-11-01b-emoji.webp"
+        },
+        {
+          "title": "Events that repeat",
+          "text": "Events can now repeat every week, every 2 weeks or every month. Past events have their own tab, with Plan again to set one up again in a click."
+        }
+      ]
+    },
+    {
       "id": "2026-11-01",
       "date": "2026-11-01",
       "title": "Events",
