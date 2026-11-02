@@ -7206,6 +7206,8 @@ const between = (a, b) => a + Math.random() * (b - a);
 let weather = 'rain';
 let rainColor = '183, 196, 217'; // (the theme's --rain)
 let rainDpr = 1;
+let rainW = 0; // (its canvas's size, as last sized: what it's drawn in)
+let rainH = 0;
 let rainDrops = [];
 let rainLast = 0;
 let rainStopAt = 0;
@@ -7214,7 +7216,7 @@ function updateRain() {
   const want = S.rain && !S.inCall;
   el.rain.classList.toggle('on', want);
   if (want && !S.rainFrame) {
-    sizeRain();
+    sizeRain(true);
     rainLast = performance.now();
     S.rainFrame = requestAnimationFrame(rainStep);
   }
@@ -7229,20 +7231,38 @@ function setWeather(kind) {
   el.weatherName.textContent = WEATHER[next].name;
   if (next === weather) return;
   weather = next;
-  if (S.rainFrame) sizeRain();
+  if (S.rainFrame) sizeRain(true);
 }
 
-function sizeRain() {
+// Its canvas, the size of the window it covers (its own box: on an iPhone, the keyboard coming up
+// makes innerHeight shorter without saying so, which once left a band of rain frozen while you
+// typed; there, its box stays). fresh: new drops all over (starting, or another kind of weather);
+// otherwise (the window resized: a phone's keyboard, say) they're kept where they are, with more
+// or fewer for the room there is now.
+function sizeRain(fresh = false) {
   const dpr = Math.min(devicePixelRatio || 1, 1.5);
-  const w = innerWidth;
-  const h = innerHeight;
+  const w = el.rain.clientWidth || innerWidth;
+  const h = el.rain.clientHeight || innerHeight;
   rainDpr = dpr;
+  rainW = w;
+  rainH = h;
   el.rain.width = Math.round(w * dpr);
   el.rain.height = Math.round(h * dpr);
   el.rain.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
   const W = WEATHER[weather];
   const count = Math.max(W.min, Math.min(W.max, Math.round((w * h) / W.per)));
-  rainDrops = Array.from({ length: count }, () => newDrop(w, h, true));
+  if (fresh || !rainDrops.length) rainDrops = Array.from({ length: count }, () => newDrop(w, h, true));
+  else if (rainDrops.length > count) rainDrops.length = count;
+  else while (rainDrops.length < count) rainDrops.push(newDrop(w, h, true));
+}
+// (Its box changing size, once a frame at most.)
+let rainResized = 0;
+function rainBoxChanged() {
+  if (rainResized || !S.rainFrame) return;
+  rainResized = requestAnimationFrame(() => {
+    rainResized = 0;
+    if (S.rainFrame && (el.rain.clientWidth !== rainW || el.rain.clientHeight !== rainH)) sizeRain();
+  });
 }
 
 function newDrop(w, h, anywhere) {
@@ -7292,10 +7312,10 @@ function rainStep(now) {
   S.rainFrame = requestAnimationFrame(rainStep);
   const dt = Math.min(0.05, (now - rainLast) / 1000); // after a pause, don't jump
   rainLast = now;
-  const w = innerWidth;
-  const h = innerHeight;
+  const w = rainW;
+  const h = rainH;
   const ctx = el.rain.getContext('2d');
-  ctx.clearRect(0, 0, w, h);
+  ctx.clearRect(0, 0, el.rain.width / rainDpr, el.rain.height / rainDpr); // (all of it)
   if (WEATHER[weather].layers) drawRain(ctx, dt, w, h);
   else if (weather === 'fireflies') drawFireflies(ctx, dt, w, h, now / 1000);
   else drawDrifting(ctx, dt, w, h, now / 1000);
@@ -21073,7 +21093,8 @@ async function init() {
   renderControls();
   showTheme();
   updateRain();
-  addEventListener('resize', () => { if (S.rainFrame) sizeRain(); });
+  addEventListener('resize', rainBoxChanged);
+  if (typeof ResizeObserver === 'function') new ResizeObserver(rainBoxChanged).observe(el.rain);
   // The desktop app hears the talk key while you're in another app, and tells us.
   if (DESKTOP) DESKTOP.onPushToTalk((held) => { if (S.inCall || S.voice) setPttHeld(held); });
   initWindowSharing();
