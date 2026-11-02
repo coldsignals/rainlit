@@ -18215,7 +18215,14 @@ const dewUpgradeIcon = (u) => (u.of ? u.of : u.boost ? 'drop' : u.happy ? 'heart
 function renderDewUpgrades() {
   const d = S.dew;
   const ready = S.dewShop.upgrades.filter((u) => !d.upgrades.includes(u.key) && dewReady(u)).sort((a, b) => a.cost - b.cost);
-  const items = ready.map((u) => {
+  const have = d.upgrades.length;
+  const none = have ? `You've ${have} of ${S.dewShop.upgrades.length} so far. More come along as you pat it, get more to collect it with, and catch drops.` : 'They come along as you pat it, get things to collect it with, and catch drops.';
+  keyedList(el.dewUpgrades, ready.length ? ready : [null], (u) => (u ? u.key : 'none'), (u) => {
+    if (!u) {
+      const p = document.createElement('p');
+      p.className = 'pet-note';
+      return p;
+    }
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'dew-upgrade';
@@ -18232,15 +18239,25 @@ function renderDewUpgrades() {
     b.setAttribute('aria-label', `${u.label}: ${u.about} ${dewWords(u.cost)} dew`);
     b.addEventListener('click', () => buyDew('upgrades', u.key));
     return b;
+  }, (n, u) => { if (!u && n.textContent !== none) n.textContent = none; });
+}
+
+// (A list drawn again in place: each thing's element made once, then kept and brought up to date,
+// so a click halfway done as it's drawn again (every second or so, while patting) isn't lost.)
+function keyedList(box, items, keyOf, make, update) {
+  const had = new Map([...box.children].filter((n) => n.dataset.key).map((n) => [n.dataset.key, n]));
+  const nodes = items.map((it) => {
+    const k = keyOf(it);
+    let n = had.get(k);
+    if (!n) {
+      n = make(it);
+      n.dataset.key = k;
+    }
+    update(n, it);
+    return n;
   });
-  if (!items.length) {
-    const none = document.createElement('p');
-    none.className = 'pet-note';
-    const have = d.upgrades.length;
-    none.textContent = have ? `You've ${have} of ${S.dewShop.upgrades.length} so far. More come along as you pat it, get more to collect it with, and catch drops.` : 'They come along as you pat it, get things to collect it with, and catch drops.';
-    items.push(none);
-  }
-  el.dewUpgrades.replaceChildren(...items);
+  nodes.forEach((n, i) => { if (box.children[i] !== n) box.insertBefore(n, box.children[i] || null); });
+  for (const extra of [...box.children].slice(nodes.length)) extra.remove();
 }
 
 // What collects it: what you've got, and the next to get (the rest come into sight as you go).
@@ -18250,34 +18267,36 @@ function renderDewCollectors() {
   const owned = (k) => Number(d.collectors[k]) || 0;
   let last = -1;
   shop.collectors.forEach((c, i) => { if (owned(c.key)) last = i; });
-  el.dewCollectors.replaceChildren(...shop.collectors.filter((c, i) => i <= Math.max(1, last + 1)).map((c) => {
-    const n = owned(c.key);
-    const price = Math.ceil(c.cost * shop.moreEach ** n);
-    const doubled = shop.upgrades.filter((u) => u.double && u.of === c.key && d.upgrades.includes(u.key)).length;
-    const each = c.rate * 2 ** doubled * (d.boost || 1) * (1 + d.happyMore);
+  keyedList(el.dewCollectors, shop.collectors.filter((c, i) => i <= Math.max(1, last + 1)), (c) => c.key, (c) => {
     const row = document.createElement('div');
     row.className = 'dew-row';
     const icon = document.createElement('i');
     icon.className = 'dew-icon';
     icon.style.backgroundImage = `url("${Homepage.dewIcon(c.key)}")`;
     const words = document.createElement('div');
-    const name = document.createElement('strong');
-    name.textContent = n ? `${n} ${n === 1 ? c.label : c.many}` : c.label;
-    const about = document.createElement('span');
-    about.textContent = n ? `${dewWords(n * each)} a second` : `${c.about} ${dewWords(each)} a second.`;
-    words.append(name, about);
+    words.append(document.createElement('strong'), document.createElement('span'));
     const buy = document.createElement('button');
     buy.type = 'button';
     buy.className = 'dew-buy';
-    buy.dataset.dewPrice = String(price);
     const drop = document.createElement('i');
     drop.className = 'dew-drop';
-    buy.append(drop, dewWords(price));
-    buy.setAttribute('aria-label', `Get ${n ? 'another' : 'a'} ${c.label.toLowerCase()} for ${dewWords(price)} dew`);
+    buy.append(drop, document.createTextNode(''));
     buy.addEventListener('click', () => buyDew('collectors', c.key));
     row.append(icon, words, buy);
     return row;
-  }));
+  }, (row, c) => {
+    const n = owned(c.key);
+    const price = Math.ceil(c.cost * shop.moreEach ** n);
+    const doubled = shop.upgrades.filter((u) => u.double && u.of === c.key && d.upgrades.includes(u.key)).length;
+    const each = c.rate * 2 ** doubled * (d.boost || 1) * (1 + d.happyMore) * (1 + (d.milestoneMore || 0));
+    const set = (node, text) => { if (node.textContent !== text) node.textContent = text; };
+    set(row.querySelector('strong'), n ? `${n} ${n === 1 ? c.label : c.many}` : c.label);
+    set(row.querySelector('div > span'), n ? `${dewWords(n * each)} a second` : `${c.about} ${dewWords(each)} a second.`);
+    const buy = row.querySelector('.dew-buy');
+    buy.dataset.dewPrice = String(price);
+    set(buy.lastChild, dewWords(price));
+    buy.setAttribute('aria-label', `Get ${n ? 'another' : 'a'} ${c.label.toLowerCase()} for ${dewWords(price)} dew`);
+  });
 }
 
 // ----- Drops (lib/dew.js DROPS) -----

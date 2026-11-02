@@ -3287,6 +3287,8 @@ button.person.open { background: var(--dusk-hi); }
 .dew-row strong { display: block; font: 400 13px/1.2 Silkscreen, var(--font, sans-serif); letter-spacing: 0.02em; }
 .dew-row span { display: block; color: var(--mist); font-size: 12.5px; line-height: 1.35; }
 .dew-buy { justify-content: center; min-width: 96px; font: 400 12.5px/1 Silkscreen, var(--font, sans-serif); }
+/* (Their words aren't to select, or to put a text cursor in: a click is a click.) */
+.dew-buy, .dew-upgrade { -webkit-user-select: none; user-select: none; }
 .dew-rainbow {
   position: absolute; z-index: 1000; left: calc(var(--px) * 21); top: calc(var(--px) * 4); width: calc(var(--px) * 5); height: calc(var(--px) * 5);
   padding: 0; border: 0; border-radius: 0; background: var(--dew-rainbow) center / contain no-repeat; image-rendering: pixelated; cursor: pointer;
