@@ -654,6 +654,12 @@
   </div>
 
   <canvas id="rain" class="rain" aria-hidden="true"></canvas>
+  <!-- A milestone reached, said like a games console's achievement (app.js sayMilestones): over
+       everything, a box that's open too (a popover, in the top layer). -->
+  <div id="achievement" class="achievement" popover="manual" role="status" aria-live="polite">
+    <i class="ach-badge" aria-hidden="true"><i id="ach-icon" class="dew-icon"></i></i>
+    <span class="ach-words"><small id="ach-kind">Milestone reached</small><strong id="ach-name"></strong></span>
+  </div>
   <!-- Drops falling anywhere, for anyone who's asked for them (app.js showRainbow, dropSky). -->
   <div id="drop-sky" class="drop-sky"></div>
   <div id="starting" class="starting" role="status" hidden>
@@ -1951,8 +1957,6 @@
         <p id="pet-dew" class="pet-dew" title="Dew: pat your pet for it" hidden><i class="dew-drop" aria-hidden="true"></i><span id="pet-dew-n">0</span></p>
         <!-- (Boosts going, from drops caught: app.js renderDewBoosts.) -->
         <div id="dew-boosts" class="dew-boosts" hidden></div>
-        <!-- (A milestone just reached: app.js sayMilestones.) -->
-        <p id="dew-news" class="dew-news" role="status" hidden></p>
       </div>
       <nav class="pet-tabs" role="tablist" aria-label="Your pet">
         <button class="pet-tab" type="button" role="tab" data-pet-tab="care">Care</button>

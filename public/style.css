@@ -3381,14 +3381,36 @@ button.person.open { background: var(--dusk-hi); }
 .dew-milestone.secret::after { content: "?"; position: absolute; color: var(--mist); font: 400 13px/1 Silkscreen, var(--font, sans-serif); }
 .dew-milestone:hover, .dew-milestone:focus-visible { border-color: var(--lamp); outline: none; }
 .dew-milestone-said { min-height: 1.4em; margin: 6px 0 0; }
-.dew-news {
-  position: absolute; left: 50%; top: 8px; z-index: 1002; margin: 0; padding: 5px 10px; translate: -50% 0; pointer-events: none;
-  border: 2px solid #2a1f33; background: rgba(20, 24, 38, 0.88); box-shadow: inset 0 0 0 1px #ffd23a;
-  color: #fff4b0; font: 400 13px/1.2 Silkscreen, var(--font, sans-serif); white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis;
+/* A milestone reached (app.js sayMilestones), as a games console says an achievement: near the
+   bottom, over everything; its picture in a circle that pops in, the pill opening out from it to say
+   which, then closing back into it and fading. */
+.achievement {
+  position: fixed; inset: auto auto 72px 50%; translate: -50% 0; margin: 0; padding: 0; border: 0; background: transparent; overflow: visible;
+  display: none; pointer-events: none; color: #f4f2fa;
 }
-.dew-news[hidden] { display: none; }
-.dew-news.in { animation: dew-news 4.2s ease-out forwards; }
-@keyframes dew-news { 0% { opacity: 0; transform: translateY(-6px); } 8%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.achievement:popover-open, .achievement.no-popover.in { display: flex; }
+.achievement.no-popover { z-index: 2000; }
+.achievement.in { animation: ach-life 5.2s ease forwards; }
+.ach-badge {
+  position: relative; z-index: 1; display: grid; place-items: center; flex: none; width: 56px; height: 56px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4a5a7a, #1b2236 70%); box-shadow: 0 0 0 3px #f5c04a, 0 0 18px 2px color-mix(in srgb, #f5c04a 55%, transparent), 0 6px 18px rgba(0, 0, 0, 0.5);
+  animation: ach-pop 5.2s ease forwards;
+}
+.ach-badge .dew-icon { width: 34px; height: 34px; filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.4)); }
+.ach-words {
+  display: grid; align-content: center; gap: 1px; height: 46px; margin-left: -28px; padding: 0 22px 0 40px; overflow: hidden; white-space: nowrap;
+  border-radius: 0 999px 999px 0; background: linear-gradient(180deg, #2b3550, #161c2d); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 6px 18px rgba(0, 0, 0, 0.5);
+  align-self: center; max-width: 0; opacity: 0; animation: ach-open 5.2s ease forwards;
+}
+.ach-words small { color: #f5c04a; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.ach-words strong { font-size: 15px; font-weight: 700; }
+@keyframes ach-life { 0%, 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes ach-pop { 0% { scale: 0; } 6% { scale: 1.15; } 9%, 100% { scale: 1; } }
+@keyframes ach-open { 0%, 9% { max-width: 0; opacity: 0; } 18%, 80% { max-width: 380px; opacity: 1; } 90%, 100% { max-width: 0; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ach-badge { animation: none; }
+  .ach-words { animation: none; max-width: 380px; opacity: 1; }
+}
 /* Its room, alive (app.js dewStage): one layer on its wallpaper (behind what's hung and stands
    there), the pool in front of what stands, its pet in front of that. */
 .pet-room .pr-scene > .dew-stage { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }

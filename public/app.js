@@ -159,7 +159,7 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
-  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'drop-sky', 'dew-news', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'drop-sky', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -18496,19 +18496,71 @@ function renderDewMilestones() {
     b.dataset.said = words;
   }
 }
-// (One said aloud, on its room, as it's reached: a few at once, together.)
-let dewNewsTimer = 0;
+// One reached, said the way a games console says an achievement: near the bottom, over everything
+// (the pet's box too), its picture in a circle that pops in and opens out to say which, with a
+// little chime (with "Soft click when you press things" on), then closes and fades. A few at once,
+// one after another; four or more at once, together.
+const ACH_SHOWN = 5200; // (how long each is there, its opening and closing too)
+const achQueue = [];
+let achTimer = 0;
 function sayMilestones(keys) {
   const list = (S.dewShop && S.dewShop.milestones) || [];
-  const names = keys.map((k) => (list.find((m) => m.key === k) || {}).label).filter(Boolean);
-  if (!names.length || !el.pet.open) return;
-  el.dewNews.textContent = names.length === 1 ? `★ Milestone: ${names[0]}` : `★ ${names.length} milestones: ${names.slice(0, 2).join(', ')}${names.length > 2 ? `, and ${names.length - 2} more` : ''}`;
-  el.dewNews.hidden = false;
-  el.dewNews.classList.remove('in');
-  void el.dewNews.offsetWidth; // (its little rise, again)
-  el.dewNews.classList.add('in');
-  clearTimeout(dewNewsTimer);
-  dewNewsTimer = setTimeout(() => { el.dewNews.hidden = true; }, 4200);
+  const found = keys.map((k) => list.find((m) => m.key === k)).filter(Boolean);
+  if (!found.length) return;
+  if (found.length >= 4) achQueue.push({ name: `${found.length} milestones`, icon: 'star', kind: 'Milestones reached' });
+  else for (const m of found) achQueue.push({ name: m.label, icon: milestoneIcon(m), kind: m.hidden ? 'Secret milestone' : 'Milestone reached' });
+  if (!achTimer) nextAchievement();
+}
+function nextAchievement() {
+  const a = achQueue.shift();
+  const box = el.achievement;
+  if (!a) {
+    achTimer = 0;
+    try { box.hidePopover(); } catch {}
+    box.classList.remove('in');
+    return;
+  }
+  el.achIcon.style.backgroundImage = `url("${Homepage.dewIcon(a.icon)}")`;
+  el.achKind.textContent = a.kind;
+  el.achName.textContent = a.name;
+  // (Over everything: shown again, so it's above a box opened since.)
+  try {
+    box.hidePopover();
+    box.showPopover();
+  } catch {
+    box.classList.add('no-popover');
+  }
+  box.classList.remove('in');
+  void box.offsetWidth; // (its opening out, again)
+  box.classList.add('in');
+  playAchievement();
+  achTimer = setTimeout(nextAchievement, ACH_SHOWN + 250);
+}
+// (Its chime: three soft bells going up, and a little shimmer after.)
+function playAchievement() {
+  if (!S.clickSounds) return;
+  unlockSounds();
+  const ctx = S.soundCtx;
+  if (!ctx || ctx.state !== 'running') return;
+  const t = ctx.currentTime + 0.02;
+  const bell = (f, at, level, length) => {
+    for (const [mul, part] of [[1, 1], [2.01, 0.28], [3.02, 0.1]]) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * mul;
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(level * part, at + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, at + length / mul);
+      o.connect(g).connect(ctx.destination);
+      o.start(at);
+      o.stop(at + length + 0.05);
+    }
+  };
+  bell(659.25, t, 0.07, 0.9); // E5
+  bell(880, t + 0.09, 0.07, 0.9); // A5
+  bell(1318.5, t + 0.18, 0.06, 1.3); // E6
+  bell(1760, t + 0.36, 0.025, 1.1); // A6, faintly
 }
 
 // ----- Its room, alive (the Dew tab) -----
