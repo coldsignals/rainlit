@@ -294,7 +294,7 @@ account, gifts some months of supporting.
 | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | Voice channels and group calls through LiveKit (step 11). |
 | `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |
 | `COMPOSE_PROFILES` | Docker only: `voice` runs LiveKit alongside Rainlit (step 11). |
-| `MAX_FILE_MB` | The biggest file people can send, in MB, to start with (25). After that, it's changed in the admin panel (Storage). |
+| `MAX_FILE_MB` | The biggest file people can send, in MB, to start with (50). After that, it's changed in the admin panel (Storage). |
 | `STORAGE_MB` | How much each person's files can add up to, in MB, to start with (1536, which is 1.5 GB). After that, it's changed in the admin panel. |
 | `NEW_ACCOUNT_DAYS`, `NEW_ACCOUNT_DAILY_MB` | How long an account counts as new (7 days), and how much it can send in files a day meanwhile, in MB (250). A flagged account has the same pace until the admin says it's fine. |
 | `MIN_AGE` | How old someone has to be to make an account (13, and never less). Sign-up asks for a birthday without saying what age it takes; someone younger is told they can't make an account. Some countries' laws want 14, 15 or 16. |
@@ -333,7 +333,7 @@ report reach only you, never a space's moderators:
 With email set up, both also email you, without saying what was reported.
 
 **Room for files.** Under **Storage** in the admin panel: the biggest file anyone can send
-(25 MB to start with), and how much each person's files can add up to (1.5 GB), counting
+(50 MB to start with), and how much each person's files can add up to (1.5 GB), counting
 everything they've sent that's still there, notes too. Next to someone's account, you can give
 them more, or less. Big photos get a smaller copy for the chat to show (the original opens when
 it's tapped), which saves a lot of bandwidth. Uploads pause by themselves when the disk is

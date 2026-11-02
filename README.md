@@ -471,7 +471,7 @@ at the top closes it (on a phone, the back arrow).
 - **Files:** press the paperclip, drag files onto the conversation, or paste a
   screenshot into the message box. Pictures show in place (a big photo as a
   smaller copy, like Discord; click it for the original, full size), and videos
-  and audio play right there. Files are kept too: up to 25 MB each, and 1.5 GB
+  and audio play right there. Files are kept too: up to 50 MB each, and 1.5 GB
   for everything each person's sent that's still there (the admin can change
   both, and give someone more). It's not per month: deleting files makes room.
 - **Hidden details come out:** photos, videos and recordings often carry where
