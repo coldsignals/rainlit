@@ -9910,7 +9910,7 @@ function renderSpeakerHint(said = '') {
   if (!('setSinkId' in HTMLMediaElement.prototype)) {
     el.speakerHint.dataset.tone = '';
     el.speakerHint.textContent = said || (ANDROID
-      ? 'Your phone decides: sound goes to your headphones or Bluetooth headset by itself once they’re connected. In a call with a friend, the Sound button switches between the speaker, the phone and a headset.'
+      ? 'On a phone, the Microphone list above picks this too: Speakerphone, or your headset, and a call’s sound goes there as well. Headphones plugged in or connected are used by themselves. In a call with a friend, the Sound button switches too.'
       : 'Your device decides: sound goes wherever it’s set to (connect your headphones, and it goes there).');
     return;
   }
