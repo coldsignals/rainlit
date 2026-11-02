@@ -148,7 +148,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -12650,6 +12650,9 @@ let eventsFor = ''; // (the space whose events are open)
 let eventsShown = ''; // (which were on, last drawn: drawn again when that changes)
 let eventEditing = null; // { spaceId, event } while planning one (event null) or changing one
 let eventStarting = null; // { id, spaceId, channelId } while the bar says it's starting
+let eventsTab = 'coming'; // (or 'past')
+let pastEvents = { spaceId: '', list: null }; // (the past ones of the space whose events are open, once fetched)
+const REPEAT_WORDS = { week: 'Every week', '2weeks': 'Every 2 weeks', month: 'Every month' };
 let eventStartingTimer = 0;
 
 // One planned, changed, or said yes or no to; or cancelled.
@@ -12696,11 +12699,14 @@ function eventsTick() {
   if (space && comingEvents(space).map((e) => `${e.id}:${eventOn(e)}`).join() !== eventsShown) renderEvents();
 }
 
-function openEvents(spaceId) {
+function openEvents(spaceId, tab = 'coming') {
   const space = S.spaces.get(spaceId);
   if (!space) return;
   eventsFor = spaceId;
+  eventsTab = tab;
+  if (pastEvents.spaceId !== spaceId || tab === 'past') pastEvents = { spaceId, list: null };
   renderEvents();
+  if (tab === 'past') loadPastEvents();
   if (!el.events.open) el.events.showModal();
   renderEventsEntry();
   // (Names, for who's going.)
@@ -12713,20 +12719,93 @@ function renderEvents() {
     if (el.events.open) el.events.close();
     return;
   }
-  const list = comingEvents(space);
-  eventsShown = list.map((e) => `${e.id}:${eventOn(e)}`).join();
+  const past = eventsTab === 'past';
+  el.eventsTabComing.setAttribute('aria-selected', String(!past));
+  el.eventsTabPast.setAttribute('aria-selected', String(past));
+  const list = past ? pastEvents.list || [] : comingEvents(space);
+  eventsShown = past ? eventsShown : list.map((e) => `${e.id}:${eventOn(e)}`).join();
   el.eventsTitle.textContent = `Events in ${space.name}`;
   el.eventsNew.hidden = !canPlanIn(space);
   // (Drawn again: the button that had the focus keeps it.)
   const had = el.eventsList.contains(document.activeElement) && document.activeElement.dataset.act
     ? [document.activeElement.closest('.event-card').dataset.id, document.activeElement.dataset.act] : null;
-  el.eventsList.replaceChildren(...list.map((e) => eventCard(space, e)));
+  el.eventsList.replaceChildren(...list.map((e) => (past ? pastCard(space, e) : eventCard(space, e))));
   if (had) {
     const back = [...el.eventsList.querySelectorAll('[data-act]')].find((b) => b.dataset.act === had[1] && b.closest('.event-card').dataset.id === had[0]);
     if (back) back.focus({ preventScroll: true });
   }
   el.eventsNone.hidden = list.length > 0;
-  el.eventsNone.textContent = canPlanIn(space) ? 'Nothing planned yet. Plan something!' : 'Nothing planned yet.';
+  el.eventsNone.textContent = past ? (pastEvents.list ? 'Nothing in the last month.' : 'Finding them…')
+    : canPlanIn(space) ? 'Nothing planned yet. Plan something!' : 'Nothing planned yet.';
+}
+
+// Those that have ended (as long as they're kept: a month), latest first.
+async function loadPastEvents() {
+  const spaceId = eventsFor;
+  let list = [];
+  try {
+    list = (await api('GET', `/spaces/${spaceId}/events?past=1`)).events;
+  } catch {}
+  if (eventsFor !== spaceId) return;
+  pastEvents = { spaceId, list };
+  if (el.events.open && eventsTab === 'past') renderEvents();
+}
+
+function showEventsTab(tab) {
+  if (eventsTab === tab) return;
+  eventsTab = tab;
+  renderEvents();
+  if (tab === 'past') loadPastEvents();
+}
+
+// One that's over: when, what, where, who went; and Plan again (filled in as it was, next time
+// that day comes round).
+function pastCard(space, e) {
+  const li = document.createElement('li');
+  li.className = 'event-card past';
+  li.dataset.id = e.id;
+  const when = document.createElement('div');
+  when.className = 'event-when';
+  when.append(eventWhen(e));
+  const title = document.createElement('h3');
+  title.className = 'event-title';
+  title.textContent = e.title;
+  li.append(when, title);
+  const c = e.channelId && S.channels.get(e.channelId);
+  if (e.channelId || e.place) {
+    const where = document.createElement('div');
+    where.className = 'event-where';
+    where.innerHTML = `<svg class="icon" aria-hidden="true"><use href="#${e.channelId ? 'i-speaker' : 'i-place'}"/></svg>`;
+    const words = document.createElement('span');
+    words.textContent = e.channelId ? (c ? c.name : 'A voice channel you can\'t see') : e.place;
+    where.append(words);
+    li.append(where);
+  }
+  const people = document.createElement('div');
+  people.className = 'event-people';
+  const faces = document.createElement('span');
+  faces.className = 'event-faces';
+  faces.append(...e.going.slice(0, 6).map((id) => makeFace(personOf(id), null)));
+  const counts = document.createElement('span');
+  counts.textContent = [e.going.length && `${e.going.length} went`, e.maybe.length && `${e.maybe.length} maybe`, e.no.length && `${e.no.length} couldn't`]
+    .filter(Boolean).join(' · ') || 'Nobody said';
+  const names = (ids) => listNames(ids.map((id) => personOf(id).displayName || 'Someone'));
+  people.title = [e.going.length && `Went: ${names(e.going)}`, e.maybe.length && `Maybe: ${names(e.maybe)}`, e.no.length && `Couldn't: ${names(e.no)}`].filter(Boolean).join('\n');
+  people.append(...(e.going.length ? [faces] : []), counts);
+  li.append(people);
+  if (canPlanIn(space)) {
+    const foot = document.createElement('div');
+    foot.className = 'event-foot';
+    const again = document.createElement('button');
+    again.type = 'button';
+    again.className = 'small-btn';
+    again.dataset.act = 'again';
+    again.textContent = 'Plan again';
+    again.addEventListener('click', () => openEventEdit(space.id, null, e));
+    foot.append(again);
+    li.append(foot);
+  }
+  return li;
 }
 
 // "Today · 7:00 PM – 9:00 PM", "Saturday · 7:00 PM", "Sat, Nov 22 · 7:00 PM": in your own time.
@@ -12739,6 +12818,7 @@ function eventWhen(e) {
     const n = Math.round((that - today) / 86_400_000);
     if (n === 0) return 'Today';
     if (n === 1) return 'Tomorrow';
+    if (n === -1) return 'Yesterday';
     if (n > 1 && n < 7) return d.toLocaleDateString([], { weekday: 'long' });
     return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', ...(d.getFullYear() !== today.getFullYear() ? { year: 'numeric' } : {}) });
   };
@@ -12758,6 +12838,12 @@ function eventCard(space, e) {
   when.className = 'event-when';
   if (on) when.insertAdjacentHTML('beforeend', '<span class="event-live">On now</span>');
   when.append(eventWhen(e));
+  if (e.repeats && REPEAT_WORDS[e.repeats]) {
+    const often = document.createElement('span');
+    often.className = 'event-repeats';
+    often.textContent = `· ${REPEAT_WORDS[e.repeats]}`;
+    when.append(often);
+  }
   const title = document.createElement('h3');
   title.className = 'event-title';
   title.textContent = e.title;
@@ -12871,10 +12957,12 @@ function mondayOf(d) {
   return day;
 }
 
-function openEventEdit(spaceId, event = null) {
+function openEventEdit(spaceId, event = null, from = null) {
   const space = S.spaces.get(spaceId);
   if (!space) return;
-  eventEditing = { spaceId, event };
+  eventEditing = { spaceId, event, scope: '', pending: '' };
+  el.eventScope.hidden = true;
+  el.eventSave.hidden = false;
   el.eventEditTitle.textContent = event ? 'Change the event' : 'Plan an event';
   el.eventSave.textContent = event ? 'Save' : 'Plan it';
   el.eventDelete.hidden = !event;
@@ -12884,27 +12972,68 @@ function openEventEdit(spaceId, event = null) {
   // Where: its voice channels (those you can see), or somewhere else.
   const voice = space.channels.filter((c) => c.kind === 'voice' && !c.gated);
   const options = voice.map((c) => new Option(c.name, c.id));
-  if (event && event.channelId && !voice.some((c) => c.id === event.channelId)) options.push(new Option("A voice channel you can't see", event.channelId));
+  const like = event || from; // (Plan again: as the one it's from)
+  if (like && like.channelId && !voice.some((c) => c.id === like.channelId)) options.push(new Option("A voice channel you can't see", like.channelId));
   options.push(new Option('Somewhere else', ''));
   el.eventWhere.replaceChildren(...options);
-  // When: as it is, or the next whole hour.
-  const start = event ? new Date(event.startsAt) : new Date(serverNow() + 3_600_000);
-  if (!event) start.setMinutes(0, 0, 0);
-  el.eventName.value = event ? event.title : '';
+  // When: as it is; or (Plan again) the next time that day of the week comes round, at that time;
+  // or the next whole hour.
+  let start;
+  if (event) {
+    start = new Date(event.startsAt);
+  } else if (from) {
+    start = new Date(from.startsAt);
+    while (start.getTime() <= serverNow()) start.setDate(start.getDate() + 7);
+  } else {
+    start = new Date(serverNow() + 3_600_000);
+    start.setMinutes(0, 0, 0);
+  }
+  el.eventName.value = like ? like.title : '';
   el.eventDay.value = dayValue(start);
   el.eventDay.min = dayValue(new Date(Math.min(serverNow(), event ? event.startsAt : Infinity)));
   el.eventDay.max = dayValue(new Date(serverNow() + 365 * 86_400_000));
   el.eventStart.value = timeValue(start);
-  el.eventEnd.value = event && event.endsAt ? timeValue(new Date(event.endsAt)) : '';
-  el.eventWhere.value = event ? event.channelId || '' : voice.length ? voice[0].id : '';
-  el.eventPlace.value = event ? event.place : '';
-  el.eventAbout.value = event ? event.about : '';
+  el.eventEnd.value = like && like.endsAt ? timeValue(new Date(start.getTime() + (like.endsAt - like.startsAt))) : '';
+  el.eventRepeats.value = event ? event.repeats || '' : '';
+  el.eventWhere.value = like ? like.channelId || '' : voice.length ? voice[0].id : '';
+  el.eventPlace.value = like ? like.place : '';
+  el.eventAbout.value = like ? like.about : '';
   syncEventPlace();
   freeWeek.start = mondayOf(start);
   if (!el.eventEdit.open) el.eventEdit.showModal();
   loadFreeWeek(spaceId);
   if (!space.members) loadMembers(spaceId).then(() => renderFreeWeek());
   if (!isPhone() && !event) el.eventName.focus({ preventScroll: true });
+}
+
+// One that repeats, changed or cancelled: just this one, or all of them? (Asked first.)
+function askEventScope(pending) {
+  const ed = eventEditing;
+  ed.pending = pending;
+  el.eventScopeQ.textContent = pending === 'delete' ? 'Cancel just this one, or all of them?' : 'Change just this one, or all of them?';
+  el.eventScope.hidden = false;
+  el.eventSave.hidden = true;
+  el.eventDelete.hidden = true;
+  el.eventScopeOne.focus({ preventScroll: true });
+}
+
+function onEventScope(scope) {
+  const ed = eventEditing;
+  if (!ed || !ed.pending) return;
+  ed.scope = scope;
+  const pending = ed.pending;
+  ed.pending = '';
+  el.eventScope.hidden = true;
+  el.eventSave.hidden = false;
+  el.eventDelete.hidden = !ed.event;
+  if (pending === 'delete') onEventDelete();
+  else el.eventEditForm.requestSubmit();
+}
+
+// (What the server says went, and was made, with it: one that repeats.)
+function eventChanges(spaceId, { gone = [], made = [] } = {}) {
+  for (const id of gone) onEventGone(spaceId, id);
+  for (const e of made) onEvent(spaceId, e);
 }
 
 function syncEventPlace() {
@@ -12920,6 +13049,7 @@ async function onEventSave(e) {
   e.preventDefault();
   const ed = eventEditing;
   if (!ed) return;
+  if (ed.event && ed.event.repeats && !ed.scope) return askEventScope('save');
   const start = localTime(el.eventDay.value, el.eventStart.value);
   if (!start) return showEventError('Pick a day, and when it starts.');
   // (Its start, left as it was: as it was to the millisecond, even if that's gone by.)
@@ -12933,16 +13063,20 @@ async function onEventSave(e) {
     endsAt = end.getTime();
   }
   const where = el.eventWhere.value;
-  const body = { title: el.eventName.value, startsAt, endsAt, channelId: where || null, place: where ? '' : el.eventPlace.value, about: el.eventAbout.value };
+  const body = { title: el.eventName.value, startsAt, endsAt, channelId: where || null, place: where ? '' : el.eventPlace.value, about: el.eventAbout.value,
+    repeats: el.eventRepeats.value, tz: hereTz(), all: ed.scope === 'all' };
   el.eventSave.disabled = true;
   el.eventError.hidden = true;
   try {
-    const { event } = ed.event ? await api('PUT', `/events/${ed.event.id}`, body) : await api('POST', `/spaces/${ed.spaceId}/events`, body);
+    const r = ed.event ? await api('PUT', `/events/${ed.event.id}`, body) : await api('POST', `/spaces/${ed.spaceId}/events`, body);
+    const { event } = r;
     onEvent(event.spaceId, event);
+    eventChanges(event.spaceId, r);
     eventEditing = null;
     el.eventEdit.close();
     if (!ed.event) openEvents(event.spaceId); // (to see it there)
   } catch (err) {
+    ed.scope = '';
     showEventError(err.message);
   } finally {
     el.eventSave.disabled = false;
@@ -12953,17 +13087,20 @@ async function onEventSave(e) {
 async function onEventDelete() {
   const ed = eventEditing;
   if (!ed || !ed.event) return;
-  if (el.eventDelete.dataset.confirm !== 'yes') {
+  if (ed.event.repeats && !ed.scope) return askEventScope('delete'); // (that's the asking first, then)
+  if (!ed.event.repeats && el.eventDelete.dataset.confirm !== 'yes') {
     el.eventDelete.dataset.confirm = 'yes';
     el.eventDelete.textContent = 'Cancel it for everyone?';
     return;
   }
   try {
-    await api('DELETE', `/events/${ed.event.id}`);
+    const r = await api('DELETE', `/events/${ed.event.id}${ed.scope === 'all' ? '?all=1' : ''}`);
     eventEditing = null;
     onEventGone(ed.spaceId, ed.event.id);
+    eventChanges(ed.spaceId, r);
     el.eventEdit.close();
   } catch (err) {
+    ed.scope = '';
     showEventError(err.message);
   }
 }
@@ -19980,6 +20117,10 @@ async function init() {
   el.eventEditForm.addEventListener('submit', onEventSave);
   el.eventEdit.addEventListener('close', () => { eventEditing = null; });
   el.eventDelete.addEventListener('click', onEventDelete);
+  el.eventScopeOne.addEventListener('click', () => onEventScope('one'));
+  el.eventScopeAll.addEventListener('click', () => onEventScope('all'));
+  el.eventsTabComing.addEventListener('click', () => showEventsTab('coming'));
+  el.eventsTabPast.addEventListener('click', () => showEventsTab('past'));
   el.eventWhere.addEventListener('change', syncEventPlace);
   el.eventDay.addEventListener('change', () => {
     const d = localTime(el.eventDay.value, '00:00');

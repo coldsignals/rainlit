@@ -383,8 +383,13 @@ at the top closes it (on a phone, the back arrow).
   are usually free then (from their **free times**: the hours of the week each
   person marks, in Settings or by Events, in their own time zone); click an hour
   to pick it. When one starts, those going (or maybe) are told, with **Join** if
-  it's in a voice channel. "Plan events" is a permission (everyone has it to
-  start with), and "Manage events" changes or cancels anyone's.
+  it's in a voice channel. One can repeat every week, every 2 weeks or every
+  month (at the same time where it was planned, when the clocks change too):
+  each one's made as the one before starts, and changing or cancelling asks
+  "just this one, or all of them?". **Past** lists the last month's, with who
+  went, and **Plan again** fills one in as it was. "Plan events" is a
+  permission (everyone has it to start with), and "Manage events" changes or
+  cancels anyone's.
 - **Voice channels:** click one to join it and see everyone there (their
   cameras and shared screens, big when you click them). Off looking at a text
   channel, **Open** by it (and in the "Voice connected" panel) takes you back.

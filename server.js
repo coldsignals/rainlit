@@ -2752,7 +2752,8 @@ function needEvent(req, res, next) {
 const mayChangeEvent = (req) => (req.event.creator_id === req.user.id && spaces.can(req.member, 'events')) || spaces.can(req.member, 'manageEvents');
 const tellEvent = (event) => tellSpace(event.spaceId, { type: 'event', space: event.spaceId, event });
 
-api.get('/spaces/:spaceId/events', needUser, needMember, (req, res) => res.json({ events: events.coming(req.space.id) }));
+// (?past=1: those that have ended, as long as they're kept, latest first.)
+api.get('/spaces/:spaceId/events', needUser, needMember, (req, res) => res.json({ events: req.query.past === '1' ? events.past(req.space.id) : events.coming(req.space.id) }));
 
 api.post('/spaces/:spaceId/events', needUser, needMember, eventRoute((req, res) => {
   if (spaces.isGroup(req.space)) return fail(res, 400, "Groups don't have events.");
@@ -2765,21 +2766,27 @@ api.post('/spaces/:spaceId/events', needUser, needMember, eventRoute((req, res) 
   res.json({ event });
 }));
 
+// (One that repeats: all: true for all of them, or just this one.)
+const tellEventChanges = (spaceId, { gone = [], made = [] }) => {
+  for (const id of gone) tellSpace(spaceId, { type: 'event-gone', space: spaceId, id });
+  for (const e of made) tellEvent(e);
+};
 api.put('/events/:eventId', needUser, needEvent, eventRoute((req, res) => {
   if (!mayChangeEvent(req)) return fail(res, 403, "You can't change this event.");
-  const event = events.update(req.event.id, events.clean(req.body || {}, voiceChannelsFor(req.event.space_id, req.member), req.event));
-  if (req.event.creator_id !== req.user.id) spaces.log(req.event.space_id, req.user.id, 'event-change', null, { name: event.title });
-  tellEvent(event);
+  const out = events.update(req.event.id, events.clean(req.body || {}, voiceChannelsFor(req.event.space_id, req.member), req.event), { all: Boolean((req.body || {}).all) });
+  if (req.event.creator_id !== req.user.id) spaces.log(req.event.space_id, req.user.id, 'event-change', null, { name: out.event.title });
+  tellEvent(out.event);
+  tellEventChanges(req.event.space_id, out);
   watchEvents();
-  res.json({ event });
+  res.json({ event: out.event, gone: out.gone, made: out.made });
 }));
 
 api.delete('/events/:eventId', needUser, needEvent, (req, res) => {
   if (!mayChangeEvent(req)) return fail(res, 403, "You can't cancel this event.");
-  events.remove(req.event.id);
-  spaces.log(req.event.space_id, req.user.id, 'event-cancel', null, { name: req.event.title });
-  tellSpace(req.event.space_id, { type: 'event-gone', space: req.event.space_id, id: req.event.id });
-  res.json({ ok: true });
+  const out = events.remove(req.event.id, { all: req.query.all === '1' });
+  spaces.log(req.event.space_id, req.user.id, 'event-cancel', null, { name: req.event.title, ...(req.query.all === '1' && req.event.series ? { all: true } : {}) });
+  tellEventChanges(req.event.space_id, out);
+  res.json({ ok: true, gone: out.gone, made: out.made });
 });
 
 // Going, maybe, can't ('no'), or nothing said ('').
@@ -2823,6 +2830,8 @@ function watchEvents() {
       }
     }
   }
+  // (Those that repeat, started: their next ones, made.)
+  for (const event of events.spawnDue(now)) tellEvent(event);
   const next = events.nextStart(now);
   eventTimer = setTimeout(watchEvents, next ? Math.max(100, Math.min(next - now, 60_000)) : 60_000);
   eventTimer.unref();

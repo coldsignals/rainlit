@@ -1271,6 +1271,10 @@
         <button id="events-new" class="primary-btn small" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Plan an event</button>
         <button id="events-free" class="text-btn" type="button">Your free times</button>
       </div>
+      <div class="events-tabs" role="tablist" aria-label="Which events">
+        <button id="events-tab-coming" type="button" role="tab" aria-selected="true" data-tab="coming">Coming up</button>
+        <button id="events-tab-past" type="button" role="tab" aria-selected="false" data-tab="past">Past</button>
+      </div>
       <ol id="events-list" class="events-list"></ol>
       <p id="events-none" class="hint events-none" hidden></p>
     </div>
@@ -1286,6 +1290,14 @@
         <label class="field"><span>Starts</span><input id="event-start" type="time" step="300" /></label>
         <label class="field"><span>Ends <small class="toggle-note">(if you like)</small></span><input id="event-end" type="time" step="300" /></label>
       </div>
+      <label class="field"><span>Repeats</span>
+        <select id="event-repeats">
+          <option value="">Never</option>
+          <option value="week">Every week</option>
+          <option value="2weeks">Every 2 weeks</option>
+          <option value="month">Every month</option>
+        </select>
+      </label>
       <details id="event-free" class="event-free" open>
         <summary>Who's free</summary>
         <div class="free-week-head">
@@ -1300,6 +1312,12 @@
       <label id="event-place-field" class="field" hidden><span>Where's that?</span><input id="event-place" maxlength="80" autocomplete="off" placeholder="The usual spot" /></label>
       <label class="field"><span>About it <small class="toggle-note">(if you like)</small></span><textarea id="event-about" maxlength="1000" rows="3"></textarea></label>
       <p id="event-error" class="form-error" role="alert" hidden></p>
+      <!-- (One that repeats: just this one, or all of them?) -->
+      <div id="event-scope" class="event-scope" role="group" aria-labelledby="event-scope-q" hidden>
+        <span id="event-scope-q"></span>
+        <button id="event-scope-one" class="small-btn" type="button">Just this one</button>
+        <button id="event-scope-all" class="small-btn" type="button">All of them</button>
+      </div>
       <div class="event-edit-row">
         <button id="event-delete" class="text-btn danger" type="button" hidden>Cancel the event</button>
         <button id="event-save" class="primary-btn" type="submit">Plan it</button>

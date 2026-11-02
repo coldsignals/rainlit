@@ -855,6 +855,17 @@ li.suspended > .grow { color: var(--danger-text); }
 .events-bar .primary-btn { display: inline-flex; align-items: center; gap: 6px; }
 .events-bar .primary-btn .icon { width: 17px; height: 17px; }
 .events-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+/* Coming up, or past. */
+.events-tabs { display: flex; gap: 3px; width: max-content; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--deep); }
+.events-tabs button { padding: 6px 13px; border: 0; border-radius: 8px; background: none; color: var(--mist); font: inherit; font-size: 13.5px; font-weight: 700; }
+.events-tabs button:hover { color: var(--text); }
+.events-tabs button[aria-selected="true"] { background: var(--dusk-hi); color: var(--text); }
+.event-repeats { color: var(--mist); font-weight: 650; }
+.event-card.past .event-when { color: var(--mist); }
+/* Changing or cancelling one that repeats: just this one, or all of them? */
+.event-scope { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--deep); }
+.event-scope[hidden] { display: none; }
+.event-scope span { flex: 1 1 100%; font-size: 14px; font-weight: 600; }
 .events-none { margin: 8px 0; text-align: center; }
 /* Each: when (in your own time), what, where, about it, who's going, and yours to say. */
 .event-card { display: grid; gap: 7px; min-width: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--deep); }
