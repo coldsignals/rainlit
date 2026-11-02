@@ -1,6 +1,23 @@
 {
   "entries": [
     {
+      "id": "2026-11-02b",
+      "date": "2026-11-02",
+      "title": "Dew: further to go",
+      "items": [
+        {
+          "title": "More to collect, and milestones",
+          "text": "Six more things to collect dew with after the Rainbow loom, from Comet catchers to The first rain, with more upgrades for each, all the way up to 400 of them. And about 180 milestones to reach along the way, a few of them secret: each one makes everything collect 1% more, for good. Find them in the Dew tab.",
+          "media": "/whats-new/2026-11-02b-milestones.webp"
+        },
+        {
+          "title": "A livelier room",
+          "text": "With the Dew tab open, your pet's room comes alive the further you get: dew dripping down the walls, sparkles, shooting stars and the northern lights, and a pool of dew on the floor that rises with your milestones and changes color as you go.",
+          "media": "/whats-new/2026-11-02b-room.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-02",
       "date": "2026-11-02",
       "title": "Drops of every kind, and everyone's volume",

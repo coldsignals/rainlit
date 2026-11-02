@@ -18474,7 +18474,7 @@ function sayMilestones(keys) {
 // aurora, starlight, rainbow). Drawn small, in the room's own pixels (one layer on the wallpaper,
 // behind what's hung or stands there; the pool in front of what stands, behind its pet). Only while
 // it's showing; still, for anyone who'd rather things didn't move.
-const POOLS = [[0, [127, 208, 255]], [40, [255, 214, 102]], [80, [208, 220, 240]], [110, [111, 224, 192]], [140, [143, 160, 255]], [170, 'rainbow']];
+const POOLS = [[0, [110, 196, 255]], [40, [255, 190, 70]], [80, [170, 178, 255]], [110, [80, 220, 180]], [140, [130, 120, 255]], [170, 'rainbow']];
 const dewStage = {
   on: false,
   frame: 0,
@@ -18567,13 +18567,20 @@ const dewStage = {
     g.clearRect(0, 0, w, h);
     const rgb = this.kind === 'rainbow' ? null : this.kind;
     const col = (a, x = 0) => (rgb ? `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a})` : `hsla(${(x * 9 + now * 40) % 360}, 90%, 72%, ${a})`);
-    // An aurora along the top, further along (a thousand trillion a second).
+    // An aurora along the top, further along (a thousand trillion a second): two ribbons, waving,
+    // greens into violets, brightest where they fold.
     if (this.tens >= 15) {
-      for (let x = 0; x < w; x++) {
-        const y = 1 + Math.round(Math.sin(x * 0.18 + now * 0.7) * 1.2 + Math.sin(x * 0.07 - now * 0.4));
-        const hue = 150 + 70 * Math.sin(x * 0.05 + now * 0.3);
-        g.fillStyle = `hsla(${hue}, 80%, 65%, 0.22)`;
-        g.fillRect(x, Math.max(0, y), 1, 3);
+      for (const [k, base, speed] of [[0, 2.5, 0.7], [1, 5, -0.5]]) {
+        for (let x = 0; x < w; x++) {
+          const y = Math.round(base + Math.sin(x * 0.16 + now * speed + k * 2) * 1.6 + Math.sin(x * 0.05 - now * 0.3) * 1.2);
+          const glow = 0.5 + 0.5 * Math.sin(x * 0.11 + now * 0.9 + k);
+          const hue = 140 + 120 * (0.5 + 0.5 * Math.sin(x * 0.03 + now * 0.2 + k));
+          const edge = Math.min(1, x / 8, (w - 1 - x) / 8); // (fading at either end)
+          g.fillStyle = `hsla(${hue}, 95%, 70%, ${(0.18 + 0.32 * glow) * edge})`;
+          g.fillRect(x, y, 1, 1);
+          g.fillStyle = `hsla(${hue}, 95%, 70%, ${(0.06 + 0.12 * glow) * edge})`;
+          g.fillRect(x, y + 1, 1, 2);
+        }
       }
     }
     // Drips down the wallpaper.
@@ -18633,9 +18640,11 @@ const dewStage = {
         // (Ripples as deep as it is: a shallow one barely moves, and never dries up between them.)
         const wave = still || depth < 3 ? 0 : Math.round(Math.sin(x * 0.35 + now * 1.6) * 0.6 + Math.sin(x * 0.12 - now) * 0.5);
         const top = Math.min(h - 1, h - depth + wave);
-        p.fillStyle = col(0.5, x);
+        p.fillStyle = col(0.38, x);
         p.fillRect(x, top + 1, 1, h - top);
-        p.fillStyle = col(0.85, x);
+        p.fillStyle = col(0.22, x); // (lighter just under its surface)
+        p.fillRect(x, top + 1, 1, 1);
+        p.fillStyle = col(0.9, x);
         p.fillRect(x, top, 1, 1);
       }
       // (A glint going along it.)
