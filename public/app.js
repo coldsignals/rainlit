@@ -13243,7 +13243,14 @@ function hideEventBar() {
 // (A box open, like Settings, leaves everything else out of reach: the bar goes in the topmost,
 // so Join can be pressed, and back out when it closes.)
 function barOverDialogs() {
-  const top = [...document.querySelectorAll('dialog[open]')].filter((d) => d.matches(':modal')).pop();
+  const modal = (d) => {
+    try {
+      return d.matches(':modal');
+    } catch {
+      return true; // (an older browser, without :modal: Rainlit's boxes open as modal ones)
+    }
+  };
+  const top = [...document.querySelectorAll('dialog[open]')].filter(modal).pop();
   const host = top || document.body;
   if (el.eventBar.parentNode !== host) host.append(el.eventBar);
 }

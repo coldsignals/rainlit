@@ -1,6 +1,23 @@
 {
   "entries": [
     {
+      "id": "2026-11-01",
+      "date": "2026-11-01",
+      "title": "Events",
+      "items": [
+        {
+          "title": "Plan things together",
+          "text": "Events are at the top of each space's channels. Plan one for a time and a voice channel (or somewhere else), and everyone sees it in their own time and can say Going, Maybe or Can't. When it starts, everyone going gets a heads-up with a button to jump in.",
+          "media": "/whats-new/2026-11-01-events.webp"
+        },
+        {
+          "title": "See when people are free",
+          "text": "Mark the hours you're usually free in Settings, in your own time zone. When someone plans an event, Who's free shows the week, brighter where more people are free, so it's easy to pick a time that works.",
+          "media": "/whats-new/2026-11-01-free.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-10-31d",
       "date": "2026-10-31",
       "title": "More Glow for your pet",
