@@ -234,11 +234,16 @@
   };
 
   // A moving pattern's layers, to go behind a page (or in a swatch of it). Null for the rest.
+  // (A loop that moves, in step with the page's clock: one made again, as a list's rows are when
+  // anything changes, carries on where the last one was, not from its start. homepage.css: --phase.)
+  const inStep = (node) => node.style.setProperty('--phase', `${(-performance.now() / 1000).toFixed(3)}s`);
+
   function patternLayer(bg) {
     if (!bg || bg.kind !== 'pattern' || !MOVING[bg.pattern]) return null;
     const layer = document.createElement('div');
     layer.className = `hp-backdrop hp-bd-${bg.pattern}`;
     layer.setAttribute('aria-hidden', 'true');
+    inStep(layer);
     for (const image of MOVING[bg.pattern](hex(bg.c1, '#1d2440'), hex(bg.c2, '#2b3560'))) {
       const i = document.createElement('i');
       i.style.backgroundImage = image;
@@ -5173,6 +5178,7 @@
     if (sky.dataset.sky === k) return;
     sky.dataset.sky = k;
     sky.className = `hp-sky hp-sky-${k}`;
+    inStep(sky);
     sky.replaceChildren(...(SKY_PARTS[k] || []).map((cls) => {
       const part = document.createElement('i');
       part.className = cls;
