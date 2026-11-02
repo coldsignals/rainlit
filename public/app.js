@@ -9160,6 +9160,28 @@ function showPreview(card, f, url) {
     const note = document.createElement('p');
     note.className = 'file-note';
     note.textContent = `This ${kind === 'video' ? 'video' : 'song'} won't play here. Save it to ${kind === 'video' ? 'watch' : 'listen to'} it.`;
+    // (What the player said, small: for a screenshot, if it's somewhere it should play.)
+    const said = document.createElement('small');
+    said.className = 'file-why';
+    said.textContent = ` (${why})`;
+    note.append(said);
+    // (In the apps, the phone's or computer's own browser may well play it: a link it can open
+    // without being signed in, straight to where it is.)
+    if ((ANDROID || DESKTOP) && id && !url.startsWith('blob:')) {
+      const elsewhere = document.createElement('button');
+      elsewhere.type = 'button';
+      elsewhere.className = 'text-btn';
+      elsewhere.textContent = 'Play it in your browser';
+      elsewhere.addEventListener('click', async () => {
+        try {
+          const r = await api('POST', `/files/${encodeURIComponent(id)}/link`, { direct: true });
+          openUrl(r.url);
+        } catch (err) {
+          toast(err.message);
+        }
+      });
+      note.append(elsewhere);
+    }
     shown.replaceWith(note);
     card.classList.remove('has-media');
   };
@@ -9604,8 +9626,10 @@ async function fillDeviceLists() {
   if (!micTest) renderMicTest();
   fill(el.camSelect, 'videoinput', S.devices.cam, 'Camera');
   renderCamPreviewSetting();
+  // (Where it's not up to Rainlit (a phone, and browsers that can't): no list, but what does decide
+  // it, and the Test button all the same.)
   const canPickSpeaker = 'setSinkId' in HTMLMediaElement.prototype;
-  el.speakerField.hidden = !canPickSpeaker;
+  el.speakerSelect.hidden = !canPickSpeaker;
   if (canPickSpeaker) fill(el.speakerSelect, 'audiooutput', S.devices.speaker, 'Output');
   renderSpeakerHint();
   el.shareQuality.value = S.shareQuality;
@@ -9883,6 +9907,13 @@ function defaultLabel(devices, kind) {
 // catch: while its mic is on, Windows plays sound only through its "Hands-Free" output, and the
 // other one ("Stereo") goes quiet, so you'd hear nobody.
 function renderSpeakerHint(said = '') {
+  if (!('setSinkId' in HTMLMediaElement.prototype)) {
+    el.speakerHint.dataset.tone = '';
+    el.speakerHint.textContent = said || (ANDROID
+      ? 'Your phone decides: sound goes to your headphones or Bluetooth headset by itself once they’re connected. In a call with a friend, the Sound button switches between the speaker, the phone and a headset.'
+      : 'Your device decides: sound goes wherever it’s set to (connect your headphones, and it goes there).');
+    return;
+  }
   const mic = el.micSelect.selectedOptions[0];
   const out = el.speakerSelect.selectedOptions[0];
   const micName = (mic && mic.dataset.label) || '';
@@ -9925,7 +9956,8 @@ function testSpeaker() {
   const go = () => audio.play().catch(() => {});
   if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).then(go, go);
   else go();
-  renderSpeakerHint(`Playing a sound through ${name}. Hear nothing? Pick your headset here, and check Rainlit isn't turned down in your computer's volume mixer.`);
+  renderSpeakerHint(!('setSinkId' in HTMLMediaElement.prototype) ? 'Playing a sound. Hear nothing? Check your volume isn’t down, and where your phone’s sending sound (its quick settings).'
+    : `Playing a sound through ${name}. Hear nothing? Pick your headset here, and check Rainlit isn't turned down in your computer's volume mixer.`);
 }
 
 function onSpeakerChange() {
