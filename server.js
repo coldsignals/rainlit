@@ -1943,33 +1943,67 @@ api.put(conv('/files/:messageId/poster'), needUser, needConv, express.raw({ type
 
 // A file, sent as the raw request body with its name and type in headers. It's
 // written to disk as it arrives, so big files never have to fit in memory.
-api.post(conv('/files'), needUser, needConv, (req, res) => {
+// Whether a file this big can be sent here, by them, now: null if so, or why not ({ status, error }).
+// (And how big it can be, and the words for too big and no room.)
+function uploadCheck(req, id, declared) {
   const maxBytes = storage.fileMbFor(req.user) * storage.MB;
   const tooBig = `Files can be up to ${storage.fileMbFor(req.user)} MB.`;
-  if (req.notes && dms.notesUsage(req.dm.id).count >= notesMaxFor(req.user)) return fail(res, 409, notesFull(req.user));
-  if (req.access && !req.access.files) return fail(res, 403, req.access.timedOut ? TIMED_OUT : "You can't send files in this channel.");
-  if (!req.dm.save) return fail(res, 409, 'Saving is off in this conversation, so files can only be sent during a call.');
-  const id = String(req.get('x-message-id') || '');
-  if (!ID_RE.test(id) || dms.getRow(id) || keep.idTaken(id)) return fail(res, 400, "That upload didn't make sense.");
-  if (tooFast(uploadPace, req.user.id)) return fail(res, 429, "You're sending files very fast. Wait a moment, then try again.");
-  const declared = Number(req.get('content-length') || 0);
-  if (declared > maxBytes) return fail(res, 413, tooBig);
-  // Room: theirs (all their files together), and the disk's (never let fill up).
   const room = storage.of(req.user);
   const noRoom = `You've used ${storage.size(room.used)} of your ${storage.size(room.limit)} for files. Delete some you don't need any more to make room (Your profile, then Your files).`;
-  if (room.used + declared > room.limit) return fail(res, 413, noRoom);
+  const no = (status, error) => ({ status, error, maxBytes, tooBig, noRoom, room });
+  if (req.notes && dms.notesUsage(req.dm.id).count >= notesMaxFor(req.user)) return no(409, notesFull(req.user));
+  if (req.access && !req.access.files) return no(403, req.access.timedOut ? TIMED_OUT : "You can't send files in this channel.");
+  if (!req.dm.save) return no(409, 'Saving is off in this conversation, so files can only be sent during a call.');
+  if (!ID_RE.test(id) || dms.getRow(id) || keep.idTaken(id)) return no(400, "That upload didn't make sense.");
+  if (tooFast(uploadPace, req.user.id)) return no(429, "You're sending files very fast. Wait a moment, then try again.");
+  if (declared > maxBytes) return no(413, tooBig);
+  // Room: theirs (all their files together), and the disk's (never let fill up).
+  if (room.used + declared > room.limit) return no(413, noRoom);
   // (A new or flagged account's pace: lib/abuse.js.)
   const slow = abuse.checkPace(req.user, declared);
-  if (slow) return fail(res, 429, slow);
+  if (slow) return no(429, slow);
   if (!storage.diskHasRoom(declared)) {
     console.warn('[storage] The disk is nearly full, so uploads are paused. Make it bigger (on Render: your service, then Disks).');
-    return fail(res, 507, "Rainlit's out of room for files right now, so uploads are paused for a bit. Try again later.");
+    return no(507, "Rainlit's out of room for files right now, so uploads are paused for a bit. Try again later.");
   }
+  return { ok: true, maxBytes, tooBig, noRoom, room };
+}
+const fileNameOf = (raw) => people.oneLine(String(raw || '').replace(/[\\/]/g, '_'), 200) || 'file';
+const fileTypeOf = (raw) => {
+  const type = String(raw || '').toLowerCase();
+  return /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(type) && type.length <= 100 ? type : 'application/octet-stream';
+};
+
+// All of it here (in `partial`): its hidden details out, then it's the message it's for.
+async function finishUpload(req, { id, name, safeType, partial, size, replyTo }) {
+  const final = path.join(dms.FILES_DIR, id);
+  // Its hidden details come out (where and when a photo was taken, on what...: lib/scrub.js).
+  size = (await scrub.scrubFile(partial, { type: safeType, name })) ?? size;
+  fs.renameSync(partial, final);
+  const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, replyTo: dms.replyTarget(req.dm.id, replyTo) });
+  tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
+  if (req.channel) pushChannelMessage(req, null);
+  const row = dms.getRow(id);
+  // (Its fingerprint and a look at the sender's files (lib/abuse.js), its smaller copy for the
+  // chat, then it goes to R2, if that's set up.)
+  abuse.noteIn(size);
+  Promise.resolve()
+    .then(() => abuse.afterUpload(req.user, id, final, size))
+    .then(() => row && dms.previewOf(row))
+    .finally(() => blobs.offload('files', id));
+  return { message, storage: storage.of(req.user) };
+}
+
+api.post(conv('/files'), needUser, needConv, (req, res) => {
+  const id = String(req.get('x-message-id') || '');
+  const declared = Number(req.get('content-length') || 0);
+  const check = uploadCheck(req, id, declared);
+  if (!check.ok) return fail(res, check.status, check.error);
+  const { maxBytes, tooBig, noRoom, room } = check;
   let name = '';
   try { name = decodeURIComponent(req.get('x-file-name') || ''); } catch {}
-  name = people.oneLine(name.replace(/[\\/]/g, '_'), 200) || 'file';
-  const type = String(req.get('x-file-type') || '').toLowerCase();
-  const safeType = /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(type) && type.length <= 100 ? type : 'application/octet-stream';
+  name = fileNameOf(name);
+  const safeType = fileTypeOf(req.get('x-file-type'));
 
   const final = path.join(dms.FILES_DIR, id);
   const partial = `${final}.part`;
@@ -1989,24 +2023,84 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
       }
       return;
     }
-    // Its hidden details come out (where and when a photo was taken, on what...: lib/scrub.js).
-    size = (await scrub.scrubFile(partial, { type: safeType, name })) ?? size;
-    fs.renameSync(partial, final);
-    const replyTo = dms.replyTarget(req.dm.id, req.get('x-reply-to'));
-    const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, replyTo });
-    tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
-    if (req.channel) pushChannelMessage(req, null);
-    const row = dms.getRow(id);
-    // (Its fingerprint and a look at the sender's files (lib/abuse.js), its smaller copy for the
-    // chat, then it goes to R2, if that's set up.)
-    abuse.noteIn(size);
-    Promise.resolve()
-      .then(() => abuse.afterUpload(req.user, id, final, size))
-      .then(() => row && dms.previewOf(row))
-      .finally(() => blobs.offload('files', id));
-    res.json({ message, storage: storage.of(req.user) });
+    res.json(await finishUpload(req, { id, name, safeType, partial, size, replyTo: req.get('x-reply-to') }));
   });
 });
+
+// ----- A big file, in pieces (resumable) -----
+// Started (what it's for, and how big: checked as a whole file is), then each piece added on at
+// the end of what's arrived (one that's already arrived, partly or all, says how far it got, and
+// the app carries on from there), and once it's all there, it's the message. What it's for is kept
+// beside what's arrived, on disk, so it carries on after an update too; left a day, both go.
+const PIECE_MAX = 9 * 1024 * 1024;
+const piecesOf = (id) => {
+  const partial = path.join(dms.FILES_DIR, `${id}.part`);
+  let meta = null;
+  try { meta = JSON.parse(fs.readFileSync(`${partial}.json`, 'utf8')); } catch {}
+  let received = 0;
+  try { received = fs.statSync(partial).size; } catch {}
+  return { partial, meta, received };
+};
+api.post(conv('/files/uploads'), needUser, needConv, (req, res) => {
+  const b = req.body || {};
+  const id = String(b.id || '');
+  const size = Math.floor(Number(b.size) || 0);
+  if (!ID_RE.test(id) || size <= 0) return fail(res, 400, "That upload didn't make sense.");
+  const had = piecesOf(id);
+  // (Started already, by them, for here: carried on.)
+  if (had.meta && had.meta.user === req.user.id && had.meta.dm === req.dm.id && had.meta.size === size) return res.json({ received: had.received });
+  const check = uploadCheck(req, id, size);
+  if (!check.ok) return fail(res, check.status, check.error);
+  const meta = { user: req.user.id, dm: req.dm.id, size, name: fileNameOf(b.name), type: fileTypeOf(b.type), replyTo: b.replyTo ? String(b.replyTo).slice(0, 64) : null, at: Date.now() };
+  fs.writeFileSync(had.partial, Buffer.alloc(0));
+  fs.writeFileSync(`${had.partial}.json`, JSON.stringify(meta));
+  res.json({ received: 0 });
+});
+api.get(conv('/files/uploads/:upload'), needUser, needConv, (req, res) => {
+  const p = piecesOf(String(req.params.upload));
+  if (!p.meta || p.meta.user !== req.user.id || p.meta.dm !== req.dm.id) return fail(res, 404, "That upload isn't there any more. Send the file again.");
+  res.json({ received: p.received });
+});
+api.put(conv('/files/uploads/:upload'), needUser, needConv, (req, res) => {
+  const id = String(req.params.upload);
+  const p = ID_RE.test(id) ? piecesOf(id) : {};
+  if (!p.meta || p.meta.user !== req.user.id || p.meta.dm !== req.dm.id) return fail(res, 404, "That upload isn't there any more. Send the file again.");
+  const offset = Number(req.query.offset);
+  if (offset !== p.received) return res.status(409).json({ error: 'Carrying on from where it got to.', received: p.received });
+  const room = p.meta.size - p.received;
+  let got = 0;
+  const counter = new Transform({
+    transform(chunk, _enc, done) {
+      got += chunk.length;
+      done(got > Math.min(room, PIECE_MAX) ? Object.assign(new Error('too big'), { tooBig: true }) : null, chunk);
+    },
+  });
+  pipeline(req, counter, fs.createWriteStream(p.partial, { flags: 'a' }), async (err) => {
+    const received = piecesOf(id).received;
+    if (err) {
+      // (What arrived stays: the app asks, and carries on from there. Too much: that piece undone.)
+      if (err.tooBig) fs.truncateSync(p.partial, p.received);
+      if (!res.headersSent && !res.socket?.destroyed) fail(res, err.tooBig ? 413 : 500, err.tooBig ? "That piece didn't fit." : 'The upload stopped partway. It carries on from where it got to.');
+      return;
+    }
+    if (received < p.meta.size) return res.json({ received });
+    fs.rmSync(`${p.partial}.json`, { force: true });
+    res.json(await finishUpload(req, { id, name: p.meta.name, safeType: p.meta.type, partial: p.partial, size: received, replyTo: p.meta.replyTo }));
+  });
+});
+// (Uploads left over a day: gone.)
+setInterval(() => {
+  let names = [];
+  try { names = fs.readdirSync(dms.FILES_DIR).filter((n) => n.endsWith('.part.json')); } catch {}
+  for (const n of names) {
+    const meta = path.join(dms.FILES_DIR, n);
+    try {
+      if (Date.now() - fs.statSync(meta).mtimeMs < 86_400_000) continue;
+      fs.rmSync(meta.slice(0, -5), { force: true });
+      fs.rmSync(meta, { force: true });
+    } catch {}
+  }
+}, 3_600_000).unref();
 
 // Files sent (and homepage pictures and songs) from before hidden details were taken out of
 // them: once, in the background, two minutes after the first start with this.

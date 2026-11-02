@@ -8653,7 +8653,11 @@ function uploadFile(dm, file, replyTo = null) {
   })).catch(() => {}); // one going wrong mustn't hold up the rest
 }
 
+// A file over 8 MB goes in pieces (server.js: resumable), so a connection lost partway carries
+// on from where it got to; smaller ones go whole.
+const UPLOAD_PIECE = 8 * 1024 * 1024;
 function startUpload(dm, t, file, xhr, done) {
+  if (file.size > UPLOAD_PIECE) return sendInPieces(dm, t, file, xhr, done);
   t.state = 'sending';
   renderTransfer(t);
   xhr.open('POST', `${SERVER}/api${convPath(dm.friendId)}/files`);
@@ -8685,6 +8689,91 @@ function startUpload(dm, t, file, xhr, done) {
     endTransfer(t, 'cancelled', 'Cancelled.');
   };
   xhr.send(file);
+}
+
+// In pieces: started, then each piece added on where the last left off. The connection lost (or
+// Rainlit updating), it waits a little, asks how far it got, and carries on from there, for as
+// long as it takes (cancelling still stops it).
+async function sendInPieces(dm, t, file, xhr, done) {
+  t.state = 'sending';
+  renderTransfer(t);
+  const path = `${convPath(dm.friendId)}/files/uploads`;
+  let cancelled = false;
+  let current = null;
+  xhr.abort = () => {
+    cancelled = true;
+    if (current) current.abort();
+  };
+  const over = () => { if (xhr.onloadend) xhr.onloadend(); };
+  const failed = (text) => {
+    done();
+    endTransfer(t, 'failed', text);
+    over();
+  };
+  const piece = (offset) => new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    current = x;
+    x.open('PUT', `${SERVER}/api${path}/${encodeURIComponent(t.id)}?offset=${offset}`);
+    x.setRequestHeader('Content-Type', 'application/octet-stream');
+    x.upload.onprogress = (e) => {
+      t.sent = offset + e.loaded;
+      renderProgress(t);
+    };
+    x.onload = () => {
+      let d = {};
+      try { d = JSON.parse(x.responseText); } catch {}
+      resolve({ status: x.status, d });
+    };
+    x.onerror = () => reject(new Error('lost'));
+    x.onabort = () => reject(new Error('cancelled'));
+    x.send(file.slice(offset, Math.min(file.size, offset + UPLOAD_PIECE)));
+  });
+  let received = 0;
+  try {
+    received = (await api('POST', path, { id: t.id, name: t.name, type: t.type || '', size: file.size, replyTo: t.replyTo || null })).received || 0;
+  } catch (err) {
+    return failed(err.message || 'Upload failed. Try again.');
+  }
+  let lost = 0;
+  while (!cancelled) {
+    let r;
+    try {
+      r = await piece(received);
+    } catch {
+      if (cancelled) break;
+      // (Lost: a little wait (longer each time, to half a minute), then how far it got.)
+      lost++;
+      await new Promise((ok) => setTimeout(ok, Math.min(30_000, 1000 * 2 ** Math.min(lost, 5))));
+      if (cancelled) break;
+      try {
+        received = (await api('GET', `${path}/${encodeURIComponent(t.id)}`)).received;
+      } catch (err) {
+        if (err.status === 404) return failed(err.message);
+      }
+      continue;
+    }
+    if (r.status === 409 && typeof r.d.received === 'number') {
+      received = r.d.received;
+      continue;
+    }
+    if (r.status === 500) {
+      lost++;
+      continue; // (stopped partway at the server's end: carried on from where it got to)
+    }
+    if (r.status !== 200) return failed(r.d.error || 'Upload failed. Try again.');
+    lost = 0;
+    if (r.d.message) {
+      done();
+      if (r.d.storage) noteStorage(r.d.storage);
+      appendMessage(dm, r.d.message);
+      if (/^video\//.test((r.d.message.file && r.d.message.file.type) || '')) sendStill(dm, r.d.message, file);
+      return over();
+    }
+    received = r.d.received;
+  }
+  done();
+  endTransfer(t, 'cancelled', 'Cancelled.');
+  over();
 }
 
 // A video's still (a moment in), as a small picture: what everyone sees before it plays. Made
