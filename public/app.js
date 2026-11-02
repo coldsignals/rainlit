@@ -18490,7 +18490,7 @@ const dewStage = {
     this.reached = d && d.milestones ? d.milestones.length : 0;
     this.share = this.reached / all;
     this.kind = POOLS.filter(([n]) => this.reached >= n).pop()[1];
-    if (this.wall) this.bits = null; // (made again, for as many as there should be now)
+    this.recount = true; // (as many as there should be now: those there already kept, so patting doesn't start it all over)
   },
   start() {
     if (!this.wall) {
@@ -18545,23 +18545,28 @@ const dewStage = {
     for (const c of [this.wall, this.pool]) if (c.width !== w || c.height !== h) { c.width = w; c.height = h; this.bits = null; }
     return { w, h };
   },
-  // What's in it (made again when it changes size, or how alive it is does).
+  // What's in it: as many as there should be for how alive it is, those already there kept where
+  // they are (a new answer from the server, every pat or so, mustn't start it all over); all new
+  // when its size changes.
   make(w, h) {
     const rnd = (a, b) => a + Math.random() * (b - a);
     const t = this.tens;
     const wallH = Math.round(h * 0.6);
+    const old = this.bits || {};
+    const keep = (list, n, fresh) => [...(list || []).slice(0, n), ...Array.from({ length: Math.max(0, n - (list || []).length) }, fresh)];
     this.bits = {
-      drips: Array.from({ length: t > 0 ? Math.min(18, 2 + Math.floor(t * 1.6)) : 0 }, () => ({ x: Math.floor(rnd(1, w - 1)), y: rnd(0, wallH), v: rnd(1.5, 4.5), len: Math.random() < 0.4 ? 2 : 1 })),
-      motes: Array.from({ length: t >= 3 ? Math.min(28, Math.floor((t - 2) * 2.5)) : 0 }, () => ({ x: rnd(0, w), y: rnd(0, h), v: rnd(1.5, 4), ph: rnd(0, 6.3) })),
-      sparks: Array.from({ length: t >= 6 ? Math.min(14, Math.floor((t - 5) * 2)) : 0 }, () => ({ x: Math.floor(rnd(2, w - 2)), y: Math.floor(rnd(2, wallH - 2)), ph: rnd(0, 6.3), rate: rnd(1.2, 2.6) })),
-      stars: [],
-      starAt: 0,
+      drips: keep(old.drips, t > 0 ? Math.min(18, 2 + Math.floor(t * 1.6)) : 0, () => ({ x: Math.floor(rnd(1, w - 1)), y: rnd(0, wallH), v: rnd(1.5, 4.5), len: Math.random() < 0.4 ? 2 : 1 })),
+      motes: keep(old.motes, t >= 3 ? Math.min(28, Math.floor((t - 2) * 2.5)) : 0, () => ({ x: rnd(0, w), y: rnd(0, h), v: rnd(1.5, 4), ph: rnd(0, 6.3) })),
+      sparks: keep(old.sparks, t >= 6 ? Math.min(14, Math.floor((t - 5) * 2)) : 0, () => ({ x: Math.floor(rnd(2, w - 2)), y: Math.floor(rnd(2, wallH - 2)), ph: rnd(0, 6.3), rate: rnd(1.2, 2.6) })),
+      stars: old.stars || [],
+      starAt: old.starAt || 0,
       wallH,
     };
+    this.recount = false;
   },
   draw(dt, now, still) {
     const { w, h } = this.place();
-    if (!this.bits) this.make(w, h);
+    if (!this.bits || this.recount) this.make(w, h);
     const b = this.bits;
     const g = this.wall.getContext('2d');
     g.clearRect(0, 0, w, h);
