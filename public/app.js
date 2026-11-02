@@ -18549,6 +18549,7 @@ function showRainbow() {
   b.setAttribute('aria-label', `Catch the ${info.label.toLowerCase()}`);
   // (Its fall (or roll) lasts as long as it's there; its sway and glow go round meanwhile.)
   b.style.animationDuration = room ? `${Math.round(left)}ms, 1.6s` : `${Math.round(left)}ms, 2.8s, 1.6s`;
+  b.dataset.born = String(performance.now()); // (when its fall began: dropSky)
   if (room) {
     const win = el.petRoom.querySelector('.pr-window');
     if (win) {
@@ -18578,9 +18579,23 @@ function dropSky() {
   };
   const top = [...document.querySelectorAll('dialog[open]')].filter(modal).pop();
   const host = top || document.body;
-  if (el.dropSky.parentNode !== host) host.append(el.dropSky);
+  if (el.dropSky.parentNode !== host) {
+    // (Moved, its drops would start falling again from the top: each carries on from where it had
+    // got to, by when it began (its animation may have gone already, with a box that's closed).)
+    host.append(el.dropSky);
+    const now = performance.now();
+    for (const a of el.dropSky.getAnimations({ subtree: true })) {
+      const d = a.effect && a.effect.target;
+      if (d && d.dataset && d.dataset.born && (a.animationName === 'dew-fall' || a.animationName === 'dew-stay')) a.currentTime = now - Number(d.dataset.born);
+    }
+  }
   return el.dropSky;
 }
+// (A box opened or closed while drops are falling: they go with whatever's on top now, rather than
+// staying in a box that's closed, or under one that's just opened.)
+new MutationObserver(() => {
+  if (el.dropSky.childElementCount) dropSky();
+}).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] });
 
 // Caught: what it brought, where it was (dew at once, or its boost); and the next one planned.
 async function catchRainbow(b) {
