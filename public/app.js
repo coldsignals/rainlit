@@ -6417,6 +6417,7 @@ function onDmMessage(m) {
   if (!convExists(friendId)) return;
   const dm = dmFor(friendId);
   dm.lastAt = Math.max(dm.lastAt, m.at);
+  if (!dm.channelId && S.friends.has(friendId)) resortFriends();
   const fromThem = Boolean(m.author) && m.author !== S.clientId && ['text', 'file', 'gif'].includes(m.kind);
   if (fromThem && typersIn(friendId).includes(m.author)) onTyping({ from: m.author, channel: dm.channelId, on: false });
   // Someone new in a space: get their name (and fix it on anything already showing).
@@ -15553,10 +15554,25 @@ function stopGroupRinging(channel = null) {
   updateTitle();
 }
 
+// Your friends, as you last talked: whoever you're in a call with first, then anyone waiting in one
+// for you, then whoever you've messaged (or who's messaged you) most lately; then the rest, those
+// online first, by name.
+function friendOrder(a, b) {
+  const pinned = (f) => (S.inCall && S.callWith === f.id ? 2 : waitingForYou(f.id) ? 1 : 0);
+  const last = (f) => (S.dms.get(f.id) || {}).lastAt || 0;
+  return pinned(b) - pinned(a) || last(b) - last(a) || PRESENCE_ORDER[a.presence] - PRESENCE_ORDER[b.presence] || a.displayName.localeCompare(b.displayName);
+}
+
+// (A message to or from one of them: up the list they go, if they aren't where they should be.)
+function resortFriends() {
+  const want = [...S.friends.values()].sort(friendOrder).map((f) => f.id).join();
+  const have = [...el.friendList.children].map((li) => li.dataset.friend || '').join();
+  if (want !== have) renderFriends();
+}
+
 function renderFriends() {
   renderSpaces();
-  const list = [...S.friends.values()].sort((a, b) =>
-    PRESENCE_ORDER[a.presence] - PRESENCE_ORDER[b.presence] || a.displayName.localeCompare(b.displayName));
+  const list = [...S.friends.values()].sort(friendOrder);
   const online = list.filter((f) => f.presence !== 'offline').length;
   el.friendsTitle.textContent = list.length ? `Friends · ${online} online` : 'Friends';
   el.friendList.replaceChildren(...list.map(friendRow));
@@ -15687,6 +15703,7 @@ function personText(name, sub) {
 
 function friendRow(f) {
   const li = document.createElement('li');
+  li.dataset.friend = f.id;
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = `person ${f.presence}${S.openDm === f.id ? ' open' : ''}`;
