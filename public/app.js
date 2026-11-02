@@ -1981,6 +1981,9 @@ function handleServerMessage(msg) {
     case 'voice-speak':
       if (S.voice && S.voice.channelId === msg.channel && S.voice.room && S.voice.room.setCanPublish) S.voice.room.setCanPublish(Boolean(msg.speak));
       return;
+    case 'dew-caught': // (a drop, caught on another of your devices)
+      if (msg.tab !== TAB_ID) onDewCaught();
+      return;
     case 'voice-resend': // (what you're sending got lost at Cloudflare's end)
       if (S.voice && S.voice.channelId === msg.channel && S.voice.room && S.voice.room.resend) S.voice.room.resend();
       return;
@@ -18409,14 +18412,22 @@ async function catchRainbow(b) {
   b.classList.add('caught');
   setTimeout(() => b.remove(), 500);
   if (inRoom) await sendPats();
+  let d;
   try {
-    const d = (await api('POST', '/dew/drop')).dew;
+    d = (await api('POST', '/dew/drop', { tab: TAB_ID })).dew;
+  } catch (err) {
+    // (Caught already, on another of your devices, or gone: said where it was, as what it brought
+    // would be (a toast would be behind the pet's box), and what's next asked for.)
+    d = { got: 0, kind: b.dataset.kind, said: err.status === 409 ? 'Got away!' : err.message };
+    loadDew();
+  }
+  {
     const info = dropInfo(d.kind);
     const burst = document.createElement('p');
-    burst.className = 'dew-burst';
+    burst.className = `dew-burst${d.said ? ' missed' : ''}`;
     burst.dataset.tier = String(info.tier);
     burst.style.setProperty('--glow', DROP_GLOW[info.key] || '#b07bff');
-    burst.textContent = d.got ? `+${dewWords(d.got)} dew!` : `${info.label}: ${boostWords(info)}`;
+    burst.textContent = d.said || (d.got ? `+${dewWords(d.got)} dew!` : `${info.label}: ${boostWords(info)}`);
     burst.addEventListener('animationend', () => burst.remove());
     if (inRoom) {
       // (Where it was caught.)
@@ -18435,10 +18446,15 @@ async function catchRainbow(b) {
       burst.style.top = `${(at.top - box.top) / z}px`;
       sky.append(burst);
     }
-    setDew(d);
-  } catch (err) {
-    toast(err.message);
+    if (!d.said) setDew(d);
   }
+}
+
+// Caught on another of your devices (lib/dew.js, through Rainlit): gone from here too, and what's
+// next asked for.
+function onDewCaught() {
+  for (const n of document.querySelectorAll('.dew-rainbow:not(.caught), .dew-falling:not(.caught)')) n.remove();
+  if (S.dew) loadDew();
 }
 
 // ----- Milestones (lib/dew.js MILESTONES) -----

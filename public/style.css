@@ -3342,6 +3342,7 @@ button.person.open { background: var(--dusk-hi); }
 @keyframes drop-glint { 0%, 100% { opacity: 0; scale: 0.4; } 50% { opacity: 1; scale: 1; } }
 .dew-burst[data-tier="3"], .dew-burst[data-tier="4"] { text-shadow: 0 2px 0 #2a1f33, 0 0 10px var(--glow, #b07bff); }
 .dew-burst[data-tier="4"] { font-size: 21px; }
+.dew-burst.missed { color: #c8d0dc; font-size: 15px; text-shadow: 0 2px 0 #2a1f33; }
 .drop-sky .dew-burst { position: absolute; z-index: 1; translate: -50% 0; white-space: nowrap; }
 /* Boosts going, on its room: which drop's, how many times as much, and how long's left. */
 .dew-boosts { position: absolute; left: 8px; top: 40px; z-index: 1000; display: grid; justify-items: start; gap: 4px; pointer-events: auto; }
