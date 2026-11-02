@@ -2167,7 +2167,19 @@ api.post('/files/:id/link', needUser, (req, res) => {
   const r = fileFor(req.user, req.params.id);
   if (!r) return fail(res, 404, "That file isn't there any more.");
   const expires = Date.now() + LINK_MS;
-  res.json({ url: `/files/${r.id}/${encodeURIComponent(r.file_name)}?link=${expires}.${linkSig(r.id, expires)}` });
+  const url = `/files/${r.id}/${encodeURIComponent(r.file_name)}?link=${expires}.${linkSig(r.id, expires)}`;
+  // (direct: a video or song that wouldn't play from the usual address, which redirects to R2 once
+  // it's there: its link in R2 itself, so the player needn't follow a redirect to another site.
+  // Still here: the short-lived link, which needs no cookie.)
+  if ((req.body || {}).direct && dms.SHOWABLE_TYPES.test(r.file_type)) {
+    const direct = blobs.linkOf('files', r.file_path, { type: r.file_type, disposition: `inline; filename*=UTF-8''${encodeURIComponent(r.file_name)}` });
+    if (direct) {
+      if (req.user.id !== r.author_id && !r.opened_at) abuse.opened(r.id);
+      abuse.noteOut(r.file_size);
+      return res.json({ url: direct, direct: true });
+    }
+  }
+  res.json({ url });
 });
 
 // In a channel, someone allowed to delete messages can remove anyone's (and it's logged).

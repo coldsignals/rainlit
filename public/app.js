@@ -9118,30 +9118,49 @@ function showPreview(card, f, url) {
   // Not something this browser can show after all: it can still be saved, from the card. (If
   // it was the smaller copy that didn't come, the original's tried first.) A video or song
   // that's just been sent moves on to R2 while it plays, and a browser won't take the rest of
-  // one from another site: it's asked for again, once, from where it had got to.
+  // one from another site; and Android's WebView won't play one that's redirected to R2 at all.
+  // So it's asked for again, once, straight from where it is now (server.js /files/:id/link,
+  // direct), from where it had got to; or, without that, from the usual address again.
   let small = kind === 'image' && f.preview;
   let again = kind !== 'image';
   let playing = false;
-  media.addEventListener('play', () => (playing = true));
+  let wanted = false; // (its play button pressed: it carries on playing, once it's come)
+  media.addEventListener('play', () => (playing = wanted = true));
   media.addEventListener('pause', () => (playing = false));
-  media.onerror = () => {
+  media.onerror = async () => {
     if (small) {
       small = null;
       media.src = url;
       return;
     }
+    const why = media.error ? `${media.error.code} ${media.error.message || ''}`.trim() : '?';
+    const id = card.closest('li')?.dataset.id;
     if (again) {
       again = false;
       const at = media.currentTime || 0;
-      const resume = playing;
+      const resume = playing || wanted;
+      let next = `${url}${url.includes('?') ? '&' : '?'}again=1`;
+      let fromR2 = false;
+      if (id && !url.startsWith('blob:')) {
+        try {
+          const r = await api('POST', `/files/${encodeURIComponent(id)}/link`, { direct: true });
+          if (r.url) [next, fromR2] = [r.direct ? r.url : `${SERVER}${r.url}`, Boolean(r.direct)];
+        } catch {}
+      }
+      noteError(`${kind} wouldn't play (${why}), trying again${fromR2 ? ' from R2' : ''}`, 'media');
       media.addEventListener('loadedmetadata', () => {
         if (at) media.currentTime = at;
         if (resume) media.play().catch(() => {});
       }, { once: true });
-      media.src = `${url}${url.includes('?') ? '&' : '?'}again=1`;
+      media.src = next;
       return;
     }
-    shown.remove();
+    // (It won't, here: said where it was, and it can still be saved, from the card.)
+    noteError(`${kind} wouldn't play (${why})`, 'media');
+    const note = document.createElement('p');
+    note.className = 'file-note';
+    note.textContent = `This ${kind === 'video' ? 'video' : 'song'} won't play here. Save it to ${kind === 'video' ? 'watch' : 'listen to'} it.`;
+    shown.replaceWith(note);
     card.classList.remove('has-media');
   };
   media.src = small || url;
