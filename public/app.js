@@ -9703,6 +9703,14 @@ function callMicCopy() {
   return copy;
 }
 
+// Now the mic's been used, a phone names its microphones (Speakerphone, a headset...): in the list.
+// Not always at once, though: looked for again a little later, and once the test's done.
+function refillMics() {
+  for (const ms of [0, 700, 2000]) {
+    setTimeout(() => { if (el.settings.open && el.micSelect.options.length <= 1) fillDeviceLists(); }, ms);
+  }
+}
+
 async function startMicTest() {
   if (micTest) return;
   unlockSounds();
@@ -9717,8 +9725,7 @@ async function startMicTest() {
   }
   if (micTest !== t) return track.stop(); // (stopped meanwhile)
   t.track = track;
-  // (Now it's been used, a phone names its microphones (Speakerphone, a headset...): in the list.)
-  if (el.settings.open && el.micSelect.options.length <= 1) fillDeviceLists();
+  refillMics();
   if (S.soundCtx && S.soundCtx.state === 'suspended') S.soundCtx.resume().catch(() => {});
   t.meter = makeMeter(track, S.soundCtx);
   try {
@@ -9749,6 +9756,7 @@ function finishMicTest(t) {
   clearInterval(t.tick);
   t.state = 'playing';
   drawMicMeter(0);
+  refillMics();
   if (t.recorder && t.recorder.state !== 'inactive') t.recorder.stop(); // (then playMicTest)
   else playMicTest(t);
   renderMicTest();
