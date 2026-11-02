@@ -1,6 +1,23 @@
 {
   "entries": [
     {
+      "id": "2026-11-02",
+      "date": "2026-11-02",
+      "title": "Drops of every kind, and everyone's volume",
+      "items": [
+        {
+          "title": "Drops of every kind",
+          "text": "Your pet's room gets more than rainbow drops now: eight kinds, from common Dewdrops and Firefly drops to rare Storm and Aurora drops and legendary Golden and Star drops. The rarer they are, the bigger and brighter, and the more they bring. Some bring dew at once, others a boost for a while: a Firefly drop doubles what you collect for 30 seconds. Turn on \"Let drops fall anywhere in Rainlit\" in the Dew tab and they'll fall wherever you are, to catch as they go.",
+          "media": "/whats-new/2026-11-02-drops.webp"
+        },
+        {
+          "title": "Everyone's volume, your way",
+          "text": "In a voice channel, right-click someone (on a phone, tap them in the channel's list) to set how loud they are for you, from 0 to 200%. Past 100% makes a quiet friend louder, and Mute for me quiets them just for you. It's remembered for each person.",
+          "media": "/whats-new/2026-11-02-volume.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-01b",
       "date": "2026-11-01",
       "title": "Twemoji, and events that repeat",
