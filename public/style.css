@@ -2800,6 +2800,34 @@ button.person.open { background: var(--dusk-hi); }
 }
 .pm-role-menu button[aria-checked="true"]::after { content: "✓"; border-color: var(--lamp); background: var(--lamp); color: var(--lamp-ink); }
 .pm-role-empty { padding: 8px 10px; color: var(--mist); font-size: 13px; }
+/* Someone in your voice channel (app.js renderPersonSound): their volume, for you (past 100%, the
+   boost makes a quiet person louder: its number lit), and Mute for me, ticked or not. */
+.pm-volume { display: grid; gap: 6px; padding: 7px 10px 5px; font-size: 14px; font-weight: 600; }
+.pm-volume[hidden] { display: none; }
+.pm-volume-head { display: flex; justify-content: space-between; gap: 12px; }
+.pm-volume output { color: var(--mist); font-variant-numeric: tabular-nums; }
+.pm-volume input { width: 100%; margin: 0; accent-color: var(--lamp); }
+:is(.pm-volume, .mp-sound-row) input:focus { outline: none; }
+:is(.pm-volume, .mp-sound-row) input:focus-visible { outline: 2px solid color-mix(in srgb, var(--lamp) 75%, transparent); outline-offset: 3px; border-radius: 999px; }
+:is(.pm-volume, .mp-sound).boosted output { color: var(--lamp-text); }
+:is(.pm-volume, .mp-sound).muted :is(input, output) { opacity: 0.55; }
+.person-menu .pm-check { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.person-menu .pm-check::after {
+  content: ""; display: grid; place-items: center; width: 17px; height: 17px; flex: none; box-sizing: border-box;
+  border: 2px solid var(--line); border-radius: 5px; font-size: 11px; font-weight: 800; line-height: 1;
+}
+.person-menu .pm-check[aria-checked="true"]::after { content: "✓"; border-color: var(--danger); background: var(--danger); color: #fff; }
+/* (On their profile: the same, in a row.) */
+.mp-sound { display: grid; gap: 6px; }
+.mp-sound[hidden] { display: none; }
+.mp-sound .mp-roles-title small { margin-left: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.mp-sound-row { display: flex; align-items: center; gap: 8px; padding: 3px 12px 3px 3px; background: var(--deep); border: 1px solid var(--line); border-radius: 999px; }
+.mp-sound-row input { flex: 1; min-width: 0; margin: 0; accent-color: var(--lamp); }
+.mp-sound-row output { min-width: 3.4em; text-align: right; color: var(--mist); font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.mp-sound-mute { display: grid; place-items: center; width: 32px; height: 32px; flex: none; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text); cursor: pointer; }
+.mp-sound-mute:hover { background: var(--dusk-hi); }
+.mp-sound-mute .icon { width: 18px; height: 18px; }
+.mp-sound.muted .mp-sound-mute { color: var(--danger-text); }
 /* (Whoever's menu is open, marked where they were right-clicked.) */
 :is(.panel-member, .member-row, .voice-person).menu-open { background: var(--dusk); border-radius: 8px; }
 

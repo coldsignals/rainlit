@@ -405,11 +405,17 @@ at the top closes it (on a phone, the back arrow).
   Closing the tab or quitting Rainlit takes you out at once (a dropped
   connection gets 20 seconds to come back first). Closing the Windows app's
   window doesn't: it keeps going in the tray, so quit from there to leave.
+  Someone too quiet or too loud? Right-click them (or their tile; on a phone,
+  tap them in the channel's list) for their own **Volume**, from 0 to 200%
+  (past 100% makes a quiet person louder), and **Mute for me**. It's just for
+  you, and remembered for each person. A theme's weather steps aside while
+  you're looking at the call, so it's never over anyone's video.
 - **Roles on profiles:** someone's profile, opened in a space, shows their roles
   there. Anyone who can give roles gets an x on each to take it away, and + to
   tick roles on and off.
 - **Someone's menu:** right-click someone in a space (in its members, by their
   messages, or in a voice channel; on a phone, press and hold) for their
+  **Volume** and **Mute for me** (in a voice channel with you), their
   profile, **Mention**, **Message** and **Call** (or **Add friend**), their
   **Roles** to tick on and off, **Time out**, **Kick** and **Ban**, **Report**,
   **Block** and **Copy username**. Only what your roles let you do shows, and

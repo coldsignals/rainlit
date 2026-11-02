@@ -132,7 +132,7 @@ for (const id of [
   'card-dialog', 'card-preview', 'card-preview-face', 'card-preview-name', 'card-preview-username', 'card-preview-status', 'card-c1', 'card-c2',
   'card-patterns', 'card-glow-patterns-box', 'card-glow-patterns', 'card-fonts', 'card-skies', 'card-glow-skies-box', 'card-glow-skies',
   'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain',
-  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-homepage-new', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block',
+  'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-homepage-new', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block', 'mp-sound', 'mp-mute-them', 'mp-volume', 'mp-volume-value',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'export-btn', 'export-note', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
@@ -170,7 +170,7 @@ for (const id of [
   'search-btn', 'search-panel', 'search-form', 'search-input', 'search-close', 'search-from', 'search-from-field', 'search-in', 'search-in-field', 'search-has',
   'search-mentions', 'search-mentions-field', 'search-when', 'search-date', 'search-count', 'search-sort', 'search-results', 'jump-present', 'jump-present-btn',
   'msg-unread', 'msg-pin', 'pins-btn', 'pins-panel', 'pins-close', 'pins-list', 'call-panel', 'call-panel-where', 'call-panel-name', 'mp-roles', 'mp-role-chips', 'mp-pet', 'mp-pet-face', 'mp-pet-text', 'pet-visit', 'pet-visit-title', 'pet-visit-room', 'pet-visit-name', 'pet-visit-since', 'pet-visit-note',
-  'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-voice', 'pm-add', 'voice-invite', 'voice-invite-find', 'voice-invite-list', 'voice-invite-none', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
+  'mic-test', 'mic-test-btn', 'mic-meter', 'mic-meter-bar', 'mic-test-hint', 'me-card', 'person-menu', 'pm-sound', 'pm-volume-field', 'pm-volume', 'pm-volume-value', 'pm-mute-them', 'pm-profile', 'pm-mention', 'pm-message', 'pm-call', 'pm-voice', 'pm-add', 'voice-invite', 'voice-invite-find', 'voice-invite-list', 'voice-invite-none', 'pm-roles', 'pm-timeout', 'pm-kick', 'pm-ban', 'pm-report', 'pm-block', 'pm-copy', 'pm-role-menu',
 ]) {
   el[id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = $(id);
 }
@@ -296,6 +296,7 @@ const S = {
   streamMuted: store.get('streamMuted', 'no') === 'yes',
   voiceVideoOnly: store.get('voiceVideoOnly', 'off') === 'on', // voice channels: only tiles with video
   voiceStreamSound: (() => { try { return JSON.parse(store.get('voiceStreamSound', '{}')) || {}; } catch { return {}; } })(), // voice channels: each person's screen's sound
+  voicePeople: (() => { try { return JSON.parse(store.get('voicePeople', '{}')) || {}; } catch { return {}; } })(), // voice channels: each person's voice, for you
   showStats: store.get('streamStats', 'off') === 'on',
   sounds: store.get('sounds', 'on') !== 'off',
   clickSounds: store.get('clickSounds', 'on') !== 'off',
@@ -5140,6 +5141,7 @@ async function openDm(friendId, at = 0) {
   el.home.hidden = true;
   el.voiceView.hidden = true;
   syncWantVideo();
+  updateRain();
   el.dm.hidden = false;
   el.app.classList.add('in-dm');
   if (el.chatLog !== dm.log) {
@@ -7178,8 +7180,8 @@ window.rainlitBack = () => {
 // Light rain falling over the app, drawn on one canvas; or the weather of a Glow theme instead: a
 // monsoon's downpour, cherry blossom petals, maple leaves, snow under the aurora, fireflies. Near
 // drops are longer, faster and brighter than far ones (near petals and snowflakes, bigger and
-// faster). It stops while you're in a call (and whenever the tab is hidden, since the browser
-// stops drawing it).
+// faster). It stops while you're in a call, or looking at a voice channel's (it would be over
+// everyone's videos and streams), and whenever the tab is hidden (the browser stops drawing it).
 
 const RAIN_LAYERS = [ // far to near
   { alpha: 0.06, width: 1, length: [9, 14], speed: [360, 460] },
@@ -7213,7 +7215,7 @@ let rainLast = 0;
 let rainStopAt = 0;
 
 function updateRain() {
-  const want = S.rain && !S.inCall;
+  const want = S.rain && !S.inCall && !(S.voice && !el.voiceView.hidden);
   el.rain.classList.toggle('on', want);
   if (want && !S.rainFrame) {
     sizeRain(true);
@@ -7562,7 +7564,7 @@ function onSound(msg) {
   };
   if (!own && !sound.url) return;
   showSoundPop(msg.from, sound);
-  if (msg.channel ? v.deafened : S.deafened || S.onPhone) return;
+  if (msg.channel ? v.deafened || (msg.from !== S.clientId && personSound(msg.from).m) : S.deafened || S.onPhone) return;
   hearSound(sound, msg.from);
 }
 
@@ -9811,6 +9813,8 @@ function renderVolumeCap() {
     : 'Above 100% makes a quiet friend louder. It works best with headphones.';
   applyVolume();
   renderStreamAudio();
+  applyVoiceAudio();
+  renderPersonSound();
 }
 
 // If the booster stops (a phone can suspend it), the plain player takes over, at up to 100%,
@@ -10358,6 +10362,8 @@ async function refreshSpaces() {
       S.channels.set(c.id, { ...c, spaceId: space.id });
       if (c.kind === 'voice') {
         S.voiceStates.set(c.id, c.voice || []);
+        // (The one you're in goes by it too: a change missed while the connection was down.)
+        if (S.voice && S.voice.channelId === c.id && S.voice.room && S.voice.room.sync && c.voice) S.voice.room.sync(c.voice);
         continue; // (voice channels have no messages)
       }
       const key = `ch:${c.id}`;
@@ -14046,6 +14052,7 @@ async function leaveVoice({ quiet = false } = {}) {
   clearInterval(v.meterTimer);
   for (const m of v.meters.values()) m.disconnect();
   if (v.meterCtx) v.meterCtx.close().catch(() => {});
+  if (v.boostCtx) v.boostCtx.close().catch(() => {});
   if (!quiet) playCallSound(false);
   try {
     if (v.room) await v.room.disconnect();
@@ -14082,6 +14089,7 @@ function wireVoiceRoom(room, v) {
   room.on(E.TrackUnsubscribed, (track, _pub, participant) => {
     for (const media of track.detach()) media.remove();
     if (track.sid) dropAudio(`[data-sid="${CSS.escape(track.sid)}"]`);
+    applyVoiceAudio();
     const m = v.meters.get(participant.identity);
     if (m && m.track === track.mediaStreamTrack) unmeterVoice(v, participant.identity);
     again();
@@ -14092,6 +14100,7 @@ function wireVoiceRoom(room, v) {
   room.on(E.ParticipantConnected, () => { playCallSound(true); again(); });
   room.on(E.ParticipantDisconnected, (participant) => {
     dropAudio(`[data-who="${CSS.escape(participant.identity)}"]`);
+    applyVoiceAudio();
     unmeterVoice(v, participant.identity);
     playCallSound(false);
     again();
@@ -14168,6 +14177,12 @@ function tickVoice(v) {
     g.glow = glowOf(live ? m : null, g, 50);
   }
   for (const id of v.glows.keys()) if (!v.meters.has(id)) v.glows.delete(id);
+  // (Every 2 seconds: anyone's sound whose player has stopped, started again. A phone can pause
+  // one, and nothing else would: you'd hear everyone but them till you left and joined again.)
+  v.ticks = (v.ticks || 0) + 1;
+  if (v.ticks % 40 === 0) {
+    for (const a of el.voiceAudio.querySelectorAll('audio')) if (a.paused && a.srcObject) a.play().catch(() => {});
+  }
   renderVoiceSpeaking();
   if (talking) noteActivity(); // (talking: you're here)
   renderTrayIcon(talking);
@@ -14469,6 +14484,7 @@ function voiceDevicesChanged() {
   const v = S.voice;
   if (!v || !v.room || v.state !== 'connected') return;
   if (S.devices.speaker) v.room.switchActiveDevice('audiooutput', S.devices.speaker).catch(() => {});
+  if (v.boostCtx && v.boostCtx.setSinkId) v.boostCtx.setSinkId(S.devices.speaker || '').catch(() => {});
   if (v.room.localParticipant.isMicrophoneEnabled) {
     v.room.localParticipant.setMicrophoneEnabled(false)
       .then(() => pickMic())
@@ -14535,6 +14551,7 @@ function renderVoice() {
   if (space) renderSide();
   if (!el.voiceView.hidden) renderVoiceView();
   renderSoundButtons();
+  renderPersonSound();
 }
 
 // (Cloudflare) Others' video comes only while it's being looked at: the voice view, or popped
@@ -14563,6 +14580,7 @@ function showVoiceView() {
   renderSpaces();
   renderVoiceView();
   syncWantVideo();
+  updateRain(); // (the weather steps aside, off everyone's videos)
 }
 
 function hideVoiceView() {
@@ -14575,6 +14593,7 @@ function hideVoiceView() {
     el.app.classList.remove('in-dm');
   }
   syncWantVideo();
+  updateRain();
 }
 
 // The room: a tile for each person (their camera, or their picture), and one for each screen
@@ -14668,6 +14687,7 @@ function renderVoiceView() {
     }
     renderTileSound(tile, p, source);
     if (source !== 'screen' && muted) label.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Muted"><use href="#i-mic-off"/></svg>');
+    if (source !== 'screen' && person.id !== S.clientId && personSound(person.id).m) label.insertAdjacentHTML('beforeend', MUTED_FOR_YOU);
     // (Here, but stepped away.)
     if (source !== 'screen' && person.id !== S.clientId && person.presence === 'away') label.insertAdjacentHTML('beforeend', '<span class="tile-away">Away</span>');
     // (Their camera counts from when they say it's on, before its video arrives.)
@@ -14742,13 +14762,143 @@ function setStreamSound(id, change) {
   if (v) for (const t of v.tiles.values()) if (t.dataset.who === id) renderTileSound(t);
 }
 
-// The sound playing in a voice channel: deafened, nothing; a screen's, at its own volume.
+// Each person's voice, for you, in voice channels (and groups' calls): { v: volume 0 to 2, m: muted
+// for you }, remembered for that person (as they were, forgotten). Right-click them (or their
+// tile), or open their profile from the channel's list: renderPersonSound.
+function personSound(id) {
+  const s = S.voicePeople[id] || {};
+  return { v: typeof s.v === 'number' ? Math.min(2, Math.max(0, s.v)) : 1, m: Boolean(s.m) };
+}
+
+// (As loud as you can make someone: 200%, through the volume boost; 100% on a phone whose echo
+// cancelling can't cover the boost, as with a friend in a call: see volumeCap.)
+const personCap = () => Math.min(2, volumeCap());
+
+function setPersonSound(id, change) {
+  const was = personSound(id);
+  const s = { ...was, ...change };
+  if (s.v === 1 && !s.m) delete S.voicePeople[id];
+  else S.voicePeople[id] = s;
+  store.set('voicePeople', JSON.stringify(S.voicePeople));
+  applyVoiceAudio();
+  renderPersonSound();
+  if (s.m !== was.m) renderVoice(); // (their "muted for you", by their name)
+}
+
+// The sound playing in a voice channel: deafened, nothing; each person's voice at the volume you
+// gave them (muted for you, nothing), and a screen's at its own. Past 100%, a player can't go
+// louder, so their voice goes through the volume boost instead (voiceBoost), the player itself
+// muted while that runs; if it isn't running (a phone suspended it), the player plays them at 100%
+// meanwhile, so there's never silence.
 function applyVoiceAudio() {
   const v = S.voice;
+  const cap = personCap();
   for (const a of el.voiceAudio.children) {
-    const s = VK && a.dataset.source === VK.Track.Source.ScreenShareAudio ? streamSound(a.dataset.who) : null;
-    a.volume = s ? s.v : 1;
-    a.muted = Boolean(v && v.deafened) || Boolean(s && s.m);
+    const screen = VK && a.dataset.source === VK.Track.Source.ScreenShareAudio;
+    const s = screen ? streamSound(a.dataset.who) : personSound(a.dataset.who);
+    const level = (v && v.deafened) || s.m ? 0 : Math.min(s.v, screen ? 1 : cap);
+    a.volume = Math.min(1, level);
+    const b = level > 1 && v ? voiceBoost(v, a) : null;
+    if (b) b.gain.gain.value = level;
+    else if (v) unboost(v, a);
+    a.muted = level === 0 || Boolean(b && v.boostCtx.state === 'running');
+  }
+  // (Players gone, with their people: their boosts too.)
+  if (v && v.boosts) for (const a of v.boosts.keys()) if (a.parentNode !== el.voiceAudio) unboost(v, a);
+}
+
+// The volume boost: someone's voice through a gain and a limiter (so the loud bits don't crackle),
+// on a sound context of its own, to the speaker you picked. Their player keeps playing, muted:
+// browsers only hand a call's sound on while something is playing it. (As startBoost, in a call.)
+function voiceBoost(v, a) {
+  const had = v.boosts && v.boosts.get(a);
+  if (had) return had;
+  if (!a.srcObject) return null;
+  try {
+    if (!v.boostCtx) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+      ctx.onstatechange = () => { if (S.voice === v) applyVoiceAudio(); };
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -3;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.15;
+      limiter.connect(ctx.destination);
+      // (Never quite silent, or Chrome may swap its speaker for a stand-in: see startBoost.)
+      try {
+        const keeper = ctx.createConstantSource();
+        keeper.offset.value = 1e-5;
+        keeper.connect(ctx.destination);
+        keeper.start();
+      } catch {}
+      if (S.devices.speaker && ctx.setSinkId) ctx.setSinkId(S.devices.speaker).catch(() => {});
+      v.boostCtx = ctx;
+      v.boostLimiter = limiter;
+      v.boosts = new Map();
+    }
+    v.boostCtx.resume().catch(() => {});
+    const source = v.boostCtx.createMediaStreamSource(a.srcObject);
+    const gain = v.boostCtx.createGain();
+    source.connect(gain).connect(v.boostLimiter);
+    const b = { source, gain };
+    v.boosts.set(a, b);
+    return b;
+  } catch {
+    return null; // (no boost here: they stay at 100%)
+  }
+}
+
+function unboost(v, a) {
+  const b = v.boosts && v.boosts.get(a);
+  if (!b) return;
+  try {
+    b.source.disconnect();
+    b.gain.disconnect();
+  } catch {}
+  v.boosts.delete(a);
+}
+
+// (By the name of someone you've muted for yourself: in the channel's list, and on their tile.)
+const MUTED_FOR_YOU = '<svg class="icon off muted-for-you" role="img" aria-label="Muted for you"><title>Muted for you</title><use href="#i-speaker-off"/></svg>';
+
+// Whether someone's in the voice channel you're in with you (not you): their volume is yours to set.
+function inMyVoice(id) {
+  const v = S.voice;
+  if (!v || !id || id === S.clientId) return false;
+  if (v.room && v.room.remoteParticipants && v.room.remoteParticipants.has(id)) return true;
+  return (S.voiceStates.get(v.channelId) || []).some((m) => m.id === id);
+}
+
+// Their volume and Mute for me, where they show: their menu (right-click), and their profile.
+function renderPersonSound() {
+  const cap = personCap();
+  const fill = (id, range, value, box) => {
+    const s = personSound(id);
+    const pct = Math.round(Math.min(s.v, cap) * 100);
+    range.max = String(cap * 100);
+    if (document.activeElement !== range || range.value === '') range.value = String(pct);
+    value.textContent = s.m ? 'Muted' : `${pct}%`;
+    box.classList.toggle('muted', s.m);
+    box.classList.toggle('boosted', !s.m && pct > 100);
+    return s;
+  };
+  const t = personMenu ? personMenu.id : null;
+  const here = Boolean(t) && inMyVoice(t);
+  el.pmVolumeField.hidden = el.pmMuteThem.hidden = el.pmSound.hidden = !here;
+  if (here) {
+    const s = fill(t, el.pmVolume, el.pmVolumeValue, el.pmVolumeField);
+    el.pmMuteThem.setAttribute('aria-checked', String(s.m));
+  }
+  const id = miniProfileId;
+  const shown = Boolean(id) && inMyVoice(id);
+  el.mpSound.hidden = !shown;
+  if (shown) {
+    const s = fill(id, el.mpVolume, el.mpVolumeValue, el.mpSound);
+    el.mpMuteThem.setAttribute('aria-pressed', String(s.m));
+    el.mpMuteThem.title = s.m ? 'Unmute' : 'Mute for me';
+    el.mpMuteThem.setAttribute('aria-label', el.mpMuteThem.title);
+    el.mpMuteThem.querySelector('use').setAttribute('href', s.m ? '#i-speaker-off' : '#i-speaker');
   }
 }
 
@@ -14832,6 +14982,7 @@ function voiceChannelItem(c) {
       if (m.video) row.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Camera on"><use href="#i-cam"/></svg>');
       if (m.deafened) row.insertAdjacentHTML('beforeend', '<svg class="icon off" aria-label="Deafened"><use href="#i-headphones-off"/></svg>');
       else if (m.muted) row.insertAdjacentHTML('beforeend', '<svg class="icon off" aria-label="Muted"><use href="#i-mic-off"/></svg>');
+      if (m.id !== S.clientId && personSound(m.id).m) row.insertAdjacentHTML('beforeend', MUTED_FOR_YOU);
       row.addEventListener('click', () => openMiniProfile(m.id));
       row.addEventListener('contextmenu', (e) => {
         e.preventDefault();
@@ -15662,7 +15813,7 @@ function openPersonMenu(userId, spaceId, x, y, opener = null) {
   el.personMenu.hidden = false;
   placeMenu(el.personMenu, x, y);
   personMenu.at = { x, y };
-  el.personMenu.querySelector('button:not([hidden])')?.focus({ preventScroll: true });
+  menuItems(el.personMenu)[0]?.focus({ preventScroll: true });
   // A space's members not here yet: what you can do to them comes once they are.
   const space = personMenu.spaceId && S.spaces.get(personMenu.spaceId);
   if (space && !isGroupSpace(space) && !space.members) {
@@ -15681,6 +15832,9 @@ function closePersonMenu() {
   if (personMenu && personMenu.opener) personMenu.opener.classList.remove('menu-open');
   personMenu = null;
 }
+
+// (What's in a menu to move between, in order: its buttons, and a slider (someone's volume).)
+const menuItems = (menu) => [...menu.querySelectorAll('button, input')].filter((b) => !b.hidden && !b.closest('[hidden]'));
 
 // Next to the pointer, but never off the edge of the window.
 function placeMenu(menu, x, y) {
@@ -15739,6 +15893,7 @@ function renderPersonMenu() {
     el.pmBlock.classList.toggle('danger', !blocked);
   }
   show(el.pmCopy, Boolean(p.username));
+  renderPersonSound();
   for (const g of el.personMenu.querySelectorAll('[role="group"]')) g.hidden = ![...g.children].some((b) => !b.hidden);
 }
 
@@ -16454,6 +16609,7 @@ function renderMiniProfile() {
   el.mpStatus.textContent = p.statusText || '';
   renderMpDoing(id);
   renderProfileRoles(id);
+  renderPersonSound();
   el.mpBlocked.hidden = !blocked;
   el.mpSafety.hidden = self;
   el.mpBlock.textContent = blocked ? 'Unblock' : el.mpBlock.dataset.confirm ? `Yes, block ${p.displayName}` : 'Block';
@@ -20031,6 +20187,12 @@ async function init() {
     else if (confirm(`Block ${t.p.displayName}? ${t.f ? "You won't be friends any more, they" : 'They'} can't message you or ask to be friends, and their messages in spaces fold away.`)) setBlocked(t.id, true, t.p.displayName);
   }));
   el.pmCopy.addEventListener('click', personAction((t) => copyText(t.p.username, `Copied ${t.p.username}.`)));
+  // Someone's volume, for you (moving it turns them back on, as a stream's does), and Mute for me
+  // (the menu stays open, so you see it, and can set their volume too). The same on their profile.
+  el.pmVolume.addEventListener('input', () => { if (personMenu) setPersonSound(personMenu.id, { v: Number(el.pmVolume.value) / 100, m: false }); });
+  el.pmMuteThem.addEventListener('click', () => { if (personMenu) setPersonSound(personMenu.id, { m: !personSound(personMenu.id).m }); });
+  el.mpVolume.addEventListener('input', () => { if (miniProfileId) setPersonSound(miniProfileId, { v: Number(el.mpVolume.value) / 100, m: false }); });
+  el.mpMuteThem.addEventListener('click', () => { if (miniProfileId) setPersonSound(miniProfileId, { m: !personSound(miniProfileId).m }); });
   // Roles: beside it, on hover (or a click, or the right arrow key); the other choices hide them again.
   el.pmRoles.addEventListener('click', () => (el.pmRoleMenu.hidden ? openPersonRoles(true) : closePersonRoles()));
   el.pmRoles.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') openPersonRoles(); });
@@ -20041,7 +20203,7 @@ async function init() {
       openPersonRoles(true);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      const items = [...el.personMenu.querySelectorAll('button')].filter((b) => !b.hidden && !b.closest('[hidden]'));
+      const items = menuItems(el.personMenu);
       const i = items.indexOf(document.activeElement);
       items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus();
     }
@@ -20625,6 +20787,14 @@ async function init() {
     const range = e.target.closest('.tile-audio input');
     const tile = range && range.closest('.voice-tile');
     if (tile) setStreamSound(tile.dataset.who, { v: Number(range.value) / 100, m: false });
+  });
+  // Someone's tile, right-clicked (pressed and held, on a phone): their menu, with their volume.
+  el.voiceGrid.addEventListener('contextmenu', (e) => {
+    const tile = e.target.closest('.voice-tile');
+    const v = S.voice;
+    if (!tile || !tile.dataset.who || !v || document.fullscreenElement || e.target.closest('.tile-audio, .tile-tools')) return;
+    e.preventDefault();
+    openPersonMenu(tile.dataset.who, v.spaceId, e.clientX, e.clientY, tile);
   });
   // A tile, from the keyboard: Enter makes it big (or back). Esc puts a big one back.
   el.voiceGrid.addEventListener('keydown', (e) => {

@@ -717,6 +717,14 @@
     <p id="voice-invite-none" class="hint voice-invite-none" hidden></p>
   </div>
   <div id="person-menu" class="menu person-menu" role="menu" hidden>
+    <!-- (Someone in the voice channel you're in: how loud they are for you, or not at all.) -->
+    <div id="pm-sound" class="pm-sound" role="group">
+      <label id="pm-volume-field" class="pm-volume">
+        <span class="pm-volume-head"><span>Volume</span><output id="pm-volume-value">100%</output></span>
+        <input id="pm-volume" type="range" min="0" max="200" step="5" value="100" aria-label="Their volume, for you" />
+      </label>
+      <button id="pm-mute-them" class="pm-check" type="button" role="menuitemcheckbox" aria-checked="false">Mute for me</button>
+    </div>
     <div role="group">
       <button id="pm-profile" type="button" role="menuitem">Profile</button>
       <button id="pm-mention" type="button" role="menuitem">Mention</button>
@@ -839,6 +847,15 @@
       <div id="mp-roles" class="mp-roles" hidden>
         <h3 class="mp-roles-title">Roles</h3>
         <div id="mp-role-chips" class="role-chips mp-role-chips"></div>
+      </div>
+      <!-- (Someone in the voice channel you're in: how loud they are for you, or not at all.) -->
+      <div id="mp-sound" class="mp-sound" hidden>
+        <h3 class="mp-roles-title">Volume <small>just for you</small></h3>
+        <div class="mp-sound-row">
+          <button id="mp-mute-them" class="mp-sound-mute" type="button" aria-pressed="false" title="Mute for me" aria-label="Mute for me"><svg class="icon"><use href="#i-speaker"/></svg></button>
+          <input id="mp-volume" type="range" min="0" max="200" step="5" value="100" aria-label="Their volume, for you" />
+          <output id="mp-volume-value">100%</output>
+        </div>
       </div>
       <div class="mp-actions">
         <span class="mp-buttons">

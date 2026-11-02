@@ -88,6 +88,7 @@
       const el = document.createElement(this.kind === 'audio' ? 'audio' : 'video');
       el.autoplay = true;
       el.playsInline = true;
+      if (this.kind !== 'audio') el.muted = true; // (no sound in it: nothing to count as playing)
       el.srcObject = new MediaStream([this.mediaStreamTrack]);
       this.elements.push(el);
       if (this.kind === 'audio') this.room.playAudio(el);
@@ -203,6 +204,7 @@
       this.seen = new Set(); // (who's been in Rainlit's list since reconnecting to it)
       this.videoUntil = 0;
       this.retry = new Map(); // "user:kind" -> { at, name, n }: when to try getting it (that track) again
+      this.healed = new Map(); // "user:kind" -> { n, last, next }: its sound fetched again (heal)
       this.members = [];
       this.wantVideo = false;
       this.closed = false;
@@ -226,16 +228,23 @@
       }
     }
 
-    // One change at a time (an offer and its answer before the next).
+    // One change at a time (an offer and its answer before the next). One that hangs (a request
+    // that never comes back, on a phone's network) is given up on after 30 seconds, so the ones
+    // after it still happen: someone's sound still fetched, not nothing new till you leave.
     queue(job) {
-      const run = this.chain.then(() => (this.closed ? null : job()));
+      const run = this.chain.then(() => {
+        if (this.closed) return null;
+        let timer;
+        const late = new Promise((_, no) => { timer = setTimeout(() => no(new Error('A change to the voice connection took too long.')), 30_000); });
+        return Promise.race([job(), late]).finally(() => clearTimeout(timer));
+      });
       this.chain = run.catch((err) => console.warn('[voice]', err && err.message ? err.message : err));
       return run;
     }
 
     // pass: Rainlit's (key, speak, iceServers, limits). api: app.js's, for Rainlit's routes.
     async connect({ channelId, pass, api, me, tab }) {
-      Object.assign(this, { channelId, pass, api, tab });
+      Object.assign(this, { channelId, pass, api: (method, path, body) => api(method, path, body, { timeout: 25_000 }), tab });
       this.limits = pass.limits || {};
       this.localParticipant = new LocalParticipant(this, me, Boolean(pass.speak));
       this.worker = new Worker('/voice-e2ee.js');
@@ -244,6 +253,7 @@
       };
       this.worker.postMessage({ type: 'key', key: fromBase64url(pass.key) });
       await this.open();
+      this.healTimer = setInterval(() => this.heal(), 4000);
     }
 
     newPc(receiving = false) {
@@ -771,7 +781,7 @@
         this.pulled.set(key, x);
         return x;
       });
-      if (drop.length) this.queue(() => this.unpullNow(drop)).then(() => this.sync(this.members)).catch(() => {});
+      if (drop.length) this.queue(() => this.unpullNow(drop)).catch(() => {}).then(() => this.sync(this.members));
       if (add.length) {
         this.queue(() => this.pullNow(add)).catch(() => {
           for (const x of add) {
@@ -789,6 +799,51 @@
       // (What's no longer wanted isn't tried again; what is, is, when it's due.)
       for (const [key, r] of this.retry) if (want.get(key) !== r.name) this.retry.delete(key);
       this.retrySoon();
+    }
+
+    // Every few seconds: anyone's mic that should be coming in and isn't is fetched again, as
+    // leaving and joining would (a friend's went unheard after his camera came on, till she left
+    // and joined again). A slot whose sound never came, or stopped coming for 8 seconds (a mic
+    // sends a little even muted, so it isn't that), is let go of and asked for again; still not
+    // coming, not again for a while (15 seconds, doubling to 4 minutes: a locked phone sends
+    // nothing, and that's not this end's to fix; coming for 10 seconds, it's as new). And the list
+    // of who's sending what is gone through again, in case a change to it was missed.
+    async heal() {
+      // (Not while the connection itself is down: that's rejoin's.)
+      if (this.closed || this.healing || this.rejoining || this.reconnecting || !this.subPc || !this.subSession || this.subPc.connectionState !== 'connected') return;
+      this.healing = true;
+      try {
+        for (const x of [...this.pulled.values()]) {
+          if (x.kind !== 'mic' || x.state !== 'open') continue;
+          let packets = 0;
+          const tr = x.track && this.subPc.getTransceivers().find((t) => t.mid === x.mid);
+          if (tr) {
+            try {
+              (await tr.receiver.getStats()).forEach((s) => { if (s.type === 'inbound-rtp') packets += s.packetsReceived || 0; });
+            } catch {}
+          }
+          if (this.closed || this.pulled.get(x.key) !== x || x.state !== 'open') continue; // (changed meanwhile)
+          const now = Date.now();
+          const h = this.healed.get(x.key);
+          if (packets > (x.packets || 0)) {
+            x.packets = packets;
+            x.flowAt = now;
+            if (h && now - h.last > 10_000) this.healed.delete(x.key); // (coming again since: as new)
+            continue;
+          }
+          if (now - (x.flowAt || x.openAt || now) < 8000 || (h && now < h.next)) continue;
+          const n = h ? h.n : 0;
+          this.healed.set(x.key, { n: n + 1, last: now, next: now + Math.min(240_000, 15_000 * 2 ** n) });
+          console.warn('[voice]', `${x.kind} from ${String(x.user).slice(0, 6)}: nothing coming, so it's fetched again`);
+          x.state = 'closing';
+          this.dropPulled(x);
+          this.retry.delete(x.key);
+          this.queue(() => this.unpullNow([x])).catch(() => {}).then(() => this.sync(this.members));
+        }
+      } finally {
+        this.healing = false;
+      }
+      this.sync(this.members);
     }
 
     // Connected to Rainlit again (it may have restarted: an update). What's coming in carries on
@@ -844,8 +899,12 @@
           continue;
         }
         this.retry.delete(x.key);
-        Object.assign(x, { trackName: t.trackName, mid: String(t.mid), state: 'open' });
+        Object.assign(x, { trackName: t.trackName, mid: String(t.mid), state: 'open', openAt: Date.now() });
         this.byMid.set(x.mid, x);
+        // (Its name now, from Rainlit: newer than the list's, if a change to that was missed, so
+        // it isn't let go of again for not matching.)
+        const m = this.members.find((p) => p.id === x.user);
+        if (m && m.pub && m.pub[x.kind] !== t.trackName) m.pub = { ...m.pub, [x.kind]: t.trackName };
       }
       if (r.sdp) {
         await this.subPc.setRemoteDescription({ type: 'offer', sdp: r.sdp });
@@ -970,6 +1029,7 @@
         for (const x of this.pulled.values()) this.dropPulled(x);
         this.pulled.clear();
         this.byMid.clear();
+        this.healed.clear();
         this.local.clear();
         this.dead = 0;
         this.chain = Promise.resolve();
@@ -1026,6 +1086,7 @@
       clearTimeout(this.retryTimer);
       clearTimeout(this.graceTimer);
       clearTimeout(this.videoTimer);
+      clearInterval(this.healTimer);
       for (const pub of this.localParticipant ? this.localParticipant.pubs.values() : []) {
         try { pub.track.mediaStreamTrack.stop(); } catch {}
       }
