@@ -18045,6 +18045,7 @@ function setDew(state) {
   }
   S.dew = state;
   S.dewAt = performance.now();
+  S.dewAtWall = Date.now(); // (by the clock on the wall: a phone asleep stops the other one)
   dewOnline = 0;
   dewTickAt = S.dewAt;
   dewWasOn = dewCollecting();
@@ -18350,6 +18351,12 @@ function showRainbow() {
   const room = el.pet.open;
   if (!r || !S.pet || (room ? S.petTry : !dropsAnywhere()) || dropCaught(r)) return;
   if ((room ? el.petRoom : el.dropSky).querySelector('.dew-rainbow:not(.caught), .dew-falling:not(.caught)')) return;
+  // (Planned a while ago (a phone that's been asleep, another of your devices catching it meanwhile):
+  // the server's asked again first, and it's shown from that, if it's still to be caught.)
+  if (Date.now() - (S.dewAtWall || 0) > 60_000) {
+    loadDew();
+    return;
+  }
   const left = r.in + r.for - (performance.now() - S.dewAt);
   if (left < 1500) return;
   const info = dropInfo(r.kind);
