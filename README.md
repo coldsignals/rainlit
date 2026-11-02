@@ -330,7 +330,7 @@ rainlit.app is free, and paid for by one person. **Glow** is how people support
 it and keep it that way, for $5 a month or $50 a year (and tips), at
 `rainlit.app/support` (Your profile, **Rainlit Glow**). What supporters get is
 marked with a Glow tag wherever it is, and it's more of what costs money: files up
-to 100 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
+to 500 MB, 50 GB for them, 1,000 notes, sharper screen sharing in voice
 channels (1080p at up to 60 fps, while it fits in what Cloudflare sends for
 free), no slower start for a new account, three more pets (and things for their
 rooms), homepage extras
