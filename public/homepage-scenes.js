@@ -313,9 +313,9 @@ function pipes(g, c1, c2) {
   let NX = 16;
   let NY = 10;
   const NZ = 10;
-  const PIPE_LEN = [20, 46]; // (joints each, at most: then the next)
+  const PIPE_LEN = [28, 64]; // (joints each, at most: then the next)
   const ACROSS = 8; // (cells across the view's shorter side)
-  const PIPES = 8; // (and then it starts again)
+  const PIPES = 11; // (and then it starts again: about 35 seconds in all)
   let filled = null;
   let pipe = null; // { at: [x, y, z], dir, color }
   let laid = 0;
@@ -444,7 +444,7 @@ function pipes(g, c1, c2) {
     if (!step()) {
       ball(project(pipe.at), pipe.color, false);
       pipe = null;
-      if (laid > NX * NY * NZ * 0.18 || pipesLaid >= PIPES) fading = 1.4;
+      if (laid > NX * NY * NZ * 0.3 || pipesLaid >= PIPES) fading = 1.4;
     }
   };
   return {
