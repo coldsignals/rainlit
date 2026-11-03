@@ -1997,7 +1997,8 @@
       <!-- Dew (app.js: renderDew; lib/dew.js): what it shakes off when it's patted, and what collects it. -->
       <section id="pet-dew-pane" class="pet-dew-pane" aria-label="Dew" data-pet-pane="dew">
         <div class="dew-head">
-          <i class="dew-drop big" aria-hidden="true"></i>
+          <!-- (Glowing more the more it collects, and in a boost's colours while one's going: app.js renderDewHero.) -->
+          <i id="dew-hero" class="dew-drop big" aria-hidden="true"></i>
           <div>
             <strong class="dew-total"><span id="dew-total">0</span> dew</strong>
             <span id="dew-rates" class="pet-note"></span>

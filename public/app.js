@@ -159,7 +159,7 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
-  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'drop-chime', 'drop-sky', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'dew-hero', 'drop-chime', 'drop-sky', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -19236,6 +19236,23 @@ function renderDewBoosts() {
   }));
   el.dewBoosts.hidden = !going.length;
   if (going.length) dewBoostTimer = setTimeout(renderDew, Math.min(...going.map((b) => b.now)) + 50);
+  renderDewHero(going);
+}
+
+// The tab's big drop: a soft glow, a step brighter for each ten times as much collected a second
+// (none under a hundred a second; a twinkle too, from a billion), and while a boost's going, the
+// look and colour of its drop (the biggest one's, if there are a few), shimmering till it's over.
+function renderDewHero(going = []) {
+  const d = S.dew;
+  const rate = (d && d.perSecond) || 0;
+  const lvl = rate >= 100 ? Math.min(10, Math.floor(Math.log10(rate)) - 1) : 0;
+  el.dewHero.style.setProperty('--lvl', String(lvl));
+  el.dewHero.classList.toggle('twinkle', lvl >= 8);
+  const top = going.slice().sort((a, b) => b.x - a.x)[0];
+  el.dewHero.classList.toggle('boosted', Boolean(top));
+  el.dewHero.dataset.boost = top ? top.kind : '';
+  el.dewHero.style.setProperty('--boost', top ? DROP_GLOW[top.kind] || '#b07bff' : '');
+  el.dewHero.style.backgroundImage = top && window.Homepage && Homepage.dewIcon ? `url("${Homepage.dewIcon(top.kind)}")` : '';
 }
 
 // The kinds there are: how rare each is, what it brings, and how many you've caught (one not caught

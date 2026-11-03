@@ -3299,6 +3299,28 @@ button.person.open { background: var(--dusk-hi); }
    rolls down the room's window, to catch. */
 .dew-drop { display: inline-block; flex: none; width: 13px; height: 13px; background: var(--dew-drop) center / contain no-repeat; image-rendering: pixelated; }
 .dew-drop.big { width: 34px; height: 34px; }
+/* The Dew tab's big drop (app.js renderDewHero): a soft glow that grows with what's collected a
+   second (--lvl, 0 to 10), a twinkle from a billion a second, and a boost's colour, shimmering. */
+#dew-hero {
+  --lvl: 0; position: relative;
+  filter: drop-shadow(0 0 calc(var(--lvl) * 0.9px) color-mix(in srgb, #9fdcff calc(var(--lvl) * 8%), transparent));
+  transition: filter 1.2s ease;
+}
+#dew-hero.twinkle::after {
+  content: ''; position: absolute; right: -3px; top: 2px; width: 5px; height: 5px; background: #fff;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: hero-twinkle 3.4s ease-in-out infinite;
+}
+@keyframes hero-twinkle { 0%, 70%, 100% { opacity: 0; scale: 0.4; } 82% { opacity: 1; scale: 1.1; } }
+#dew-hero.boosted { animation: hero-boost 1.3s ease-in-out infinite alternate; }
+@keyframes hero-boost {
+  from { filter: drop-shadow(0 0 3px var(--boost)) drop-shadow(0 0 1px #fff); }
+  to { filter: drop-shadow(0 0 11px var(--boost)) drop-shadow(0 0 2px #fff) brightness(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #dew-hero.twinkle::after { animation: none; opacity: 0.8; }
+  #dew-hero.boosted { animation: none; filter: drop-shadow(0 0 8px var(--boost)) drop-shadow(0 0 1px #fff); }
+}
 .pet-dew {
   position: absolute; left: 8px; top: 8px; z-index: 1000; display: flex; align-items: center; gap: 6px; margin: 0;
   padding: 4px 9px 4px 6px; border: 2px solid #2a1f33; background: rgba(20, 24, 38, 0.82); color: #e6f6ff;
