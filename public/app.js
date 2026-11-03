@@ -9081,7 +9081,7 @@ function addFileCard(t) {
 
 // A file kept in a saved conversation.
 function savedFileItem(m, who) {
-  const t = { id: m.id, name: m.file.name, size: m.file.size, type: m.file.type, preview: m.file.preview, poster: m.file.poster, dir: 'saved', state: 'done' };
+  const t = { id: m.id, name: m.file.name, size: m.file.size, type: m.file.type, preview: m.file.preview, poster: m.file.poster, play: m.file.play, dir: 'saved', state: 'done' };
   const li = fileCard(t, who, m.at);
   t.ui.save.href = m.file.url;
   showPreview(t.ui.card, t, m.file.url);
@@ -9171,6 +9171,9 @@ function showPreview(card, f, url) {
   let playing = false;
   let wanted = false; // (its play button pressed: it carries on playing, once it's come)
   let copied = false; // (its copy that plays everywhere tried: playableCopy)
+  // (A video with that copy plays it, as it's lighter (a phone's 4K original buffers on most
+  // connections); the original if it won't. Saving still gets the original.)
+  let fromCopy = kind === 'video' && Boolean(f.play);
   media.addEventListener('play', () => (playing = wanted = true));
   media.addEventListener('pause', () => (playing = false));
   media.onerror = async () => {
@@ -9181,6 +9184,12 @@ function showPreview(card, f, url) {
     }
     const why = media.error ? `${media.error.code} ${media.error.message || ''}`.trim() : '?';
     const id = card.closest('li')?.dataset.id;
+    if (fromCopy) {
+      fromCopy = false;
+      noteError(`video's copy wouldn't play (${why}), trying the original`, 'media');
+      media.src = url;
+      return;
+    }
     // (One this phone can't decode (HEVC, 10-bit HDR...): its copy that plays everywhere, made if it
     // isn't yet, meanwhile said so where it was.)
     // (3: it came, but can't be decoded here; 4: it couldn't be opened, which may be the redirect: R2
@@ -9258,7 +9267,15 @@ function showPreview(card, f, url) {
     shown.replaceWith(note);
     card.classList.remove('has-media');
   };
-  media.src = small || url;
+  media.src = small || (fromCopy ? f.play : url);
+  // (Its copy, there now: taken, unless it's started meanwhile.)
+  if (kind === 'video' && !f.play && f.id && !url.startsWith('blob:') && playableWaits.size < 200) {
+    playableWaits.set(f.id, [...(playableWaits.get(f.id) || []), (play) => {
+      if (!media.isConnected || playing || media.currentTime > 0 || copied) return;
+      fromCopy = true;
+      media.src = play;
+    }]);
+  }
   card.prepend(shown);
 }
 
