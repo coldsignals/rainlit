@@ -9194,7 +9194,9 @@ function showPreview(card, f, url) {
       wait.className = 'file-note';
       wait.textContent = 'Making a copy of this video that plays here: a minute or two…';
       shown.replaceWith(wait);
+      card.classList.remove('has-media'); // (or the note's hidden with the rest of the card)
       const play = await playableCopy(id);
+      card.classList.add('has-media');
       if (!play) {
         wait.replaceWith(shown);
         again = false;
