@@ -19239,15 +19239,17 @@ function renderDewBoosts() {
   renderDewHero(going);
 }
 
-// The tab's big drop: a soft glow, a step brighter for each ten times as much collected a second
-// (none under a hundred a second; a twinkle too, from a billion), and while a boost's going, the
+// The tab's big drop: a soft glow, a step brighter for each ten times as much collected a second,
+// from a hundred a second to the most there is (about 10^23, everything got: lib/dew.js), a twinkle
+// from a billion, and another from a quadrillion; and while a boost's going, the
 // look and colour of its drop (the biggest one's, if there are a few), shimmering till it's over.
 function renderDewHero(going = []) {
   const d = S.dew;
   const rate = (d && d.perSecond) || 0;
-  const lvl = rate >= 100 ? Math.min(10, Math.floor(Math.log10(rate)) - 1) : 0;
+  const lvl = rate >= 100 ? Math.min(22, Math.floor(Math.log10(rate)) - 1) : 0;
   el.dewHero.style.setProperty('--lvl', String(lvl));
   el.dewHero.classList.toggle('twinkle', lvl >= 8);
+  el.dewHero.classList.toggle('twinkle2', lvl >= 14);
   const top = going.slice().sort((a, b) => b.x - a.x)[0];
   el.dewHero.classList.toggle('boosted', Boolean(top));
   el.dewHero.dataset.boost = top ? top.kind : '';
