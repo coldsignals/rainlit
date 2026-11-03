@@ -159,7 +159,7 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
-  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'drop-sky', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'drop-chime', 'drop-sky', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -18580,6 +18580,7 @@ function renderDewCollectors() {
 const DROP_TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'];
 const DROP_GLOW = { dew: '#7fd0ff', firefly: '#d8f070', rainbow: '#b07bff', lava: '#ff7a2a', storm: '#8fa0ff', aurora: '#6fe0c0', golden: '#ffd23a', star: '#fff4b0' };
 const dropsAnywhere = () => store.get('dropsAnywhere', 'off') === 'on';
+const dropChime = () => store.get('dropChime', 'off') === 'on';
 const dropInfo = (kind) => ((S.dewShop && S.dewShop.drops) || []).find((x) => x.key === kind) || { key: 'rainbow', label: 'Rainbow drop', tier: 2, about: '' };
 // ("×2 collecting for 30 seconds")
 const boostWords = (b) => `×${b.x} ${b.on === 'pats' ? 'pats' : b.on === 'all' ? 'everything' : 'collecting'}${b.for ? ` for ${b.for >= 60 ? `${b.for / 60} minute${b.for > 60 ? 's' : ''}` : `${b.for} seconds`}` : ''}`;
@@ -18660,6 +18661,7 @@ function showRainbow() {
     if ((e.animationName === 'dew-roll' || e.animationName === 'dew-fall' || e.animationName === 'dew-stay') && !b.classList.contains('caught')) b.remove();
   });
   b.addEventListener('click', () => catchRainbow(b));
+  if (dropChime()) playDropAppear(info.tier);
 }
 
 // Where they fall away from its room: over everything, an open box too (or it'd be behind it, out
@@ -18818,6 +18820,37 @@ function dropSounds() {
   unlockSounds();
   const ctx = S.soundCtx;
   return ctx && ctx.state === 'running' ? ctx : null;
+}
+
+// A drop's appeared (for anyone who's asked: the Dew tab): two soft notes going up, a third for a
+// rare one, and a little shimmer for the rarest, so it's plain which are worth stopping for. Its own,
+// not the catch's. Not on Do not disturb; half as loud in a call, under the voices. (always: as the
+// switch is turned on, to hear it.)
+function playDropAppear(tier = 1, { always = false } = {}) {
+  if (!always && S.me && S.me.presence === 'dnd') return;
+  unlockSounds();
+  const ctx = S.soundCtx;
+  if (!ctx || ctx.state !== 'running') return;
+  const soft = S.inCall || S.voice ? 0.5 : 1;
+  const t = ctx.currentTime + 0.02;
+  const note = (f, at, level, length) => {
+    for (const [mul, part] of [[1, 1], [2, 0.12]]) {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * mul;
+      g.gain.setValueAtTime(0.0001, at);
+      g.gain.exponentialRampToValueAtTime(level * part * soft, at + 0.025); // (a soft start: it's a nudge, not an alert)
+      g.gain.exponentialRampToValueAtTime(0.0001, at + length);
+      o.connect(g).connect(ctx.destination);
+      o.start(at);
+      o.stop(at + length + 0.05);
+    }
+  };
+  note(1046.5, t, 0.028, 0.9); // C6
+  note(1568, t + 0.14, 0.024, 1.1); // G6
+  if (tier >= 3) note(2093, t + 0.28, 0.018, 1.2); // C7
+  if (tier >= 4) for (let i = 0; i < 4; i++) note(2637 + i * 330, t + 0.42 + i * 0.05, 0.007, 0.5); // (a shimmer)
 }
 
 function playDropPlink() {
@@ -19210,6 +19243,7 @@ function renderDewBoosts() {
 function renderDewDrops() {
   const d = S.dew;
   el.dropsAnywhere.checked = dropsAnywhere();
+  el.dropChime.checked = dropChime();
   el.dewDrops.replaceChildren(...((S.dewShop && S.dewShop.drops) || []).map((x) => {
     const n = Number(d.drops && d.drops[x.key]) || 0;
     const row = document.createElement('div');
@@ -21806,6 +21840,11 @@ async function init() {
     if (!el.dropsAnywhere.checked) for (const n of el.dropSky.querySelectorAll('.dew-falling')) n.remove();
     if (el.dropsAnywhere.checked && !S.dew) loadDew();
     planRainbow();
+  });
+  // A chime when one appears, or not (one played as it's turned on, to hear what it's like).
+  el.dropChime.addEventListener('change', () => {
+    store.set('dropChime', el.dropChime.checked ? 'on' : 'off');
+    if (el.dropChime.checked) playDropAppear(2, { always: true });
   });
   el.pet.addEventListener('close', () => {
     S.petTry = '';
