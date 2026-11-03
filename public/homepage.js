@@ -3029,7 +3029,9 @@
 
     // In its room, in front of a mirror: in it too, as it passes (a copy of it, where it is, doing
     // what it does, facing as it faces: the mirror's glass is its mask, its shine over it; level
-    // with the glass's middle, so it's seen in it however high the mirror's hung).
+    // with the glass's middle, so it's seen in it however high the mirror's hung). And its room's
+    // floor in it, behind it (whichever floor it has now): the copy smaller (in a mirror, it's twice
+    // as far away), standing on the floor's edge, below the glass's middle.
     function reflect() {
       const room = me.where && me.where.box;
       if (!room || !room.prRoom || !me.v || !me.v.P) return;
@@ -3045,9 +3047,27 @@
         const inside = m.querySelector('.pr-reflect-in');
         if (!art || !art.glass || !inside) continue;
         const s = spotOf(t);
+        const K = 0.62; // (how big it looks in the mirror)
+        const floorY = art.glassY * t.size * P * 1.42; // (the floor's edge, in the glass)
+        const floor = room.querySelector('.pr-floor');
+        if (floor) {
+          const glass = inside.parentElement;
+          let fl = glass.querySelector(':scope > .pr-reflect-floor');
+          if (!fl) {
+            fl = document.createElement('i');
+            fl.className = 'pr-reflect-floor';
+            glass.prepend(fl); // (behind its pet's copy)
+          }
+          if (fl.style.backgroundImage !== floor.style.backgroundImage) {
+            fl.style.backgroundImage = floor.style.backgroundImage;
+            fl.style.backgroundSize = floor.style.backgroundSize || getComputedStyle(floor).backgroundSize;
+          }
+          const top = `${(floorY - ph * K * 0.1).toFixed(1)}px`; // (a little behind its paws)
+          if (fl.style.top !== top) fl.style.top = top;
+        }
         const x = me.x - leftOf(t, s, P, W) * P; // (its middle, from the mirror's left)
         let copy = inside.firstElementChild;
-        if (x + pw / 2 <= 0 || x - pw / 2 >= s.w * P) {
+        if (x + (pw * K) / 2 <= 0 || x - (pw * K) / 2 >= s.w * P) {
           if (copy && !copy.hidden) copy.hidden = true;
           continue;
         }
@@ -3074,7 +3094,7 @@
         if (itsInner) itsInner.classList.toggle('left', me.dir < 0);
         const itsLift = copy.querySelector('.hp-pet-lift');
         if (itsLift && itsLift.style.transform !== lift.style.transform) itsLift.style.transform = lift.style.transform;
-        copy.style.transform = `translate(${(x - pw / 2).toFixed(1)}px, ${(art.glassY * t.size * P - ph / 2).toFixed(1)}px)`;
+        copy.style.transform = `translate(${(x - (pw * K) / 2).toFixed(1)}px, ${(floorY - ph * K).toFixed(1)}px) scale(${K})`;
       }
     }
 

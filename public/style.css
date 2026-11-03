@@ -3098,8 +3098,10 @@ button.person.open { background: var(--dusk-hi); }
    reflect: a copy of it, where it is), a little faint, under the glass's shine. */
 .pr-room .pr-reflect { position: absolute; inset: 0; overflow: hidden; -webkit-mask: var(--glass) 0 0 / 100% 100% no-repeat; mask: var(--glass) 0 0 / 100% 100% no-repeat; }
 .pr-room .pr-reflect-in { position: absolute; inset: 0; }
+/* (Its room's floor, in the glass from where its pet's paws are down, faded as a reflection is.) */
+.pr-room .pr-reflect-floor { position: absolute; left: 0; right: 0; bottom: 0; opacity: 0.6; background-repeat: repeat; image-rendering: pixelated; pointer-events: none; }
 .pr-room .pr-flip .pr-reflect-in { transform: scaleX(-1); }
-.pr-room .pr-reflect-pet { position: absolute; left: 0; top: 0; opacity: 0.78; pointer-events: none; }
+.pr-room .pr-reflect-pet { position: absolute; left: 0; top: 0; opacity: 0.78; pointer-events: none; transform-origin: 0 0; }
 .pr-room .pr-reflect-pet[hidden] { display: none; }
 .pr-room .pr-sheen { position: absolute; inset: 0; background-repeat: no-repeat; background-size: 100% 100%; image-rendering: pixelated; opacity: 0.85; }
 /* (Hanging from the ceiling, on a cord.) */
