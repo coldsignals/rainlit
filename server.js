@@ -37,6 +37,7 @@ const whatsNew = require('./lib/whatsnew');
 const dew = require('./lib/dew');
 const events = require('./lib/events');
 const blobs = require('./lib/blobs');
+const videos = require('./lib/videos');
 const abuse = require('./lib/abuse');
 // (A new flag: the admin hears, wherever they are in the app.)
 abuse.whenFlagged((userId, kind, detail) => {
@@ -1990,6 +1991,7 @@ async function finishUpload(req, { id, name, safeType, partial, size, replyTo })
   Promise.resolve()
     .then(() => abuse.afterUpload(req.user, id, final, size))
     .then(() => row && dms.previewOf(row))
+    .then(() => row && videos.makePlayable(row, () => tellPlayable(row)))
     .finally(() => blobs.offload('files', id));
   return { message, storage: storage.of(req.user) };
 }
@@ -2163,6 +2165,33 @@ function fileFor(user, id) {
   return dms.inDm(r.dm_id, user.id) && people.areFriends(user.id, other) ? r : null;
 }
 
+// A video's copy that plays everywhere (lib/videos.js), there now: everyone in its conversation
+// told, so a player that couldn't play the original can play it.
+function tellPlayable(row) {
+  let audience = [];
+  if (row.dm_id.includes(':')) audience = [...new Set(row.dm_id.split(':'))];
+  else {
+    const channel = spaces.channel(row.dm_id);
+    if (channel) audience = spaces.channelAudience(channel);
+  }
+  const msg = { type: 'file-playable', id: row.id, play: `${dms.fileUrl(row.id, row.file_name)}?play=1` };
+  for (const id of audience) realtime.sendToUser(id, msg);
+}
+
+// A video this phone couldn't play: its copy that plays everywhere, made if there isn't one yet
+// (even of one that should play everywhere: this phone says otherwise). 'ready' (and where), or
+// 'working' (told with file-playable when it's there), or 'none' (one can't be made).
+api.post('/files/:id/playable', needUser, (req, res) => {
+  const r = fileFor(req.user, req.params.id);
+  if (!r || !/^video\//.test(r.file_type || '')) return fail(res, 404, "That video isn't there any more.");
+  if (!videos.enabled) return res.json({ state: 'none' });
+  const state = videos.stateOf(r);
+  if (state === 'ready') return res.json({ state, play: `${dms.fileUrl(r.id, r.file_name)}?play=1` });
+  if (state === 'none') return res.json({ state });
+  videos.makePlayable(r, () => tellPlayable(r), { force: true });
+  res.json({ state: 'working' });
+});
+
 api.post('/files/:id/link', needUser, (req, res) => {
   const r = fileFor(req.user, req.params.id);
   if (!r) return fail(res, 404, "That file isn't there any more.");
@@ -2171,6 +2200,11 @@ api.post('/files/:id/link', needUser, (req, res) => {
   // (direct: a video or song that wouldn't play from the usual address, which redirects to R2 once
   // it's there: its link in R2 itself, so the player needn't follow a redirect to another site.
   // Still here: the short-lived link, which needs no cookie.)
+  const play = Boolean((req.body || {}).play) && videos.stateOf(r) === 'ready';
+  if (play) {
+    const direct = blobs.linkOf('previews', videos.playName(r), { type: 'video/mp4', disposition: 'inline' });
+    return res.json(direct ? { url: direct, direct: true } : { url: `${url}&play=1` });
+  }
   if ((req.body || {}).direct && dms.SHOWABLE_TYPES.test(r.file_type)) {
     const direct = blobs.linkOf('files', r.file_path, { type: r.file_type, disposition: `inline; filename*=UTF-8''${encodeURIComponent(r.file_name)}` });
     if (direct) {
@@ -3448,6 +3482,15 @@ app.get('/files/:id/:name', async (req, res) => {
     if (user.id !== r.author_id && !r.opened_at) abuse.opened(r.id); // (lib/abuse.js: files nobody else opens)
   }
   const showable = dms.SHOWABLE_TYPES.test(r.file_type);
+  // A video's copy that plays everywhere (lib/videos.js), if it has one.
+  if (req.query.play && !req.query.download && videos.stateOf(r) === 'ready') {
+    abuse.noteOut(r.file_size);
+    return blobs.send(res, 'previews', videos.playName(r), {
+      type: 'video/mp4',
+      disposition: `inline; filename*=UTF-8''${encodeURIComponent(r.file_name.replace(/\.\w+$/, '') + '.mp4')}`,
+      headers: { 'Content-Security-Policy': "default-src 'none'; sandbox" },
+    });
+  }
   // The chat's smaller copy of a photo (opening it shows the original), if it has one.
   const small = req.query.preview && !req.query.link ? await dms.previewOf(r) : null;
   // (?download: saving it, rather than showing it.)

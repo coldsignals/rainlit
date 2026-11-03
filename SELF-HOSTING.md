@@ -295,6 +295,7 @@ account, gifts some months of supporting.
 | `LIVEKIT_API_URL` | Where Rainlit reaches LiveKit's controls, if not at `LIVEKIT_URL` (`http://livekit:7880` with LiveKit in the Docker setup). |
 | `COMPOSE_PROFILES` | Docker only: `voice` runs LiveKit alongside Rainlit (step 11). |
 | `MAX_FILE_MB` | The biggest file people can send, in MB, to start with (50). After that, it's changed in the admin panel (Storage). |
+| `FFMPEG_PATH` | Where ffmpeg is, for videos that some phones can't play (HEVC, 10-bit HDR) to get a copy that they can (lib/videos.js). Without it, the `ffmpeg-static` package's is used if it's installed, or one on the PATH; with none, videos play as they are. A 4K video's copy takes about 160 MB of memory while it's made, one at a time. |
 | `STORAGE_MB` | How much each person's files can add up to, in MB, to start with (1536, which is 1.5 GB). After that, it's changed in the admin panel. |
 | `NEW_ACCOUNT_DAYS`, `NEW_ACCOUNT_DAILY_MB` | How long an account counts as new (7 days), and how much it can send in files a day meanwhile, in MB (250). A flagged account has the same pace until the admin says it's fine. |
 | `MIN_AGE` | How old someone has to be to make an account (13, and never less). Sign-up asks for a birthday without saying what age it takes; someone younger is told they can't make an account. Some countries' laws want 14, 15 or 16. |

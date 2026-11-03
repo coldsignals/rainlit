@@ -474,6 +474,14 @@ at the top closes it (on a phone, the back arrow).
   and audio play right there. Files are kept too: up to 50 MB each, and 1.5 GB
   for everything each person's sent that's still there (the admin can change
   both, and give someone more). It's not per month: deleting files makes room.
+- **Videos that play everywhere:** phones often record in HEVC, or 10-bit HDR,
+  which a computer plays but many phones can't, inside an app. A video like that
+  gets a copy that plays everywhere (H.264, at most 1280 pixels on its longer
+  side, HDR toned down to ordinary colours), made by the server after it's sent,
+  for the chat's player; saving it still gets the original. A phone that can't
+  play one sent before this asks for its copy then ("Making a copy of this video
+  that plays here"). Copies are made one at a time, at the lowest priority, and
+  need ffmpeg (see SELF-HOSTING.md); without it, videos play as they are.
 - **Hidden details come out:** photos, videos and recordings often carry where
   and when they were made, on what phone, and more. Rainlit takes that out of
   everything uploaded (files, profile pictures, homepages), keeping only which way

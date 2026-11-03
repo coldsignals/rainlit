@@ -1874,6 +1874,11 @@ function handleServerMessage(msg) {
       return onDoing(msg.id, msg.doing);
     case 'profile':
       return onProfile(msg.user);
+    case 'file-playable':
+      // (A video's copy that plays everywhere, there now: a player waiting for it plays it.)
+      for (const fn of playableWaits.get(msg.id) || []) fn(msg.play);
+      playableWaits.delete(msg.id);
+      return;
     case 'homepage-changed':
       return onHomepageChanged(msg);
     case 'friends-changed':
@@ -9085,6 +9090,46 @@ function savedFileItem(m, who) {
   return li;
 }
 
+// A video's copy that plays everywhere (server.js /files/:id/playable): where it is, once it's
+// there (made now, if it isn't yet: told with file-playable, or looked for again now and then), or
+// null (one can't be made). Straight from R2 if it's there (server.js /files/:id/link).
+const playableWaits = new Map(); // (message id -> what's waiting for its copy)
+async function playableCopy(id) {
+  const where = async () => {
+    try {
+      const r = await api('POST', `/files/${encodeURIComponent(id)}/link`, { play: true });
+      return r.direct ? r.url : `${SERVER}${r.url}`;
+    } catch {
+      return null;
+    }
+  };
+  let r;
+  try {
+    r = await api('POST', `/files/${encodeURIComponent(id)}/playable`);
+  } catch {
+    return null;
+  }
+  if (r.state === 'ready') return where();
+  if (r.state !== 'working') return null;
+  const end = Date.now() + 40 * 60_000;
+  while (Date.now() < end) {
+    const told = await new Promise((resolve) => {
+      const fn = () => resolve(true);
+      playableWaits.set(id, [...(playableWaits.get(id) || []), fn]);
+      setTimeout(() => resolve(false), 20_000);
+    });
+    if (told) return where();
+    try {
+      r = await api('POST', `/files/${encodeURIComponent(id)}/playable`);
+    } catch {
+      continue;
+    }
+    if (r.state === 'ready') return where();
+    if (r.state !== 'working') return null;
+  }
+  return null;
+}
+
 // Pictures show in the chat (click for full size), videos and audio play right there. A big
 // photo shows as its smaller copy (f.preview, made by the server), and opens as the original.
 function showPreview(card, f, url) {
@@ -9125,6 +9170,7 @@ function showPreview(card, f, url) {
   let again = kind !== 'image';
   let playing = false;
   let wanted = false; // (its play button pressed: it carries on playing, once it's come)
+  let copied = false; // (its copy that plays everywhere tried: playableCopy)
   media.addEventListener('play', () => (playing = wanted = true));
   media.addEventListener('pause', () => (playing = false));
   media.onerror = async () => {
@@ -9135,6 +9181,31 @@ function showPreview(card, f, url) {
     }
     const why = media.error ? `${media.error.code} ${media.error.message || ''}`.trim() : '?';
     const id = card.closest('li')?.dataset.id;
+    // (One this phone can't decode (HEVC, 10-bit HDR...): its copy that plays everywhere, made if it
+    // isn't yet, meanwhile said so where it was.)
+    // (3: it came, but can't be decoded here; 4: it couldn't be opened, which may be the redirect: R2
+    // directly first, then the copy.)
+    const decode = media.error && (media.error.code === 3 || (media.error.code === 4 && !again));
+    if (kind === 'video' && decode && !copied && id && !url.startsWith('blob:')) {
+      copied = true;
+      noteError(`video wouldn't play (${why}), trying its copy`, 'media');
+      const resume = playing || wanted;
+      const wait = document.createElement('p');
+      wait.className = 'file-note';
+      wait.textContent = 'Making a copy of this video that plays here: a minute or two…';
+      shown.replaceWith(wait);
+      const play = await playableCopy(id);
+      if (!play) {
+        wait.replaceWith(shown);
+        again = false;
+        media.onerror();
+        return;
+      }
+      wait.replaceWith(shown);
+      if (resume) media.addEventListener('loadedmetadata', () => media.play().catch(() => {}), { once: true });
+      media.src = play;
+      return;
+    }
     if (again) {
       again = false;
       const at = media.currentTime || 0;
