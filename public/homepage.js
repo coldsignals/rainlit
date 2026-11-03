@@ -3030,7 +3030,7 @@
     // In its room, in front of a mirror: in it too, as it passes (a copy of it, where it is, doing
     // what it does, facing as it faces: the mirror's glass is its mask, its shine over it; level
     // with the glass's middle, so it's seen in it however high the mirror's hung). And its room's
-    // floor in it, behind it (whichever floor it has now): the copy smaller (in a mirror, it's twice
+    // wallpaper and floor in it, behind it (whichever it has now), under a glassy tint: the copy smaller (in a mirror, it's twice
     // as far away), standing on the floor's edge, below the glass's middle.
     function reflect() {
       const room = me.where && me.where.box;
@@ -3049,21 +3049,23 @@
         const s = spotOf(t);
         const K = 0.62; // (how big it looks in the mirror)
         const floorY = art.glassY * t.size * P * 1.42; // (the floor's edge, in the glass)
-        const floor = room.querySelector('.pr-floor');
-        if (floor) {
-          const glass = inside.parentElement;
-          let fl = glass.querySelector(':scope > .pr-reflect-floor');
-          if (!fl) {
-            fl = document.createElement('i');
-            fl.className = 'pr-reflect-floor';
-            glass.prepend(fl); // (behind its pet's copy)
+        const glass = inside.parentElement;
+        const edgeY = `${(floorY - ph * K * 0.1).toFixed(1)}px`; // (where the floor meets the wall: a little behind its paws)
+        for (const [cls, from] of [['pr-reflect-wall', '.pr-wall'], ['pr-reflect-floor', '.pr-floor']]) {
+          const real = room.querySelector(from);
+          if (!real) continue;
+          let layer = glass.querySelector(`:scope > .${cls}`);
+          if (!layer) {
+            layer = document.createElement('i');
+            layer.className = cls;
+            glass.insertBefore(layer, inside); // (behind its pet's copy)
           }
-          if (fl.style.backgroundImage !== floor.style.backgroundImage) {
-            fl.style.backgroundImage = floor.style.backgroundImage;
-            fl.style.backgroundSize = floor.style.backgroundSize || getComputedStyle(floor).backgroundSize;
+          if (layer.style.backgroundImage !== real.style.backgroundImage) {
+            layer.style.backgroundImage = real.style.backgroundImage;
+            layer.style.backgroundSize = real.style.backgroundSize || getComputedStyle(real).backgroundSize;
           }
-          const top = `${(floorY - ph * K * 0.1).toFixed(1)}px`; // (a little behind its paws)
-          if (fl.style.top !== top) fl.style.top = top;
+          const prop = cls === 'pr-reflect-wall' ? 'height' : 'top';
+          if (layer.style[prop] !== edgeY) layer.style[prop] = edgeY;
         }
         const x = me.x - leftOf(t, s, P, W) * P; // (its middle, from the mirror's left)
         let copy = inside.firstElementChild;
