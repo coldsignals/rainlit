@@ -159,7 +159,7 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
-  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'dew-hero', 'drop-chime', 'drop-sky', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'dew-fx', 'dew-hero', 'drop-chime', 'drop-sky', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -17721,7 +17721,7 @@ function renderPetTabs() {
     b.setAttribute('aria-selected', String(S.petTab === b.dataset.petTab));
   }
   for (const pane of el.pet.querySelectorAll('[data-pet-pane]')) pane.hidden = pane.dataset.petPane !== S.petTab;
-  const alive = el.pet.open && S.petTab === 'dew' && Boolean(p) && !S.petTry;
+  const alive = el.pet.open && S.petTab === 'dew' && Boolean(p) && !S.petTry && dewFx();
   if (alive && !dewStage.on) dewStage.start();
   else if (!alive && dewStage.on) dewStage.stop();
   if (S.petTab === 'care') el.petCare.hidden = !p || Boolean(S.petTry);
@@ -18581,6 +18581,7 @@ const DROP_TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'];
 const DROP_GLOW = { dew: '#7fd0ff', firefly: '#d8f070', rainbow: '#b07bff', lava: '#ff7a2a', storm: '#8fa0ff', aurora: '#6fe0c0', golden: '#ffd23a', star: '#fff4b0' };
 const dropsAnywhere = () => store.get('dropsAnywhere', 'off') === 'on';
 const dropChime = () => store.get('dropChime', 'off') === 'on';
+const dewFx = () => store.get('dewFx', 'on') !== 'off'; // (its room coming alive: dewStage)
 const dropInfo = (kind) => ((S.dewShop && S.dewShop.drops) || []).find((x) => x.key === kind) || { key: 'rainbow', label: 'Rainbow drop', tier: 2, about: '' };
 // ("×2 collecting for 30 seconds")
 const boostWords = (b) => `×${b.x} ${b.on === 'pats' ? 'pats' : b.on === 'all' ? 'everything' : 'collecting'}${b.for ? ` for ${b.for >= 60 ? `${b.for / 60} minute${b.for > 60 ? 's' : ''}` : `${b.for} seconds`}` : ''}`;
@@ -19013,11 +19014,11 @@ function playAchievement() {
 // With the Dew tab open, its room comes alive with how far you've come (as Cookie Clicker's milk
 // does): dew drips down the wallpaper and motes rise, more the more it collects; sparkles, then
 // shooting stars and an aurora along the top, further along; and on the floor, a pool of dew that
-// rises with the milestones reached, its colour changing as more are (dew, honeydew, moonlight,
-// aurora, starlight, rainbow). Drawn small, in the room's own pixels (one layer on the wallpaper,
+// rises with the milestones reached, its colour changing as more are (dew, frost, moonlight,
+// aurora, starlight, rainbow; never yellow, on a floor). Drawn small, in the room's own pixels (one layer on the wallpaper,
 // behind what's hung or stands there; the pool in front of what stands, behind its pet). Only while
 // it's showing; still, for anyone who'd rather things didn't move.
-const POOLS = [[0, [110, 196, 255]], [40, [255, 190, 70]], [80, [170, 178, 255]], [110, [80, 220, 180]], [140, [130, 120, 255]], [170, 'rainbow']];
+const POOLS = [[0, [110, 196, 255]], [40, [196, 238, 255]], [80, [170, 178, 255]], [110, [80, 220, 180]], [140, [130, 120, 255]], [170, 'rainbow']];
 const dewStage = {
   on: false,
   frame: 0,
@@ -19263,6 +19264,7 @@ function renderDewDrops() {
   const d = S.dew;
   el.dropsAnywhere.checked = dropsAnywhere();
   el.dropChime.checked = dropChime();
+  el.dewFx.checked = dewFx();
   el.dewDrops.replaceChildren(...((S.dewShop && S.dewShop.drops) || []).map((x) => {
     const n = Number(d.drops && d.drops[x.key]) || 0;
     const row = document.createElement('div');
@@ -21859,6 +21861,11 @@ async function init() {
     if (!el.dropsAnywhere.checked) for (const n of el.dropSky.querySelectorAll('.dew-falling')) n.remove();
     if (el.dropsAnywhere.checked && !S.dew) loadDew();
     planRainbow();
+  });
+  // Its room coming alive in the Dew tab, or not.
+  el.dewFx.addEventListener('change', () => {
+    store.set('dewFx', el.dewFx.checked ? 'on' : 'off');
+    renderPetTabs();
   });
   // A chime when one appears, or not (one played as it's turned on, to hear what it's like).
   el.dropChime.addEventListener('change', () => {
