@@ -34,6 +34,10 @@ app.setAppUserModelId('app.rainlit.desktop'); // so Windows shows our name and i
 // Calls, ringing and push-to-talk keep going while the window is hidden in the tray.
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
+// (A stream full screen: Chromium 156 hands it to the graphics card as an overlay of its own, which
+// freezes now and then on some drivers, most with a lot of movement on screen. Painted with the
+// rest of the window instead, it plays smoothly; it costs a little more of the graphics card.)
+app.commandLine.appendSwitch('disable-direct-composition-video-overlays');
 
 let win = null;
 let tray = null;
