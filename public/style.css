@@ -2302,6 +2302,14 @@ body:not(.compact-chat) .chat-log li.mentioned[data-author] { padding-left: 64px
   border-radius: 10px; overflow: hidden; background: var(--deep);
 }
 .file-player { background: #000; }
+/* A video full screen in the Android app, which draws behind the phone's status and navigation
+   bars: room left for them, so its controls sit above the navigation bar, not under it (where a tap
+   goes to Android's buttons, not to pause or the timeline). Elsewhere, there's no room to leave. */
+video:fullscreen {
+  box-sizing: border-box; background: #000;
+  padding: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) var(--safe-area-inset-right, env(safe-area-inset-right, 0px))
+    var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+}
 /* (A video or song that won't play here, in its place: it can still be saved, from its card.) */
 .file-note { margin: 0 0 8px; color: var(--mist); font-size: 13.5px; }
 .file-note .file-why { opacity: 0.7; font-size: 11.5px; }
