@@ -18607,6 +18607,9 @@ function showRainbow() {
   }
   const left = r.in + r.for - (performance.now() - S.dewAt);
   if (left < 1500) return;
+  // (Not while Rainlit's out of sight: its fall wouldn't be seen, and might not even run, and come
+  // back looking new, its time over. It's put up when Rainlit's looked at again: dropsInStep.)
+  if (document.hidden) return;
   const info = dropInfo(r.kind);
   const b = document.createElement('button');
   b.type = 'button';
@@ -18620,7 +18623,9 @@ function showRainbow() {
   b.setAttribute('aria-label', `Catch the ${info.label.toLowerCase()}`);
   // (Its fall (or roll) lasts as long as it's there; its sway and glow go round meanwhile.)
   b.style.animationDuration = room ? `${Math.round(left)}ms, 1.6s` : `${Math.round(left)}ms, 2.8s, 1.6s`;
-  b.dataset.born = String(performance.now()); // (when its fall began: dropSky)
+  // (When its fall began, and when it's over, by the clock: dropSky, dropsInStep.)
+  b.dataset.born = String(Date.now());
+  b.dataset.until = String(Date.now() + left);
   if (room) {
     const win = el.petRoom.querySelector('.pr-window');
     if (win) {
@@ -18654,13 +18659,27 @@ function dropSky() {
     // (Moved, its drops would start falling again from the top: each carries on from where it had
     // got to, by when it began (its animation may have gone already, with a box that's closed).)
     host.append(el.dropSky);
-    const now = performance.now();
-    for (const a of el.dropSky.getAnimations({ subtree: true })) {
-      const d = a.effect && a.effect.target;
-      if (d && d.dataset && d.dataset.born && (a.animationName === 'dew-fall' || a.animationName === 'dew-stay')) a.currentTime = now - Number(d.dataset.born);
-    }
+    for (const d of el.dropSky.querySelectorAll('[data-born]')) dropInStep(d);
   }
   return el.dropSky;
+}
+
+// A drop, where it should be by now in its fall, by the clock; or gone, if its time's over.
+const DROP_FALLS = ['dew-fall', 'dew-roll', 'dew-stay'];
+function dropInStep(d) {
+  const now = Date.now();
+  if (d.classList.contains('caught')) return;
+  if (d.dataset.until && now > Number(d.dataset.until) - 1000) return d.remove();
+  for (const a of d.getAnimations()) if (DROP_FALLS.includes(a.animationName)) a.currentTime = now - Number(d.dataset.born);
+}
+// Back in sight (from minimized, another tab, a phone asleep): while it was out of sight, a drop's
+// fall may not have run at all, to end it, and a drop that came and went meanwhile would come back
+// looking new, to be caught when it can't be ("Got away!"). Each put in step, and the next asked
+// for (showRainbow asks the server first, if what it knows is old).
+function dropsInStep() {
+  if (document.hidden) return;
+  for (const d of document.querySelectorAll('.dew-rainbow[data-born], .dew-falling[data-born]')) dropInStep(d);
+  if (S.dew) planRainbow();
 }
 // (A box opened or closed while drops are falling: they go with whatever's on top now, rather than
 // staying in a box that's closed, or under one that's just opened.)
@@ -22323,6 +22342,7 @@ async function init() {
     trace(document.hidden ? 'page-hidden' : 'page-visible');
     if (document.visibilityState !== 'visible') return setPttHeld(false);
     replayVideos();
+    dropsInStep();
     if (!S.me) checkForUpdateSignedOut();
     syncAndroidPush(); // maybe ntfy was just installed
     if (S.conn && S.conn.pc.connectionState === 'connected') requestWakeLock();
@@ -22332,6 +22352,7 @@ async function init() {
       if (dm.unread || (dm.divider && !dm.divider.seen)) markDmSeen(dm);
     }
   });
+  window.addEventListener('focus', dropsInStep); // (a window back from minimized, wherever visibilitychange is late)
   // Closing the tab or losing signal counts as dropping out, not leaving: your spot stays saved.
   window.addEventListener('offline', () => {
     trace('offline');
