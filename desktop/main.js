@@ -275,11 +275,12 @@ function lockDown() {
   const ses = session.defaultSession;
   ses.setPermissionRequestHandler((wc, permission, callback, details) => {
     if (!ALLOWED.has(permission) || !fromApp(details.requestingUrl || wc.getURL())) return callback(false);
-    if (permission === 'media') return allowed('media').then(callback);
+    // (Electron 45 asks for the screen as display-capture, not media: asked about the same way.)
+    if (permission === 'media' || permission === 'display-capture') return allowed('media').then(callback);
     callback(true);
   });
   ses.setPermissionCheckHandler((_wc, permission, origin) => ALLOWED.has(permission) && fromApp(origin)
-    && (permission !== 'media' || TRUSTED || trustHere().media === true));
+    && ((permission !== 'media' && permission !== 'display-capture') || TRUSTED || trustHere().media === true));
 
   ses.setDisplayMediaRequestHandler((request, callback) => {
     if (!fromApp(request.securityOrigin)) return callback({});
