@@ -1,6 +1,23 @@
 {
   "entries": [
     {
+      "id": "2026-11-04",
+      "date": "2026-11-04",
+      "title": "Formatting and spoilers",
+      "items": [
+        {
+          "title": "Formatting",
+          "text": "Messages can now be **bold**, *italic*, __underlined__ or ~~struck through~~, with `code`, > quotes and ||spoilers|| that stay hidden until clicked. Ctrl+B, Ctrl+I and Ctrl+U work in the message box.",
+          "media": "/whats-new/2026-11-04-formatting.webp"
+        },
+        {
+          "title": "Spoilers for pictures and videos",
+          "text": "Before you send a picture or video, tap Spoiler on it: it shows blurred, with SPOILER over it, until someone clicks it.",
+          "media": "/whats-new/2026-11-04-spoilers.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-02b",
       "date": "2026-11-02",
       "title": "Dew: further to go",
