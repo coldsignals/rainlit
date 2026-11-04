@@ -3542,6 +3542,141 @@ function appendLinked(node, text, space = null, everyone = false) {
   appendMentions(node, text.slice(last), space, everyone);
 }
 
+
+// ----- Formatting (as Discord has it) -----
+// **bold**, *italic* or _italic_, __underline__, ~~strikethrough~~, ||spoiler|| (hidden till it's
+// clicked), `code`, ```code blocks```, and lines starting "> " as a quote. A backslash before a
+// mark shows the mark as it is. What's inside goes on to links, @mentions and emoji (appendLinked),
+// except in code, which is shown just as it was typed. Never as HTML: each made as an element.
+const FMT_MARKS = /[*_~|`>\\]/;
+const FMT_ESC = /\\([*_~|`>\\])/g;
+const fmtHide = (t) => t.replace(FMT_ESC, (_, c) => String.fromCharCode(0xe000 + c.charCodeAt(0)));
+const fmtShow = (t) => t.replace(/[\ue000-\ue07f]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xe000));
+const FMT_INLINE = [
+  ['spoiler', /\|\|([\s\S]+?)\|\|/g],
+  ['strong', /\*\*([\s\S]+?)\*\*/g],
+  ['u', /__([\s\S]+?)__/g],
+  ['s', /~~([\s\S]+?)~~/g],
+  ['em', /\*(?![\s*])([\s\S]*?[^\s*])\*(?!\*)/g],
+  ['em', /(?<![\w\ue000-\ue07f])_(?![\s_])([\s\S]*?[^\s_])_(?!\w)/g],
+];
+
+function appendFormatted(node, text, space = null, everyone = false) {
+  text = String(text || '');
+  if (!FMT_MARKS.test(text)) return appendLinked(node, text, space, everyone);
+  text = fmtHide(text);
+  const leaf = (into, t) => { if (t) appendLinked(into, fmtShow(t), space, everyone); };
+  // Inline: `code` as it is; the rest, the earliest mark first, inside out (never inside a link's address).
+  const marks = (into, s) => {
+    const links = [...s.matchAll(LINK_RE)].map((m) => [m.index, m.index + m[0].length]);
+    const inLink = (i) => links.some(([a, b]) => i >= a && i < b);
+    for (;;) {
+      let best = null;
+      for (const [tag, re] of FMT_INLINE) {
+        re.lastIndex = 0;
+        for (let m = re.exec(s); m; m = re.exec(s)) {
+          const end = m.index + m[0].length;
+          if (inLink(m.index) || inLink(end - 1)) { re.lastIndex = m.index + 1; continue; }
+          if (!best || m.index < best.m.index) best = { tag, m };
+          break;
+        }
+      }
+      if (!best) return leaf(into, s);
+      leaf(into, s.slice(0, best.m.index));
+      const el = document.createElement(best.tag === 'spoiler' ? 'span' : best.tag);
+      if (best.tag === 'spoiler') {
+        el.className = 'md-spoiler';
+        el.title = 'A spoiler: click to see it';
+        el.addEventListener('click', (e) => {
+          if (el.classList.contains('shown')) return;
+          e.preventDefault();
+          e.stopPropagation();
+          el.classList.add('shown');
+          el.removeAttribute('title');
+        }, true);
+      }
+      marks(el, best.m[1]);
+      into.append(el);
+      s = s.slice(best.m.index + best.m[0].length);
+    }
+  };
+  const inline = (into, s) => {
+    let last = 0;
+    for (const m of s.matchAll(/`([^`\n]+)`/g)) {
+      marks(into, s.slice(last, m.index));
+      const code = document.createElement('code');
+      code.className = 'md-code';
+      code.textContent = fmtShow(m[1]);
+      into.append(code);
+      last = m.index + m[0].length;
+    }
+    marks(into, s.slice(last));
+  };
+  // Lines starting "> ": a quote (the lines together).
+  const blocks = (into, s) => {
+    const lines = s.split('\n');
+    let i = 0;
+    while (i < lines.length) {
+      if (/^>( |$)/.test(lines[i])) {
+        const q = [];
+        while (i < lines.length && /^>( |$)/.test(lines[i])) q.push(lines[i++].replace(/^> ?/, ''));
+        const quote = document.createElement('blockquote');
+        quote.className = 'md-quote';
+        inline(quote, q.join('\n'));
+        into.append(quote);
+        continue;
+      }
+      const run = [];
+      while (i < lines.length && !/^>( |$)/.test(lines[i])) run.push(lines[i++]);
+      let t = run.join('\n');
+      if (i < lines.length) t += '\n'; // (a line before a quote ends as it did)
+      if (into.lastElementChild && into.lastElementChild.classList.contains('md-quote') && into.lastChild === into.lastElementChild) t = t.replace(/^\n/, '');
+      inline(into, t);
+    }
+  };
+  // ```Code blocks``` first: as they are.
+  let last = 0;
+  for (const m of text.matchAll(/```(?:[\w+#.-]{1,20}\n)?([\s\S]*?)```/g)) {
+    blocks(node, text.slice(last, m.index).replace(/\n$/, ''));
+    const pre = document.createElement('pre');
+    pre.className = 'md-pre';
+    const code = document.createElement('code');
+    code.textContent = fmtShow(m[1].replace(/^\n/, '').replace(/\n$/, ''));
+    pre.append(code);
+    node.append(pre);
+    last = m.index + m[0].length;
+  }
+  blocks(node, text.slice(last).replace(/^\n/, ''));
+}
+
+// The same, plain, for where it's said in a few words (a reply's quote, a notification): the marks
+// gone, and a spoiler's words hidden.
+function plainFormat(text) {
+  return fmtShow(fmtHide(String(text || ''))
+    .replace(/\|\|[\s\S]+?\|\|/g, '▮▮▮▮')
+    .replace(/```(?:[\w+#.-]{1,20}\n)?([\s\S]*?)```/g, '$1')
+    .replace(/`([^`\n]+)`/g, '$1')
+    .replace(/(\*\*|__|~~)([\s\S]+?)\1/g, '$2')
+    .replace(/\*(?![\s*])([\s\S]*?[^\s*])\*(?!\*)/g, '$1')
+    .replace(/(?<![\w\ue000-\ue07f])_(?![\s_])([\s\S]*?[^\s_])_(?!\w)/g, '$1')
+    .replace(/^> ?/gm, ''));
+}
+
+// Ctrl+B, Ctrl+I and Ctrl+U in the message box: what's chosen, bold, italic or underlined (or, with
+// nothing chosen, the marks, the cursor between them).
+function formatShortcut(e) {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+  const mark = { b: '**', i: '*', u: '__' }[e.key.toLowerCase()];
+  if (!mark) return;
+  e.preventDefault();
+  const box = e.currentTarget;
+  const { selectionStart: a, selectionEnd: b, value } = box;
+  const chosen = value.slice(a, b);
+  box.setRangeText(mark + chosen + mark, a, b, 'end');
+  box.setSelectionRange(a + mark.length, a + mark.length + chosen.length);
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 // "@bea" in a space shows as "@Bea", and opens her profile. "@everyone" stands out when it
 // really reached everyone. (Each keeps what was typed, for editing and copying.)
 const MENTION_RE = /(^|[^\w@.])@([a-z0-9_.]{2,32})/gi;
@@ -4797,7 +4932,7 @@ function startReply(li) {
   const { name, text } = quoteOf(li);
   S.replying = { friendId: S.openDm, id: li.dataset.id };
   el.replyName.textContent = name;
-  el.replySnippet.textContent = plainEmoji(text);
+  el.replySnippet.textContent = plainEmoji(plainFormat(text));
   el.replyBar.hidden = false;
   el.chatInput.focus();
 }
@@ -4818,7 +4953,7 @@ function quoteOf(li) {
   const name = li.dataset.from === 'me' ? 'You' : friendName(li.dataset.author);
   const kind = li.dataset.kind;
   const fileName = kind === 'file' && li.querySelector('.file-name');
-  const text = kind === 'gif' ? 'GIF' : fileName ? `📎 ${fileName.textContent}` : messageText(li);
+  const text = kind === 'gif' ? 'GIF' : fileName ? `📎 ${fileName.textContent}` : plainFormat(messageText(li));
   return { name, text: text.replace(/\s+/g, ' ').trim() };
 }
 
@@ -4850,7 +4985,7 @@ function fillQuote(q) {
     text = 'Original message was deleted';
   } else if (s.author) {
     name = s.author === S.clientId ? 'You' : friendName(s.author);
-    text = s.kind === 'gif' ? 'GIF' : s.kind === 'file' ? `📎 ${s.fileName || 'a file'}` : String(s.text || '').replace(/\s+/g, ' ');
+    text = s.kind === 'gif' ? 'GIF' : s.kind === 'file' ? `📎 ${s.fileName || 'a file'}` : plainFormat(s.text).replace(/\s+/g, ' ');
   } else {
     text = "Original message isn't available";
   }
@@ -4952,7 +5087,7 @@ function showEdited(li, text, editedAt, mentions = null) {
   }
   body.replaceChildren();
   body._text = text;
-  appendLinked(body, text, c ? S.spaces.get(c.spaceId) : null, body._everyone);
+  appendFormatted(body, text, c ? S.spaces.get(c.spaceId) : null, body._everyone);
   body.classList.toggle('jumbo', isJumbo(text));
   const tag = document.createElement('span');
   tag.className = 'msg-edited';
@@ -4966,6 +5101,7 @@ function showEdited(li, text, editedAt, mentions = null) {
 function messageText(li) {
   const body = li && li.querySelector('.msg-text');
   if (!body) return '';
+  if (typeof body._text === 'string') return body._text; // (as it was typed, its formatting's marks too)
   return [...body.childNodes].filter((n) => !(n.classList && n.classList.contains('msg-edited')))
     .map((n) => (n.dataset && n.dataset.raw !== undefined ? n.dataset.raw : n.textContent)).join('');
 }
@@ -6072,7 +6208,7 @@ function renderMessage(m) {
     body.className = 'msg-text';
     body._text = m.text;
     body._everyone = Boolean(m.everyone);
-    appendLinked(body, m.text, inChannel ? S.spaces.get(inChannel.spaceId) : null, body._everyone);
+    appendFormatted(body, m.text, inChannel ? S.spaces.get(inChannel.spaceId) : null, body._everyone);
     body.classList.toggle('jumbo', isJumbo(m.text));
     li.append(messageHead(who, m.at), body);
     showEmbeds(li, m.text);
@@ -6434,7 +6570,7 @@ function onDmMessage(m) {
   }
   if (fromThem && dm.channelId) notifyChannel(dm, m);
   if (fromThem && !dm.channelId && (DESKTOP || ANDROID)) {
-    const body = m.kind === 'text' ? plainEmoji(m.text) : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
+    const body = m.kind === 'text' ? plainEmoji(plainFormat(m.text)) : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     appNotify({ title: friendName(friendId), body }); // only shows if you're not looking at Rainlit
   }
   if (!dm.loaded) {
@@ -6529,7 +6665,7 @@ function notifyChannel(dm, m) {
   channelNotified.set(c.id, Date.now());
   if (S.sounds && !appAsleep()) playChime();
   if (DESKTOP || ANDROID) {
-    const body = m.kind === 'text' ? plainEmoji(m.text) : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
+    const body = m.kind === 'text' ? plainEmoji(plainFormat(m.text)) : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     const who = friendName(m.author);
     const where = isGroupSpace(space) ? groupTitle(space) : `#${c.name}`;
     appNotify({ title: mentioned ? `${who} mentioned you in ${where}` : `${who} in ${where}`, body });
@@ -10896,7 +11032,7 @@ function paintNames(spaceId) {
       if (!body._text || !body._text.includes('@')) continue;
       const edited = body.querySelector(':scope > .msg-edited');
       body.replaceChildren();
-      appendLinked(body, body._text, space, body._everyone);
+      appendFormatted(body, body._text, space, body._everyone);
       if (edited) body.append(edited);
     }
   }
@@ -12591,7 +12727,7 @@ function searchHit(m, terms = search.terms) {
   const body = document.createElement('div');
   body.className = 'hit-body';
   if (m.kind === 'text') {
-    appendLinked(body, m.text, space, Boolean(m.everyone));
+    appendFormatted(body, m.text, space, Boolean(m.everyone));
   } else if (m.kind === 'gif') {
     const meta = m.meta || {};
     const src = meta.poster || meta.img;
@@ -21687,6 +21823,7 @@ async function init() {
   el.chatInput.addEventListener('input', onTypingInput);
   el.chatInput.addEventListener('input', onMentionInput);
   el.chatInput.addEventListener('keydown', onMentionKey);
+  el.chatInput.addEventListener('keydown', formatShortcut);
   el.chatInput.addEventListener('blur', () => setTimeout(closeMentionPick, 150));
   el.chatInput.addEventListener('input', fitChatInput);
   el.chatInput.addEventListener('input', renderChatMirror);

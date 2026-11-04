@@ -2131,6 +2131,15 @@ body:not(.compact-chat) .chat-log li.mentioned[data-author] { padding-left: 64px
 .chat-log li[data-author] > .msg-name:hover { color: var(--text); }
 .chat-log li[data-author] > .msg-name time { cursor: auto; }
 .msg-text { white-space: pre-wrap; }
+/* Formatting (app.js appendFormatted): code, code blocks, quotes, and spoilers, hidden till clicked. */
+.msg-text .md-code { padding: 1px 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--deep); font: 0.9em/1.3 ui-monospace, 'Cascadia Code', Consolas, monospace; }
+.msg-text .md-pre { margin: 4px 0; padding: 8px 10px; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--deep); white-space: pre; font: 0.88em/1.45 ui-monospace, 'Cascadia Code', Consolas, monospace; }
+.msg-text .md-pre code { font: inherit; }
+.msg-text .md-quote { margin: 2px 0; padding: 0 0 0 10px; border-left: 3px solid color-mix(in srgb, var(--mist) 55%, transparent); }
+.msg-text .md-spoiler { border-radius: 4px; background: color-mix(in srgb, var(--text) 26%, var(--deep)); color: transparent; cursor: pointer; transition: background 0.15s; }
+.msg-text .md-spoiler:hover { background: color-mix(in srgb, var(--text) 34%, var(--deep)); }
+.msg-text .md-spoiler:not(.shown) > * { opacity: 0; pointer-events: none; }
+.msg-text .md-spoiler.shown { background: color-mix(in srgb, var(--text) 10%, transparent); color: inherit; cursor: auto; }
 .msg-text a { color: var(--lamp-text); }
 .chat-log .sys { color: var(--mist); font-size: 14px; }
 .chat-log .new-divider {

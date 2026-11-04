@@ -475,6 +475,9 @@ at the top closes it (on a phone, the back arrow).
   and audio play right there. Files are kept too: up to 50 MB each, and 1.5 GB
   for everything each person's sent that's still there (the admin can change
   both, and give someone more). It's not per month: deleting files makes room.
+- **Formatting:** `**bold**`, `*italic*`, `__underline__`, `~~strikethrough~~`, `||spoiler||`
+  (hidden till it's clicked), `` `code` ``, code blocks (three backticks) and `> ` quotes, as on
+  Discord; a backslash before a mark shows it as it is. Ctrl+B, Ctrl+I and Ctrl+U in the message box.
 - **Spoilers:** a picture or video can be marked "Spoiler" before it's sent (in the
   tray of what's about to go): it shows blurred, "SPOILER" over it, till it's clicked.
 - **Videos that play everywhere:** phones often record in HEVC, or 10-bit HDR,
