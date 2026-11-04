@@ -1976,12 +1976,12 @@ const fileTypeOf = (raw) => {
 };
 
 // All of it here (in `partial`): its hidden details out, then it's the message it's for.
-async function finishUpload(req, { id, name, safeType, partial, size, replyTo }) {
+async function finishUpload(req, { id, name, safeType, partial, size, replyTo, spoiler = false }) {
   const final = path.join(dms.FILES_DIR, id);
   // Its hidden details come out (where and when a photo was taken, on what...: lib/scrub.js).
   size = (await scrub.scrubFile(partial, { type: safeType, name })) ?? size;
   fs.renameSync(partial, final);
-  const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, replyTo: dms.replyTarget(req.dm.id, replyTo) });
+  const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, meta: spoiler ? { spoiler: true } : null, replyTo: dms.replyTarget(req.dm.id, replyTo) });
   tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
   if (req.channel) pushChannelMessage(req, null);
   const row = dms.getRow(id);
@@ -2025,7 +2025,7 @@ api.post(conv('/files'), needUser, needConv, (req, res) => {
       }
       return;
     }
-    res.json(await finishUpload(req, { id, name, safeType, partial, size, replyTo: req.get('x-reply-to') }));
+    res.json(await finishUpload(req, { id, name, safeType, partial, size, replyTo: req.get('x-reply-to'), spoiler: req.get('x-spoiler') === '1' }));
   });
 });
 
@@ -2053,7 +2053,7 @@ api.post(conv('/files/uploads'), needUser, needConv, (req, res) => {
   if (had.meta && had.meta.user === req.user.id && had.meta.dm === req.dm.id && had.meta.size === size) return res.json({ received: had.received });
   const check = uploadCheck(req, id, size);
   if (!check.ok) return fail(res, check.status, check.error);
-  const meta = { user: req.user.id, dm: req.dm.id, size, name: fileNameOf(b.name), type: fileTypeOf(b.type), replyTo: b.replyTo ? String(b.replyTo).slice(0, 64) : null, at: Date.now() };
+  const meta = { user: req.user.id, dm: req.dm.id, size, name: fileNameOf(b.name), type: fileTypeOf(b.type), replyTo: b.replyTo ? String(b.replyTo).slice(0, 64) : null, spoiler: b.spoiler === true, at: Date.now() };
   fs.writeFileSync(had.partial, Buffer.alloc(0));
   fs.writeFileSync(`${had.partial}.json`, JSON.stringify(meta));
   res.json({ received: 0 });
@@ -2087,7 +2087,7 @@ api.put(conv('/files/uploads/:upload'), needUser, needConv, (req, res) => {
     }
     if (received < p.meta.size) return res.json({ received });
     fs.rmSync(`${p.partial}.json`, { force: true });
-    res.json(await finishUpload(req, { id, name: p.meta.name, safeType: p.meta.type, partial: p.partial, size: received, replyTo: p.meta.replyTo }));
+    res.json(await finishUpload(req, { id, name: p.meta.name, safeType: p.meta.type, partial: p.partial, size: received, replyTo: p.meta.replyTo, spoiler: p.meta.spoiler === true }));
   });
 });
 // (Uploads left over a day: gone.)

@@ -475,6 +475,8 @@ at the top closes it (on a phone, the back arrow).
   and audio play right there. Files are kept too: up to 50 MB each, and 1.5 GB
   for everything each person's sent that's still there (the admin can change
   both, and give someone more). It's not per month: deleting files makes room.
+- **Spoilers:** a picture or video can be marked "Spoiler" before it's sent (in the
+  tray of what's about to go): it shows blurred, "SPOILER" over it, till it's clicked.
 - **Videos that play everywhere:** phones often record in HEVC, or 10-bit HDR,
   which a computer plays but many phones can't, inside an app. A video like that
   gets a copy that plays everywhere (H.264, at most 1280 pixels on its longer

@@ -8521,7 +8521,7 @@ function removePending(id) {
 function sendPending(dm, replyTo = null) {
   const items = dm.pending.splice(0);
   renderTray();
-  sendFiles(items.map((p) => p.file), replyTo);
+  sendFiles(items.map((p) => p.file), replyTo, items.map((p) => Boolean(p.spoiler)));
   for (const p of items) if (p.url) URL.revokeObjectURL(p.url);
 }
 
@@ -8554,6 +8554,22 @@ function trayTile(p) {
     }
     media.onerror = () => media.replaceWith(fileGlyph(p));
     thumb.append(media);
+    const spoil = document.createElement('button');
+    spoil.type = 'button';
+    spoil.className = 'tray-spoiler';
+    spoil.textContent = 'Spoiler';
+    const mark = () => {
+      tile.classList.toggle('spoiler', Boolean(p.spoiler));
+      spoil.setAttribute('aria-pressed', String(Boolean(p.spoiler)));
+      spoil.title = p.spoiler ? 'Sent blurred, till it\'s clicked: click to send it as it is' : 'Send it as a spoiler: blurred, till it\'s clicked';
+    };
+    spoil.addEventListener('click', (e) => {
+      e.stopPropagation();
+      p.spoiler = !p.spoiler;
+      mark();
+    });
+    mark();
+    thumb.append(spoil);
   } else {
     thumb.append(fileGlyph(p));
   }
@@ -8591,14 +8607,14 @@ function fileGlyph(p) {
 
 // Files for the conversation that's open. With saving on they're uploaded and kept;
 // with it off they go straight to your friend, which only works during a call.
-function sendFiles(list, replyTo = null) {
+function sendFiles(list, replyTo = null, spoilers = []) {
   const files = Array.from(list || []);
   const friendId = S.openDm;
   if (!files.length || !friendId) return;
   const dm = dmFor(friendId);
-  if (dm.detached) return void jumpToNewest(dm).then(() => sendFiles(files, replyTo));
+  if (dm.detached) return void jumpToNewest(dm).then(() => sendFiles(files, replyTo, spoilers));
   if (dm.save) {
-    files.forEach((file, i) => uploadFile(dm, file, i === 0 ? replyTo : null)); // (the first one answers it)
+    files.forEach((file, i) => uploadFile(dm, file, i === 0 ? replyTo : null, Boolean(spoilers[i]))); // (the first one answers it)
     return;
   }
   if (!(S.inCall && S.callWith === friendId && S.peer && !S.peer.away)) {
@@ -8617,12 +8633,12 @@ function sendFiles(list, replyTo = null) {
 // Uploads a file to a saved conversation, showing its progress. When it's done, the
 // server sends it back as a message, which takes this card's place. Files sent together
 // go up one at a time, so they arrive in the order you picked them.
-function uploadFile(dm, file, replyTo = null) {
+function uploadFile(dm, file, replyTo = null, spoiler = false) {
   if (file.size > S.maxFileMb * 1024 * 1024) {
     return toast(`"${file.name}" is too big. Files can be up to ${S.maxFileMb} MB.`, 6000);
   }
   if (!roomFor(file.size)) return toast(noRoomText(), 9000);
-  const t = { id: randomId(), dir: 'up', name: file.name || 'file', size: file.size, type: file.type, state: 'queued', sent: 0, replyTo };
+  const t = { id: randomId(), dir: 'up', name: file.name || 'file', size: file.size, type: file.type, state: 'queued', sent: 0, replyTo, spoiler };
   const li = fileCard(t, 'You', Date.now());
   li.dataset.author = S.clientId;
   li.dataset.kind = 'file';
@@ -8671,6 +8687,7 @@ function startUpload(dm, t, file, xhr, done) {
   xhr.setRequestHeader('X-File-Name', encodeURIComponent(t.name));
   xhr.setRequestHeader('X-File-Type', t.type || '');
   if (t.replyTo) xhr.setRequestHeader('X-Reply-To', t.replyTo);
+  if (t.spoiler) xhr.setRequestHeader('X-Spoiler', '1');
   xhr.upload.onprogress = (e) => {
     t.sent = e.loaded;
     renderProgress(t);
@@ -8735,7 +8752,7 @@ async function sendInPieces(dm, t, file, xhr, done) {
   });
   let received = 0;
   try {
-    received = (await api('POST', path, { id: t.id, name: t.name, type: t.type || '', size: file.size, replyTo: t.replyTo || null })).received || 0;
+    received = (await api('POST', path, { id: t.id, name: t.name, type: t.type || '', size: file.size, replyTo: t.replyTo || null, spoiler: Boolean(t.spoiler) })).received || 0;
   } catch (err) {
     return failed(err.message || 'Upload failed. Try again.');
   }
@@ -9081,7 +9098,7 @@ function addFileCard(t) {
 
 // A file kept in a saved conversation.
 function savedFileItem(m, who) {
-  const t = { id: m.id, name: m.file.name, size: m.file.size, type: m.file.type, preview: m.file.preview, poster: m.file.poster, play: m.file.play, dir: 'saved', state: 'done' };
+  const t = { id: m.id, name: m.file.name, size: m.file.size, type: m.file.type, preview: m.file.preview, poster: m.file.poster, play: m.file.play, spoiler: Boolean(m.file.spoiler), dir: 'saved', state: 'done' };
   const li = fileCard(t, who, m.at);
   t.ui.save.href = m.file.url;
   showPreview(t.ui.card, t, m.file.url);
@@ -9130,6 +9147,25 @@ async function playableCopy(id) {
   return null;
 }
 
+// A spoiler (its sender said so): blurred, with "SPOILER" over it, till it's clicked; that click
+// only shows it (it doesn't open it full size, play it or save it), and it stays shown here.
+function spoilerOver(box) {
+  box.classList.add('spoiler');
+  const veil = document.createElement('button');
+  veil.type = 'button';
+  veil.className = 'spoiler-veil';
+  veil.textContent = 'Spoiler';
+  veil.title = 'A spoiler: click to see it';
+  box.append(veil);
+  box.addEventListener('click', (e) => {
+    if (!box.classList.contains('spoiler')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    box.classList.remove('spoiler');
+    veil.remove();
+  }, true);
+}
+
 // Pictures show in the chat (click for full size), videos and audio play right there. A big
 // photo shows as its smaller copy (f.preview, made by the server), and opens as the original.
 function showPreview(card, f, url) {
@@ -9154,6 +9190,7 @@ function showPreview(card, f, url) {
     if (S.devices.speaker && media.setSinkId) media.setSinkId(S.devices.speaker).catch(() => {});
   }
   const shown = kind === 'audio' ? media : mediaFrame(card, media, kind, f, url);
+  if (f.spoiler && kind !== 'audio') spoilerOver(shown);
   // If you were at the bottom of the conversation, stay there as the picture or video takes up
   // room. (This runs after the frame has taken its shape.)
   media.addEventListener(kind === 'image' ? 'load' : 'loadedmetadata', () => {

@@ -2262,6 +2262,23 @@ body:not(.compact-chat) .chat-log li.mentioned[data-author] { padding-left: 64px
 }
 .tray-thumb img, .tray-thumb video { display: block; width: 100%; height: 100%; object-fit: cover; }
 .tray-thumb img { cursor: zoom-in; }
+/* Spoilers: marked in the tray ("Spoiler", its picture blurred), and in the chat, blurred with
+   "SPOILER" over it till it's clicked (app.js spoilerOver). */
+.tray-spoiler {
+  position: absolute; left: 5px; bottom: 5px; padding: 2px 7px; border: 0; border-radius: 999px; font-size: 11px; font-weight: 750;
+  background: rgba(10, 12, 20, 0.72); color: #fff; cursor: pointer; opacity: 0.85;
+}
+.tray-spoiler:hover, .tray-spoiler:focus-visible { opacity: 1; }
+.tray-spoiler[aria-pressed="true"] { background: var(--lamp); color: #1f1a12; opacity: 1; }
+.tray-tile.spoiler .tray-thumb :is(img, video) { filter: blur(10px); transform: scale(1.12); }
+.file-media.spoiler { overflow: hidden; cursor: pointer; }
+.file-media.spoiler > :is(img, video) { filter: blur(26px) brightness(0.85); transform: scale(1.15); }
+.file-media.spoiler > :not(img, video, .spoiler-veil) { visibility: hidden; }
+.spoiler-veil {
+  position: absolute; inset: 0; z-index: 3; margin: auto; width: max-content; height: max-content; padding: 7px 16px; border: 0; border-radius: 999px;
+  background: rgba(10, 12, 20, 0.8); color: #fff; font-size: 12.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer;
+}
+.spoiler-veil:hover, .spoiler-veil:focus-visible { background: rgba(10, 12, 20, 0.92); }
 .tray-glyph { display: grid; justify-items: center; gap: 2px; color: var(--lamp-text); }
 .tray-glyph .icon { width: 30px; height: 30px; }
 .tray-glyph span { color: var(--mist); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; }
