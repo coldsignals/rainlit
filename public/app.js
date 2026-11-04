@@ -11060,15 +11060,17 @@ function renderSpaces() {
 }
 
 // Something new: a little yellow dot on Home (a conversation) or a space, unless it's set to
-// notify you about Nothing (that's muting it). A mention shows its number instead.
+// notify you about Nothing (that's muting it). A mention shows its number instead. Home's shows on
+// Home too (chatting with someone else, say), but not for the conversation you're looking at.
 function renderRail() {
   let dmUnread = 0;
   for (const dm of S.dms.values()) {
     const group = dm.channelId && groupOfChannel(dm.channelId);
-    if (!dm.channelId || (group && group.notify !== 'none')) dmUnread += dm.unread;
+    const looking = S.openDm && dm === S.dms.get(S.openDm) && !lookingAway();
+    if ((!dm.channelId || (group && group.notify !== 'none')) && !looking) dmUnread += dm.unread;
   }
   el.railHome.classList.toggle('open', S.view === 'home');
-  el.railHome.classList.toggle('unread', S.view !== 'home' && dmUnread > 0);
+  el.railHome.classList.toggle('unread', dmUnread > 0);
   el.railSpaces.replaceChildren(...[...S.spaces.values()].filter((space) => !isGroupSpace(space)).map((space) => {
     const b = document.createElement('button');
     b.type = 'button';
