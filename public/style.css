@@ -3216,7 +3216,8 @@ button.person.open { background: var(--dusk-hi); }
 .pet-since, .pet-note { color: var(--mist); font-size: 13px; }
 .pet-note { margin: 0; }
 .pet-meters { max-width: 420px; }
-.pet-meters .hp-pet-meter { color: var(--text); grid-template-columns: 48px minmax(0, 1fr) 86px; }
+.pet-meters .hp-pet-meter { color: var(--text); grid-template-columns: 70px minmax(0, 1fr) 86px; }
+.pet-meters .hp-pet-meter-icon { width: 19px; height: 14px; }
 .pet-meters .hp-pet-meter em { color: var(--mist); }
 .pet-meters .bar { border-radius: 0; background: var(--deep); box-shadow: inset 0 0 0 2px var(--line); }
 .pet-meters .bar i { border-radius: 0; box-shadow: none; }

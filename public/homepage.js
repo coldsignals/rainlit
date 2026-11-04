@@ -2688,12 +2688,38 @@
   const fullWords = (v) => (v >= 0.7 ? 'Full' : v >= 0.4 ? 'Peckish' : v >= 0.2 ? 'Hungry' : 'Very hungry');
   const happyWords = (v) => (v >= 0.7 ? 'Happy' : v >= 0.4 ? 'Content' : v >= 0.2 ? 'Bored' : 'Mopey');
   // Its meters (for its owner): how full, and how happy.
+  // Their icons, as they are: a food bowl, heaped, half full or empty, and a heart, whole, half or
+  // just its outline (a third of the way, and two thirds).
+  const METER_ICONS = {
+    full: {
+      colors: { o: '#2a1f33', k: '#ffb13d', K: '#ffe07a', R: '#a9d8ff', b: '#4f97d6', d: '#2f5f8c' },
+      full: ['...kKk...', '.kkKkkKk.', 'oRRRRRRRo', 'obbbbbbbo', '.obbbbbo.', '..ooooo..'],
+      half: ['.........', '...kKkk..', 'oRRRRRRRo', 'obbbbbbbo', '.obbbbbo.', '..ooooo..'],
+      empty: ['.........', '.........', 'oRdddddRo', 'obbbbbbbo', '.obbbbbo.', '..ooooo..'],
+    },
+    happy: {
+      colors: { o: '#2a1f33', p: '#ff6b9d', H: '#ffc2d8', e: '#7a6070' },
+      full: ['.oo.oo.', 'oHpoppo', 'opppppo', '.opppo.', '..opo..', '...o...'],
+      half: ['.oo.oo.', 'oHpoeeo', 'opppeeo', '.oppeo.', '..ope..', '...o...'],
+      empty: ['.oo.oo.', 'oeeoeeo', 'oeeeeeo', '.oeeeo.', '..oeo..', '...o...'],
+    },
+  };
+  const meterIcon = (kind, v) => {
+    const art = METER_ICONS[kind];
+    const state = v >= 2 / 3 ? 'full' : v >= 1 / 3 ? 'half' : 'empty';
+    const i = document.createElement('i');
+    i.className = `hp-pet-meter-icon ${state}`;
+    i.setAttribute('aria-hidden', 'true');
+    i.style.backgroundImage = `url("${pixelsSrc(art[state], art.colors)}")`;
+    return i;
+  };
   function petMeters(info) {
     const meter = (label, v, kind, words) => {
       const row = document.createElement('div');
       row.className = `hp-pet-meter ${kind}`;
       const name = document.createElement('span');
-      name.textContent = label;
+      name.className = 'hp-pet-meter-name';
+      name.append(meterIcon(kind, v), label);
       const bar = document.createElement('span');
       bar.className = 'bar';
       const fill = document.createElement('i');

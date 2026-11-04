@@ -1074,7 +1074,10 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
 .hp-pet-care strong { padding-right: 24px; font: 400 15px/1.15 Silkscreen, "Bricolage Grotesque", sans-serif; letter-spacing: 0.02em; overflow-wrap: anywhere; }
 .hp-pet-x { position: absolute; top: 4px; right: 6px; padding: 2px 6px; border: 0; background: none; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
 .hp-pet-meters { display: grid; gap: 6px; }
-.hp-pet-meter { display: grid; grid-template-columns: 44px minmax(0, 1fr) 76px; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+.hp-pet-meter { display: grid; grid-template-columns: 64px minmax(0, 1fr) 76px; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+/* (Its icon by its name: a food bowl or a heart, as full as it is: homepage.js meterIcon.) */
+.hp-pet-meter-name { display: inline-flex; align-items: center; gap: 6px; }
+.hp-pet-meter-icon { display: inline-block; flex: none; width: 16px; height: 12px; background: center / contain no-repeat; image-rendering: pixelated; } /* (the same box for each, so their names line up) */
 .hp-pet-meter .bar { height: 10px; overflow: hidden; border-radius: 3px; background: #eadfc8; box-shadow: inset 0 0 0 2px #3b2f25; }
 .hp-pet-meter .bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, #ffb13d 0 6px, #ffd23f 6px 12px); box-shadow: inset 0 0 0 2px #3b2f25; transition: width 0.4s steps(6); }
 .hp-pet-meter.happy .bar i { background: repeating-linear-gradient(90deg, #ff6b9d 0 6px, #ff9fc2 6px 12px); }
