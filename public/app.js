@@ -159,7 +159,7 @@ for (const id of [
   'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
-  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'dew-fx', 'dew-hero', 'drop-chime', 'drop-sky', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'dew-fx', 'dew-hero', 'drop-chime', 'drop-sky', 'dew-info', 'dew-info-title', 'dew-info-about', 'dew-info-buy', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -18683,9 +18683,69 @@ function renderDewUpgrades() {
     cost.textContent = dewWords(u.cost);
     b.append(icon, name, cost);
     b.setAttribute('aria-label', `${u.label}: ${u.about} ${dewWords(u.cost)} dew`);
-    b.addEventListener('click', () => buyDew('upgrades', u.key));
+    b.removeAttribute('title'); // (its card says it)
+    const info = (buy) => ({ title: u.label, about: u.about, cost: u.cost, buy: buy ? () => buyDew('upgrades', u.key) : null });
+    dewInfoOn(b, () => info(false));
+    b.addEventListener('click', (e) => {
+      // (A tap on a phone: what it does first, and Get it there; a click (or a key): got at once.)
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') return showDewInfo(b, info(true));
+      hideDewInfo();
+      buyDew('upgrades', u.key);
+    });
     return b;
   }, (n, u) => { if (!u && n.textContent !== none) n.textContent = none; });
+}
+
+// ----- What a collector or upgrade is: a little card above it -----
+// As it's hovered with a mouse (or focused by keyboard), or tapped on a phone; never moving what's
+// in the list (so a click meant for a Get button lands where it was meant to). An upgrade's, tapped,
+// has Get it, as on a phone a tap no longer gets it unseen.
+let dewInfoFor = null;
+function showDewInfo(anchor, { title, about, cost = null, buy = null }) {
+  const card = el.dewInfo;
+  el.dewInfoTitle.textContent = title;
+  el.dewInfoAbout.textContent = about;
+  el.dewInfoBuy.hidden = !buy;
+  if (buy) {
+    const can = dewNow() + 1e-6 >= cost;
+    el.dewInfoBuy.disabled = !can;
+    el.dewInfoBuy.textContent = can ? `Get it: ${dewWords(cost)} dew` : `${dewWords(cost)} dew: not enough yet`;
+    el.dewInfoBuy.onclick = () => {
+      hideDewInfo();
+      buy();
+    };
+  }
+  if (card.parentNode !== el.pet) el.pet.append(card); // (in the box: outside it, an open box makes it unclickable)
+  card.hidden = false;
+  dewInfoFor = anchor;
+  const z = uiZoom();
+  const r = anchor.getBoundingClientRect();
+  const c = card.getBoundingClientRect();
+  let top = r.top - c.height - 8;
+  if (top < 8) top = r.bottom + 8; // (no room above: below)
+  const left = Math.max(8, Math.min(innerWidth - c.width - 8, r.left + r.width / 2 - c.width / 2));
+  card.style.left = `${left / z}px`;
+  card.style.top = `${top / z}px`;
+}
+function hideDewInfo() {
+  dewInfoFor = null;
+  el.dewInfo.hidden = true;
+}
+// (Hovered with a mouse, or focused by keyboard: its card; gone as it's left. `info()` says what,
+// or null for none; `not`: a part of it that's its own (a Get button), where it isn't shown.)
+function dewInfoOn(node, info, not = null) {
+  node.addEventListener('pointerenter', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const it = info();
+    if (it) showDewInfo(node, it);
+  });
+  node.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && dewInfoFor === node) hideDewInfo(); });
+  node.addEventListener('focusin', (e) => {
+    if ((not && not.contains(e.target)) || !e.target.matches(':focus-visible')) return;
+    const it = info();
+    if (it) showDewInfo(node, it);
+  });
+  node.addEventListener('focusout', (e) => { if (dewInfoFor === node && !el.dewInfo.contains(e.relatedTarget)) hideDewInfo(); }); // (not to its own card's Get it)
 }
 
 // (A list drawn again in place: each thing's element made once, then kept and brought up to date,
@@ -18729,6 +18789,13 @@ function renderDewCollectors() {
     buy.append(drop, document.createTextNode(''));
     buy.addEventListener('click', () => buyDew('collectors', c.key));
     row.append(icon, words, buy);
+    const info = () => ((Number(S.dew.collectors[c.key]) || 0) ? { title: c.label, about: c.about } : null); // (one not got yet says it in its row)
+    dewInfoOn(row, info, buy);
+    row.addEventListener('click', (e) => {
+      if (buy.contains(e.target) || !(e.pointerType === 'touch' || e.pointerType === 'pen')) return;
+      const it = info();
+      if (it) showDewInfo(row, it);
+    });
     return row;
   }, (row, c) => {
     const n = owned(c.key);
@@ -22054,6 +22121,10 @@ async function init() {
     store.set('dropChime', el.dropChime.checked ? 'on' : 'off');
     if (el.dropChime.checked) playDropAppear(2, { always: true });
   });
+  // (What a collector or upgrade is: gone with a tap elsewhere, as what's under it scrolls, or with the box.)
+  document.addEventListener('pointerdown', (e) => { if (dewInfoFor && !el.dewInfo.contains(e.target) && !dewInfoFor.contains(e.target)) hideDewInfo(); }, true);
+  el.pet.addEventListener('scroll', hideDewInfo, true);
+  el.pet.addEventListener('close', hideDewInfo);
   el.pet.addEventListener('close', () => {
     S.petTry = '';
     S.roomTry = null;

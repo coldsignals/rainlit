@@ -656,6 +656,13 @@
   <canvas id="rain" class="rain" aria-hidden="true"></canvas>
   <!-- A milestone reached, said like a games console's achievement (app.js sayMilestones): over
        everything, a box that's open too (a popover, in the top layer). -->
+  <!-- What a collector or upgrade is, in the Dew tab (app.js showDewInfo): put in the pet's box as it's shown
+       (outside it, a box that's open can't be clicked: its Get it wouldn't be). -->
+  <div id="dew-info" class="dew-info" role="tooltip" hidden>
+    <strong id="dew-info-title"></strong>
+    <p id="dew-info-about"></p>
+    <button id="dew-info-buy" class="primary-btn small" type="button" hidden></button>
+  </div>
   <div id="achievement" class="achievement" popover="manual" role="status" aria-live="polite">
     <i class="ach-badge" aria-hidden="true"><i id="ach-icon" class="dew-icon"></i></i>
     <span class="ach-words"><small id="ach-kind">Milestone reached</small><strong id="ach-name"></strong></span>
