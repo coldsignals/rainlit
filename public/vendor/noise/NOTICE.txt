@@ -9,7 +9,8 @@ Rainlit's noise suppression (public/noise.js) uses these, each under its own lic
   GTCRN's model (MIT, below) and pffft (FFTPACK licence). https://github.com/sapphi-red/gtcrn-wasm
 - dfn3/: @workadventure/noise-suppression 0.2.0 (MIT: dfn3/LICENSE-noise-suppression.txt), running
   DeepFilterNet 3 (MIT or Apache 2.0, below). https://github.com/workadventure/noise-suppression
-  (dfn3/df_bg.wasm.gz is its df_bg.wasm, gzipped.)
+  (dfn3/df_bg.wasm.gz is its df_bg.wasm, gzipped. dfn3/deepfilternet.js has one addition of
+  Rainlit's: forget(), which lets go of what it has fetched and compiled.)
 
 ================ RNNoise (https://github.com/xiph/rnnoise) ================
 Copyright (c) 2017, Mozilla

@@ -677,8 +677,9 @@ section matters:
 - **It keeps as little as it can:** no ID checks, no IP addresses, and not
   your birthday (only, if you're under 18, the day you turn 18; and the month
   and day of one you add to your profile to have it celebrated). You can
-  download everything that's yours (Your profile, then Download your data), or
-  delete it, any time.
+  download everything that's yours (Your profile, then Download your data:
+  each conversation in its own folder, both sides of it, with your calls with
+  that person), or delete it, any time.
 - **It's all here to check:** the whole of Rainlit is free software (below).
 
 ## How it works

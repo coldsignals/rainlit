@@ -94,5 +94,9 @@ async function y(d, y = {}) {
 	};
 }
 //#endregion
-export { i as DEEPFILTERNET_SAMPLE_RATE, a as DEFAULT_POST_GAIN, y as createDeepFilterNetAudioWorklet };
+// (Rainlit: what it's fetched and compiled, let go of, for the next time to fetch it again.)
+function forget() {
+	f.clear(), p.clear();
+}
+export { i as DEEPFILTERNET_SAMPLE_RATE, a as DEFAULT_POST_GAIN, y as createDeepFilterNetAudioWorklet, forget };
 

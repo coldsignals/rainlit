@@ -709,8 +709,9 @@ async function noiseForVoice(room) {
     noiseFailed(err);
   }
 }
-// Strong's 12 MB, fetched (when it's picked, or the app starts with it), so a call needn't wait; then
-// any mic that was having Standard meanwhile is opened again with it.
+// Strong's 12 MB, fetched when it's picked or a mic's opened (not as the app starts: it's a hundred MB
+// or so, made ready), so a call needn't wait; then any mic that was having Standard meanwhile is
+// opened again with it.
 function prepareNoise() {
   if (S.noise.mode !== 'strong' || !noiseRuns() || S.noiseStatus === 'fetching' || S.noiseStatus === 'ready') return;
   S.noiseStatus = 'fetching';
@@ -724,7 +725,19 @@ function prepareNoise() {
     trace('noise-fetch', { why: String((err && err.message) || err).slice(0, 80) });
   }).finally(() => { if (el.settings && el.settings.open) renderNoise(); });
 }
-if (S.noise.mode === 'strong') setTimeout(prepareNoise, 4000);
+// (Let go of after a few minutes with no mic in use: no call, voice channel or mic test.)
+const NOISE_IDLE_MS = 3 * 60_000;
+let noiseIdleSince = 0;
+setInterval(() => {
+  const using = S.local.mic || S.voice || S.inCall || S.startingCall || micTest;
+  if (using || S.noiseStatus !== 'ready') return void (noiseIdleSince = 0);
+  if (!noiseIdleSince) return void (noiseIdleSince = Date.now());
+  if (Date.now() - noiseIdleSince < NOISE_IDLE_MS) return;
+  noiseIdleSince = 0;
+  S.noiseStatus = '';
+  if (noiseModule) noiseModule.then((N) => N.release && N.release(), () => {});
+  trace('noise-released', {});
+}, 30_000);
 
 const NOISE_HINTS = {
   standard: 'Takes out fans, hum, keys and clicks, and leaves your voice.',
@@ -5269,6 +5282,41 @@ function scrollChat(log = el.chatLog) {
   log.scrollTop = log.scrollHeight;
 }
 
+// ----- Conversations not looked at lately: let go of -----
+// Each one opened keeps its messages (and their pictures) on the page, so one left open for days
+// would hold every conversation it's been in. The open one and the last few looked at are kept;
+// the rest let go of, and fetched again when they're opened. Not one that holds what the server
+// hasn't got: one not saving (its messages are only here), the call's, one with something being
+// sent, failed, or picked to send; nor one loading, playing something, or looking at older ones.
+const CONVS_KEPT = 4;
+const recentConvs = [];
+function keepRecent(key) {
+  const i = recentConvs.indexOf(key);
+  if (i >= 0) recentConvs.splice(i, 1);
+  recentConvs.unshift(key);
+  for (const old of recentConvs.slice(CONVS_KEPT + 1)) {
+    const dm = S.dms.get(old);
+    if (!dm || letGoOf(dm)) recentConvs.splice(recentConvs.indexOf(old), 1);
+  }
+}
+function letGoOf(dm) {
+  if (!dm.loaded || dm.loading || !dm.save || dm.detached || S.openDm === dm.friendId) return false;
+  if (S.callWith === dm.friendId || dm.pending.length || dm.early.length) return false;
+  if (dm.log.querySelector('li.pending, li.failed')) return false;
+  for (const id of S.uploads.keys()) if (dm.log.querySelector(`li[data-id="${CSS.escape(id)}"]`)) return false;
+  for (const m of dm.log.querySelectorAll('video, audio')) if (!m.paused) return false;
+  if ((S.editing && S.editing.friendId === dm.friendId) || (S.replying && S.replying.friendId === dm.friendId)) return false;
+  for (const m of dm.log.querySelectorAll('video, audio')) { m.removeAttribute('src'); m.load(); } // (what's buffered, let go of)
+  dm.log.replaceChildren();
+  dm.loaded = false;
+  dm.more = false;
+  dm.oldestSeq = 0;
+  dm.newestSeq = 0;
+  dm.firstDay = dm.lastDay = '';
+  dm.divider = null;
+  return true;
+}
+
 // (at: a message's seq, to open around it rather than at the newest: see jumpToResult.)
 async function openDm(friendId, at = 0) {
   if (!convExists(friendId)) return;
@@ -5282,6 +5330,7 @@ async function openDm(friendId, at = 0) {
   if (S.replying && S.replying.friendId !== friendId) stopReply();
   if (S.typingTo && S.typingTo !== friendId) stopTyping();
   S.openDm = friendId;
+  keepRecent(friendId);
   el.home.hidden = true;
   el.voiceView.hidden = true;
   syncWantVideo();
@@ -19708,6 +19757,17 @@ function renderFeedbackKind() {
 
 // A bug's diagnostics, as they are right now: which app and browser, the screen, Rainlit's
 // settings for calls, whether you're in one, and its own recent errors.
+// How much the page is using (what a "Rainlit's slow / using lots of memory" report needs): its
+// JavaScript (where the browser says: Chrome, Edge, the apps), what's on the page, the conversations
+// kept, the pictures and videos, and whether Strong noise suppression is held.
+function memoryNow() {
+  const mb = (n) => Math.round(n / 1048576);
+  const heap = performance.memory ? `${mb(performance.memory.usedJSHeapSize)} of ${mb(performance.memory.jsHeapSizeLimit)} MB` : 'not said here';
+  const kept = [...S.dms.values()].filter((d) => d.loaded);
+  const items = kept.reduce((n, d) => n + d.log.childElementCount, 0);
+  return `heap ${heap}; ${document.getElementsByTagName('*').length.toLocaleString('en-US')} elements; ${kept.length} conversations kept (${items.toLocaleString('en-US')} items); ${document.images.length} pictures, ${document.querySelectorAll('video').length} videos; Strong noise suppression ${S.noiseStatus || 'not held'}`;
+}
+
 async function feedbackDiagnostics() {
   let devices = [];
   try { devices = await navigator.mediaDevices.enumerateDevices(); } catch {}
@@ -19725,6 +19785,7 @@ async function feedbackDiagnostics() {
     server: wsOpen() ? 'connected' : 'not connected',
     call: S.inCall ? `a call, ${S.conn ? S.conn.pc.connectionState : 'starting'}` : S.voice ? `a voice channel, ${S.voice.state}` : 'none',
     devices: `${count('audioinput')} mics, ${count('videoinput')} cameras, ${count('audiooutput')} speakers`,
+    memory: memoryNow(),
     settings: {
       pushToTalk: S.ptt, noiseSuppression: `${S.noise.mode}${S.noise.mode !== 'off' ? ` ${S.noise.strength}%` : ''}${S.micFx.noiseSuppression ? " (the browser's)" : ''}`, echoCancellation: S.micFx.echoCancellation,
       autoMicVolume: S.micFx.autoGainControl, screenShare: S.shareQuality, weather: S.rain, callDebugLog: S.trace,

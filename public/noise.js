@@ -70,15 +70,21 @@ const dfn3Options = (strength) => {
 
 // Strong's 12 MB, fetched (and its engine made ready) before it's wanted: when it's picked, say, so
 // a call doesn't wait. Its loader keeps them, for every mic it cleans after. (A context made only for
-// that, and thrown away.)
+// that, and closed.)
 let dfn3Prepared = null;
 export function prepare(engine) {
   if (engine !== 'dfn3') return Promise.resolve();
   dfn3Prepared ||= (async () => {
     const { createDeepFilterNetAudioWorklet } = await loadDfn3();
-    const scratch = new OfflineAudioContext(1, 128, RATE);
-    const d = await createDeepFilterNetAudioWorklet(scratch, dfn3Options(0.8));
-    d.dispose();
+    // (A context that can be closed, so its engine goes with it: an OfflineAudioContext can't be, and
+    // kept its engine, 80 MB or so, each time.)
+    const scratch = new AudioContext({ sampleRate: RATE });
+    try {
+      const d = await createDeepFilterNetAudioWorklet(scratch, dfn3Options(0.8));
+      d.dispose();
+    } finally {
+      scratch.close().catch(() => {});
+    }
     dfn3Ready = true;
   })().catch((err) => {
     dfn3Prepared = null;
@@ -88,6 +94,15 @@ export function prepare(engine) {
 }
 let dfn3Ready = false;
 export const isReady = (engine) => engine !== 'dfn3' || dfn3Ready;
+// Strong, let go of (nothing's using a mic): what it fetched and made ready, a hundred MB or so, back.
+// The next time it's wanted it's fetched again (from the browser's cache, as a rule) and made ready.
+// A mic it's cleaning has its own, and keeps it till it's stopped. (Its module stays, as a module
+// does: what it keeps is let go of. Its forget is Rainlit's, added to it: vendor/noise/NOTICE.txt.)
+export function release() {
+  if (dfn3Loader) dfn3Loader.then((m) => m.forget && m.forget(), () => {});
+  dfn3Prepared = null;
+  dfn3Ready = false;
+}
 
 // The cleaning-up, in `ctx` (48 kHz): what's heard goes into `input`, what's cleaned comes out of
 // `output`. `ready`: once it's cleaning (Strong, till then, passes on what it hears). `delay`: how
