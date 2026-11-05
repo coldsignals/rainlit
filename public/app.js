@@ -19112,7 +19112,13 @@ function renderDewMilestones() {
     const secret = m.hidden && !got;
     b.classList.toggle('got', got);
     b.classList.toggle('secret', secret);
-    const words = secret ? 'A secret one: reach it to find out.' : `${m.label}: ${m.about}${got ? ' Reached.' : ''}`;
+    // (How far along, if it's not reached yet: "10 of 50: 40 more to go".)
+    const p = !got && !secret && d.progress && d.progress[m.key];
+    const num = (x) => (m.big ? dewWords(x) : Math.floor(x).toLocaleString());
+    const along = p ? ` ${num(p[0])} of ${num(p[1])}${p[1] - p[0] >= 1 ? `: ${num(p[1] - p[0])} more to go` : ''}.` : '';
+    b.style.setProperty('--along', p ? String(Math.max(0, Math.min(1, p[0] / p[1]))) : '0');
+    b.classList.toggle('along', Boolean(p && p[0] > 0));
+    const words = secret ? 'A secret one: reach it to find out.' : `${m.label}: ${m.about}${got ? ' Reached.' : along}`;
     b.title = words;
     b.setAttribute('aria-label', secret ? 'A secret milestone' : `${m.label}${got ? ', reached' : ''}`);
     b.dataset.said = words;
