@@ -714,7 +714,7 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
 .voice-tile .face { width: clamp(56px, 24cqw, 168px); height: clamp(56px, 24cqw, 168px); font-size: clamp(22px, 9cqw, 64px); }
 /* One made big (focused): it fills the room, and everyone else is in a strip below. */
 .voice-grid.focused { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
-.voice-grid.focused > .voice-tile { flex: 1 1 auto; min-height: 0; aspect-ratio: auto; cursor: zoom-out; }
+.voice-grid.focused > .voice-tile { flex: 1 1 auto; min-height: 0; aspect-ratio: auto; cursor: default; }
 .voice-grid.focused > .voice-tile video { object-fit: contain; }
 .voice-grid.focused > .voice-tile:has(video) { background: #000; }
 .voice-strip { flex: none; display: flex; justify-content: center; gap: 10px; overflow-x: auto; padding: 2px; }
@@ -736,7 +736,7 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
 /* A screen's sound: its mute and volume (top left; on hover, or always when muted or on a
    touch screen). */
 .tile-audio {
-  position: absolute; left: 8px; top: 8px; z-index: 2;
+  position: absolute; left: 8px; bottom: 34px; z-index: 2;
   display: flex; align-items: center; gap: 6px; padding: 3px 10px 3px 3px;
   background: rgba(8, 11, 18, 0.72); border-radius: 999px;
   opacity: 0; transition: opacity 0.15s; cursor: default;
@@ -1773,8 +1773,8 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .stage.grid > #fullscreen-btn { top: auto; bottom: 12px; }
 .call-grid .voice-strip > .voice-tile { width: 150px; }
 .voice-tile.mirror video { transform: scaleX(-1); } /* (your own camera, in a call or a voice channel: mirrorMe) */
-/* (Their screen's sound, in its tile: top left, as in a voice channel.) */
-.voice-tile .stream-audio { left: 8px; top: 8px; bottom: auto; }
+/* (Their screen's sound, in its tile: bottom left, above its name, clear of the stream stats.) */
+.voice-tile .stream-audio { left: 8px; bottom: 36px; top: auto; }
 .voice-strip .stream-audio input, .voice-strip .stream-audio output { display: none; }
 @media (max-width: 700px) {
   .call-grid { padding: 8px; gap: 8px; }

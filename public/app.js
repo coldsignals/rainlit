@@ -3424,7 +3424,8 @@ function renderCallGrid() {
   el.callGrid.classList.toggle('focused', Boolean(S.callFocus));
   for (const t of S.callTiles.values()) {
     t.classList.toggle('focus', t.dataset.key === S.callFocus);
-    t.title = t.dataset.key === S.callFocus ? 'Click to see everyone' : 'Click to see it big';
+    // (The big one says nothing over what's being watched: a click on it still puts them side by side.)
+    t.title = t.dataset.key === S.callFocus || t.querySelector('.watch-offer') ? '' : 'Click to see it big';
   }
   fitCallGrid();
 }
