@@ -720,7 +720,14 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
 .voice-strip { flex: none; display: flex; justify-content: center; gap: 10px; overflow-x: auto; padding: 2px; }
 .voice-strip > .voice-tile { flex: none; width: 184px; }
 .voice-strip .voice-tile .face { width: 42px; height: 42px; font-size: 17px; }
-.voice-strip .voice-tile-name { left: 6px; bottom: 6px; padding: 2px 7px; font-size: 12px; }
+.voice-strip /* Someone's screen, not watched yet (app.js watchOffer): what it is, and Watch stream. */
+.watch-offer {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px; text-align: center; color: var(--text); background: var(--dusk);
+}
+.watch-offer .icon { width: 30px; height: 30px; opacity: 0.75; }
+.watch-offer p { margin: 0; font-size: 14px; line-height: 1.35; }
+.voice-tile-name { left: 6px; bottom: 6px; padding: 2px 7px; font-size: 12px; }
 .voice-strip .tile-audio input, .voice-strip .tile-audio output { display: none; }
 .voice-strip .tile-audio { padding: 3px; }
 /* Full screen (a video's own button). */

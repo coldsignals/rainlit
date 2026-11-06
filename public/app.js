@@ -846,10 +846,24 @@ async function setMicTrack(track) {
 // a stream of its own (which your state names, so your friend's app can tell which is which).
 // For an app from before it could show both, your screen goes in your camera's place, as it did.
 const peerShowsBoth = () => Boolean(S.peer && S.peer.state && S.peer.state.both);
+// (Watch stream: an app that asks first gets your screen once it's watching. One from before, always.)
+const peerWatches = () => !(S.peer && S.peer.state && S.peer.state.watch) || Boolean(S.peer.state.watching);
 
 function wantedVideo() {
   const both = peerShowsBoth();
-  return { main: both ? S.local.cam : S.local.screen || S.local.cam, side: both ? S.local.screen : null, both };
+  return { main: both ? S.local.cam : S.local.screen || S.local.cam, side: both && peerWatches() ? S.local.screen : null, both };
+}
+
+// Your screen's sound, the same: only while your friend's watching.
+async function routeScreenAudio() {
+  const conn = S.conn;
+  if (!conn || conn.waitingForOffer) return;
+  const at = peerWatches() ? S.local.screenAudio : null;
+  if (conn.senders.screenAudio) {
+    if (conn.senders.screenAudio.track !== at) await conn.senders.screenAudio.replaceTrack(at);
+  } else if (at) {
+    conn.senders.screenAudio = conn.pc.addTrack(at, S.localStream);
+  }
 }
 
 async function routeVideo() {
@@ -1602,10 +1616,7 @@ async function toggleScreen() {
   S.local.screenAudio = at;
   vt.onended = () => { if (S.local.screen === vt) stopScreen(); };
   await routeVideo();
-  if (at && S.conn && !S.conn.waitingForOffer) {
-    if (S.conn.senders.screenAudio) await S.conn.senders.screenAudio.replaceTrack(at);
-    else S.conn.senders.screenAudio = S.conn.pc.addTrack(at, S.localStream);
-  }
+  await routeScreenAudio();
   renderSelf();
   renderControls();
   sendState();
@@ -1641,11 +1652,7 @@ async function switchScreen() {
     S.local.screenAudio = at;
     vt.onended = () => { if (S.local.screen === vt) stopScreen(); };
     await routeVideo();
-    const conn = S.conn;
-    if (conn && !conn.waitingForOffer) {
-      if (conn.senders.screenAudio) await conn.senders.screenAudio.replaceTrack(at);
-      else if (at) conn.senders.screenAudio = conn.pc.addTrack(at, S.localStream);
-    }
+    await routeScreenAudio();
     oldVideo.stop();
     if (oldSound) oldSound.stop();
     renderSelf();
@@ -1783,7 +1790,18 @@ function myState() {
     mic: Boolean(S.micOn && S.local.mic && !S.onPhone && !S.deafened && !S.micTesting), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone), deaf: S.deafened,
     // (This app shows a camera and a screen at once; it sends its screen on this stream, and is now.)
     both: true, share: S.shareStream.id, apart: Boolean(S.local.screen && S.conn && S.conn.routedBoth),
+    // (This app asks before showing your friend's screen: Watch stream. And whether it's watching.)
+    watch: true, watching: Boolean(S.watchingPeer),
   };
+}
+
+// Watch stream (or Stop watching), in a call: your friend's app sends their screen once you are.
+function watchPeer(on) {
+  if (Boolean(S.watchingPeer) === on) return;
+  S.watchingPeer = on;
+  S.callFocus = on ? 'peer:screen' : S.callFocus === 'peer:screen' ? null : S.callFocus; // (watching: it's big)
+  sendState();
+  renderPeer();
 }
 
 function sendState() {
@@ -2176,7 +2194,19 @@ function handleServerMessage(msg) {
         const wasSharing = Boolean(S.peer.state && S.peer.state.screen);
         const wasOnPhone = Boolean(S.peer.state && S.peer.state.phone);
         const wasDeaf = Boolean(S.peer.state && S.peer.state.deaf);
+        const wasWatching = Boolean(S.peer.state && S.peer.state.watching);
         S.peer.state = msg.state;
+        // (Their screen's gone: not watching it any more, for the next one to ask again.)
+        if (!(msg.state && msg.state.screen) && S.watchingPeer) {
+          S.watchingPeer = false;
+          sendState();
+        }
+        // (They tuned in to your screen, or out: it goes to them, or stops, and you hear it.)
+        const watching = Boolean(msg.state && msg.state.watching);
+        if (watching !== wasWatching) {
+          routeVideo().then(routeScreenAudio).then(sendState, () => {});
+          if (S.local.screen) playWatchSound(watching);
+        }
         renderPeer();
         const onPhone = Boolean(msg.state && msg.state.phone);
         const who = S.peer.name || 'Your friend';
@@ -2530,6 +2560,8 @@ function peerVideos() {
     if (share && v.stream === share) screen = v.track;
     else cam = v.track;
   }
+  // (Theirs asks first (Watch stream), and you aren't watching: their camera only, if it's on.)
+  if (p.state.screen && p.state.watch && !S.watchingPeer) return { cam: p.state.cam ? cam : null, screen: null };
   if (p.state.screen && p.state.apart && screen) return { cam: p.state.cam ? cam : null, screen };
   if (p.state.screen) return { cam: null, screen: cam };
   return { cam: p.state.cam ? cam : null, screen: null };
@@ -3287,8 +3319,12 @@ function renderCallGrid() {
   const mediaUp = Boolean(S.conn && S.conn.pc.connectionState === 'connected');
   const theirs = peerVideos();
   const mine = myVideos();
+  // (Their screen, to watch: Watch stream, or tuning in, or watched, with Stop watching on it. It's
+  // a tile, so there are tiles.)
+  const asks = Boolean(p && p.state && p.state.screen && p.state.watch && !theirs.screen);
+  const watched = Boolean(p && p.state && p.state.screen && p.state.watch);
   const videos = [theirs.cam, theirs.screen, mine.cam, mine.screen].filter(Boolean).length;
-  const on = Boolean(S.inCall && p && !(p.away && !mediaUp) && videos >= 2);
+  const on = Boolean(S.inCall && p && !(p.away && !mediaUp) && (videos >= 2 || watched));
   el.stage.classList.toggle('grid', on);
   placeCallVideos(on);
   if (!on) {
@@ -3302,11 +3338,12 @@ function renderCallGrid() {
   el.fullscreenBtn.hidden = false; // (the whole call; each video has its own too)
   const friend = profileOf(p.id) || { id: p.id, displayName: p.name };
   const me = myState();
+  const watchedBy = Boolean(mine.screen && p.state.watch && p.state.watching);
   const tiles = [
-    theirs.screen && { key: 'peer:screen', track: theirs.screen, name: `${p.name}'s screen`, screen: true },
+    (theirs.screen || asks) && { key: 'peer:screen', track: theirs.screen, name: `${p.name}'s screen`, screen: true, offer: asks && !S.watchingPeer, tuning: asks && S.watchingPeer, unwatch: Boolean(theirs.screen && p.state.watch) },
     { key: 'peer:cam', track: theirs.cam, person: friend, name: p.name, muted: !p.state.mic, deaf: p.state.deaf, away: (S.friends.get(p.id) || {}).presence === 'away' },
     { key: 'me:cam', track: mine.cam, person: profileOf(S.me.id) || S.me, name: 'You', muted: !me.mic, deaf: me.deaf, mirror: S.facing !== 'environment' && mirrorMe() },
-    mine.screen && { key: 'me:screen', track: mine.screen, name: 'Your screen', screen: true },
+    mine.screen && { key: 'me:screen', track: mine.screen, name: watchedBy ? `Your screen · ${p.name} is watching` : 'Your screen', screen: true },
   ].filter(Boolean);
   const keep = new Set();
   for (const t of tiles) {
@@ -3351,25 +3388,11 @@ function renderCallGrid() {
       tile.append(label);
     }
     label.replaceChildren(t.name);
+    watchOffer(tile, t.offer ? 'offer' : t.tuning ? 'tuning' : '', p.name);
     if (!t.screen && (t.muted || t.deaf)) label.insertAdjacentHTML('beforeend', `<svg class="icon" aria-label="${t.deaf ? 'Deafened' : 'Muted'}"><use href="#${t.deaf ? 'i-headphones-off' : 'i-mic-off'}"/></svg>`);
     if (!t.screen && t.away) label.insertAdjacentHTML('beforeend', '<span class="tile-away">Away</span>');
     // A video's own buttons: full screen, pop out, keep on top.
-    let tools = tile.querySelector('.tile-tools');
-    if (t.track && (canPopOut() || canPin() || canFullscreen())) {
-      if (!tools) {
-        tools = document.createElement('span');
-        tools.className = 'tile-tools';
-        tools.innerHTML = '<button type="button" class="tile-full" title="Full screen" aria-label="Full screen"><svg class="icon"><use href="#i-expand"/></svg></button>'
-          + '<button type="button" class="tile-pop" title="Pop out into its own window" aria-label="Pop out into its own window"><svg class="icon"><use href="#i-popout"/></svg></button>'
-          + '<button type="button" class="tile-pin" title="Keep on top of other windows" aria-label="Keep on top of other windows"><svg class="icon"><use href="#i-pin"/></svg></button>';
-        tile.append(tools);
-      }
-      tools.querySelector('.tile-full').hidden = !canFullscreen();
-      tools.querySelector('.tile-pop').hidden = !canPopOut();
-      tools.querySelector('.tile-pin').hidden = !canPin();
-    } else if (tools) {
-      tools.remove();
-    }
+    tileTools(tile, Boolean(t.track), Boolean(t.unwatch));
   }
   for (const [key, tile] of S.callTiles) {
     if (!keep.has(key)) {
@@ -3404,6 +3427,45 @@ function renderCallGrid() {
     t.title = t.dataset.key === S.callFocus ? 'Click to see everyone' : 'Click to see it big';
   }
   fitCallGrid();
+}
+
+// A video's own buttons, on its tile: full screen, pop out, keep on top, and (someone's screen
+// you're watching) Stop watching.
+const TILE_TOOLS = '<button type="button" class="tile-unwatch" title="Stop watching" aria-label="Stop watching"><svg class="icon"><use href="#i-screen-off"/></svg></button>'
+  + '<button type="button" class="tile-full" title="Full screen" aria-label="Full screen"><svg class="icon"><use href="#i-expand"/></svg></button>'
+  + '<button type="button" class="tile-pop" title="Pop out into its own window" aria-label="Pop out into its own window"><svg class="icon"><use href="#i-popout"/></svg></button>'
+  + '<button type="button" class="tile-pin" title="Keep on top of other windows" aria-label="Keep on top of other windows"><svg class="icon"><use href="#i-pin"/></svg></button>';
+function tileTools(tile, video, unwatch) {
+  let tools = tile.querySelector('.tile-tools');
+  if (video && (unwatch || canPopOut() || canPin() || canFullscreen())) {
+    if (!tools) {
+      tools = document.createElement('span');
+      tools.className = 'tile-tools';
+      tools.innerHTML = TILE_TOOLS;
+      tile.append(tools);
+    }
+    tools.querySelector('.tile-unwatch').hidden = !unwatch;
+    tools.querySelector('.tile-full').hidden = !canFullscreen();
+    tools.querySelector('.tile-pop').hidden = !canPopOut();
+    tools.querySelector('.tile-pin').hidden = !canPin();
+  } else if (tools) {
+    tools.remove();
+  }
+}
+
+// Someone's screen, not watched yet: what it is, and Watch stream ('offer'); or, asked for, on its
+// way ('tuning'); or nothing (''), once it's showing.
+function watchOffer(tile, state, name) {
+  let box = tile.querySelector('.watch-offer');
+  if (!state) return void (box && box.remove());
+  if (!box) {
+    box = document.createElement('div');
+    box.className = 'watch-offer';
+    box.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-screen"/></svg><p></p><button type="button" class="primary-btn small tile-watch">Watch stream</button>';
+    tile.append(box);
+  }
+  box.querySelector('p').textContent = state === 'offer' ? `${name} is sharing their screen` : 'Tuning in…';
+  box.querySelector('.tile-watch').hidden = state !== 'offer';
 }
 
 function focusCallTile(key) {
@@ -6874,8 +6936,8 @@ function unlockSounds() {
 // kept just as they were). Both make the same sounds, the same way round (things starting or
 // coming on go up, things stopping or going off come down):
 //   chime: a new message. ring: a call coming in (and, quieter, yours going out). share: a
-//   screen share starting or stopping. call: someone joining or leaving a call. control: your
-//   own call buttons. click: any other button.
+//   screen share starting or stopping. watch: someone tuning in to your screen, or out. call:
+//   someone joining or leaving a call. control: your own call buttons. click: any other button.
 // Each is given the sound player (ctx) and when to start (t).
 
 const SOUND_STYLES = {
@@ -6898,6 +6960,11 @@ const SOUND_STYLES = {
     share(ctx, t, starting) {
       const notes = starting ? [880, 1108.73, 1318.51] : [1318.51, 1108.73, 880]; // A5, C#6, E6
       notes.forEach((freq, i) => dropNote(ctx, freq, t + i * 0.075, { level: 0.13, length: 0.35, dest: dripRoom(ctx) }));
+    },
+    // Two soft little drops, high: up as someone tunes in to your screen, down as they tune out.
+    watch(ctx, t, joining) {
+      const notes = joining ? [1108.73, 1760] : [1760, 1108.73]; // C#6 and A6
+      notes.forEach((freq, i) => dropNote(ctx, freq, t + i * 0.07, { level: 0.07, length: 0.22, glass: 0.3, dest: dripRoom(ctx) }));
     },
     // Two drops: up when someone joins (or comes back), down when someone drops or leaves.
     call(ctx, t, joining) {
@@ -6961,6 +7028,10 @@ const SOUND_STYLES = {
     share(ctx, t, starting) {
       const notes = starting ? [783.99, 1046.5] : [1046.5, 783.99]; // G5 and C6
       notes.forEach((freq, i) => bellNote(ctx, freq, t + i * 0.11, 0.75));
+    },
+    // A small, soft bell: high as someone tunes in to your screen, lower as they tune out.
+    watch(ctx, t, joining) {
+      bellNote(ctx, joining ? 1318.51 : 1046.5, t, 0.4); // E6, or C6
     },
     // A quick two-note "boop": rising when someone joins (or comes back to) the call, falling
     // when someone drops or leaves.
@@ -7628,6 +7699,12 @@ function drawFireflies(ctx, dt, w, h, t) {
 function playShareSound(starting) {
   if (!S.callSounds || !soundReady()) return;
   styleSounds().share(S.soundCtx, S.soundCtx.currentTime + 0.02, starting);
+}
+
+// Someone tuning in to your screen (Watch stream), or out of it.
+function playWatchSound(joining) {
+  if (!S.callSounds || !soundReady()) return;
+  styleSounds().watch(S.soundCtx, S.soundCtx.currentTime + 0.02, joining);
 }
 
 // Someone joining (or coming back to) the call, or dropping or leaving it.
@@ -14365,7 +14442,37 @@ function loadCfVoice() {
 // What everyone sees by your name in a voice channel's list: muted or deafened, camera on, sharing.
 function voiceStateOf(v) {
   const me = v.room && v.room.localParticipant;
-  return { muted: v.muted || !v.speak || Boolean(S.micTesting), deafened: v.deafened, video: Boolean(me && me.isCameraEnabled), screen: Boolean(me && me.isScreenShareEnabled) };
+  return {
+    muted: v.muted || !v.speak || Boolean(S.micTesting), deafened: v.deafened, video: Boolean(me && me.isCameraEnabled), screen: Boolean(me && me.isScreenShareEnabled),
+    watching: [...(v.watching || [])], // (whose screens you're watching: Watch stream)
+  };
+}
+
+// Watch stream (or Stop watching), in a voice channel: their screen, and its sound, come only then.
+function watchVoice(id, on) {
+  const v = S.voice;
+  if (!v || v.watching.has(id) === on) return;
+  if (on) v.watching.add(id);
+  else v.watching.delete(id);
+  const key = `${id}:screen`;
+  v.focus = on ? key : v.focus === key ? null : v.focus; // (watching: it's big)
+  applyVoiceWatch(v);
+  sendVoiceState(v);
+  renderVoice();
+}
+// (What's fetched follows: LiveKit's screens subscribed to or not; Cloudflare's pulled or not.)
+function applyVoiceWatch(v) {
+  const room = v && v.room;
+  if (!room) return;
+  if (room.setWatching) return room.setWatching(v.watching);
+  const LK = VK;
+  for (const p of room.remoteParticipants.values()) {
+    for (const source of [LK.Track.Source.ScreenShare, LK.Track.Source.ScreenShareAudio]) {
+      const pub = p.getTrackPublication(source);
+      const want = v.watching.has(p.identity);
+      if (pub && pub.setSubscribed && pub.isSubscribed !== want) pub.setSubscribed(want);
+    }
+  }
 }
 
 // Told whenever it changes, however it changed: a share stopped from the browser's own "Stop
@@ -14409,6 +14516,27 @@ function loadLivekit() {
 // Who's in each voice channel (from the server): channel id -> [{ id, muted, deafened, video, screen }].
 S.voiceStates = new Map();
 
+// Watch stream, from the list: a screen that's stopped isn't being watched any more (the next one
+// asks again); and, sharing yours, who's tuned in or out (a soft sound for each).
+function voiceWatchers(v, members) {
+  v.watching ||= new Set();
+  v.viewers ||= new Set();
+  const sharing = new Set(members.filter((m) => m.screen).map((m) => m.id));
+  let stopped = false;
+  for (const id of v.watching) if (!sharing.has(id)) { v.watching.delete(id); stopped = true; }
+  if (stopped) {
+    applyVoiceWatch(v);
+    sendVoiceState(v);
+  }
+  const mine = sharing.has(S.clientId);
+  const viewers = new Set(mine ? members.filter((m) => m.id !== S.clientId && (m.watching || []).includes(S.clientId)).map((m) => m.id) : []);
+  const came = [...viewers].some((id) => !v.viewers.has(id));
+  const went = mine && [...v.viewers].some((id) => !viewers.has(id));
+  v.viewers = viewers;
+  if (came) playWatchSound(true);
+  else if (went) playWatchSound(false);
+}
+
 // ----- Alone in a voice channel (lib/realtime.js) -----
 // After a while alone, the server asks if you're still there. "I'm here" keeps you in; otherwise
 // you're taken out when the count runs down (someone joining you ends it too).
@@ -14441,6 +14569,7 @@ function hideVoiceAlone() {
 }
 
 function onVoiceState({ channel, members }) {
+  if (S.voice && S.voice.channelId === channel) voiceWatchers(S.voice, members);
   if (S.voice && S.voice.channelId === channel && members.length > 1) hideVoiceAlone();
   if (S.voice && S.voice.channelId === channel && S.voice.room && S.voice.room.sync) S.voice.room.sync(members); // (Cloudflare)
   S.voiceStates.set(channel, members);
@@ -14480,6 +14609,7 @@ async function joinVoice(channelId) {
     channelId, spaceId: c.spaceId, room: null, state: 'connecting', speak: false,
     muted: store.get('voiceMuted', 'off') === 'on', deafened: false, glows: new Map(), tiles: new Map(),
     meters: new Map(), meterCtx: null, meterTimer: 0,
+    watching: new Set(), viewers: new Set(), // (whose screens you're watching; who's watching yours)
   };
   showVoiceView();
   renderVoice();
@@ -14609,7 +14739,10 @@ function wireVoiceRoom(room, v) {
   const LK = VK;
   const E = LK.RoomEvent;
   const again = () => { if (S.voice === v) renderVoice(); };
+  const screenish = (pub) => pub.source === LK.Track.Source.ScreenShare || pub.source === LK.Track.Source.ScreenShareAudio;
+  if (LK === window.LivekitClient) room.on(E.TrackPublished, (pub, participant) => { if (screenish(pub) && !v.watching.has(participant.identity)) pub.setSubscribed(false); });
   room.on(E.TrackSubscribed, (track, pub, participant) => {
+    if (LK === window.LivekitClient && screenish(pub) && !v.watching.has(participant.identity)) return pub.setSubscribed(false); // (not being watched)
     if (track.kind === 'audio') {
       const a = track.attach();
       a.dataset.who = participant.identity;
@@ -15140,6 +15273,8 @@ function hideVoiceView() {
 function renderVoiceView() {
   const v = S.voice;
   if (!v || el.voiceView.hidden) return;
+  v.watching ||= new Set();
+  v.viewers ||= new Set();
   const c = S.channels.get(v.channelId);
   const space = S.spaces.get(v.spaceId);
   el.voiceTitle.textContent = isGroupSpace(space) ? groupTitle(space) : c ? c.name : '';
@@ -15152,7 +15287,10 @@ function renderVoiceView() {
   for (const p of people) {
     wanted.set(`${p.identity}:cam`, { p, source: 'camera' });
     const screen = p.getTrackPublication(VK.Track.Source.ScreenShare);
-    if (screen && screen.track && !screen.isMuted) wanted.set(`${p.identity}:screen`, { p, source: 'screen' });
+    const shown = screen && screen.track && !screen.isMuted;
+    // (Someone else's, by the list: to watch, till you do; then it comes.)
+    const theirs = p.identity !== S.clientId && Boolean(states.get(p.identity) && states.get(p.identity).screen);
+    if (shown || theirs) wanted.set(`${p.identity}:screen`, { p, source: 'screen' });
   }
   for (const [key, tile] of v.tiles) {
     if (!wanted.has(key)) {
@@ -15188,7 +15326,7 @@ function renderVoiceView() {
       video.remove();
     }
     let face = tile.querySelector('.face');
-    if (!track) {
+    if (!track && source !== 'screen') {
       if (!face) {
         face = makeFace(person, null);
         tile.prepend(face);
@@ -15204,24 +15342,13 @@ function renderVoiceView() {
     }
     const mic = p.getTrackPublication(VK.Track.Source.Microphone);
     const muted = !mic || mic.isMuted;
-    label.replaceChildren(`${source === 'screen' ? `${person.displayName}'s screen` : person.id === S.clientId ? `${person.displayName} (you)` : person.displayName}`);
+    const others = source === 'screen' && p.identity !== S.clientId;
+    const viewers = source === 'screen' && !others ? v.viewers.size : 0;
+    label.replaceChildren(`${source === 'screen' ? `${person.displayName}'s screen${viewers ? ` · ${viewers} watching` : ''}` : person.id === S.clientId ? `${person.displayName} (you)` : person.displayName}`);
+    if (viewers) label.title = [...v.viewers].map((id) => (profileOf(id) || {}).displayName || 'Someone').join(', ');
     tile.dataset.key = key;
-    let tools = tile.querySelector('.tile-tools');
-    if (track && (canPopOut() || canPin() || canFullscreen())) {
-      if (!tools) {
-        tools = document.createElement('span');
-        tools.className = 'tile-tools';
-        tools.innerHTML = '<button type="button" class="tile-full" title="Full screen" aria-label="Full screen"><svg class="icon"><use href="#i-expand"/></svg></button>'
-          + '<button type="button" class="tile-pop" title="Pop out into its own window" aria-label="Pop out into its own window"><svg class="icon"><use href="#i-popout"/></svg></button>'
-          + '<button type="button" class="tile-pin" title="Keep on top of other windows" aria-label="Keep on top of other windows"><svg class="icon"><use href="#i-pin"/></svg></button>';
-        tile.append(tools);
-      }
-      tools.querySelector('.tile-full').hidden = !canFullscreen();
-      tools.querySelector('.tile-pop').hidden = !canPopOut();
-      tools.querySelector('.tile-pin').hidden = !canPin();
-    } else if (tools) {
-      tools.remove();
-    }
+    watchOffer(tile, others && !track ? (v.watching.has(p.identity) ? 'tuning' : 'offer') : '', person.displayName);
+    tileTools(tile, Boolean(track), others && v.watching.has(p.identity));
     renderTileSound(tile, p, source);
     if (source !== 'screen' && muted) label.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Muted"><use href="#i-mic-off"/></svg>');
     if (source !== 'screen' && person.id !== S.clientId && personSound(person.id).m) label.insertAdjacentHTML('beforeend', MUTED_FOR_YOU);
@@ -21404,6 +21531,7 @@ function teardown({ sendLeave, keepActive = false }) {
   S.inCall = false;
   S.onPhone = false;
   S.deafened = false;
+  S.watchingPeer = false;
   finishCamPreview(false);
   setStageFull(false);
   S.mediaDropped = false;
@@ -22259,6 +22387,12 @@ async function init() {
     const tile = e.target.closest('.voice-tile');
     const key = tile && tile.dataset.key;
     if (!key) return;
+    if (e.target.closest('.tile-watch')) return watchVoice(tile.dataset.who, true);
+    if (e.target.closest('.tile-unwatch')) {
+      if (document.fullscreenElement === tile) document.exitFullscreen().catch(() => {});
+      return watchVoice(tile.dataset.who, false);
+    }
+    if (tile.querySelector('.watch-offer')) return; // (not big till it's being watched)
     const b = e.target.closest('.tile-pop, .tile-pin, .tile-full, .tile-audio-mute');
     if (!b) {
       if (!e.target.closest('.tile-audio') && document.fullscreenElement !== tile) focusTile(key);
@@ -22322,6 +22456,12 @@ async function init() {
     const tile = e.target.closest('.voice-tile');
     const key = tile && tile.dataset.key;
     if (!key) return;
+    if (e.target.closest('.tile-watch')) return watchPeer(true);
+    if (e.target.closest('.tile-unwatch')) {
+      if (document.fullscreenElement === tile) document.exitFullscreen().catch(() => {});
+      return watchPeer(false);
+    }
+    if (tile.querySelector('.watch-offer')) return; // (not big till it's being watched)
     const b = e.target.closest('.tile-pop, .tile-pin, .tile-full');
     if (!b) {
       if (!e.target.closest('.stream-audio') && document.fullscreenElement !== tile) focusCallTile(key);

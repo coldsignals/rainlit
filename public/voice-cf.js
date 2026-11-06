@@ -207,6 +207,7 @@
       this.healed = new Map(); // "user:kind" -> { n, last, next }: its sound fetched again (heal)
       this.members = [];
       this.wantVideo = false;
+      this.watching = new Set(); // (whose screens are being watched: only theirs are fetched)
       this.closed = false;
       this.reconnecting = false;
       this.camConstraints = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24, max: 30 } };
@@ -755,7 +756,8 @@
           unknown.add(m.id);
           continue;
         }
-        for (const kind of ['mic', 'screenAudio', ...(video ? ['cam', 'screen'] : [])]) {
+        const watched = this.watching.has(m.id);
+        for (const kind of ['mic', ...(watched ? ['screenAudio'] : []), ...(video ? ['cam', ...(watched ? ['screen'] : [])] : [])]) {
           if (m.pub && m.pub[kind]) want.set(`${m.id}:${kind}`, m.pub[kind]);
         }
       }
@@ -871,6 +873,12 @@
       const due = [...this.retry.values()].map((r) => r.at).filter((t) => t > now);
       clearTimeout(this.retryTimer);
       if (due.length) this.retryTimer = setTimeout(() => this.sync(this.members), Math.min(...due) - now + 50);
+    }
+
+    // Whose screens are being watched (Watch stream): theirs, and its sound, are fetched; the rest's not.
+    setWatching(ids) {
+      this.watching = new Set(ids);
+      this.sync(this.members);
     }
 
     // Others' video, or not: it's only fetched while it's being looked at, and for 10 seconds
