@@ -47,10 +47,9 @@ abuse.whenFlagged((userId, kind, detail) => {
 });
 const supporters = require('./lib/supporters');
 // (Someone started or stopped supporting Rainlit: their devices hear, for their badge and limits.)
-supporters.whenChanged((userId) => {
-  const u = people.userById(userId);
-  if (u) realtime.sendToUser(userId, { type: 'me', user: people.selfUser(u) });
-});
+// (Glow starting or ending, a gift's too: their badge lights up, or goes out, for everyone who sees
+// it, not only them.)
+supporters.whenChanged((userId) => badgeChanged(userId));
 const themes = require('./lib/themes');
 const cards = require('./lib/cards');
 const feedback = require('./lib/feedback');
