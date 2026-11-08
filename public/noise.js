@@ -192,9 +192,15 @@ function watchClock(ctx, fast) {
     if (ctx.state !== 'running') return;
     const now = { clock: ctx.currentTime, wall: performance.now() };
     const rate = (now.clock - at.clock) / Math.max(0.001, (now.wall - at.wall) / 1000);
+    const long = now.wall - at.wall >= 15_000;
     at = now;
-    over = rate > 1.25 ? over + 1 : 0;
-    if (over === 2) fast(rate);
+    // (Twice running; or once, over a long while: a phone's browser, in the background, looks only
+    // about once a minute, and every second of it too fast is heard chopped up.)
+    over = rate > 1.25 ? over + (long ? 2 : 1) : 0;
+    if (over >= 2) {
+      over = 0;
+      fast(rate);
+    }
   }, CLOCK_EVERY);
   return () => clearInterval(timer);
 }
@@ -227,6 +233,7 @@ export async function cleanTrack(raw, { engine = 'gtcrn', strength = 0.8, wait =
   // (Its clock, to keep an eye on: too fast, the track says so, for the app to start it again.)
   const unwatch = watchClock(ctx, (rate) => track.dispatchEvent(new CustomEvent('rainlitfast', { detail: rate })));
   let stopped = false;
+  let rawTaken = false;
   const stopAll = () => {
     if (stopped) return;
     stopped = true;
@@ -246,8 +253,17 @@ export async function cleanTrack(raw, { engine = 'gtcrn', strength = 0.8, wait =
   track.rainlitTime = () => ctx.currentTime; // (its clock: the call debug log notes how far it goes)
   track.stop = () => {
     stop();
-    raw.stop();
+    if (!rawTaken) raw.stop();
     stopAll();
+  };
+  // The mic as it is, not cleaned up, taken back (this let go of, the mic kept going): its sound
+  // goes by the mic's own clock, whatever this one's doing. Null once it's been stopped.
+  track.takeRaw = () => {
+    if (stopped || raw.readyState === 'ended') return null;
+    rawTaken = true;
+    stopAll();
+    stop();
+    return raw;
   };
   raw.addEventListener('ended', () => track.dispatchEvent(new Event('ended')));
   return track;

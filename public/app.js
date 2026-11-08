@@ -646,7 +646,33 @@ async function cleanMic(raw, deviceId, android) {
     track.addEventListener('rainlitfast', (e) => {
       if (S.local.mic !== track) return;
       noiseTooFast(e.detail, (done) => {
-        if (done) track.stop();
+        // (At once, the mic as it is, by its own clock: what goes out is in time again, if not
+        // cleaned up for a moment. Then opened again, cleaned up: on a phone with Rainlit in the
+        // background that waits till it's back in front, and this keeps it from sounding chopped up,
+        // like a fan, all that while.)
+        const raw = track.takeRaw && track.takeRaw();
+        if (raw) {
+          raw.rainlitNoise = '';
+          setMicTrack(raw).catch(() => {});
+        } else if (done) {
+          track.stop();
+        }
+        if (done && raw) {
+          // (The browser's own from now on: a browser won't give it to a mic that's open as it is, so
+          // that's closed first, once Rainlit's in front, where it opens again at once.)
+          const again = () => {
+            if (S.local.mic !== raw) return;
+            raw.stop();
+            restartMic();
+          };
+          if (!document.hidden) return again();
+          const shown = () => {
+            if (document.hidden) return;
+            document.removeEventListener('visibilitychange', shown);
+            again();
+          };
+          return document.addEventListener('visibilitychange', shown);
+        }
         restartMic();
       });
     });
