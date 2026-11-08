@@ -7705,10 +7705,10 @@ function rainStep(now) {
 }
 
 // Event Horizon's weather: stars drawn in by the black hole in its sky (style.css draws it: at
-// 82.4% across and 16.4% down, its edge 55 px out), each going round it, faster and faster as it
+// 80% across and 30% down, its edge 55 px out), each going round it, faster and faster as it
 // nears, and falling in: stretched out along its way at the end, gone at its edge, and another
 // comes from far off. (Their paths are a little flattened, as its disk is seen from a little above.)
-const HOLE = { x: 0.824, y: 0.164, r: 55, flat: 0.62 };
+const HOLE = { x: 0.8, y: 0.3, r: 55, flat: 0.62 };
 const INFALL_TONES = ['255, 240, 220', '255, 190, 128', '200, 172, 255'];
 function newStar(w, h, anywhere) {
   const cx = HOLE.x * w;

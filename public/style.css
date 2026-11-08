@@ -143,17 +143,29 @@ emoji-picker { --emoji-font-family: var(--emoji-font); }
   --away: #f5c46b; --offline: #6e698b; --voice-live: #ffb070;
   --scrim: rgba(3, 2, 8, 0.66); --rain: 255, 228, 200;
   --backdrop:
-    radial-gradient(ellipse 330px 26px at 77% 24%, rgba(255, 214, 160, 0.62), rgba(255, 140, 70, 0.26) 42%, transparent 70%),
-    radial-gradient(circle at 77% 24%, #000 0 54px, transparent 55.5px),
-    radial-gradient(circle at 77% 24%, transparent 53px, rgba(255, 236, 210, 0.95) 56px, rgba(255, 168, 92, 0.5) 61px, rgba(196, 130, 255, 0.2) 78px, transparent 130px),
-    radial-gradient(circle at 77% 24%, rgba(140, 100, 255, 0.16), rgba(90, 60, 200, 0.06) 160px, transparent 300px);
+    radial-gradient(ellipse 330px 26px at 75% 36.4%, rgba(255, 214, 160, 0.62), rgba(255, 140, 70, 0.26) 42%, transparent 70%),
+    radial-gradient(circle at 75% 36.4%, #000 0 54px, transparent 55.5px),
+    radial-gradient(circle at 75% 36.4%, transparent 53px, rgba(255, 236, 210, 0.95) 56px, rgba(255, 168, 92, 0.5) 61px, rgba(196, 130, 255, 0.2) 78px, transparent 130px),
+    radial-gradient(circle at 75% 36.4%, rgba(140, 100, 255, 0.16), rgba(90, 60, 200, 0.06) 160px, transparent 300px);
   --mini-sky: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30'%3E%3Cdefs%3E%3CradialGradient id='h'%3E%3Cstop offset='.42' stop-color='%23000'/%3E%3Cstop offset='.5' stop-color='%23ffe2be'/%3E%3Cstop offset='.62' stop-color='%23ff9a52' stop-opacity='.55'/%3E%3Cstop offset='1' stop-color='%23a07aff' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='28' cy='11' r='10' fill='url(%23h)'/%3E%3Cellipse cx='28' cy='11' rx='15' ry='1.6' fill='%23ffb070' fill-opacity='.7'/%3E%3Cg fill='%23fff1de'%3E%3Ccircle cx='6' cy='22' r='.8'/%3E%3Ccircle cx='14' cy='5' r='.6'/%3E%3Ccircle cx='38' cy='25' r='.7'/%3E%3C/g%3E%3C/svg%3E") right 2px top 2px / 44px 30px no-repeat;
 }
 /* (Its light breathing, slowly, round the hole.) */
-:root[data-theme="horizon"] body::before { transform-origin: 77% 24%; animation: horizon-breathe 11s ease-in-out infinite alternate; }
+:root[data-theme="horizon"] body::before { transform-origin: 75% 36.4%; animation: horizon-breathe 11s ease-in-out infinite alternate; }
 @keyframes horizon-breathe {
   from { transform: scale(0.985); opacity: 0.82; }
   to { transform: scale(1.025); opacity: 1; }
+}
+/* (A call, or a voice channel's tiles, with no video in them: frosted glass, the black hole seen
+   through it, blurred, rather than cut off by it. Videos stay as they are. On a computer: a phone's
+   panels hide the sky anyway.) */
+@media (min-width: 761px) {
+  :root[data-theme="horizon"] .stage:not(.grid):has(> video#remote-video[hidden]),
+  :root[data-theme="horizon"] .stage.grid,
+  :root[data-theme="horizon"] .voice-tile:not(:has(video)) {
+    background: rgba(6, 5, 12, 0.5);
+    -webkit-backdrop-filter: blur(9px) saturate(1.3); backdrop-filter: blur(9px) saturate(1.3);
+  }
+  :root[data-theme="horizon"] .stage.grid .voice-tile:not(:has(video)) { background: rgba(21, 19, 31, 0.45); }
 }
 
 /* Over pictures and video: dark glass, with the night's own words and lines whatever the theme. */
