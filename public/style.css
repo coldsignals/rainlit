@@ -133,6 +133,29 @@ emoji-picker { --emoji-font-family: var(--emoji-font); }
   --mini-sky: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='38' height='38'%3E%3Cpath transform='translate(9 10) scale(5)' fill='%23ec7030' d='M0-1L.18-.5L.55-.62L.42-.25L.85-.15L.5.12L.62.45L.12.35L.05.95H-.05L-.12.35L-.62.45L-.5.12L-.85-.15L-.42-.25L-.55-.62L-.18-.5Z'/%3E%3Cpath transform='translate(27 26) rotate(40) scale(4)' fill='%23d63e2c' d='M0-1L.18-.5L.55-.62L.42-.25L.85-.15L.5.12L.62.45L.12.35L.05.95H-.05L-.12.35L-.62.45L-.5.12L-.85-.15L-.42-.25L-.55-.62L-.18-.5Z'/%3E%3C/svg%3E") 0 0 / 38px 38px;
 }
 
+/* Event Horizon: deep space, and a black hole at the top right: its shadow, the bright ring of
+   light caught round it, its disk across it, and the light it bends, a violet haze (its stars
+   falling in: app.js drawInfall, which knows where it is: HOLE). */
+:root[data-theme="horizon"], [data-theme-preview="horizon"] {
+  --night: #0a0912; --deep: #06050c; --dusk: #15131f; --dusk-hi: #1e1b2c; --line: #2d2942;
+  --mist: #b5b0cc; --faint: #6e698b; --text: #f0ecff;
+  --lamp: #c4a8ff; --lamp-ink: #170c33; --lamp-glow: rgba(196, 168, 255, 0.32);
+  --away: #f5c46b; --offline: #6e698b; --voice-live: #ffb070;
+  --scrim: rgba(3, 2, 8, 0.66); --rain: 255, 228, 200;
+  --backdrop:
+    radial-gradient(ellipse 330px 26px at 77% 24%, rgba(255, 214, 160, 0.62), rgba(255, 140, 70, 0.26) 42%, transparent 70%),
+    radial-gradient(circle at 77% 24%, #000 0 54px, transparent 55.5px),
+    radial-gradient(circle at 77% 24%, transparent 53px, rgba(255, 236, 210, 0.95) 56px, rgba(255, 168, 92, 0.5) 61px, rgba(196, 130, 255, 0.2) 78px, transparent 130px),
+    radial-gradient(circle at 77% 24%, rgba(140, 100, 255, 0.16), rgba(90, 60, 200, 0.06) 160px, transparent 300px);
+  --mini-sky: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='30'%3E%3Cdefs%3E%3CradialGradient id='h'%3E%3Cstop offset='.42' stop-color='%23000'/%3E%3Cstop offset='.5' stop-color='%23ffe2be'/%3E%3Cstop offset='.62' stop-color='%23ff9a52' stop-opacity='.55'/%3E%3Cstop offset='1' stop-color='%23a07aff' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='28' cy='11' r='10' fill='url(%23h)'/%3E%3Cellipse cx='28' cy='11' rx='15' ry='1.6' fill='%23ffb070' fill-opacity='.7'/%3E%3Cg fill='%23fff1de'%3E%3Ccircle cx='6' cy='22' r='.8'/%3E%3Ccircle cx='14' cy='5' r='.6'/%3E%3Ccircle cx='38' cy='25' r='.7'/%3E%3C/g%3E%3C/svg%3E") right 2px top 2px / 44px 30px no-repeat;
+}
+/* (Its light breathing, slowly, round the hole.) */
+:root[data-theme="horizon"] body::before { transform-origin: 77% 24%; animation: horizon-breathe 11s ease-in-out infinite alternate; }
+@keyframes horizon-breathe {
+  from { transform: scale(0.985); opacity: 0.82; }
+  to { transform: scale(1.025); opacity: 1; }
+}
+
 /* Over pictures and video: dark glass, with the night's own words and lines whatever the theme. */
 .lightbox, .stage.full, .voice-tile:fullscreen, .tile-audio, .tile-tools, .voice-tile-name, .video-label,
 .stage-btn, .stream-audio, .self-label, .embed-reveal, .tray-remove, .stage.self-big .peer-card {
@@ -4011,6 +4034,7 @@ button.perk-tag:hover { filter: brightness(1.08); }
 .glow-themes [data-theme-preview="aurora"] .tm-main::after { animation: glow-snow 6s linear infinite; }
 .glow-themes [data-theme-preview="fireflies"] .tm-main::after { animation: glow-blink 2.6s ease-in-out infinite; }
 .glow-themes [data-theme-preview="maple"] .tm-main::after { animation: glow-petals 8s linear infinite; }
+.glow-themes [data-theme-preview="horizon"] .tm-main::after { animation: glow-blink 5s ease-in-out infinite; }
 @keyframes glow-petals { to { background-position: 38px 38px; } }
 @keyframes glow-downpour { to { background-position: 0 26px; } }
 @keyframes glow-snow { to { background-position: 0 24px, 0 0; } }

@@ -7551,7 +7551,8 @@ window.rainlitBack = () => {
 
 // ================= Weather =================
 // Light rain falling over the app, drawn on one canvas; or the weather of a Glow theme instead: a
-// monsoon's downpour, cherry blossom petals, maple leaves, snow under the aurora, fireflies. Near
+// monsoon's downpour, cherry blossom petals, maple leaves, snow under the aurora, fireflies, stars
+// falling into a black hole. Near
 // drops are longer, faster and brighter than far ones (near petals and snowflakes, bigger and
 // faster). It stops while you're in a call, or looking at a voice channel's (it would be over
 // everyone's videos and streams), and whenever the tab is hidden (the browser stops drawing it).
@@ -7576,6 +7577,7 @@ const WEATHER = {
   leaves: { name: 'Falling leaves', per: 34000, min: 14, max: 50 },
   snow: { name: 'Snow', per: 14000, min: 40, max: 140 },
   fireflies: { name: 'Fireflies', per: 40000, min: 12, max: 42 },
+  infall: { name: 'Stars falling in', per: 10000, min: 50, max: 180 },
 };
 const between = (a, b) => a + Math.random() * (b - a);
 let weather = 'rain';
@@ -7641,6 +7643,7 @@ function rainBoxChanged() {
 }
 
 function newDrop(w, h, anywhere) {
+  if (weather === 'infall') return newStar(w, h, anywhere);
   const W = WEATHER[weather];
   if (W.layers) {
     const layer = Math.random() < 0.45 ? 0 : Math.random() < 0.65 ? 1 : 2;
@@ -7693,7 +7696,53 @@ function rainStep(now) {
   ctx.clearRect(0, 0, el.rain.width / rainDpr, el.rain.height / rainDpr); // (all of it)
   if (WEATHER[weather].layers) drawRain(ctx, dt, w, h);
   else if (weather === 'fireflies') drawFireflies(ctx, dt, w, h, now / 1000);
+  else if (weather === 'infall') drawInfall(ctx, dt, w, h);
   else drawDrifting(ctx, dt, w, h, now / 1000);
+}
+
+// Event Horizon's weather: stars drawn in by the black hole in its sky (style.css draws it: at
+// 82.4% across and 16.4% down, its edge 55 px out), each going round it, faster and faster as it
+// nears, and falling in: stretched out along its way at the end, gone at its edge, and another
+// comes from far off. (Their paths are a little flattened, as its disk is seen from a little above.)
+const HOLE = { x: 0.824, y: 0.164, r: 55, flat: 0.62 };
+const INFALL_TONES = ['255, 240, 220', '255, 190, 128', '200, 172, 255'];
+function newStar(w, h, anywhere) {
+  const cx = HOLE.x * w;
+  const cy = HOLE.y * h;
+  const far = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy) / HOLE.flat) + 30;
+  return {
+    a: Math.random() * Math.PI * 2, r: anywhere ? between(HOLE.r + 40, far) : between(far * 0.8, far),
+    size: between(0.6, 1.7), tone: Math.floor(Math.random() * INFALL_TONES.length), pull: between(0.75, 1.3),
+  };
+}
+function drawInfall(ctx, dt, w, h) {
+  const cx = HOLE.x * w;
+  const cy = HOLE.y * h;
+  const at = (a, r) => [cx + Math.cos(a) * r, cy + Math.sin(a) * r * HOLE.flat];
+  ctx.lineCap = 'round';
+  for (const s of rainDrops) {
+    const turn = (s.pull * 2400) / s.r ** 1.5; // (round it: faster nearer, as a planet goes)
+    const fall = s.pull * (5 + 2600 / s.r); // (and in)
+    s.a += turn * dt;
+    s.r -= fall * dt;
+    if (s.r < HOLE.r * 0.95) {
+      Object.assign(s, newStar(w, h, false));
+      continue;
+    }
+    // A streak: where it is, back to where it was a moment ago (longer, the faster it's going).
+    const [x, y] = at(s.a, s.r);
+    const [x0, y0] = at(s.a - turn * 0.05, s.r + fall * 0.05);
+    const near = Math.min(1, (HOLE.r * 2.2) / s.r);
+    const fade = Math.min(1, (s.r - HOLE.r * 0.95) / (HOLE.r * 0.6)); // (gone at its edge)
+    ctx.globalAlpha = Math.max(0, (0.35 + 0.6 * near) * fade);
+    ctx.strokeStyle = `rgb(${INFALL_TONES[s.tone]})`;
+    ctx.lineWidth = s.size * (1 + near * 0.4);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawRain(ctx, dt, w, h) {
@@ -9904,7 +9953,7 @@ function renderTransfer(t) {
 
 // ----- Theme -----
 // Settings > Theme: Rainlit's own, Dark, Midnight (black, for OLED screens), Light, or Auto (Light
-// or Rainlit, as the device is set); and five that come with Glow, each with weather of
+// or Rainlit, as the device is set); and six that come with Glow, each with weather of
 // its own, which anyone else can try on while Settings is open. Yours is kept with your account,
 // so it's the same everywhere (lib/themes.js), and on this device for the next start (boot.js puts
 // it on before anything's drawn). Their colours are in style.css.
@@ -9920,6 +9969,7 @@ const THEMES = [
   { id: 'fireflies', name: 'Fireflies', extra: true, weather: 'fireflies', about: 'a summer night in the woods, with fireflies' },
   { id: 'maple', name: 'Maple', extra: true, weather: 'leaves', about: 'autumn at dusk, and falling leaves' },
   { id: 'aurora', name: 'Aurora', extra: true, weather: 'snow', about: 'the northern lights, and snow' },
+  { id: 'horizon', name: 'Event Horizon', extra: true, weather: 'infall', about: 'a black hole, and stars falling in' },
 ];
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 // What supporters get is marked with this, on a tag (see .perk-box): the supporter plan's name
