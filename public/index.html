@@ -668,6 +668,15 @@
     <i class="ach-badge" aria-hidden="true"><i id="ach-icon" class="dew-icon"></i></i>
     <span class="ach-words"><small id="ach-kind">Milestone reached</small><strong id="ach-name"></strong></span>
   </div>
+  <!-- A call, while you're elsewhere in Rainlit: a little window of it (app.js renderCallMini). -->
+  <div id="call-mini" class="call-mini" title="Back to the call" hidden>
+    <video id="call-mini-video" muted autoplay playsinline></video>
+    <span id="call-mini-name" class="call-mini-name"></span>
+    <span class="call-mini-tools">
+      <button id="call-mini-back" type="button" title="Back to the call" aria-label="Back to the call"><svg class="icon"><use href="#i-expand"/></svg></button>
+      <button id="call-mini-close" type="button" title="Hide it till you're back at the call" aria-label="Hide it till you're back at the call"><svg class="icon"><use href="#i-close"/></svg></button>
+    </span>
+  </div>
   <!-- Drops falling anywhere, for anyone who's asked for them (app.js showRainbow, dropSky). -->
   <div id="drop-sky" class="drop-sky"></div>
   <div id="starting" class="starting" role="status" hidden>

@@ -125,7 +125,7 @@ for (const id of [
   'menu', 'menu-message', 'menu-call', 'menu-profile', 'menu-homepage', 'menu-homepage-new', 'menu-remove', 'menu-block', 'channel-menu', 'cm-mute',
   'profile-bday-month', 'profile-bday-day', 'profile-bday-shown', 'mp-birthday',
   'brand', 'msg-menu', 'msg-reacts', 'emoji-dialog', 'emoji-btn', 'space-emoji', 'msg-reply', 'msg-edit', 'msg-save', 'msg-open', 'msg-copy', 'msg-report', 'msg-delete', 'edit-bar', 'edit-hint', 'edit-cancel', 'reply-bar', 'reply-name', 'reply-snippet', 'reply-cancel', 'typing', 'starting',
-  'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn',
+  'call-elsewhere', 'call-elsewhere-text', 'call-elsewhere-btn', 'call-mini', 'call-mini-video', 'call-mini-name', 'call-mini-back', 'call-mini-close',
   'ring', 'ring-face', 'ring-name', 'ring-sub', 'ring-decline', 'ring-join',
   'groups', 'group-list', 'groups-empty', 'new-group-btn', 'group-pick', 'group-pick-form', 'group-pick-title', 'group-pick-name-field', 'group-pick-name', 'group-pick-hint', 'group-pick-list', 'group-pick-error', 'group-pick-go',
   'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
@@ -2578,7 +2578,7 @@ function myVideos() {
 // (A video kept on a track, out of sight, can leave another of the same track without a picture.)
 function placeCallVideos(tiles) {
   const { cam, screen } = peerVideos();
-  showTrack(el.remoteVideo, tiles ? null : screen || cam);
+  showTrack(el.remoteVideo, tiles || S.callMini ? null : screen || cam);
   showTrack(el.localVideo, tiles ? null : S.local.screen || S.local.cam || null);
 }
 
@@ -3145,6 +3145,7 @@ function renderPeer() {
   el.videoIdle.hidden = !stepped;
   renderCallGrid();
   renderStreamAudio();
+  renderCallMini();
   updateTitle();
 }
 
@@ -3367,7 +3368,7 @@ function renderCallGrid() {
         video.playsInline = true;
         tile.prepend(video);
       }
-      showTrack(video, t.track);
+      showTrack(video, S.callMini ? null : t.track); // (the little window has it, while you're elsewhere)
     } else if (video) {
       video.remove();
     }
@@ -5949,6 +5950,86 @@ function renderCallPlacement() {
   if (S.inCall && !here) el.callElsewhereText.textContent = `You're in a call with ${friendName(S.callWith)}.`;
   renderDmHead();
   fitCall();
+  renderCallMini();
+}
+
+// ----- A call, while you're elsewhere in Rainlit: a little window of it -----
+// Your friend's camera, or the screen of theirs you're watching, in a small window over the app
+// while the call's out of sight (another conversation, a space, a voice channel...), so you can
+// keep watching. Clicked: back to the call. Dragged: moved (remembered on this device). Its x: put
+// away till you're back at the call.
+const MINI_GAP = 12;
+function callInView() {
+  if (el.call.hidden) return false;
+  const r = el.call.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+}
+function renderCallMini() {
+  const p = S.peer;
+  const inView = Boolean(S.inCall) && callInView();
+  if (inView || !S.inCall) S.callMiniPut = false; // (back at the call: it comes again next time)
+  const { cam, screen } = S.inCall && p && p.state && !inView && !S.callMiniPut ? peerVideos() : { cam: null, screen: null };
+  const track = screen || cam;
+  const was = Boolean(S.callMini);
+  S.callMini = Boolean(track);
+  el.callMini.hidden = !track;
+  showTrack(el.callMiniVideo, track);
+  if (track) {
+    el.callMiniName.textContent = screen ? `${p.name}'s screen` : p.name;
+    placeCallMini();
+  }
+  if (was !== S.callMini && S.peer) renderCallGrid(); // (the call's own videos let go of it, or have it back)
+}
+function callMiniAt() {
+  if (!S.callMiniAt) {
+    try { S.callMiniAt = JSON.parse(store.get('callMini', '')) || null; } catch {}
+    if (!S.callMiniAt || !Number.isFinite(S.callMiniAt.x) || !Number.isFinite(S.callMiniAt.y)) S.callMiniAt = { x: 16, y: 96 };
+  }
+  return S.callMiniAt;
+}
+// (Where it is: from the window's bottom right, kept inside it.)
+function placeCallMini() {
+  const at = callMiniAt();
+  const z = uiZoom();
+  const maxX = Math.max(MINI_GAP, innerWidth / z - el.callMini.offsetWidth - MINI_GAP);
+  const maxY = Math.max(MINI_GAP, innerHeight / z - el.callMini.offsetHeight - MINI_GAP);
+  el.callMini.style.right = `${Math.round(Math.max(MINI_GAP, Math.min(maxX, at.x)))}px`;
+  el.callMini.style.bottom = `${Math.round(Math.max(MINI_GAP, Math.min(maxY, at.y)))}px`;
+}
+function onCallMiniDown(e) {
+  if ((e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('button')) return;
+  e.preventDefault();
+  const z = uiZoom();
+  const start = { ...callMiniAt() };
+  const sx = e.clientX;
+  const sy = e.clientY;
+  let moved = false;
+  try { el.callMini.setPointerCapture(e.pointerId); } catch {}
+  const move = (ev) => {
+    const dx = (ev.clientX - sx) / z;
+    const dy = (ev.clientY - sy) / z;
+    if (!moved && Math.hypot(dx, dy) < 6) return;
+    moved = true;
+    el.callMini.classList.add('moving');
+    S.callMiniAt = { x: start.x - dx, y: start.y - dy };
+    placeCallMini();
+  };
+  const up = (ev) => {
+    el.callMini.removeEventListener('pointermove', move);
+    el.callMini.removeEventListener('pointerup', up);
+    el.callMini.removeEventListener('pointercancel', up);
+    el.callMini.classList.remove('moving');
+    if (moved) {
+      // (Kept where it ended up, inside the window.)
+      S.callMiniAt = { x: parseFloat(el.callMini.style.right) || 16, y: parseFloat(el.callMini.style.bottom) || 96 };
+      store.set('callMini', JSON.stringify(S.callMiniAt));
+    } else if (ev.type === 'pointerup' && S.inCall) {
+      openDm(S.callWith);
+    }
+  };
+  el.callMini.addEventListener('pointermove', move);
+  el.callMini.addEventListener('pointerup', up);
+  el.callMini.addEventListener('pointercancel', up);
 }
 
 // ----- The call's size, above the conversation -----
@@ -22213,6 +22294,17 @@ async function init() {
   });
   el.groupLeaveBtn.addEventListener('click', onGroupLeave);
   el.callElsewhereBtn.addEventListener('click', () => openDm(S.callWith));
+  // The call's little window, while you're elsewhere: back to it, moved, or put away.
+  watchPicture(el.callMiniVideo);
+  el.callMini.addEventListener('pointerdown', onCallMiniDown);
+  el.callMiniBack.addEventListener('click', () => { if (S.inCall) openDm(S.callWith); });
+  el.callMiniClose.addEventListener('click', () => {
+    S.callMiniPut = true;
+    renderCallMini();
+  });
+  // (Wherever you go, however: a space, a voice channel, Home on a phone. A look now and then.)
+  setInterval(() => { if (S.inCall || S.callMini) renderCallMini(); }, 700);
+  addEventListener('resize', () => { if (S.callMini) placeCallMini(); });
   el.mpRemove.addEventListener('click', onRemoveFriend);
   el.profileForm.addEventListener('submit', onProfileSave);
   el.profileForm.addEventListener('input', renderProfileSave);

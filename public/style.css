@@ -3424,6 +3424,24 @@ button.person.open { background: var(--dusk-hi); }
   from { filter: drop-shadow(0 0 1px #ffffff) drop-shadow(0 0 var(--glow-r) var(--glow, #b07bff)); }
   to { filter: drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 calc(var(--glow-r) * 1.8) var(--glow, #b07bff)); }
 }
+/* A call, while you're elsewhere in Rainlit (app.js renderCallMini): a little window of it, over
+   the app, at the bottom right till it's moved. Drops still fall over it. */
+.call-mini {
+  position: fixed; right: 16px; bottom: 96px; z-index: 60;
+  width: min(320px, 46vw); aspect-ratio: 16 / 9; overflow: hidden;
+  background: #000; border-radius: 12px; box-shadow: 0 0 0 1px var(--line), 0 12px 32px rgba(0, 0, 0, 0.5);
+  cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.call-mini.moving { cursor: grabbing; }
+.call-mini video { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.call-mini-name { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 2px 7px; border-radius: 6px; background: rgba(8, 11, 18, 0.72); color: var(--text); font-size: 12px; }
+.call-mini-tools { position: absolute; top: 6px; right: 6px; display: flex; gap: 6px; opacity: 0; transition: opacity 0.15s; }
+.call-mini:hover .call-mini-tools, .call-mini-tools:focus-within { opacity: 1; }
+@media (hover: none) { .call-mini-tools { opacity: 1; } }
+.call-mini-tools button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: rgba(8, 11, 18, 0.72); color: var(--text); cursor: pointer; }
+.call-mini-tools button:hover { background: rgba(32, 41, 58, 0.95); }
+.call-mini-tools .icon { width: 16px; height: 16px; }
 .drop-sky { position: fixed; inset: 0; z-index: 85; overflow: hidden; pointer-events: none; }
 .dew-falling {
   --glow-r: 6px;
