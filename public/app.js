@@ -146,7 +146,7 @@ for (const id of [
   'peer-card', 'peer-avatar', 'peer-initial', 'peer-photo', 'peer-name', 'peer-muted', 'peer-idle', 'peer-away', 'peer-away-time', 'offline-banner',
   'video-label', 'video-muted', 'video-name', 'video-idle', 'fullscreen-btn', 'popout-btn', 'pin-btn', 'self-view', 'local-video',
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
-  'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name',
+  'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name', 'rain-note', 'rain-calls-input',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
   'settings', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
@@ -316,6 +316,7 @@ const S = {
   typingTo: '',
   // Off to start with for anyone whose system asks for less motion.
   rain: store.get('rain', matchMedia('(prefers-reduced-motion: reduce)').matches ? 'off' : 'on') !== 'off',
+  rainCalls: store.get('rainCalls', 'off') === 'on', // (the weather kept going during calls too: Settings)
   rainFrame: 0,
   theme: store.get('theme', 'rainlit'), // Settings > Theme (see THEMES)
   themeTry: '', // a supporter's theme, tried on while Settings is open
@@ -7555,7 +7556,8 @@ window.rainlitBack = () => {
 // falling into a black hole. Near
 // drops are longer, faster and brighter than far ones (near petals and snowflakes, bigger and
 // faster). It stops while you're in a call, or looking at a voice channel's (it would be over
-// everyone's videos and streams), and whenever the tab is hidden (the browser stops drawing it).
+// everyone's videos and streams), unless it's kept going then (Settings), and whenever the tab is
+// hidden (the browser stops drawing it).
 
 const RAIN_LAYERS = [ // far to near
   { alpha: 0.06, width: 1, length: [9, 14], speed: [360, 460] },
@@ -7590,7 +7592,9 @@ let rainLast = 0;
 let rainStopAt = 0;
 
 function updateRain() {
-  const want = S.rain && !S.inCall && !(S.voice && !el.voiceView.hidden);
+  // (Paused in a call, or looking at a voice channel, unless it's to be kept going then: Settings.)
+  const calling = S.inCall || Boolean(S.voice && !el.voiceView.hidden);
+  const want = S.rain && (!calling || S.rainCalls);
   el.rain.classList.toggle('on', want);
   if (want && !S.rainFrame) {
     sizeRain(true);
@@ -10194,6 +10198,9 @@ async function fillDeviceLists() {
   el.statsInput.checked = S.showStats;
   el.traceInput.checked = S.trace;
   el.rainInput.checked = S.rain;
+  el.rainCallsInput.checked = S.rainCalls;
+  el.rainCallsInput.disabled = !S.rain;
+  el.rainNote.hidden = S.rainCalls;
   renderThemes();
   const size = store.get('uiScale', '1');
   el.uiScale.value = [...el.uiScale.options].some((o) => o.value === size) ? size : '1';
@@ -22896,6 +22903,13 @@ async function init() {
   el.rainInput.addEventListener('change', () => {
     S.rain = el.rainInput.checked;
     store.set('rain', S.rain ? 'on' : 'off');
+    el.rainCallsInput.disabled = !S.rain;
+    updateRain();
+  });
+  el.rainCallsInput.addEventListener('change', () => {
+    S.rainCalls = el.rainCallsInput.checked;
+    store.set('rainCalls', S.rainCalls ? 'on' : 'off');
+    el.rainNote.hidden = S.rainCalls;
     updateRain();
   });
   el.uiScale.addEventListener('change', () => setUiScale(Number(el.uiScale.value) || 1));
