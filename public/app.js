@@ -7725,8 +7725,8 @@ function drawInfall(ctx, dt, w, h) {
   const at = (a, r) => [cx + Math.cos(a) * r, cy + Math.sin(a) * r * HOLE.flat];
   ctx.lineCap = 'round';
   for (const s of rainDrops) {
-    const turn = (s.pull * 2400) / s.r ** 1.5; // (round it: faster nearer, as a planet goes)
-    const fall = s.pull * (5 + 2600 / s.r); // (and in)
+    const turn = (s.pull * 1500) / s.r ** 1.5; // (round it: faster nearer, as a planet goes; calmly)
+    const fall = s.pull * (3.5 + 1700 / s.r); // (and in)
     s.a += turn * dt;
     s.r -= fall * dt;
     if (s.r < HOLE.r * 0.95) {
