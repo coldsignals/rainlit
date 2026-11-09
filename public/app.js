@@ -21418,6 +21418,34 @@ function stopTraceWatch() {
 
 // How the call's doing: its own link (and how much sound came in and went out since last
 // time), the link to the server, the page, the network and the battery.
+// How loud the call's sound is, coming in and going out, every few seconds while the call debug log's
+// on: each few seconds' loudness, from what the connection's measured (its sound's energy), the
+// loudest of them kept till the next status.
+const LEVEL_EVERY = 3000;
+async function sampleLevels() {
+  const conn = S.conn;
+  if (!conn || !S.trace) return;
+  try {
+    const stats = await conn.pc.getStats();
+    let inA = null;
+    let outA = null;
+    stats.forEach((r) => {
+      if (r.type === 'inbound-rtp' && r.kind === 'audio' && r.totalAudioEnergy != null && (!inA || r.packetsReceived > inA.packetsReceived)) inA = r;
+      else if (r.type === 'media-source' && r.kind === 'audio' && r.totalAudioEnergy != null && (!outA || r.totalSamplesDuration > outA.totalSamplesDuration)) outA = r;
+    });
+    const was = conn.levelLast || {};
+    const now = { inE: inA ? inA.totalAudioEnergy : null, inT: inA ? inA.totalSamplesDuration : null, outE: outA ? outA.totalAudioEnergy : null, outT: outA ? outA.totalSamplesDuration : null };
+    const db = (e0, e1, t0, t1) => (e0 != null && e1 != null && t1 - t0 > 0.5 && e1 >= e0 ? Math.round(10 * Math.log10(Math.max(1e-10, (e1 - e0) / (t1 - t0)))) : null);
+    const lin = db(was.inE, now.inE, was.inT, now.inT);
+    const lout = db(was.outE, now.outE, was.outT, now.outT);
+    conn.levelLast = now;
+    conn.levels = conn.levels || {};
+    if (lin != null) conn.levels.in = Math.max(conn.levels.in ?? -100, lin);
+    if (lout != null) conn.levels.out = Math.max(conn.levels.out ?? -100, lout);
+  } catch {}
+}
+setInterval(() => { if (S.trace && S.inCall) sampleLevels(); }, LEVEL_EVERY);
+
 async function traceStatus() {
   if (!S.trace || !S.inCall) return;
   const s = {
@@ -21484,6 +21512,12 @@ async function traceStatus() {
       s.soundOut = now.sent - last.sent;
       if (now.lost > last.lost) s.lost = now.lost - last.lost;
       if (inAudio && inAudio.jitter) s.jitterMs = Math.round(inAudio.jitter * 1000);
+      // How loud their voice came in, and yours went out (after any clean-up), as said: the loudest
+      // few seconds of the minute (someone talking), in dB below the most there can be (0).
+      const lv = conn.levels;
+      if (lv && lv.in != null) s.inDb = lv.in;
+      if (lv && lv.out != null) s.outDb = lv.out;
+      conn.levels = null;
       if (pair && pair.currentRoundTripTime != null) s.rttMs = Math.round(pair.currentRoundTripTime * 1000);
       conn.traceLast = now;
     } catch {}
