@@ -156,20 +156,17 @@ emoji-picker { --emoji-font-family: var(--emoji-font); }
   to { transform: scale(1.025); opacity: 1; }
 }
 /* (A call, or a voice channel's tiles, with no video in them: frosted glass, the black hole seen
-   through it, blurred, rather than cut off by it. Videos stay as they are. On a computer: a phone's
-   panels hide the sky anyway.) */
-@media (min-width: 761px) {
-  :root[data-theme="horizon"] .stage:not(.grid):has(> video#remote-video[hidden]),
-  :root[data-theme="horizon"] .stage.grid,
-  :root[data-theme="horizon"] .voice-tile:not(:has(video)) {
-    background: rgba(6, 5, 12, 0.5);
-    -webkit-backdrop-filter: blur(9px) saturate(1.3); backdrop-filter: blur(9px) saturate(1.3);
-  }
-  :root[data-theme="horizon"] .stage.grid .voice-tile:not(:has(video)) { background: rgba(21, 19, 31, 0.45); }
-  /* (Behind a conversation's messages: frosted lightly, so words over its bright ring read; Home
-     keeps it sharp. Its stars are drawn over everything, crisp.) */
-  :root[data-theme="horizon"] .chat-log { background: rgba(10, 9, 18, 0.18); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+   through it, blurred, rather than cut off by it. Videos stay as they are.) */
+:root[data-theme="horizon"] .stage:not(.grid):has(> video#remote-video[hidden]),
+:root[data-theme="horizon"] .stage.grid,
+:root[data-theme="horizon"] .voice-tile:not(:has(video)) {
+  background: rgba(6, 5, 12, 0.5);
+  -webkit-backdrop-filter: blur(9px) saturate(1.3); backdrop-filter: blur(9px) saturate(1.3);
 }
+:root[data-theme="horizon"] .stage.grid .voice-tile:not(:has(video)) { background: rgba(21, 19, 31, 0.45); }
+/* (Behind a conversation's messages: frosted lightly, so words over its bright ring read; Home
+   keeps it sharp. Its stars are drawn over everything, crisp.) */
+:root[data-theme="horizon"] .chat-log { background: rgba(10, 9, 18, 0.18); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
 
 /* Over pictures and video: dark glass, with the night's own words and lines whatever the theme. */
 .lightbox, .stage.full, .voice-tile:fullscreen, .tile-audio, .tile-tools, .voice-tile-name, .video-label,
