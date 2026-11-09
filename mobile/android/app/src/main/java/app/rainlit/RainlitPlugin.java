@@ -13,9 +13,12 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
+import android.media.AudioRecordingConfiguration;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import java.util.List;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.JSArray;
@@ -109,25 +112,52 @@ public class RainlitPlugin extends Plugin {
         call.resolve(routes());
     }
 
-    // An ordinary phone call during a Rainlit call: the page puts the Rainlit call on hold, so
-    // the person on the phone doesn't hear your friend (and your friend doesn't hear the phone
-    // call). Android's audio mode says when there's one, with no extra permission needed.
+    // Another call during a Rainlit call: the page puts the Rainlit call on hold, so the person on
+    // it doesn't hear your friend (and your friend doesn't hear them). An ordinary phone call,
+    // Android's audio mode says; a call in another app (WhatsApp, Messenger, Telegram...) it
+    // doesn't, so: that app taking the sound for a while (Ducking), or recording for a call of its
+    // own beside Rainlit's mic (or Rainlit's mic silenced for it). No extra permission needed.
+    // (Another app's, seen two seconds running: not a moment's overlap as Rainlit's mic is opened
+    // again.) Says which: "phone" or "app".
     private final Handler handler = AudioRoute.background(); // (off the main thread: see AudioRoute)
     private boolean onPhone = false;
+    private int otherSeen = 0;
     private final Runnable watchPhone = new Runnable() {
         @Override
         public void run() {
-            int mode = getContext().getSystemService(AudioManager.class).getMode();
-            boolean now = mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_CALL_SCREENING;
+            AudioManager am = getContext().getSystemService(AudioManager.class);
+            int mode = am.getMode();
+            boolean phone = mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_CALL_SCREENING;
+            boolean other = Ducking.heldElsewhere() || otherAppInCall(am);
+            otherSeen = other ? otherSeen + 1 : 0;
+            boolean now = phone || otherSeen >= 2;
             if (now != onPhone) {
                 onPhone = now;
                 JSObject data = new JSObject();
                 data.put("on", now);
+                if (now) data.put("why", phone ? "phone" : "app");
                 notifyListeners("phonecall", data);
             }
             handler.postDelayed(this, 1000);
         }
     };
+
+    // Another app recording for a call (two recordings for calls at once: Rainlit's, and theirs), or
+    // Rainlit's own mic silenced (Android gives the mic to the app on a call).
+    private static boolean otherAppInCall(AudioManager am) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false;
+        try {
+            List<AudioRecordingConfiguration> list = am.getActiveRecordingConfigurations();
+            int calls = 0;
+            for (AudioRecordingConfiguration c : list) {
+                if (c.isClientSilenced() && list.size() > 1) return true;
+                if (c.getClientAudioSource() == MediaRecorder.AudioSource.VOICE_COMMUNICATION) calls++;
+            }
+            return calls >= 2;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
 
     // Android lets an app's web page be frozen or stopped once it's off screen, and some phones
     // do that even during a call, which breaks it. During a call, the page keeps full priority,

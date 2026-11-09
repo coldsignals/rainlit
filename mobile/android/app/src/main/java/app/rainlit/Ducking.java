@@ -35,6 +35,13 @@ final class Ducking {
     // For Settings: "off", "on" (others are turned down), "denied" (Android said no),
     // "taken" (another app took it; asking again), "gave-up" (it keeps taking it back).
     private static String state = "off";
+    // Another app has the sound for a while, as a call in it does (WhatsApp's, say): Rainlit's call
+    // waits meanwhile (see RainlitPlugin's watchPhone). Music taking it for good isn't this.
+    private static volatile boolean heldElsewhere = false;
+
+    static boolean heldElsewhere() {
+        return on && heldElsewhere;
+    }
 
     private static final Runnable ASK_AGAIN = () -> {
         if (on && lost && !giveUp) {
@@ -44,6 +51,7 @@ final class Ducking {
     };
 
     private static final AudioManager.OnAudioFocusChangeListener LISTENER = (change) -> {
+        heldElsewhere = change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT;
         if (change == AudioManager.AUDIOFOCUS_LOSS) {
             // (A phone call takes it only for a while, as AUDIOFOCUS_LOSS_TRANSIENT, and gives it back.)
             lost = true;
@@ -75,6 +83,7 @@ final class Ducking {
         }
         on = true;
         lost = false;
+        heldElsewhere = false;
         giveUp = false;
         askedAgain = false;
         ask();
@@ -104,6 +113,7 @@ final class Ducking {
 
     static void stop(Context context) {
         on = false;
+        heldElsewhere = false;
         state = "off";
         MAIN.removeCallbacks(ASK_AGAIN);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;

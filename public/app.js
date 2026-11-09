@@ -2237,8 +2237,8 @@ function handleServerMessage(msg) {
         renderPeer();
         const onPhone = Boolean(msg.state && msg.state.phone);
         const who = S.peer.name || 'Your friend';
-        if (onPhone && !wasOnPhone) toast(`${who} is on a phone call. You're on hold until they're back.`, 20_000);
-        if (!onPhone && wasOnPhone) toast(`${who} is back from their phone call.`);
+        if (onPhone && !wasOnPhone) toast(`${who} is on another call. You're on hold until they're back.`, 20_000);
+        if (!onPhone && wasOnPhone) toast(`${who} is back from their other call.`);
         if (msg.state && msg.state.deaf && !wasDeaf && !onPhone) toast(`${who} deafened: they can't hear you right now.`);
         const sharing = Boolean(msg.state && msg.state.screen);
         if (sharing !== wasSharing) playShareSound(sharing); // your friend started or stopped sharing
@@ -2870,8 +2870,9 @@ function restartFriendSound(newBooster) {
 }
 
 async function reviveMic(why) {
-  // At most every 30 seconds, and not over and over if it keeps not helping.
-  if (S.revivingMic || Date.now() - S.micRevivedAt < 30_000 || S.micRevives >= 3) return;
+  // At most every 30 seconds, and not over and over if it keeps not helping; never while on
+  // another call (it has the mic: see setOnPhone).
+  if (S.onPhone || S.revivingMic || Date.now() - S.micRevivedAt < 30_000 || S.micRevives >= 3) return;
   S.revivingMic = true;
   S.micRevivedAt = Date.now();
   S.micRevives++;
@@ -2895,15 +2896,23 @@ async function reviveMic(why) {
   }
 }
 
-// On an ordinary phone call (the Android app says when), the Rainlit call waits: your mic is
-// off and your friend goes quiet, so neither call hears the other, and your friend is told.
+// On another call (an ordinary phone call, or one in another app, WhatsApp say: the Android app
+// says when), the Rainlit call waits: your mic is off and your friend goes quiet, so neither call
+// hears the other, and your friend is told. (Your mic's never opened again by itself meanwhile:
+// that would take it back from the other call.)
 function setOnPhone(on) {
   if (!S.inCall || Boolean(S.onPhone) === on) return;
   S.onPhone = on;
   applyMic();
   applyVolume();
   sendState();
-  if (!on) toast('Back in your Rainlit call.');
+  if (on) return;
+  toast('Back in your Rainlit call.');
+  // (The other call took the mic, and it's gone: opened again, now it's yours again.)
+  if (S.local.mic && S.local.mic.readyState === 'ended') {
+    S.micRevivedAt = 0;
+    reviveMic('mic-ended');
+  }
 }
 
 function noteCall(what) {
@@ -22260,7 +22269,7 @@ async function init() {
   }
   if (ANDROID) {
     ANDROID.addListener('phonecall', (d) => {
-      trace('phone-call', { on: Boolean(d && d.on) });
+      trace('phone-call', { on: Boolean(d && d.on), why: (d && d.why) || undefined });
       setOnPhone(Boolean(d && d.on));
     });
   }
