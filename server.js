@@ -1851,7 +1851,7 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     fields = { id, dm: req.dm.id, author: req.user.id, kind: 'text', text, replyTo };
   }
   const message = req.dm.save ? dms.addMessage(fields) : dms.passing(fields);
-  const mentions = req.channel && fields.kind === 'text' ? spaces.mentionsIn(fields.text, req.channel, req.member) : null;
+  const mentions = withReplyMention(req.channel && fields.kind === 'text' ? spaces.mentionsIn(fields.text, req.channel, req.member) : null, req, replyTo);
   if (mentions && (mentions.ids.length || mentions.everyone)) {
     spaces.setMentions(message.id, mentions);
     if (mentions.ids.length) message.mentions = mentions.ids;
@@ -1861,6 +1861,19 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
   if (req.channel) pushChannelMessage(req, mentions);
   res.json({ message });
 });
+
+// A reply in a channel (or a group) mentions whoever wrote what it answers, as Discord's do: their
+// mention bubble, its notification and their phone's, as an @ would. Not if it's their own, nor for
+// someone who can't see the channel. (A DM's every message tells the other already.)
+function withReplyMention(mentions, req, replyToId) {
+  if (!req.channel || !replyToId) return mentions;
+  const r = dms.getRow(replyToId) || dms.passingMessage(replyToId);
+  const author = r && (r.author_id || r.author);
+  if (!author || author === req.user.id) return mentions;
+  if (![...spaces.channelAudience(req.channel)].includes(author)) return mentions;
+  const m = mentions || { ids: [], everyone: false };
+  return m.ids.includes(author) ? m : { ...m, ids: [...m.ids, author] };
+}
 
 // A channel message reaches the phones of people who don't have Rainlit open: the ones it
 // mentions, and anyone who asked to hear about everything in that space (for them, at most a
@@ -1980,9 +1993,16 @@ async function finishUpload(req, { id, name, safeType, partial, size, replyTo, s
   // Its hidden details come out (where and when a photo was taken, on what...: lib/scrub.js).
   size = (await scrub.scrubFile(partial, { type: safeType, name })) ?? size;
   fs.renameSync(partial, final);
-  const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, meta: spoiler ? { spoiler: true } : null, replyTo: dms.replyTarget(req.dm.id, replyTo) });
+  const answers = dms.replyTarget(req.dm.id, replyTo);
+  const message = dms.addMessage({ id, dm: req.dm.id, author: req.user.id, kind: 'file', file: { name, size, type: safeType, path: id }, meta: spoiler ? { spoiler: true } : null, replyTo: answers });
+  // (A file sent as a reply mentions whoever it answers, as a message does.)
+  const mentions = withReplyMention(null, req, answers);
+  if (mentions && mentions.ids.length) {
+    spaces.setMentions(id, mentions);
+    message.mentions = mentions.ids;
+  }
   tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
-  if (req.channel) pushChannelMessage(req, null);
+  if (req.channel) pushChannelMessage(req, mentions);
   const row = dms.getRow(id);
   // (Its fingerprint and a look at the sender's files (lib/abuse.js), its smaller copy for the
   // chat, then it goes to R2, if that's set up.)
@@ -2252,7 +2272,7 @@ api.patch(conv('/messages/:id'), needUser, needConv, (req, res) => {
   if (m.seq) dms.editMessage(id, text, editedAt);
   let mentions = null;
   if (req.channel && m.seq) {
-    mentions = spaces.mentionsIn(text, req.channel, req.member);
+    mentions = withReplyMention(spaces.mentionsIn(text, req.channel, req.member), req, m.replyTo && m.replyTo.id); // (a reply still mentions whoever it answers)
     spaces.setMentions(id, mentions);
   }
   tell(req, { type: 'dm-edited', dm: req.dm.id, id, text, editedAt, ...(mentions ? { mentions: mentions.ids, everyone: mentions.everyone } : {}) });
