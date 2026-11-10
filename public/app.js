@@ -7046,6 +7046,21 @@ function unlockSounds() {
     if (S.devices.speaker) routeChimes();
   } catch {}
 }
+// ...and let go, in a tap or a key press, if it isn't going yet. (An iPhone only lets sound start
+// from the end of a touch or a click, not its start, and with a sound started right then: a
+// silent one. It also stops it after a phone call or the screen's locked, till the next tap.)
+function wakeSounds() {
+  unlockSounds();
+  const ctx = S.soundCtx;
+  if (!ctx || ctx.state === 'running') return;
+  ctx.resume().catch(() => {});
+  try {
+    const silence = ctx.createBufferSource();
+    silence.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+    silence.connect(ctx.destination);
+    silence.start(0);
+  } catch {}
+}
 
 // ----- Rainlit's sounds -----
 //
@@ -22556,8 +22571,9 @@ async function init() {
   });
   el.clearHistoryBtn.addEventListener('click', () => { store.set('history', '[]'); renderHistory(); });
 
-  // Sounds can only start after a click or key press, so get them ready on the first one.
-  for (const type of ['pointerdown', 'keydown']) document.addEventListener(type, unlockSounds, { once: true, capture: true });
+  // Sounds can only start after a click or key press, so get them ready on one: each, till they're
+  // going (see wakeSounds).
+  for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) document.addEventListener(type, wakeSounds, { capture: true, passive: true });
   if (DESKTOP || ANDROID) unlockSounds(); // the apps are allowed to make sound straight away
   // Friends see you as away after a while without any activity (checkIdle).
   for (const type of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart']) {
