@@ -3716,6 +3716,8 @@
       label: 'Clock',
       rows: ['...aaaaa...', '.aaawwwaaa.', '.awwwkwwwa.', 'aawwwkwwwaa', 'awwwwkwwwwa', 'awwwwkkkwwa', 'awwwwwwwwwa', 'aawwwwwwwaa', '.awwwwwwwa.', '.aaawwwaaa.', '...aaaaa...'],
       colors: { a: '#ef4d5e', w: '#fff8ec' },
+      // (In a room, its hands say the time: clockHands. As shown to pick, as drawn.)
+      hands: { x: 5, y: 5, minute: 4, hour: 2.4, ink: 'k', face: 'w' },
     },
     shelf: {
       label: 'Shelf',
@@ -3780,6 +3782,7 @@
          '........c.....', '........oo....', '..........e.e.', '.........eeeee', '..........eee.'],
       ],
       colors: { r: '#5e3f2c', R: '#7a5234', h: '#9a6b45', d: '#ffd84d', w: '#f2ecdc', n: '#2a1f33', c: '#b8a070', o: '#d9a13a', e: '#5a3a26' },
+      hands: { x: 7, y: 9, minute: 2, hour: 1.4, ink: 'n', face: 'w' },
     },
     moonlamp: {
       label: 'Moon lamp', perk: true, glow: '#fff2c4', bare: true,
@@ -4191,6 +4194,25 @@
   const WINDOW_SWATCH = pixelsSrc(WINDOW_SWATCH_ROWS, { ...WINDOW_COLORS, u: '#8fd3ff' });
   const BASEBOARD = pixelsSrc(['aaaaaaaa', 'bbbbbbbb', 'cccccccc'], { a: '#c89a6a', b: '#8a5c3a', c: '#5e3f2c' });
 
+  // A clock's hands, saying the time (the one looking's, as its window's weather is): its face's
+  // hands taken off, and drawn again from its middle, the minute hand longer, as far as its face goes.
+  function clockHands(rows, h, d = new Date()) {
+    const g = rows.map((r) => [...r.replace(new RegExp(h.ink, 'g'), h.face)]);
+    const hand = (turn, len) => {
+      for (let r = 0.5; r <= len; r += 0.5) {
+        const x = Math.round(h.x + Math.sin(turn * 2 * Math.PI) * r);
+        const y = Math.round(h.y - Math.cos(turn * 2 * Math.PI) * r);
+        if (g[y] && g[y][x] === h.face) g[y][x] = h.ink;
+      }
+    };
+    const m = d.getMinutes();
+    hand(m / 60, h.minute);
+    hand(((d.getHours() % 12) + m / 60) / 12, h.hour);
+    g[h.y][h.x] = h.ink;
+    return g.map((r) => r.join(''));
+  }
+  const handsStamp = (d = new Date()) => `${d.getHours()}:${d.getMinutes()}`;
+
   const thingSrc = new Map();
   // A thing's picture (its frames side by side), and how big it is, in the room's pixels (`rows`: its
   // first frame's, to tell where it's drawn and where there's nothing). `tint`: in one of its other
@@ -4198,7 +4220,9 @@
   function thingOf(list, key, tint = 0) {
     const pal = tintOf(list, key, tint);
     const id = `${list}:${key}:${pal ? tint : 0}`;
-    if (!thingSrc.has(id)) {
+    const t0 = ROOM[list] && ROOM[list][key];
+    const stamp = t0 && t0.hands ? handsStamp() : '';
+    if (!thingSrc.has(id) || (stamp && (thingSrc.get(id) || {}).stamp !== stamp)) {
       const t = ROOM[list][key];
       if (t && t.window) {
         const src = pal ? pixelsSrc(WINDOW_ROWS, { ...WINDOW_COLORS, ...pal }) : WINDOW;
@@ -4210,7 +4234,7 @@
         const twinkle = t.twinkle ? t.tile.map((r) => r.replace(new RegExp(`[^${t.twinkle}]`, 'g'), '.')) : null;
         thingSrc.set(id, { src: pixelsSrc(t.tile, t.colors), twinkle: twinkle && pixelsSrc(twinkle, t.colors), w: t.tile[0].length, h: t.tile.length });
       } else {
-        const frames = (t.frames || [t.rows]).map((f) => (t.bare ? f : outlined(f)));
+        const frames = (t.frames || [t.rows]).map((f) => (t.hands ? clockHands(f, t.hands) : f)).map((f) => (t.bare ? f : outlined(f)));
         const colors = { k: '#2a1f33', ...t.colors, ...(pal || {}) };
         const fw = frames[0][0].length;
         const svg = (rects) => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fw * frames.length} ${frames[0].length}" shape-rendering="crispEdges">${rects}</svg>`)}`;
@@ -4228,7 +4252,7 @@
         const glass = glassRows ? svg(rectsOf(glassRows, Object.fromEntries([...t.glass].map((c) => [c, '#fff'])), 0)) : null;
         const sheen = t.sheen ? svg(rectsOf(only(t.sheen), colors, 0)) : null;
         const glassY = lit.length ? (lit[0] + lit[lit.length - 1] + 1) / 2 : 0;
-        thingSrc.set(id, { src, still, emits, glass, sheen, glassY, w: fw, h: frames[0].length, frames: frames.length, rows: frames[0] });
+        thingSrc.set(id, { src, still, emits, glass, sheen, glassY, w: fw, h: frames[0].length, frames: frames.length, rows: frames[0], stamp });
       }
     }
     return thingSrc.get(id);
@@ -4464,6 +4488,12 @@
     };
     // (The weather changing by itself: looked at again every few minutes, for a new hour.)
     clearInterval(el.prSkyTimer);
+    // (A clock's hands: looked at again every 20 seconds, for a new minute.)
+    clearInterval(el.prClockTimer);
+    el.prClockTimer = setInterval(() => {
+      if (!el.isConnected) return clearInterval(el.prClockTimer);
+      for (const n of el.querySelectorAll('.pr-thing')) if (n.prThing && (ROOM[n.prThing.list][n.prThing.key] || {}).hands) paintThing(n);
+    }, 20_000);
     if (r.sky === 'auto') el.prSkyTimer = setInterval(() => { for (const w of el.querySelectorAll('.pr-window')) paintSky(w, 'auto'); }, 5 * 60_000);
     const base = layer('pr-base', null);
     base.style.backgroundImage = `url("${BASEBOARD}")`;
