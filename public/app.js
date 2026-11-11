@@ -22629,6 +22629,7 @@ async function init() {
     }
     if (tile.querySelector('.watch-offer')) return; // (not big till it's being watched)
     const b = e.target.closest('.tile-pop, .tile-pin, .tile-full, .tile-audio-mute');
+    if (!b && e.detail > 1) return; // (a double-click's second: it's full screen it wants, below)
     if (!b) {
       if (!e.target.closest('.tile-audio') && document.fullscreenElement !== tile) focusTile(key);
       return;
@@ -22672,6 +22673,15 @@ async function init() {
     focusTile(S.voice.focus);
   });
   el.voiceVideoOnly.addEventListener('click', () => setVoiceVideoOnly(!S.voiceVideoOnly));
+  // A video (a stream, a camera) double-clicked: full screen, or back out of it, as its own button
+  // does. (Its first click has made it big, as ever.)
+  for (const grid of [el.voiceGrid, el.callGrid]) {
+    grid.addEventListener('dblclick', (e) => {
+      const tile = e.target.closest('.voice-tile');
+      if (!tile || !tile.querySelector('video') || !canFullscreen() || e.target.closest('button, input, .tile-audio, .stream-audio, .watch-offer')) return;
+      toggleTileFullscreen(tile);
+    });
+  }
   // Rainlit's window closing (or reloading) closes what it popped out.
   window.addEventListener('pagehide', () => {
     for (const p of popouts.values()) {
@@ -22698,6 +22708,7 @@ async function init() {
     }
     if (tile.querySelector('.watch-offer')) return; // (not big till it's being watched)
     const b = e.target.closest('.tile-pop, .tile-pin, .tile-full');
+    if (!b && e.detail > 1) return; // (a double-click's second: it's full screen it wants, below)
     if (!b) {
       if (!e.target.closest('.stream-audio') && document.fullscreenElement !== tile) focusCallTile(key);
       return;
