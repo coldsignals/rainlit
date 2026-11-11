@@ -428,7 +428,12 @@ const feedbackRoute = (fn) => (req, res) => {
     throw err;
   }
 };
-api.get('/feedback', needUser, (req, res) => res.json({ feedback: feedback.mine(req.user.id) }));
+// (What they've sent, looked at: its replies seen.)
+api.get('/feedback', needUser, (req, res) => {
+  const list = feedback.mine(req.user.id);
+  feedback.seen(req.user.id);
+  res.json({ feedback: list });
+});
 api.post('/feedback', needUser, feedbackRoute((req) => {
   const made = feedback.send(req.user.id, req.body || {});
   for (const r of db.prepare('SELECT id FROM users WHERE is_admin = 1').all()) {
@@ -468,6 +473,12 @@ api.post('/admin/feedback/:id/done', needAdmin, feedbackRoute((req) => {
 api.post('/admin/feedback/:id/reply', needAdmin, feedbackRoute((req) => {
   const { item, userId } = feedback.reply(req.params.id, (req.body || {}).text, req.user.id);
   realtime.sendToUser(userId, { type: 'feedback-update', feedback: item, what: item.reply ? 'reply' : 'unreplied', by: req.user.display_name });
+  // (Their account says it's unseen, for a dot wherever they come back; and their phone's told.)
+  const them = people.userById(userId);
+  if (them) realtime.sendToUser(userId, { type: 'me', user: people.selfUser(them) });
+  if (item.reply && !realtime.isOnline(userId)) {
+    push.send(userId, { type: 'message', from: { id: 'feedback', name: `${req.user.display_name} replied to your ${item.kind === 'bug' ? 'bug report' : item.kind === 'idea' ? 'idea' : 'feedback'}` } }, { ttl: 7 * 24 * 3600 });
+  }
   return { feedback: item };
 }));
 api.delete('/admin/feedback/:id', needAdmin, (req, res) => {

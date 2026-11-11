@@ -11075,6 +11075,16 @@ function renderMe() {
   el.meStatus.textContent = S.me.statusText || (S.me.presence === 'invisible' ? 'Appearing offline' : S.me.presence === 'dnd' ? 'Do not disturb' : `@${S.me.username}`);
   el.adminBtn.hidden = !S.me.isAdmin;
   el.homeTitle.textContent = `Hi, ${S.me.displayName}`;
+  renderFeedbackDot();
+}
+
+// A reply to feedback you sent, not looked at yet: a dot on Settings, and on its Send feedback, till
+// you've opened it (wherever you were when it came).
+function renderFeedbackDot() {
+  const n = (S.me && S.me.feedbackReplies) || 0;
+  for (const b of [el.appSettingsBtn, el.feedbackBtn]) b.classList.toggle('has-reply', n > 0);
+  el.appSettingsBtn.title = n ? `Settings (${n === 1 ? 'a reply' : `${n} replies`} to your feedback)` : 'Settings';
+  el.feedbackBtn.textContent = n ? `Send feedback (${n === 1 ? 'a reply' : `${n} replies`})` : 'Send feedback';
 }
 
 // You count as away after 10 minutes without doing anything: in the desktop app, anywhere on your
@@ -20163,6 +20173,11 @@ async function loadMyFeedback() {
   }
   el.feedbackMineWrap.hidden = !list.length;
   el.feedbackMine.replaceChildren(...list.map((f) => feedbackItem(f)));
+  // (Looked at: its replies seen, here and on the server.)
+  if (S.me && S.me.feedbackReplies) {
+    S.me.feedbackReplies = 0;
+    renderFeedbackDot();
+  }
 }
 
 // One piece of feedback: what it is, when, its words and any reply (and for the admin, who sent

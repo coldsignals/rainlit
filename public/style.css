@@ -1069,6 +1069,13 @@ li.suspended > .grow { color: var(--danger-text); }
 }
 @keyframes admin-dot { 50% { box-shadow: 0 0 0 2px var(--admin-dot-ring, color-mix(in srgb, var(--dusk) 50%, var(--deep))), 0 0 13px 5px color-mix(in srgb, var(--danger) 50%, transparent); } }
 @media (prefers-reduced-motion: reduce) { #admin-btn.has-reports::after { animation: none; } }
+/* A reply to your feedback, not looked at yet (app.js renderFeedbackDot): a dot in the lamp's light. */
+#app-settings-btn, #feedback-btn { position: relative; }
+#app-settings-btn.has-reply::after, #feedback-btn.has-reply::after {
+  content: ""; position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--lamp); box-shadow: 0 0 0 2px var(--deep), 0 0 6px 1px var(--lamp-glow);
+}
+#feedback-btn.has-reply::after { top: -3px; right: -3px; }
 .me-card.carded #admin-btn { --admin-dot-ring: color-mix(in srgb, var(--card-c1) 45%, var(--card-c2)); }
 .mod-text { margin: -6px 0 0; color: var(--mist); font-size: 14px; }
 .mod-list { list-style: none; margin: -6px 0 0; padding: 0; display: grid; gap: 4px; }
