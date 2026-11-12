@@ -776,7 +776,9 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
 /* (The Android app: a tile over the whole page instead, app.js pageFullscreen; the phone's bars
    left room, as a video full screen there has.) */
 .voice-tile.page-full {
-  position: fixed; inset: 0; z-index: 1500; width: auto; height: auto; aspect-ratio: auto; border-radius: 0; background: #000; cursor: default;
+  /* (Over any size a strip or grid gave it: a strip tile taken full screen was a narrow column.) */
+  position: fixed; inset: 0; z-index: 1500; width: auto !important; height: auto !important; max-height: none !important; min-height: 0 !important;
+  aspect-ratio: auto !important; flex: none !important; border-radius: 0; background: #000; cursor: default;
   padding: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) var(--safe-area-inset-right, env(safe-area-inset-right, 0px))
     var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
 }
@@ -1872,6 +1874,11 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 /* (Their screen's sound, in its tile: bottom left, above its name, clear of the stream stats.) */
 .voice-tile .stream-audio { left: 8px; bottom: 36px; top: auto; }
 .voice-strip .stream-audio input, .voice-strip .stream-audio output { display: none; }
+/* (In the strip, a small tile: its sound button and tools small too, out of its picture's way.) */
+.voice-strip .stream-audio { left: 4px; bottom: 30px; padding: 2px; gap: 0; }
+.voice-strip .stream-audio button, .voice-strip .tile-tools button { width: 24px; height: 24px; }
+.voice-strip .stream-audio .icon, .voice-strip .tile-tools .icon { width: 14px; height: 14px; }
+.voice-strip .tile-tools { top: 4px; right: 4px; gap: 3px; }
 @media (max-width: 700px) {
   .call-grid { padding: 8px; gap: 8px; }
   .call-grid .voice-strip > .voice-tile { width: 120px; }
