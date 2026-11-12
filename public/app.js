@@ -148,7 +148,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name', 'rain-note', 'rain-calls-input',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -15033,6 +15033,7 @@ async function joinVoice(channelId) {
       room.sync(S.voiceStates.get(channelId) || []);
     }
     v.meterTimer = setInterval(() => tickVoice(v), 50);
+    v.statsTimer = setInterval(() => voiceStatsTick(v), 2000);
     syncDesktopPtt();
     playCallSound(true);
     if (ANDROID) ANDROID.callStarted({ name: `#${c.name}`, echo: S.micFx.echoCancellation, duck: store.get('duck', 'on') !== 'off' }).catch(() => {});
@@ -15083,6 +15084,8 @@ async function leaveVoice({ quiet = false } = {}) {
   rememberVoiceTab(false);
   hideVoiceAlone();
   clearInterval(v.meterTimer);
+  clearInterval(v.statsTimer);
+  el.voiceStats.hidden = true;
   for (const m of v.meters.values()) m.disconnect();
   if (v.meterCtx) v.meterCtx.close().catch(() => {});
   if (v.boostCtx) v.boostCtx.close().catch(() => {});
@@ -15191,6 +15194,84 @@ function unmeterVoice(v, identity) {
   if (!m) return;
   m.disconnect();
   v.meters.delete(identity);
+}
+
+// Settings > Show stream stats, in a voice channel: what you're sending (your camera, your
+// screen) and what you're getting (each video on show), over the last couple of seconds, as a
+// call with a friend shows them (renderStreamStats). Through Cloudflare, there are two
+// connections: one out, one in.
+async function voiceStatsTick(v) {
+  if (S.voice !== v || !v.room) return;
+  const room = v.room;
+  const show = S.showStats && !el.voiceView.hidden && (room.pubPc || room.subPc);
+  el.voiceStats.hidden = !show;
+  if (!show) {
+    v.statsPrev = null;
+    return;
+  }
+  const prev = v.statsPrev || {};
+  const now = {};
+  const lines = [];
+  const mbps = (bytes, before, at, beforeAt) => (before != null && at > beforeAt ? ((bytes - before) * 8 / ((at - beforeAt) / 1000) / 1e6).toFixed(1) : '…');
+  const codec = (stats, r) => {
+    const c = r && r.codecId && stats.get(r.codecId);
+    return c ? c.mimeType.replace('video/', '') : '?';
+  };
+  const pairOf = (stats) => {
+    let pair = null;
+    stats.forEach((r) => { if (r.type === 'transport' && r.selectedCandidatePairId) pair = stats.get(r.selectedCandidatePairId); });
+    return pair;
+  };
+  const nameOf = (id) => {
+    const p = profileOf(id) || room.remoteParticipants.get(id);
+    return (p && (p.displayName || p.name)) || 'Someone';
+  };
+  try {
+    if (room.pubPc && room.pubPc.connectionState !== 'closed') {
+      const stats = await room.pubPc.getStats();
+      const pair = pairOf(stats);
+      const ping = pair && pair.currentRoundTripTime != null ? Math.round(pair.currentRoundTripTime * 1000) : null;
+      lines.push(`Through Cloudflare${ping != null ? `, ${ping} ms round trip` : ''}`);
+      if (pair && pair.availableOutgoingBitrate) lines.push(`Your connection out carries about ${(pair.availableOutgoingBitrate / 1e6).toFixed(1)} Mb/s`);
+      const mine = new Map(); // track id -> what it is
+      for (const [kind, tr] of room.local) if (tr.sender && tr.sender.track && tr.sender.track.kind === 'video') mine.set(tr.sender.track.id, kind);
+      stats.forEach((r) => {
+        if (r.type !== 'outbound-rtp' || r.kind !== 'video') return;
+        const src = r.mediaSourceId && stats.get(r.mediaSourceId);
+        const kind = (src && mine.get(src.trackIdentifier)) || 'video';
+        const key = `out:${r.ssrc}`;
+        const p = prev[key] || {};
+        now[key] = { bytes: r.bytesSent, at: r.timestamp, frames: r.framesEncoded, time: r.totalEncodeTime };
+        const frames = r.framesEncoded - (p.frames || 0);
+        const encodeMs = p.frames != null && frames > 0 && r.totalEncodeTime >= p.time ? Math.round(((r.totalEncodeTime - p.time) / frames) * 1000) : null;
+        const captured = src && src.framesPerSecond != null ? ` (captured at ${Math.round(src.framesPerSecond)})` : '';
+        const held = r.qualityLimitationReason && r.qualityLimitationReason !== 'none' ? `, held back by ${LIMITED_BY[r.qualityLimitationReason] || r.qualityLimitationReason}` : '';
+        lines.push(`Sending ${kind === 'screen' ? 'your screen' : 'your camera'}: ${r.frameWidth || 0}×${r.frameHeight || 0}, ${Math.round(r.framesPerSecond || 0)} fps${captured}, ${mbps(r.bytesSent, p.bytes, r.timestamp, p.at)} Mb/s`);
+        lines.push(`          ${codec(stats, r)}${r.encoderImplementation ? ` (${r.encoderImplementation})` : ''}${encodeMs != null ? `, ${encodeMs} ms a frame` : ''}${held}`);
+      });
+    }
+    if (room.subPc && room.subPc.connectionState !== 'closed') {
+      const stats = await room.subPc.getStats();
+      const theirs = new Map(); // track id -> what's pulled
+      for (const x of room.pulled.values()) if (x.track && x.track.mediaStreamTrack && x.track.mediaStreamTrack.kind === 'video') theirs.set(x.track.mediaStreamTrack.id, x);
+      stats.forEach((r) => {
+        if (r.type !== 'inbound-rtp' || r.kind !== 'video') return;
+        const x = theirs.get(r.trackIdentifier);
+        if (!x) return;
+        const key = `in:${r.ssrc}`;
+        const p = prev[key] || {};
+        now[key] = { bytes: r.bytesReceived, at: r.timestamp, lost: r.packetsLost, got: r.packetsReceived };
+        const lostNow = p.lost != null ? r.packetsLost - p.lost : 0;
+        const gotNow = p.got != null ? r.packetsReceived - p.got : 0;
+        const lossPct = lostNow + gotNow > 0 ? ((lostNow / (lostNow + gotNow)) * 100).toFixed(1) : '0.0';
+        lines.push(`Getting ${nameOf(x.user)}'s ${x.kind === 'screen' ? 'screen' : 'camera'}: ${r.frameWidth || 0}×${r.frameHeight || 0}, ${Math.round(r.framesPerSecond || 0)} fps, ${mbps(r.bytesReceived, p.bytes, r.timestamp, p.at)} Mb/s, ${lossPct}% lost`);
+        lines.push(`          ${codec(stats, r)}${r.decoderImplementation ? ` (${r.decoderImplementation})` : ''}${r.freezeCount ? `, froze ${r.freezeCount}×` : ''}`);
+      });
+    }
+  } catch {}
+  if (!Object.keys(now).length) lines.push('No video right now');
+  v.statsPrev = now;
+  el.voiceStats.textContent = lines.join('\n');
 }
 
 function tickVoice(v) {

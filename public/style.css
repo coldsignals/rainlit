@@ -2298,6 +2298,7 @@ body:not(.compact-chat) .chat-log li.mentioned[data-author] { padding-left: 64px
   font: 12px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace;
   white-space: pre-wrap; pointer-events: none;
 }
+.voice-stats { top: 62px; }
 /* Settings: the mic test (a bar for how loud it hears you, then what it heard, played back). */
 .mic-test-row { display: flex; align-items: center; gap: 12px; }
 .mic-test-row .primary-btn { flex: none; min-width: 132px; }

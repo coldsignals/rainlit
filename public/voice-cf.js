@@ -307,6 +307,17 @@
       return { maxBitrate: (this.limits.screenKbps || 1500) * 1000, maxFramerate: (smooth ? 30 : 15) * (sharp ? 2 : 1) };
     }
 
+    // A shared screen, when the encoder or the connection can't keep up: smooth keeps its frames
+    // (a game: the picture goes smaller before it stutters), sharp keeps its size (text: fewer
+    // frames before it blurs). Left to itself a browser gives up some of each.
+    async holdScreen(sender, smooth) {
+      try {
+        const params = sender.getParameters();
+        params.degradationPreference = smooth ? 'maintain-framerate' : 'maintain-resolution';
+        await sender.setParameters(params);
+      } catch {}
+    }
+
     // New limits from the server, mid-call (sharper streams stopping for the month, say): what's
     // being sent now follows them.
     async setLimits(limits) {
@@ -336,7 +347,7 @@
         const tr = pc.addTransceiver(mst, { direction: 'sendonly', ...(video ? { sendEncodings: [this.encodingFor(kind, smooth)] } : {}) });
         if (video) preferVp8(tr);
         this.protect(tr.sender, mst.kind, 'encrypt');
-        added.push({ kind, tr, mst });
+        added.push({ kind, tr, mst, smooth });
       }
       const offer = await pc.createOffer();
       // (Which line a screen's sound is on: the one with its track's id.)
@@ -354,7 +365,10 @@
         throw err;
       }
       await pc.setRemoteDescription({ type: 'answer', sdp: withStereo(withDtx(r.sdp), stereo) });
-      for (const { kind, tr } of added) this.local.set(kind, tr);
+      for (const { kind, tr, smooth } of added) {
+        this.local.set(kind, tr);
+        if (kind === 'screen') this.holdScreen(tr.sender, smooth);
+      }
       Object.assign(this.names, r.tracks || {});
       this.watch(pc);
       this.announce(pc, added.map(({ kind, tr }) => ({ kind, tr, name: this.names[kind] })));
