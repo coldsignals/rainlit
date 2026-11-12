@@ -2661,6 +2661,21 @@
     }
     return sheets.get(key);
   }
+
+  // Where the pet is in its frame (its first), in cells: the frame has room round it (its tail,
+  // a hat), so the button by your profile can sit the pet itself in the middle.
+  function petBox(kind, wear) {
+    const f = petFrames(kind, wear)[0];
+    const box = { fw: f[0].length, fh: f.length, x0: f[0].length, x1: -1, y0: f.length, y1: -1 };
+    f.forEach((row, y) => [...row].forEach((c, x) => {
+      if (c === '.') return;
+      box.x0 = Math.min(box.x0, x);
+      box.x1 = Math.max(box.x1, x);
+      box.y0 = Math.min(box.y0, y);
+      box.y1 = Math.max(box.y1, y);
+    }));
+    return box;
+  }
   const PET_H = 18 / 22; // (how tall a pet's frame is, to how wide)
 
   // What each eats (for its bowl, and its thought bubble when it's hungry): a few of its own, and
@@ -5435,6 +5450,7 @@
     petDid: (page, what, info) => { if (page.hpPet) page.hpPet.did(what, info); },
     // (the sheet of a pet's frames, to look at them)
     petSheet,
+    petBox,
     // (a taste of the effects for visitors: the editor, as one's picked)
     showEffects: (page, which) => { if (page.hpFx) page.hpFx.demo(which); },
     // (effects over something else, to try: Glow's box)

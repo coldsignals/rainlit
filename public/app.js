@@ -18456,6 +18456,11 @@ function renderPetButton() {
   const p = S.pet;
   el.petBtn.hidden = !S.petButton;
   el.petBtnFace.style.backgroundImage = Homepage.petSheet(p ? p.kind : 'cat', p ? p.coat : 'grey', p ? p.wear : null);
+  // (The pet itself in the middle of its button: its frame has room round it.)
+  const b = Homepage.petBox(p ? p.kind : 'cat', p ? p.wear : null);
+  const sx = (el.petBtnFace.offsetWidth || 24) / b.fw;
+  const sy = (el.petBtnFace.offsetHeight || 20) / b.fh;
+  el.petBtnFace.style.translate = `${(((b.fw - 1 - b.x1) - b.x0) / 2 * sx).toFixed(1)}px ${(((b.fh - 1 - b.y1) - b.y0) / 2 * sy).toFixed(1)}px`;
   el.petBtn.classList.toggle('none', !p);
   // (Hungry, it looks it, with a little dot: never more than that.)
   el.petBtn.classList.toggle('hungry', petHungry(p));

@@ -1271,11 +1271,12 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .me-text { min-width: 0; display: grid; }
 /* (Up to four buttons sit by your name, in a 290px column: smaller here than elsewhere, with their
    dots drawn in, so the name and status aren't squeezed to a letter.) */
-.me-card .icon-btn { width: 32px; height: 32px; }
+.me-card .icon-btn { width: 32px; height: 32px; padding: 0; } /* (a button's own 6px sides pushed the pet off centre) */
 .me-card .icon-btn .icon { width: 19px; height: 19px; }
 .me-card #notices-btn.has-new::after, .me-card #app-settings-btn.has-reply::after { top: 2px; right: 2px; }
 .me-card #admin-btn.has-reports::after { top: 2px; left: 3px; }
 .me-card .pet-btn-dot { top: 2px; right: 1px; }
+.me-card .pet-btn-face { width: 24px; height: 20px; } /* (about the icons' size beside it) */
 /* Your card, small, in the corner (dressCard): its colours, its pattern along the top and its
    weather, like the full one, all smaller. */
 .me-card.carded {
