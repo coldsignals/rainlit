@@ -13,6 +13,8 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
+import android.media.AudioAttributes;
+import android.media.AudioPlaybackConfiguration;
 import android.media.AudioRecordingConfiguration;
 import android.media.MediaRecorder;
 import android.net.Uri;
@@ -115,20 +117,27 @@ public class RainlitPlugin extends Plugin {
     // Another call during a Rainlit call: the page puts the Rainlit call on hold, so the person on
     // it doesn't hear your friend (and your friend doesn't hear them). An ordinary phone call,
     // Android's audio mode says; a call in another app (WhatsApp, Messenger, Telegram...) it
-    // doesn't, so: that app taking the sound for a while (Ducking), or recording for a call of its
-    // own beside Rainlit's mic (or Rainlit's mic silenced for it). No extra permission needed.
-    // (Another app's, seen two seconds running: not a moment's overlap as Rainlit's mic is opened
-    // again.) Says which: "phone" or "app".
+    // doesn't, so: that app recording for a call of its own beside Rainlit's mic (or Rainlit's
+    // mic silenced for it), or, while it has the sound for a while (Ducking), playing a call's
+    // voice (a playback for voice communication that wasn't there before: Rainlit's own doesn't
+    // count). Taking the sound alone isn't a call: a TikTok video does that too, and put someone
+    // on hold with no call at all. No extra permission needed. (Another app's, seen two seconds
+    // running: not a moment's overlap as Rainlit's mic is opened again.) Says which: "phone" or
+    // "app".
     private final Handler handler = AudioRoute.background(); // (off the main thread: see AudioRoute)
     private boolean onPhone = false;
     private int otherSeen = 0;
+    private int voiceOutBefore = 0; // (call-voice playbacks while nobody else had the sound: Rainlit's own)
     private final Runnable watchPhone = new Runnable() {
         @Override
         public void run() {
             AudioManager am = getContext().getSystemService(AudioManager.class);
             int mode = am.getMode();
             boolean phone = mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_CALL_SCREENING;
-            boolean other = Ducking.heldElsewhere() || otherAppInCall(am);
+            boolean held = Ducking.heldElsewhere();
+            int voiceOut = voiceOut(am);
+            if (!held) voiceOutBefore = voiceOut;
+            boolean other = otherAppInCall(am) || (held && voiceOut > voiceOutBefore);
             otherSeen = other ? otherSeen + 1 : 0;
             boolean now = phone || otherSeen >= 2;
             if (now != onPhone) {
@@ -141,6 +150,20 @@ public class RainlitPlugin extends Plugin {
             handler.postDelayed(this, 1000);
         }
     };
+
+    // How many playbacks for a call's voice are going (Rainlit's own among them).
+    private static int voiceOut(AudioManager am) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return 0;
+        try {
+            int n = 0;
+            for (AudioPlaybackConfiguration c : am.getActivePlaybackConfigurations()) {
+                if (c.getAudioAttributes().getUsage() == AudioAttributes.USAGE_VOICE_COMMUNICATION) n++;
+            }
+            return n;
+        } catch (RuntimeException e) {
+            return 0;
+        }
+    }
 
     // Another app recording for a call (two recordings for calls at once: Rainlit's, and theirs), or
     // Rainlit's own mic silenced (Android gives the mic to the app on a call).

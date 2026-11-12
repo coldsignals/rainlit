@@ -1403,6 +1403,11 @@ async function onShareQualityChange() {
 async function toggleMic() {
   // (Testing your mic in Settings, muted meanwhile: the mic button ends that, back as you were.)
   if (S.micTesting) return stopMicTest();
+  // (On hold for another call the app saw, or thought it saw: the mic button brings you back.)
+  if (S.onPhone) {
+    trace('phone-call', { on: false, why: 'you' });
+    return setOnPhone(false);
+  }
   // (Deafened, the mic button unmutes you, and undeafens you too: like Discord.)
   if (S.deafened) {
     S.deafened = false;
@@ -3024,13 +3029,18 @@ async function reviveMic(why) {
 // says when), the Rainlit call waits: your mic is off and your friend goes quiet, so neither call
 // hears the other, and your friend is told. (Your mic's never opened again by itself meanwhile:
 // that would take it back from the other call.)
-function setOnPhone(on) {
+function setOnPhone(on, why = '') {
   if (!S.inCall || Boolean(S.onPhone) === on) return;
   S.onPhone = on;
   applyMic();
   applyVolume();
   sendState();
-  if (on) return;
+  if (on) {
+    // (Said, and a way back: the app can take another app's sound for a call it isn't.)
+    toast(why === 'phone' ? "You're on a phone call: your Rainlit call waits till it's over. Tap the mic button to come back sooner."
+      : 'Another app seems to be on a call, so your Rainlit call is waiting. Not on one? Tap the mic button to come back.', 12_000);
+    return;
+  }
   toast('Back in your Rainlit call.');
   // (The other call took the mic, and it's gone: opened again, now it's yours again.)
   if (S.local.mic && S.local.mic.readyState === 'ended') {
@@ -22715,7 +22725,7 @@ async function init() {
   if (ANDROID) {
     ANDROID.addListener('phonecall', (d) => {
       trace('phone-call', { on: Boolean(d && d.on), why: (d && d.why) || undefined });
-      setOnPhone(Boolean(d && d.on));
+      setOnPhone(Boolean(d && d.on), (d && d.why) || '');
     });
   }
   // In the Android app, Save buttons (links to files) save to Downloads.
