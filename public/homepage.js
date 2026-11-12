@@ -4582,7 +4582,11 @@
     const whole = document.createElement('button');
     whole.type = 'button';
     whole.className = 'pr-whole';
-    whole.addEventListener('click', () => pan.fit(!view.classList.contains('pr-fit')));
+    whole.addEventListener('click', () => pan.fit(!view.classList.contains('pr-fit'), true));
+    // (Whole, or closer: as it was last left, on this device.)
+    const wantsWhole = () => {
+      try { return localStorage.getItem('rainlit.roomWhole') === 'on'; } catch { return false; }
+    };
     const pan = {
       // (Where it's looking, 0 to 1 along the room, kept across its being drawn again.)
       at: 0.5,
@@ -4610,6 +4614,11 @@
       // (Its pet near an edge of the view, or past it: the view glides to keep it in sight. Not for
       // a few seconds after you've looked round yourself, nor doing the room up, nor seeing it whole.)
       handAt: 0,
+      // (The room drawn, or done being done up: whole again if that's how it was left, and it's a
+      // room worth it (wider than the view).)
+      apply() {
+        pan.fit(wantsWhole() && sc.scrollWidth > sc.clientWidth + 2);
+      },
       follow() {
         const pet = el.hpPet && el.hpPet.node;
         if (!pet || !pet.isConnected || drag || view.classList.contains('pr-fit') || el.classList.contains('pr-arranging') || Date.now() - pan.handAt < 5000) return;
@@ -4628,8 +4637,11 @@
       by(part) {
         pan.to(sc.scrollLeft + part * sc.clientWidth);
       },
-      fit(on) {
+      // (Whole room, or closer. `keep`: chosen, so it's remembered; otherwise, as when the room's
+      // done up, just for now.)
+      fit(on, keep = false) {
         on = Boolean(on) && !el.classList.contains('pr-arranging');
+        if (keep) try { localStorage.setItem('rainlit.roomWhole', on ? 'on' : 'off'); } catch {}
         if (view.classList.contains('pr-fit') === on) return;
         view.classList.toggle('pr-fit', on);
         view.style.setProperty('--fit', on ? String(sc.clientWidth / (roomPx(el) * el.prRoom.geo.cols)) : '1');
@@ -4700,8 +4712,11 @@
     view.style.setProperty('--wall', String(r.geo.wall));
     if (el.prTier !== r.tier) {
       el.prTier = r.tier;
-      queueMicrotask(() => view.prPan.settle()); // (grown: looked at from its middle again)
+      queueMicrotask(() => { view.prPan.settle(); view.prPan.apply(); }); // (grown: looked at from its middle again, or whole, as it was left)
+    } else if (!el.prApplied) {
+      queueMicrotask(() => view.prPan.apply());
     }
+    el.prApplied = true;
     if (!el.prSized) {
       el.prSized = true;
       new ResizeObserver(() => {
@@ -5020,7 +5035,10 @@
       set(on) {
         st.on = Boolean(on);
         el.classList.toggle('pr-arranging', st.on);
-        if (el.prView) el.prView.prPan.fit(false);
+        if (el.prView) {
+          if (st.on) el.prView.prPan.fit(false); // (closer, to move things about)
+          else el.prView.prPan.apply(); // (and back to whole after, if that's how it was left)
+        }
         if (st.on) el.tabIndex = 0;
         else el.removeAttribute('tabindex');
         if (!st.on) st.sel = -1;
