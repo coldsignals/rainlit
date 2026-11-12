@@ -624,6 +624,27 @@ function micFellBack(wantedId, err, track) {
   toast(`Your mic, ${want}, ${how}, so ${got} is in use. Check Settings.`, 9000);
 }
 
+// Where sound comes out: a player (someone's voice, a sound, a file), or an AudioContext (the
+// chimes, a call's boost), sent to the picked speaker. One that can't be used (unplugged, an id
+// gone stale): the browser keeps the default one, and that's said, once a minute at most, so a
+// speaker that's quietly the wrong one isn't a mystery.
+function toSpeaker(target) {
+  if (!target || !target.setSinkId) return;
+  const id = S.devices.speaker || '';
+  if (!id && !('destination' in target)) return; // (a player: as it is; a context: back to the default)
+  target.setSinkId(id).catch((err) => { if (id) speakerFellBack(err); });
+}
+
+function speakerFellBack(err) {
+  const want = store.get('speakerLabel', '') || 'the one picked in Settings';
+  const how = `couldn't be used${err && err.name ? ` (${err.name})` : ''}`;
+  S.speakerFallback = { at: Date.now(), want, how };
+  trace('speaker-fallback', { want, why: (err && err.name) || 'error' });
+  if (S.speakerFallbackToldAt && Date.now() - S.speakerFallbackToldAt < 60_000) return;
+  S.speakerFallbackToldAt = Date.now();
+  toast(`Your speaker, ${want}, ${how}, so your computer's default is in use. Check Settings.`, 9000);
+}
+
 // In a voice channel: the same, the picked mic or the default one, said so.
 async function openVoiceMic(room, mic, options) {
   try {
@@ -2606,7 +2627,7 @@ function onRemoteTrack(track, streams = []) {
     audio.blockedNoted = false;
     trace('sound-playing', { which: audio.dataset.kind });
   });
-  if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).catch(() => {});
+  toSpeaker(audio);
   el.remoteAudio.append(audio);
   S.remoteAudio.set(track.id, audio);
   applyVolume();
@@ -4133,7 +4154,7 @@ function embedItem(m, e) {
   play.addEventListener('click', () => {
     item.classList.add('started');
     video.controls = true;
-    if (S.devices.speaker && video.setSinkId) video.setSinkId(S.devices.speaker).catch(() => {});
+    toSpeaker(video);
     video.play().catch(() => {});
   });
   item.append(play);
@@ -7978,7 +7999,7 @@ const CLICKABLE = 'button, a[href], summary, select, input[type="checkbox"], inp
 
 // Chimes play through the same speaker you picked for your friend's voice.
 function routeChimes() {
-  if (S.soundCtx && S.soundCtx.setSinkId) S.soundCtx.setSinkId(S.devices.speaker || '').catch(() => {});
+  toSpeaker(S.soundCtx);
 }
 
 // ---------------- The soundboard ----------------
@@ -8150,7 +8171,7 @@ function soundBuffer(ctx, sound) {
 function hearPlain(sound, volume, from) {
   const audio = new Audio(`${SERVER}${sound.url}`);
   audio.volume = 0.5 * volume;
-  if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).catch(() => {});
+  toSpeaker(audio);
   const p = { from, audio };
   soundsPlaying.push(p);
   const done = () => stopSound(p);
@@ -9680,7 +9701,7 @@ function showPreview(card, f, url) {
     // (A video's still, from the app that sent it. Without one, nothing, rather than the big grey
     // play button an Android phone draws: Rainlit's own is over it either way.)
     if (kind === 'video' && (f.poster || ANDROID)) media.poster = f.poster || NO_POSTER;
-    if (S.devices.speaker && media.setSinkId) media.setSinkId(S.devices.speaker).catch(() => {});
+    toSpeaker(media);
   }
   const shown = kind === 'audio' ? media : mediaFrame(card, media, kind, f, url);
   if (f.spoiler && kind !== 'audio') spoilerOver(shown);
@@ -10407,7 +10428,7 @@ function playMicTest(t) {
   if (!t.chunks.length) return end(quiet ? quietNote : "It hears you. (This browser can't play it back.)", quiet ? 'bad' : '');
   const url = URL.createObjectURL(new Blob(t.chunks, { type: (t.recorder && t.recorder.mimeType) || 'audio/webm' }));
   const audio = (t.audio = new Audio(url));
-  if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).catch(() => {});
+  toSpeaker(audio);
   const done = (note, tone) => {
     clearInterval(t.tick);
     if (t.playMeter) t.playMeter.disconnect();
@@ -10545,7 +10566,7 @@ function defaultLabel(devices, kind) {
 // Under where sound comes out: what it's for; or, using a Bluetooth headset's mic on Windows, its
 // catch: while its mic is on, Windows plays sound only through its "Hands-Free" output, and the
 // other one ("Stereo") goes quiet, so you'd hear nobody.
-function renderSpeakerHint(said = '') {
+function renderSpeakerHint(said = '', tone = '') {
   if (!('setSinkId' in HTMLMediaElement.prototype)) {
     el.speakerHint.dataset.tone = '';
     el.speakerHint.textContent = said || (ANDROID
@@ -10562,7 +10583,7 @@ function renderSpeakerHint(said = '') {
   const model = (name) => ((/\(([^()]*)\)\s*$/.exec(name) || [])[1] || '').replace(/hands-?free( ag audio)?|stereo/gi, '').trim().toLowerCase();
   const same = (mic && out && mic.dataset.group && mic.dataset.group === out.dataset.group) || (model(micName) && model(micName) === model(outName));
   const bluetooth = handsFree.test(micName) && outName && !handsFree.test(outName) && same;
-  el.speakerHint.dataset.tone = bluetooth ? 'bad' : '';
+  el.speakerHint.dataset.tone = bluetooth ? 'bad' : tone;
   el.speakerHint.textContent = bluetooth
     ? `Your mic is a Bluetooth headset's. While it's on, Windows plays sound only through the headset's "Hands-Free" output, so pick that one here, or you may hear nobody.`
     : said || (out && !out.value && outName ? `Sound comes out of ${outName}, your computer's default. Using a headset? Pick it here.`
@@ -10593,10 +10614,18 @@ function testSpeaker() {
   const out = el.speakerSelect.selectedOptions[0];
   const name = (out && (out.value ? out.dataset.label || out.textContent : out.dataset.label)) || 'the system default';
   const go = () => audio.play().catch(() => {});
-  if (S.devices.speaker && audio.setSinkId) audio.setSinkId(S.devices.speaker).then(go, go);
-  else go();
-  renderSpeakerHint(!('setSinkId' in HTMLMediaElement.prototype) ? 'Playing a sound. Hear nothing? Check your volume isn’t down, and where your phone’s sending sound (its quick settings).'
-    : `Playing a sound through ${name}. Hear nothing? Pick your headset here, and check Rainlit isn't turned down in your computer's volume mixer.`);
+  const say = (wrong = '') => renderSpeakerHint(!('setSinkId' in HTMLMediaElement.prototype) ? 'Playing a sound. Hear nothing? Check your volume isn’t down, and where your phone’s sending sound (its quick settings).'
+    : wrong || `Playing a sound through ${name}. Hear nothing? Pick your headset here, and check Rainlit isn't turned down in your computer's volume mixer.`, wrong ? 'bad' : '');
+  if (S.devices.speaker && audio.setSinkId) {
+    audio.setSinkId(S.devices.speaker).then(() => { go(); say(); }, (err) => {
+      speakerFellBack(err);
+      go();
+      say(`Your speaker, ${S.speakerFallback.want}, ${S.speakerFallback.how}, so this played through your computer's default instead. Pick another here, or plug it in and pick it again.`);
+    });
+    return;
+  }
+  go();
+  say();
 }
 
 function onSpeakerChange() {
@@ -10605,8 +10634,8 @@ function onSpeakerChange() {
   store.set('speaker', S.devices.speaker);
   store.set('speakerLabel', pickedLabel(el.speakerSelect));
   voiceDevicesChanged();
-  for (const a of S.remoteAudio.values()) if (a.setSinkId) a.setSinkId(S.devices.speaker).catch(() => {});
-  if (S.boostCtx && S.boostCtx.setSinkId) S.boostCtx.setSinkId(S.devices.speaker || '').catch(() => {});
+  for (const a of S.remoteAudio.values()) toSpeaker(a);
+  toSpeaker(S.boostCtx);
   routeChimes();
 }
 
@@ -10697,7 +10726,7 @@ function startBoost(id, audio) {
         S.boostKeeper.connect(S.boostCtx.destination);
         S.boostKeeper.start();
       } catch {}
-      if (S.devices.speaker && S.boostCtx.setSinkId) S.boostCtx.setSinkId(S.devices.speaker).catch(() => {});
+      toSpeaker(S.boostCtx);
     }
     S.boostCtx.resume().catch(() => {});
     const source = S.boostCtx.createMediaStreamSource(audio.srcObject);
@@ -14961,7 +14990,7 @@ async function joinVoice(channelId) {
     if (S.voice !== v) return;
     const audio = {
       audioCaptureDefaults: { ...S.micFx, ...(mic ? { deviceId: { exact: mic } } : {}) },
-      ...(S.devices.speaker ? { audioOutput: { deviceId: S.devices.speaker } } : {}),
+      ...(S.devices.speaker ? { audioOutput: { deviceId: S.devices.speaker, failed: speakerFellBack } } : {}),
     };
     let room;
     if (cloudflare) {
@@ -15491,7 +15520,7 @@ function voiceDevicesChanged() {
   const v = S.voice;
   if (!v || !v.room || v.state !== 'connected') return;
   if (S.devices.speaker) v.room.switchActiveDevice('audiooutput', S.devices.speaker).catch(() => {});
-  if (v.boostCtx && v.boostCtx.setSinkId) v.boostCtx.setSinkId(S.devices.speaker || '').catch(() => {});
+  toSpeaker(v.boostCtx);
   if (v.room.localParticipant.isMicrophoneEnabled) {
     v.room.localParticipant.setMicrophoneEnabled(false)
       .then(() => pickMic())
@@ -15833,7 +15862,7 @@ function voiceBoost(v, a) {
         keeper.connect(ctx.destination);
         keeper.start();
       } catch {}
-      if (S.devices.speaker && ctx.setSinkId) ctx.setSinkId(S.devices.speaker).catch(() => {});
+      toSpeaker(ctx);
       v.boostCtx = ctx;
       v.boostLimiter = limiter;
       v.boosts = new Map();

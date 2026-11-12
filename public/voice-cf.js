@@ -186,7 +186,8 @@
   const cantTalk = () => Object.assign(new Error("You can't talk here right now."), { name: 'NotAllowedError' });
 
   class Room {
-    // options: { audioCaptureDefaults, audioOutput: { deviceId } }, like LiveKit's.
+    // options: { audioCaptureDefaults, audioOutput: { deviceId, failed } }, like LiveKit's (failed: told
+    // when that output can't be used, and the browser's default is).
     constructor(options = {}) {
       this.options = options;
       this.handlers = new Map();
@@ -1060,10 +1061,15 @@
     // ---------- Sound ----------
 
     playAudio(el) {
-      if (this.sinkId && el.setSinkId) el.setSinkId(this.sinkId).catch(() => {});
+      if (this.sinkId && el.setSinkId) el.setSinkId(this.sinkId).catch((err) => this.sinkFailed(err));
       el.play().then(() => this.setPlayback(true)).catch((err) => {
         if (err && err.name === 'NotAllowedError') this.setPlayback(false);
       });
+    }
+
+    sinkFailed(err) {
+      const f = this.options.audioOutput && this.options.audioOutput.failed;
+      if (f) f(err);
     }
 
     setPlayback(ok) {
@@ -1084,7 +1090,7 @@
     async switchActiveDevice(kind, deviceId) {
       if (kind !== 'audiooutput') return;
       this.sinkId = deviceId;
-      for (const el of this.heard()) if (el.setSinkId) await el.setSinkId(deviceId).catch(() => {});
+      for (const el of this.heard()) if (el.setSinkId) await el.setSinkId(deviceId).catch((err) => this.sinkFailed(err));
     }
 
     async disconnect(reason = DisconnectReason.UNKNOWN, tell = false) {
