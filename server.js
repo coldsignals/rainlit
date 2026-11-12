@@ -1645,10 +1645,12 @@ api.put('/pet/room', needUser, (req, res) => {
 });
 api.put('/pet', needUser, petRoute((req) => pets.set(req.user, req.body || {})));
 api.put('/pet/wear', needUser, petRoute((req) => pets.setWear(req.user, String((req.body || {}).slot || ''), String((req.body || {}).key || ''))));
+// (Letting it go: what comes back is the pet that's out now, if one was resting in a capsule.)
 api.delete('/pet', needUser, petRoute((req) => {
   pets.release(req.user.id);
-  return null;
+  return pets.get(req.user.id);
 }));
+api.post('/pet/swap', needUser, petRoute((req) => pets.swap(req.user, Number((req.body || {}).slot), req.body || {})));
 api.post('/pet/feed', needUser, petRoute((req) => pets.feed(req.user.id)));
 api.post('/pet/play', needUser, petRoute((req) => pets.play(req.user.id)));
 api.post('/pet/pet', needUser, petRoute((req) => {

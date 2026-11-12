@@ -3316,6 +3316,12 @@ button.person.open { background: var(--dusk-hi); }
 .pet-kind[aria-pressed="true"] { color: var(--text); border-color: var(--lamp); }
 .pet-kind.trying { border-style: dashed; border-color: #b77bff; }
 .pet-dialog .perk-box { border-radius: 0; }
+/* Its capsules (the Pet tab): the pet in each, the one that's out lit; an empty one, a plus. */
+.pet-capsules-box { margin-top: 10px; }
+.pet-capsule > small { color: var(--mist); font: 400 10px/1.2 Silkscreen, var(--font, sans-serif); letter-spacing: 0.04em; text-transform: uppercase; }
+.pet-capsule > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-capsule.asleep .hp-pet { opacity: 0.5; filter: saturate(0.6); }
+.pet-capsule-empty { display: grid; place-items: center; width: 66px; height: 54px; color: var(--mist); font: 400 26px/1 Silkscreen, var(--font, sans-serif); }
 /* Someone's pet, from their profile card: it, still, and its name, to visit its room. */
 .mp-pet {
   display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: -6px; padding: 8px 12px;

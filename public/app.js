@@ -156,7 +156,7 @@ for (const id of [
   'feedback', 'feedback-form', 'feedback-shot-btn', 'feedback-shot-input', 'feedback-shot-preview', 'feedback-shot-img', 'feedback-shot-remove', 'feedback-btn', 'feedback-note', 'feedback-what', 'feedback-text', 'feedback-diag-field', 'feedback-diag',
   'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
-  'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
+  'pet-capsules-box', 'pet-capsules', 'pet-capsules-note', 'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
   'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'dew-fx', 'dew-hero', 'drop-chime', 'drop-sky', 'dew-info', 'dew-info-title', 'dew-info-about', 'dew-info-buy', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
@@ -18168,6 +18168,7 @@ function renderPet() {
   renderDew();
   renderPetDecor();
   renderPetWear();
+  renderPetCapsules();
   renderPetKinds();
   renderPetAbout();
   renderPetTabs();
@@ -18650,6 +18651,73 @@ function renderPetCare() {
   el.petFeed.textContent = `Feed ${petCalled(p)}`;
 }
 
+// Its capsules (Glow's: lib/pets.js): three, a pet in each, one of them out and the others resting
+// (they don't get hungry in there). Another's picked: it comes out, and the one that was out goes
+// to rest. An empty one: a new pet for it. Without Glow they're shown wherever Glow is; and with
+// pets resting in them from when there was Glow, they're shown there still, till it's back.
+const CAPSULES = 3;
+function renderPetCapsules() {
+  const p = S.pet;
+  const rest = (p && p.capsules) || [];
+  const glow = supporting();
+  el.petCapsulesBox.hidden = !p || Boolean(S.petTry) || !(glow || glowShown() || rest.length);
+  if (el.petCapsulesBox.hidden) return;
+  const card = (slot) => {
+    const out = slot === (p.slot || 0);
+    const c = out ? p : rest.find((r) => r.slot === slot);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `pet-kind pet-capsule${c && !out && !glow ? ' asleep' : ''}${!glow && !out ? ' locked' : ''}`;
+    b.dataset.capsule = String(slot);
+    b.setAttribute('aria-pressed', String(out));
+    const name = document.createElement('span');
+    const state = document.createElement('small');
+    if (c) {
+      name.textContent = c.name || (Homepage.PETS[c.kind] ? Homepage.PETS[c.kind].label : 'Pet');
+      state.textContent = out ? 'Out' : 'Resting';
+      b.title = out ? `${name.textContent} is out` : glow ? `Swap to ${name.textContent}` : `${name.textContent} is resting till Glow's back`;
+      b.append(Homepage.petEl(c.kind, c.coat, c.wear), name, state);
+    } else {
+      const plus = document.createElement('i');
+      plus.className = 'pet-capsule-empty';
+      plus.textContent = '+';
+      name.textContent = 'Empty';
+      state.textContent = glow ? 'Adopt' : 'Glow';
+      b.title = glow ? 'Adopt another pet into this capsule' : 'Pet capsules come with Glow';
+      b.append(plus, name, state);
+    }
+    b.addEventListener('click', () => {
+      if (out) return;
+      if (!glow) return openGlow({ because: rest.length ? "Your other pets are resting safely in their capsules. Swapping between them comes back with Glow." : 'Pet capsules come with Glow: keep three pets, and swap between them whenever you like.' });
+      swapPet(slot, c ? {} : { kind: 'cat', name: Homepage.PETS.cat.name });
+    });
+    return b;
+  };
+  el.petCapsules.replaceChildren(...Array.from({ length: CAPSULES }, (_, i) => card(i)));
+  const note = glow ? "One pet's out at a time. The others rest in their capsules, and don't get hungry in there. They share the room and your dew; each has its own name, colors and clothes."
+    : rest.length ? "Your other pets are resting safely in their capsules. Swapping between them comes back with Glow."
+      : 'With Glow: keep three pets, and swap between them whenever you like.';
+  withGlow(el.petCapsulesNote, note);
+}
+
+// Swapping to the pet in another capsule (or, it's empty, a new pet for it: a cat, to make whatever
+// you like below).
+async function swapPet(slot, fields) {
+  el.petMsg.hidden = true;
+  try {
+    S.pet = (await api('POST', '/pet/swap', { slot, ...fields })).pet;
+  } catch (err) {
+    el.petMsg.textContent = err.message;
+    el.petMsg.hidden = false;
+    return;
+  }
+  S.petTry = '';
+  S.wearTry = null;
+  if (el.pet.open) renderPet();
+  renderPetButton();
+  if (Homepage.petChanged) Homepage.petChanged(S.pet);
+}
+
 // Which pet: everyone's three, and Glow's (for anyone else to try on, wherever Glow is shown).
 function renderPetKinds() {
   const p = S.pet;
@@ -18758,16 +18826,18 @@ async function releasePet() {
   const days = Math.max(1, Math.ceil((Date.now() - p.since) / 86_400_000));
   const n = Number(p.pets) || 0;
   if (!confirm(`Let ${petCalled(p)} go? ${p.name || 'It'} (yours for ${days} ${days === 1 ? 'day' : 'days'}, petted ${n.toLocaleString()} ${n === 1 ? 'time' : 'times'}) will be gone for good. You can adopt a new pet any time.`)) return;
+  let d;
   try {
-    await api('DELETE', '/pet');
+    d = await api('DELETE', '/pet');
   } catch (err) {
     toast(err.message);
     return;
   }
-  S.pet = null;
+  // (One resting in a capsule comes out in its place.)
+  S.pet = (d && d.pet) || null;
   renderPet();
   renderPetButton();
-  if (Homepage.petChanged) Homepage.petChanged(null);
+  if (Homepage.petChanged) Homepage.petChanged(S.pet);
 }
 
 // ----- Dew (lib/dew.js) -----

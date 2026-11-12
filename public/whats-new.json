@@ -1,6 +1,19 @@
 {
   "entries": [
     {
+      "id": "2026-11-11b",
+      "date": "2026-11-11",
+      "title": "Pet capsules",
+      "items": [
+        {
+          "title": "Three pets to swap between",
+          "glow": true,
+          "text": "With Glow you can keep three pets and swap between them in the Pet tab. One is out at a time; the others rest in their capsules and don't get hungry in there. They share the room and your dew, and each has its own name, colors and clothes.",
+          "media": "/whats-new/2026-11-11b-capsules.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-11",
       "date": "2026-11-11",
       "title": "More for your pet and its room",
