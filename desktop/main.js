@@ -616,23 +616,39 @@ ipcMain.handle('desktop:share-pick', async (e, opts = {}) => {
       maxWidth: whole(opts.maxWidth, 1920, 3840), maxHeight: whole(opts.maxHeight, 1080, 2160), fps: whole(opts.fps, 30, 60),
       ...extra,
     }, [port1]);
-    if (!r || !r.ok) return null;
+    if (!r || !r.ok) return { why: String((r && r.message) || "the capture add-on didn't answer").slice(0, 120) };
     e.sender.postMessage('desktop:share-port', { share: id }, [port2]);
     return { share: id, audio: Boolean(r.audio), name: source.name };
   };
+  let why = '';
   if (hwnd && can.window) {
     const done = await start({ hwnd });
-    if (done) return { kind: 'window', ...done };
+    if (done.share) return { kind: 'window', ...done };
+    why = done.why;
+    // (Its picture couldn't be taken, a game in exclusive fullscreen, say: the usual way for that,
+    // but still just its app's sound, where Windows can.)
+    if (choice.audio && can.audio) {
+      const sound = await start({ hwnd, audioOnly: true });
+      if (sound.share) {
+        pendingShare = { choice: { ...choice, audio: false }, at: Date.now() };
+        return { kind: 'window-plain', ...sound, why };
+      }
+    }
   } else if (!hwnd && can.monitor) {
     const monitor = await monitorForSource(source);
     if (monitor) {
       const done = await start({ monitor, excludePid: process.pid });
-      if (done) return { kind: 'monitor', ...done };
+      if (done.share) return { kind: 'monitor', ...done };
+      why = done.why;
+    } else {
+      why = 'no monitor matched';
     }
+  } else if (hwnd) {
+    why = "this Windows can't capture a window";
   }
   // Couldn't capture it ourselves (an old Windows, or no monitor matched): the usual way, no re-ask.
   pendingShare = { choice, at: Date.now() };
-  return { kind: hwnd ? 'window-plain' : 'screen' };
+  return { kind: hwnd ? 'window-plain' : 'screen', why };
 });
 
 // ================= Push to talk, anywhere =================

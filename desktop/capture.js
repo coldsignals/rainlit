@@ -4,7 +4,8 @@
 // works, and a problem here can't take the app down.
 //
 // From the main process: { type: 'supported' }, and { type: 'start', id, hwnd, audio, maxWidth,
-// maxHeight, fps } with the port to send on. It answers each with { id, ... }. And for your
+// maxHeight, fps } with the port to send on (audioOnly: just the window's app's sound, for a
+// window whose picture couldn't be captured, shared the usual way). It answers each with { id, ... }. And for your
 // activity, { type: 'activity', id, media }: the windows that are open, what's playing (if
 // `media`), and where Steam is (see main.js).
 // Through the port: { t: 'v', w, h, format, ts, data } (a frame), { t: 'a', frames, rate,
@@ -37,7 +38,7 @@ function stop(id) {
 
 // A window (hwnd) or a whole screen (monitor, a handle from listMonitors). A window's sound is
 // just its app's; a screen's is everything but Rainlit (excludePid), so your friend isn't echoed.
-function start({ id, hwnd, monitor, audio, excludePid, maxWidth, maxHeight, fps }, port) {
+function start({ id, hwnd, monitor, audio, audioOnly, excludePid, maxWidth, maxHeight, fps }, port) {
   if (!native || !port) return { id, ok: false, message: loadError || 'No port' };
   const s = { port, video: 0, audio: 0, watch: 0 };
   shares.set(id, s);
@@ -52,14 +53,16 @@ function start({ id, hwnd, monitor, audio, excludePid, maxWidth, maxHeight, fps 
   port.start();
   const onFrame = (f) => port.postMessage({ t: 'v', w: f.w, h: f.h, format: f.format, ts: f.ts, data: f.data });
   const onEnd = (ev) => { if (ev === 'closed') stop(id); };
-  try {
-    s.video = monitor
-      ? native.startMonitor({ id: monitor, maxWidth, maxHeight, fps }, onFrame, onEnd)
-      : native.startWindow({ hwnd, maxWidth, maxHeight, fps }, onFrame, onEnd);
-  } catch (err) {
-    shares.delete(id);
-    try { port.close(); } catch {}
-    return { id, ok: false, message: err.message };
+  if (!audioOnly) {
+    try {
+      s.video = monitor
+        ? native.startMonitor({ id: monitor, maxWidth, maxHeight, fps }, onFrame, onEnd)
+        : native.startWindow({ hwnd, maxWidth, maxHeight, fps }, onFrame, onEnd);
+    } catch (err) {
+      shares.delete(id);
+      try { port.close(); } catch {}
+      return { id, ok: false, message: err.message };
+    }
   }
   // A window closing (or its app quitting, even suddenly) ends the sharing. (Windows says so,
   // mostly; this makes sure.) A monitor doesn't close like that: its own 'closed' (unplugged) does.
@@ -74,8 +77,12 @@ function start({ id, hwnd, monitor, audio, excludePid, maxWidth, maxHeight, fps 
   if (audio) {
     try {
       s.audio = monitor ? native.startSystemAudio({ excludePid }, onAudio) : native.startAudio({ pid: native.windowProcess(hwnd) }, onAudio);
-    } catch {
-      port.postMessage({ t: 'noaudio' });
+    } catch (err) {
+      if (audioOnly) {
+        stop(id);
+        return { id, ok: false, message: err.message };
+      }
+      port.postMessage({ t: 'noaudio', message: err.message });
     }
   }
   return { id, ok: true, audio: Boolean(s.audio) };

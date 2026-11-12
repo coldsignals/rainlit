@@ -1237,16 +1237,71 @@ function initWindowSharing() {
     const choice = await DESKTOP.pickShare({ audio: Boolean(constraints.audio), maxWidth: idealOf(v.width), maxHeight: idealOf(v.height), fps: mostOf(v.frameRate) });
     if (!choice) throw new DOMException('Nothing was picked to share.', 'NotAllowedError');
     // A window or a whole screen the app captures itself comes through a port; anything else
-    // (an old app, or it couldn't) shares the usual way.
-    if (choice.kind !== 'window' && choice.kind !== 'monitor') return usual(constraints);
-    const port = sharePorts.get(choice.share) || await new Promise((resolve) => {
-      shareWaits.set(choice.share, resolve);
-      setTimeout(() => { if (shareWaits.delete(choice.share)) resolve(null); }, 5000);
-    });
-    sharePorts.delete(choice.share);
+    // (an old app, or it couldn't) shares the usual way. A window it couldn't: with just its
+    // app's sound still, where the app could take that (a port with only sound on it), and
+    // otherwise with everything the computer plays, and told so.
+    if (choice.kind !== 'window' && choice.kind !== 'monitor') {
+      const sound = choice.kind === 'window-plain' && constraints.audio && choice.share ? await sharePort(choice.share) : null;
+      const stream = await usual(sound ? { ...constraints, audio: false } : constraints);
+      if (sound) stream.addTrack(windowSoundTrack(sound, stream.getVideoTracks()[0]));
+      else if (choice.kind === 'window-plain' && constraints.audio) toast(`Rainlit couldn't capture just this window${choice.why ? ` (${choice.why})` : ''}, so it's shared the usual way, with everything your computer plays.`, 9000);
+      return stream;
+    }
+    const port = await sharePort(choice.share);
     if (!port) throw new DOMException("The window couldn't be shared.", 'AbortError');
     return windowShareStream(port, choice, mostOf(v.frameRate) || 30);
   };
+}
+
+// A share's port, from the app (it can come before the chooser answers, or just after).
+function sharePort(id) {
+  return Promise.resolve(sharePorts.get(id) || new Promise((resolve) => {
+    shareWaits.set(id, resolve);
+    setTimeout(() => { if (shareWaits.delete(id)) resolve(null); }, 5000);
+  })).then((port) => {
+    sharePorts.delete(id);
+    return port;
+  });
+}
+
+// (Its sound couldn't be taken: said, once.)
+function noWindowSound(m) {
+  toast(`This window's sound couldn't be captured${m && m.message ? ` (${String(m.message).slice(0, 80)})` : ''}, so it's shared without it.`, 8000);
+}
+
+// Just a window's app's sound, through a port, as a track of this page's own, beside a picture
+// taken the usual way (video): stopping either ends it.
+function windowSoundTrack(port, video) {
+  const audio = new MediaStreamTrackGenerator({ kind: 'audio' });
+  const aw = audio.writable.getWriter();
+  let over = false;
+  const end = () => {
+    if (over) return;
+    over = true;
+    try { port.postMessage({ t: 'stop' }); } catch {}
+    try { port.close(); } catch {}
+    aw.close().catch(() => {});
+  };
+  port.onmessage = (e) => {
+    const m = e.data || {};
+    if (m.t === 'a') {
+      if (aw.desiredSize !== null && aw.desiredSize <= 0) return;
+      try {
+        aw.write(new AudioData({ format: 'f32', sampleRate: m.rate, numberOfFrames: m.frames, numberOfChannels: m.channels, timestamp: m.ts, data: new Float32Array(m.data) })).catch(() => {});
+      } catch {}
+    } else if (m.t === 'noaudio') {
+      noWindowSound(m);
+    } else if (m.t === 'ended') {
+      end();
+    }
+  };
+  const stop = audio.stop.bind(audio);
+  audio.stop = () => {
+    stop();
+    end();
+  };
+  if (video) video.addEventListener('ended', end);
+  return audio;
 }
 
 // A window's frames and sound, as tracks of this page's own (MediaStreamTrackGenerator).
@@ -1301,6 +1356,8 @@ function windowShareStream(port, choice, fps) {
       try {
         aw.write(new AudioData({ format: 'f32', sampleRate: m.rate, numberOfFrames: m.frames, numberOfChannels: m.channels, timestamp: m.ts, data: new Float32Array(m.data) })).catch(() => {});
       } catch {}
+    } else if (m.t === 'noaudio') {
+      noWindowSound(m);
     } else if (m.t === 'ended') {
       end();
     }
