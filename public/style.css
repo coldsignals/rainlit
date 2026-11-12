@@ -755,14 +755,19 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
 .voice-strip { flex: none; display: flex; justify-content: center; gap: 10px; overflow-x: auto; padding: 2px; }
 .voice-strip > .voice-tile { flex: none; width: 184px; }
 .voice-strip .voice-tile > .face { width: 42px; height: 42px; font-size: 17px; }
-.voice-strip /* Someone's screen, not watched yet (app.js watchOffer): what it is, and Watch stream. */
+/* Someone's screen, not watched yet (app.js watchOffer): what it is, and Watch stream. */
 .watch-offer {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   padding: 12px; text-align: center; color: var(--text); background: var(--dusk);
 }
 .watch-offer .icon { width: 30px; height: 30px; opacity: 0.75; }
 .watch-offer p { margin: 0; font-size: 14px; line-height: 1.35; }
-.voice-tile-name { left: 6px; bottom: 6px; padding: 2px 7px; font-size: 12px; }
+.voice-strip .voice-tile-name { left: 6px; bottom: 6px; padding: 2px 7px; font-size: 12px; }
+/* (In the strip, a small tile: the offer smaller, without its picture, and no name label over it.) */
+.voice-strip .watch-offer { gap: 4px; padding: 6px; }
+.voice-strip .watch-offer .icon { display: none; }
+.voice-strip .watch-offer p { font-size: 11px; line-height: 1.25; }
+.voice-strip .voice-tile:has(.watch-offer) .voice-tile-name { display: none; }
 .voice-strip .tile-audio input, .voice-strip .tile-audio output { display: none; }
 .voice-strip .tile-audio { padding: 3px; }
 /* Full screen (a video's own button). */
@@ -833,6 +838,10 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
   .voice-grid[data-count="1"], .voice-grid[data-count="2"] { grid-template-columns: minmax(0, 1fr); }
   .voice-grid:not([data-count="1"]):not([data-count="2"]) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .voice-strip > .voice-tile { width: 140px; }
+  /* (A phone: the big video keeps to its own shape, in the middle, rather than a tall black box
+     with its name and volume far below the picture.) */
+  .voice-grid.focused { justify-content: center; }
+  .voice-grid.focused > .voice-tile:has(video) { flex: 0 1 auto; aspect-ratio: 16 / 9; max-height: 100%; }
   .voice-filter span { display: none; }
   .voice-filter { padding: 7px; }
 }
