@@ -18908,7 +18908,7 @@ async function saveRoom() {
   const sent = JSON.stringify(roomThings());
   roomSending++;
   try {
-    const room = (await api('PUT', '/pet/room', { things: roomThings() })).room;
+    const room = (await api('PUT', '/pet/room', { things: roomThings(), tier: roomTier() })).room;
     // (As it's kept, unless it's been changed again since.)
     if (S.room && JSON.stringify(roomThings()) === sent) S.room = { ...room, wall: S.room.wall, floor: S.room.floor, sky: S.room.sky };
   } catch (err) {
@@ -19484,7 +19484,7 @@ async function getDewThing() {
     if (thing) {
       clearTimeout(roomSave);
       roomSave = 0;
-      d = await api('POST', '/dew/items', { list: thing.list, key: thing.key, things: [...roomThings(), thing] });
+      d = await api('POST', '/dew/items', { list: thing.list, key: thing.key, things: [...roomThings(), thing], tier: roomTier() });
     } else {
       d = await api('POST', '/dew/items', t);
     }
@@ -19580,6 +19580,10 @@ function renderDewRoom() {
     buy.setAttribute('aria-label', `Get ${next.label.toLowerCase()} for ${dewWords(next.cost)} dew`);
   }
 }
+
+// (Which size of room the things here are placed in: said with every save, so a page open from
+// before the room grew can't put them in the wrong rows.)
+const roomTier = () => (S.room && Number.isInteger(S.room.tier) ? S.room.tier : 0);
 
 // (The next size, got: the room grows, its things kept where they were.)
 async function growRoom() {
