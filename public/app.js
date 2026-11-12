@@ -18806,7 +18806,7 @@ function dewWords(n) {
 }
 // (Shorter, on a thing's swatch: 2.5K, 1M, 30T.)
 function dewShort(n) {
-  for (const [k, short] of [[1e15, 'Q'], [1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]) if (n >= k) return `${+(n / k).toFixed(1)}${short}`;
+  for (const [k, short] of [[1e30, 'No'], [1e27, 'Oc'], [1e24, 'Sp'], [1e21, 'Sx'], [1e18, 'Qi'], [1e15, 'Q'], [1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]) if (n >= k) return `${+(n / k).toFixed(1)}${short}`;
   return String(Math.ceil(n));
 }
 // How much there is right now: as the server last said, what's been collected since, and pats it

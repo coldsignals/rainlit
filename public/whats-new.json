@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-11-11",
+      "date": "2026-11-11",
+      "title": "More for your pet and its room",
+      "items": [
+        {
+          "title": "96 new things to save dew for",
+          "text": "71 new things for your pet's room and 25 new things for it to wear, in every category, from 500 quadrillion dew up to 10 octillion. There are whole sets to build a room around: ice, the backrooms, under the sea, deep space, a workshop and a castle. Find them in the Decorate and Wear tabs.",
+          "media": "/whats-new/2026-11-11-rooms.webp"
+        },
+        {
+          "title": "Livelier decorations",
+          "text": "The animated things in the room move for longer now: the aquarium fish swims across and back, the lava lamp rises, fairy lights chase along their string, a drop runs down the terrarium glass, and more."
+        }
+      ]
+    },
+    {
       "id": "2026-11-04",
       "date": "2026-11-04",
       "title": "Formatting and spoilers",

@@ -170,7 +170,7 @@ app.get('/android', (_req, res) => res.redirect(302, `${ANDROID_RELEASES}/Rainli
 // after an update and reload into the new one (see onHello in public/app.js).
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const BUILD = crypto.createHash('sha256')
-  .update(['index.html', 'app.js', 'style.css', 'boot.js', 'sw.js', 'homepage.js', 'homepage-edit.js', 'homepage.css'].map((f) => fs.readFileSync(path.join(PUBLIC_DIR, f))).join('\n'))
+  .update(['index.html', 'app.js', 'style.css', 'boot.js', 'sw.js', 'homepage.js', 'pet-more.js', 'homepage-edit.js', 'homepage.css'].map((f) => fs.readFileSync(path.join(PUBLIC_DIR, f))).join('\n'))
   .digest('hex').slice(0, 12);
 const attr = (s) => s.replace(/[&"<>]/g, (c) => ({ '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;' })[c]);
 const INDEX_HTML = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8')

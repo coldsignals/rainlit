@@ -2227,6 +2227,8 @@
   // fish's `ring` is up and down; a droplet's bowtie
   // goes under its smile, `bow`), and a sweater on its body (JUMPER_AT; `coat`: which of its letters
   // are coat, not face). All in its pixels, standing and facing right.
+  // More of it all (public/pet-more.js: more for its room, and to wear, each got with dew).
+  const MORE = window.RainlitPetMore ? window.RainlitPetMore({ outlined, oval, mat, sparkle: (...a) => sparkle(...a) }) : {};
   const WEAR_AT = {
     cat: { crown: [12, 2], neck: [8, 14, 8] },
     dog: { crown: [12, 2], neck: [8, 14, 8] },
@@ -2237,7 +2239,7 @@
   };
   // (What each can't wear: the droplet's all drop, with no neck for a collar and no body for a
   // sweater, though a bowtie suits it. lib/pets.js says the same.)
-  const WEAR_NOT = { drop: { neck: ['collar', 'bandana', 'spiked', 'scarf', 'bell', 'lei', 'medal', 'neon'], body: true } };
+  const WEAR_NOT = { drop: { neck: ['collar', 'bandana', 'spiked', 'scarf', 'bell', 'lei', 'medal', 'neon', ...(MORE.DROP_NO_NECK || [])], body: true } };
   const canWear = (kind, slot, key) => {
     const no = WEAR_NOT[kind] && WEAR_NOT[kind][slot];
     return !(no === true || (Array.isArray(no) && no.includes(key)));
@@ -2377,6 +2379,7 @@
       tux: { label: 'Tuxedo', reach: 5, paint: (x, y, part, at) => (part === 'collar' || (part === 'body' && x > at.mx + 1) ? 'W' : 'K'), colors: { K: '#22222b', W: '#f2f0ea' } },
     },
   };
+  for (const slot of Object.keys(MORE.WEAR || {})) Object.assign(WEAR[slot], MORE.WEAR[slot]);
   const WEAR_SLOTS = ['head', 'eyes', 'neck', 'body'];
   // (How the things that move are drawn, one after another, and how long each: WEAR's `anim`.)
   const WEAR_PHASES = 16;
@@ -2422,7 +2425,14 @@
         const ew = P.eyeW || 2;
         const front = P.eyes.length - 1;
         P.eyes.forEach(([x, y], i) => {
-          if (item.glasses === 'monocle' && i !== front) return;
+          if ((item.glasses === 'monocle' || item.glasses === 'patch') && i !== front) return;
+          if (item.glasses === 'patch') {
+            // (Over the eye in front, its strap up and back over its head: only where it is.)
+            for (let gx = x - 1; gx <= x + ew; gx++) for (let gy = y - 1; gy <= y + 2; gy++) if (!((gx === x - 1 || gx === x + ew) && (gy === y - 1 || gy === y + 2))) put(out.over, gx, gy, 'K');
+            for (let n = 1; n <= 9; n++) put(out.band, x - 1 - n, y - 1 - Math.ceil(n / 2), 'F');
+            for (let n = 1; n <= 4; n++) put(out.band, x + ew + n, y + Math.floor(n / 2), 'F');
+            return;
+          }
           for (let gx = x - 1; gx <= x + ew; gx++) {
             for (let gy = y - 1; gy <= y + 2; gy++) {
               const edge = gx === x - 1 || gx === x + ew || gy === y - 1 || gy === y + 2;
@@ -2433,6 +2443,7 @@
                 else if (gy <= y + 1) put(out.over, gx, gy, gx === x - 1 && gy === y ? 'W' : 'L');
                 else if (gx >= x && gx < x + ew) put(out.over, gx, gy, 'l');
               } else if (item.glasses === '3d') put(out.over, gx, gy, edge ? 'F' : i === front && P.eyes.length > 1 ? 'U' : 'R');
+              else if (item.glasses === 'lens') put(out.over, gx, gy, edge ? 'F' : gx === x && gy === y ? 'W' : 'L');
               else if (item.glasses !== 'sun' && item.glasses !== 'led' && edge) put(out.over, gx, gy, 'F');
             }
           }
@@ -2443,7 +2454,9 @@
         // (Across between its eyes, and an arm back from the one behind: aviators', along their top.)
         const [a, b] = P.eyes;
         const by = item.glasses === 'aviator' ? a[1] - 1 : a[1];
-        if (item.glasses !== 'monocle') {
+        // (A snorkel: its tube up past its head, from behind the eye at the back.)
+        if (item.tube) for (let n = 0; n < item.tube; n++) put(out.over, a[0] - 3, a[1] + 1 - n, n === item.tube - 1 ? 'O' : 'T');
+        if (item.glasses !== 'monocle' && item.glasses !== 'patch') {
           if (b) for (let gx = a[0] + ew + 1; gx < b[0] - 1; gx++) put(out.over, gx, by, 'F');
           put(out.over, a[0] - 2, by, 'F');
         }
@@ -3417,7 +3430,7 @@
     for (let x = 0; x < W; x++) g[sag(x)][x] = 'm';
     for (let i = 0, x = 2; x < W - 1; x += 4, i++) {
       const t = 'ypcg'[i % 4];
-      const lit = dim ? i % 2 === 0 : true;
+      const lit = (i + dim) % 4 < 2;
       g[sag(x) + 1][x] = lit ? t : t.toUpperCase();
       g[sag(x) + 2][x] = lit ? t : t.toUpperCase();
     }
@@ -3603,7 +3616,7 @@
   function rainCloud(f) {
     const rows = [...outlined(CLOUD), ...Array(6).fill('.'.repeat(CLOUD[0].length + 2))].map((r) => [...r]);
     for (const [x, y0] of [[4, 0], [7, 3], [10, 1], [13, 4]]) {
-      const y = 9 + ((y0 + f * 3) % 6);
+      const y = 9 + ((y0 + f) % 6);
       rows[y][x] = 'b';
       if (rows[y + 1]) rows[y + 1][x] = 'b';
     }
@@ -3731,7 +3744,7 @@
     },
     darts: { label: 'Dartboard', rows: dartboard(), colors: { K: '#26262b', c: '#efe6cf', r: '#d64545', g: '#3f9e57', s: '#cfd3dc', y: '#ffd84d' } },
     lights: {
-      label: 'Fairy lights', perk: true, glow: '#fff1a8', emit: 'ypcg', bare: true, frames: [fairyLights(false), fairyLights(true)],
+      label: 'Fairy lights', perk: true, glow: '#fff1a8', emit: 'ypcg', bare: true, pace: 420, frames: [0, 3, 2, 1].map((n) => fairyLights(n)),
       colors: { m: '#7a7a92', y: '#ffd84d', Y: '#8a7a3a', p: '#ff6fb5', P: '#7a3a5c', c: '#7fe3ff', C: '#3a6a7a', g: '#8dff7a', G: '#3f6a3a' },
     },
     neon: {
@@ -3828,7 +3841,10 @@
     },
     lava: {
       label: 'Lava lamp', perk: true, glow: '#c08aff', emit: 'lo',
-      frames: [lavaLamp([[2, 1, 0.6], [2, 4.6, 1.2]]), lavaLamp([[2, 2.2, 0.8], [2, 5.2, 1]])],
+      pace: 520, frames: Array.from({ length: 8 }, (_, i) => lavaLamp([0, 0.5].map((off, n) => {
+        const t = (i / 8 + off) % 1;
+        return [n ? 2.5 : 1.6, 6.6 - 7.2 * t, 0.55 + 0.6 * Math.sin(Math.PI * t)];
+      }))),
       colors: { m: '#9aa0b5', l: '#8a5cff', o: '#ff9a3d', t: '#9a6b45', T: '#7a5234', D: '#6b4a32', d: '#8a5f3d', y: '#e3c27a' },
     },
     arcade: {
@@ -3853,7 +3869,7 @@
         r: '#e04a4a', u: '#4a7de0', y: '#e8c23a', G: '#4fae5a', p: '#a06ad8', D: '#6b4a32', d: '#8a5f3d' },
     },
     terrarium: {
-      label: 'Terrarium', dew: true, frames: [terrarium(2), terrarium(4)],
+      label: 'Terrarium', dew: true, pace: 280, frames: [2, 3, 4, 5, 6, 7, -1, -1, -1, -1].map((n) => terrarium(n)),
       colors: { c: '#bfe3ee', q: 'rgba(191, 231, 240, 0.22)', d: '#f0fcff', g: '#5fae5a', G: '#3f8a45', p: '#ff8fc6', m: '#4f8a3f', s: '#6b4a32', T: '#7a5234' },
     },
     boots: {
@@ -3934,11 +3950,11 @@
       colors: { r: '#e8504a', R: '#c43a3a', y: '#e8c23a' },
     },
     disco: {
-      label: 'Disco ball', perk: true, glow: '#cfe8ff', emit: 'abABwcp', frames: [discoBall(0), discoBall(5)],
+      label: 'Disco ball', perk: true, glow: '#cfe8ff', emit: 'abABwcp', pace: 360, frames: [0, 5, 10, 2, 7, 12].map((n) => discoBall(n)),
       colors: { m: '#6a6f80', a: '#dfe5ee', b: '#aab3c2', A: '#9aa3b2', B: '#6f7888', w: '#ffffff', c: '#7fe3ff', p: '#ff8fd6' },
     },
-    mobile: { label: 'Star mobile', perk: true, glow: '#ffe9a8', emit: 'yYm', bare: true, frames: [mobile(0), mobile(1)], colors: { s: '#d8d0c0', t: '#c8a06a', y: '#ffe066', Y: '#fff6c0', m: '#fff1b8' } },
-    raincloud: { label: 'Rain cloud', dew: true, bare: true, frames: [rainCloud(0), rainCloud(1)], colors: { w: '#eef3f8', W: '#cfd8e2', b: '#7fd0ff' } },
+    mobile: { label: 'Star mobile', perk: true, glow: '#ffe9a8', emit: 'yYm', bare: true, pace: 520, frames: [0, 1, 0, -1].map((n) => mobile(n)), colors: { s: '#d8d0c0', t: '#c8a06a', y: '#ffe066', Y: '#fff6c0', m: '#fff1b8' } },
+    raincloud: { label: 'Rain cloud', dew: true, bare: true, pace: 150, frames: [0, 1, 2, 3, 4, 5].map((n) => rainCloud(n)), colors: { w: '#eef3f8', W: '#cfd8e2', b: '#7fd0ff' } },
     chimes: {
       label: 'Wind chimes', dew: true,
       frames: [
@@ -3972,6 +3988,32 @@
       colors: { k: '#2a1f33', d: '#9fe6ff', D: '#dff6ff', s: '#9aa3b8', S: '#c8cede', l: '#7fffd0', L: '#2f6a5a', q: 'rgba(160, 255, 215, 0.28)' },
     },
   };
+  // Some of those, moving for longer than the two frames drawn above: more made from them.
+  {
+    const row = (rows, y, to) => rows.map((r, j) => (j === y ? to(r) : r));
+    const flip = (rows) => rows.map((r) => [...r].reverse().join(''));
+    // (The aquarium: its fish from one side to the other and back, its bubbles rising all the while.)
+    const tank = STANDS.aquarium.frames.map((rows) => rows.map((r) => r.replace(/o/g, 'a')));
+    const fish = (rows, x) => rows.map((r, y) => (y === 5 ? `${r.slice(0, x)}ooooo${r.slice(x + 5)}` : y === 4 || y === 6 ? `${r.slice(0, x + 1)}oo${r.slice(x + 3)}` : r));
+    Object.assign(STANDS.aquarium, { pace: 460, frames: [1, 3, 5, 7, 9, 7, 5, 3].map((x, i) => fish(tank[i % 2], x)) });
+    // (A fire, and the plasma ball's sparks: the two drawn, then each the other way round.)
+    const fire = (rows) => rows.map((r, y) => (y === 11 || y === 12 ? `${r.slice(0, 3)}${[...r.slice(3, 9)].reverse().join('')}${r.slice(9)}` : r));
+    Object.assign(STANDS.stove, { pace: 240, frames: [...STANDS.stove.frames, ...STANDS.stove.frames.map(fire)] });
+    Object.assign(STANDS.plasma, { pace: 300, frames: [...STANDS.plasma.frames, ...STANDS.plasma.frames.map(flip)] });
+    // (A pendulum, and the chimes' clapper: through the middle on its way from side to side.)
+    const [tick, tock] = HANGS.cuckoo.frames;
+    const mid = tick.map((r, y) => ({ 15: '......c.......', 16: '......c.......', 17: '.....oo.......' }[y] || r));
+    Object.assign(HANGS.cuckoo, { pace: 420, frames: [tick, mid, tock, mid] });
+    const [ding, dong] = CEILINGS.chimes.frames;
+    const still = ding.map((r, y) => ({ 11: '..a.a.s.a.a..', 12: '..a.a.w.a.a..', 13: '....a.w.a....', 14: '....a.w.a....' }[y] || r));
+    Object.assign(CEILINGS.chimes, { pace: 400, frames: [ding, still, dong, still] });
+    // (The UFO's lights: one lit, going along it.)
+    const lights = (rows, n) => row(rows, 4, () => `.ksS${[0, 1, 2].map((i) => (i === n ? 'l' : 'L')).join('SSS')}Ssk.`);
+    Object.assign(CEILINGS.ufo, { pace: 300, frames: [0, 1, 2, 1].map((n) => lights(CEILINGS.ufo.frames[0], n)) });
+    // (A puddle: a drop's ring, then it wider, then the water still a while.)
+    const calm = RUGS.puddle.frames[0].map((r) => r.replace(/w/g, 'b'));
+    Object.assign(RUGS.puddle, { pace: 420, frames: [...RUGS.puddle.frames, calm, calm] });
+  }
   // What's out its window: the weather. Its owner picks one, or it changes by itself (day or night
   // by their own clock, and the hour's weather: weatherNow). Each is the sky through the window (18
   // by 11 of the room's pixels: two panes, the bar between) and, over it, rain or snow falling,
@@ -4074,6 +4116,7 @@
   };
 
   const ROOM = { wall: WALLS, floor: FLOORS, rug: RUGS, hang: HANGS, stand: STANDS, ceiling: CEILINGS, sky: WEATHER, light: LIGHTS };
+  for (const list of Object.keys(MORE.ROOM || {})) Object.assign(ROOM[list], MORE.ROOM[list]);
   // (Which list each of the room's own picks from: its wallpaper, its floor, the weather out its
   // windows, and its light.)
   const ROOM_SLOTS = { wall: 'wall', floor: 'floor', sky: 'sky', light: 'light' };
@@ -4164,6 +4207,7 @@
     'rug:puddle': [{ name: 'Muddy', b: '#8a6a4a', B: '#6e5236', w: '#b09070' }, { name: 'Night', b: '#2f3f6a', B: '#22305a', w: '#5a6aa0', W: '#c8d0f0' }, { name: 'Teal', b: '#3fa39a', B: '#2f857c', w: '#8fdcd2' }],
     'rug:persian': [{ name: 'Navy', a: '#1f2f55', b: '#8a2a2a', e: '#2f4070' }, { name: 'Green', a: '#2f5a3a', b: '#5a2a2a', e: '#3f6a4a' }, { name: 'Gold', a: '#c08a2a', b: '#3a2a5a', e: '#d09a3a', c: '#f2e2c0', d: '#3a2a5a' }],
   };
+  Object.assign(TINTS, MORE.TINTS || {});
   // (One of its other colours, if it has it: `tint` 1 to 3. Its main colour, for a swatch: the
   // first that its other colours change.)
   const tintOf = (list, key, tint) => (tint && TINTS[`${list}:${key}`] && TINTS[`${list}:${key}`][tint - 1]) || null;
@@ -4252,10 +4296,19 @@
         const glass = glassRows ? svg(rectsOf(glassRows, Object.fromEntries([...t.glass].map((c) => [c, '#fff'])), 0)) : null;
         const sheen = t.sheen ? svg(rectsOf(only(t.sheen), colors, 0)) : null;
         const glassY = lit.length ? (lit[0] + lit[lit.length - 1] + 1) / 2 : 0;
-        thingSrc.set(id, { src, still, emits, glass, sheen, glassY, w: fw, h: frames[0].length, frames: frames.length, rows: frames[0], stamp });
+        thingSrc.set(id, { src, still, emits, glass, sheen, glassY, w: fw, h: frames[0].length, frames: frames.length, pace: t.pace || 650, rows: frames[0], stamp });
       }
     }
     return thingSrc.get(id);
+  }
+
+  // (Something that moves: its frames one after another, each for its `pace`. style.css: pr-frames.)
+  function framesOn(n, art) {
+    n.classList.toggle('pr-frames', art.frames > 1);
+    if (art.frames > 1) {
+      n.style.setProperty('--frames', String(art.frames));
+      n.style.setProperty('--frames-ms', `${art.frames * art.pace}ms`);
+    }
   }
 
   const skySrc = new Map();
@@ -4413,7 +4466,7 @@
       n.style.setProperty('--frame', `url("${art.src}")`);
     } else {
       n.style.backgroundImage = `url("${art.src}")`;
-      n.classList.toggle('pr-frames', art.frames > 1);
+      framesOn(n, art);
     }
     const glow = (tintOf(t.list, t.key, t.tint) || {}).glow || info.glow;
     n.classList.toggle('pr-glow', Boolean(glow));
@@ -4482,7 +4535,7 @@
       } else {
         n.style.width = `calc(var(--px) * ${t.w})`;
         n.style.height = `calc(var(--px) * ${t.h})`;
-        if (t.frames > 1) n.classList.add('pr-frames');
+        framesOn(n, t);
       }
       return n;
     };
@@ -5377,7 +5430,7 @@
     // (a piece's video popped up, or its sound played, to try: the editor)
     popVideo, closeTopPopup, playSound,
     petEl, petRoom, petMeters, fullWords, happyWords,
-    ROOM, ROOM_DEFAULT, ROOM_SLOTS, THING_LISTS, THINGS_MAX, furnish, newThing, arrange, roomSwatch, dewIcon, WEAR, WEAR_SLOTS, canWear,
+    ROOM, ROOM_DEFAULT, ROOM_SLOTS, THING_LISTS, THINGS_MAX, furnish, newThing, arrange, roomSwatch, dewIcon, thingArt: thingOf, MORE, WEAR, WEAR_SLOTS, canWear,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
     petDid: (page, what, info) => { if (page.hpPet) page.hpPet.did(what, info); },
     // (the sheet of a pet's frames, to look at them)
