@@ -633,10 +633,18 @@
       this.screenSmooth = smooth;
       this.screenSaver = Boolean(options.saver);
       const sharp = Boolean(this.limits.sharp) && !this.screenSaver;
+      // (Its sound as it is, not cleaned up like a voice; and, sharing a whole screen in a browser,
+      // without Rainlit's own sound in it, or everyone would hear themselves come back. The desktop
+      // app keeps its own out itself.)
+      const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+      if (navigator.mediaDevices.getSupportedConstraints().restrictOwnAudio) audio.restrictOwnAudio = true;
       return navigator.mediaDevices.getDisplayMedia({
         video: sharp ? { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: smooth ? 60 : 30 } }
           : smooth ? { width: { max: 1280 }, height: { max: 720 }, frameRate: { max: 30 } } : { width: { max: 1920 }, height: { max: 1080 }, frameRate: { max: 15 } },
-        audio: Boolean(options.audio),
+        audio: options.audio ? audio : false,
+        systemAudio: 'include',
+        windowAudio: 'window', // (one app's window with that app's sound, where the browser can: Chrome 141+)
+        selfBrowserSurface: 'exclude',
       });
     }
 

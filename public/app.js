@@ -3540,6 +3540,34 @@ const TILE_TOOLS = '<button type="button" class="tile-unwatch" title="Stop watch
   + '<button type="button" class="tile-full" title="Full screen" aria-label="Full screen"><svg class="icon"><use href="#i-expand"/></svg></button>'
   + '<button type="button" class="tile-pop" title="Pop out into its own window" aria-label="Pop out into its own window"><svg class="icon"><use href="#i-popout"/></svg></button>'
   + '<button type="button" class="tile-pin" title="Keep on top of other windows" aria-label="Keep on top of other windows"><svg class="icon"><use href="#i-pin"/></svg></button>';
+// Who's watching a shared screen: their faces at the tile's top right (a few, then "+n"), with
+// their names on hover. On everyone's tile of it, the sharer's too.
+function renderTileWatchers(tile, ids) {
+  let box = tile.querySelector('.tile-watchers');
+  if (!ids.length) {
+    if (box) box.remove();
+    return;
+  }
+  if (!box) {
+    box = document.createElement('span');
+    box.className = 'tile-watchers';
+    tile.append(box);
+  }
+  if (box.dataset.ids === ids.join()) return;
+  box.dataset.ids = ids.join();
+  const names = ids.map((id) => (profileOf(id) || {}).displayName || 'Someone');
+  const shown = ids.slice(0, 5);
+  box.replaceChildren(...shown.map((id) => makeFace(profileOf(id) || { id, displayName: '?' }, null)));
+  if (ids.length > shown.length) {
+    const more = document.createElement('span');
+    more.className = 'tile-watchers-more';
+    more.textContent = `+${ids.length - shown.length}`;
+    box.append(more);
+  }
+  box.title = `Watching: ${names.join(', ')}`;
+  box.setAttribute('aria-label', `${names.length} watching: ${names.join(', ')}`);
+}
+
 function tileTools(tile, video, unwatch) {
   let tools = tile.querySelector('.tile-tools');
   if (video && (unwatch || canPopOut() || canPin() || canFullscreen())) {
@@ -14894,6 +14922,12 @@ function voiceWatchers(v, members) {
     applyVoiceWatch(v);
     sendVoiceState(v);
   }
+  const theirs = new Set([...sharing].filter((id) => id !== S.clientId));
+  if (v.sharers) {
+    if ([...theirs].some((id) => !v.sharers.has(id))) playShareSound(true);
+    else if ([...v.sharers].some((id) => !theirs.has(id))) playShareSound(false);
+  }
+  v.sharers = theirs;
   const mine = sharing.has(S.clientId);
   const viewers = new Set(mine ? members.filter((m) => m.id !== S.clientId && (m.watching || []).includes(S.clientId)).map((m) => m.id) : []);
   const came = [...viewers].some((id) => !v.viewers.has(id));
@@ -15772,7 +15806,7 @@ function renderVoiceView() {
     } else if (video) {
       video.remove();
     }
-    let face = tile.querySelector('.face');
+    let face = tile.querySelector(':scope > .face');
     if (!track && source !== 'screen') {
       if (!face) {
         face = makeFace(person, null);
@@ -15793,6 +15827,7 @@ function renderVoiceView() {
     const viewers = source === 'screen' && !others ? v.viewers.size : 0;
     label.replaceChildren(`${source === 'screen' ? `${person.displayName}'s screen${viewers ? ` · ${viewers} watching` : ''}` : person.id === S.clientId ? `${person.displayName} (you)` : person.displayName}`);
     if (viewers) label.title = [...v.viewers].map((id) => (profileOf(id) || {}).displayName || 'Someone').join(', ');
+    renderTileWatchers(tile, source === 'screen' ? [...states.values()].filter((m) => m.id !== p.identity && (m.watching || []).includes(p.identity)).map((m) => m.id) : []);
     tile.dataset.key = key;
     watchOffer(tile, others && !track ? (v.watching.has(p.identity) ? 'tuning' : 'offer') : '', person.displayName);
     tileTools(tile, Boolean(track), others && v.watching.has(p.identity));
