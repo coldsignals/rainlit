@@ -4815,6 +4815,13 @@ async function openEmojiPicker(li, onPick = null) {
     closeOnBackdrop(el.emojiDialog);
   }
   el.emojiDialog.firstElementChild.customEmoji = myEmoji().map((x) => ({ name: x.name, shortcodes: [x.name], url: `${SERVER}/emoji/${x.id}`, category: x.space }));
+  // (Its search box empty each time it opens: what was looked for last time isn't what's wanted now.)
+  const root = el.emojiDialog.firstElementChild.shadowRoot;
+  const search = root && root.querySelector('input[type=search]');
+  if (search && search.value) {
+    search.value = '';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+  }
   el.emojiDialog.showModal();
 }
 
