@@ -1254,21 +1254,28 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 .me-card {
-  display: flex; align-items: center; gap: 4px;
-  padding: 8px 8px 10px;
+  display: flex; align-items: center; gap: 2px;
+  padding: 8px 6px 10px 8px;
   border-top: 1px solid var(--line);
   background: color-mix(in srgb, var(--dusk) 50%, transparent);
 }
 .me-btn {
   flex: 1; min-width: 0;
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 8px;
   background: none; border: 0; border-radius: var(--radius);
-  padding: 6px 8px;
+  padding: 6px 6px;
   text-align: left;
 }
 .me-btn:hover { background: var(--dusk); }
 .me-btn .face[data-presence]::after { border-color: color-mix(in srgb, var(--dusk) 50%, var(--deep)); }
 .me-text { min-width: 0; display: grid; }
+/* (Up to four buttons sit by your name, in a 290px column: smaller here than elsewhere, with their
+   dots drawn in, so the name and status aren't squeezed to a letter.) */
+.me-card .icon-btn { width: 32px; height: 32px; }
+.me-card .icon-btn .icon { width: 19px; height: 19px; }
+.me-card #notices-btn.has-new::after, .me-card #app-settings-btn.has-reply::after { top: 2px; right: 2px; }
+.me-card #admin-btn.has-reports::after { top: 2px; left: 3px; }
+.me-card .pet-btn-dot { top: 2px; right: 1px; }
 /* Your card, small, in the corner (dressCard): its colours, its pattern along the top and its
    weather, like the full one, all smaller. */
 .me-card.carded {
