@@ -3900,19 +3900,30 @@ button.person.open { background: var(--dusk-hi); }
 .flag-item .user-words > span { font-size: 14px; }
 
 /* ----- Settings, in sections ----- */
-.settings-cols, .settings-col, .settings-sec { display: grid; gap: 18px; align-content: start; min-width: 0; }
-.settings-cols { gap: 24px; }
+.settings-sec { display: grid; gap: 18px; align-content: start; min-width: 0; }
 .settings-sec > h3 { margin: 0; color: var(--mist); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 .settings-sec > h3 + * { margin-top: -6px; }
 .settings-foot { display: grid; gap: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
+/* Settings' pages (app.js showSettingsPage): the list of them, and one shown at a time. On a phone
+   the list is a row of pills under the head; on a computer, a column at the side. */
+.settings-nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(var(--pad-side) * -1); padding: 0 var(--pad-side); }
+.settings-nav button {
+  position: relative; flex: none; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--deep); color: var(--mist); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.settings-nav button:hover { color: var(--text); background: var(--dusk); }
+.settings-nav button[aria-current="page"] { color: var(--text); background: var(--dusk-hi); border-color: var(--dusk-hi); }
+.settings-nav button[hidden] { display: none; }
+.settings-nav button.has-reply::after {
+  content: ""; position: absolute; top: 4px; right: 6px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--lamp); box-shadow: 0 0 0 2px var(--deep), 0 0 6px 1px var(--lamp-glow);
+}
+.settings-pages { display: grid; gap: 26px; align-content: start; min-width: 0; }
+.settings-page.off { display: none; }
 .theme-free-title { display: none; }
-/* (A phone: the sections one after another, the voice and video ones second.) */
+/* (A phone: the pages' pills stay put under the head as a page scrolls.) */
 @media (max-width: 899px) {
-  .settings-col { display: contents; }
-  .set-voice { order: 1; }
-  .set-messages { order: 2; }
-  .set-feedback { order: 3; }
-  .settings-sec.activity-field { order: 4; }
+  .app-settings > .settings-inner > .settings-nav { position: sticky; top: 56px; z-index: 2; padding-bottom: 8px; background: var(--panel); }
 }
 
 /* ----- Dialogs on a computer ----- */
@@ -3929,8 +3940,15 @@ button.person.open { background: var(--dusk-hi); }
 
   .settings.app-settings { width: min(920px, calc(100vw / var(--zoom) - 48px)); }
   .app-settings > .settings-inner, .admin > .settings-inner { gap: 22px; --pad-top: 20px; --pad-side: 28px; padding: var(--pad-top) var(--pad-side) 26px; }
-  .app-settings .settings-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; }
-  .app-settings .settings-col { gap: 26px; }
+  /* (The pages' list down the side, staying put as a long page scrolls; the head and the foot
+     across both.) */
+  .app-settings > .settings-inner { grid-template-columns: 190px minmax(0, 1fr); column-gap: 36px; align-items: start; }
+  .app-settings > .settings-inner > :is(.settings-head, .settings-foot) { grid-column: 1 / -1; }
+  .app-settings > .settings-inner > .settings-nav { position: sticky; top: 72px; flex-direction: column; gap: 2px; margin: 0; padding: 0; overflow: visible; }
+  .app-settings .settings-nav button { padding: 8px 12px; border: 0; border-radius: var(--radius); background: none; text-align: left; font-size: 14px; }
+  .app-settings .settings-nav button:hover { background: var(--dusk); }
+  .app-settings .settings-nav button[aria-current="page"] { background: var(--dusk-hi); }
+  .app-settings .settings-pages { max-width: 620px; }
   /* (Everyone's themes, and supporters' beside them.) */
   .app-settings .theme-lists { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; row-gap: 8px; }
   .app-settings .theme-free-title { display: block; grid-column: 1; grid-row: 1; }

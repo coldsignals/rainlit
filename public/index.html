@@ -1682,8 +1682,8 @@
   </template>
 
   <!-- ============ Settings ============ -->
-  <!-- (On a computer, the themes go across the top and the rest in two columns under them; on a
-       phone, one after another: Look, Voice and video, Messages and sounds, Activity.) -->
+  <!-- (In pages, app.js showSettingsPage: Theme, Look, Messages and sounds, Voice, Video, Activity (the
+       desktop app), Feedback and more; their list at the side, or a row of pills on a phone.) -->
   <dialog id="settings" class="settings app-settings">
     <form method="dialog" class="settings-inner">
       <div class="settings-head">
@@ -1692,8 +1692,20 @@
           <svg class="icon"><use href="#i-close"/></svg>
         </button>
       </div>
+      <!-- Its pages (app.js showSettingsPage): one at a time, from this list. -->
+      <nav id="settings-nav" class="settings-nav" aria-label="Settings pages">
+        <button type="button" data-page="theme">Theme</button>
+        <button type="button" data-page="look">Look</button>
+        <button type="button" data-page="messages">Messages and sounds</button>
+        <button type="button" data-page="voice">Voice</button>
+        <button type="button" data-page="video">Video</button>
+        <button type="button" data-page="activity" hidden>Activity</button>
+        <button type="button" data-page="more">Feedback and more</button>
+      </nav>
+      <div class="settings-pages">
+      <section class="settings-sec settings-page" data-page="theme" aria-labelledby="set-theme">
+        <h3 id="set-theme">Theme</h3>
       <div class="field">
-        <span>Theme</span>
         <div class="theme-lists">
           <p class="theme-extras-title theme-free-title">Everyone's</p>
           <div id="theme-list" class="theme-list"></div>
@@ -1708,9 +1720,8 @@
           </div>
         </div>
       </div>
-      <div class="settings-cols">
-        <div class="settings-col">
-          <section class="settings-sec set-look" aria-labelledby="set-look">
+      </section>
+          <section class="settings-sec settings-page set-look" data-page="look" aria-labelledby="set-look">
             <h3 id="set-look">Look</h3>
             <label class="toggle">
               <input id="device-emoji-input" type="checkbox" />
@@ -1751,7 +1762,7 @@
               <span>Dot on the bell <small class="toggle-note">(when there's something new in your notifications: a guestbook entry, a question or an answer, your pet petted)</small></span>
             </label>
           </section>
-          <section class="settings-sec set-messages" aria-labelledby="set-messages">
+          <section class="settings-sec settings-page set-messages" data-page="messages" aria-labelledby="set-messages">
             <h3 id="set-messages">Messages and sounds</h3>
             <label class="field">
               <span>Sounds</span>
@@ -1787,17 +1798,17 @@
               <span>Show link previews <small class="toggle-note">(an X post, a video, or a page's title and picture, under links in messages. Rainlit's server fetches them, so the sites don't see you)</small></span>
             </label>
           </section>
-          <section class="settings-sec set-feedback" aria-labelledby="set-feedback">
+          <section class="settings-sec settings-page set-feedback" data-page="more" aria-labelledby="set-feedback">
             <h3 id="set-feedback">Feedback</h3>
             <p id="feedback-note" class="hint">Found a bug, or have an idea? Send it straight to whoever runs this Rainlit server.</p>
             <button id="feedback-btn" class="small-btn feedback-open" type="button">Send feedback</button>
           </section>
-          <section class="settings-sec" aria-labelledby="set-events">
+          <section class="settings-sec settings-page" data-page="more" aria-labelledby="set-events">
             <h3 id="set-events">Events</h3>
             <p class="hint">When you're usually free, so people in your spaces can plan events for when most of you can come.</p>
             <button id="free-times-btn" class="small-btn" type="button">Your free times</button>
           </section>
-          <section id="activity-field" class="settings-sec activity-field" aria-labelledby="set-activity" hidden>
+          <section id="activity-field" class="settings-sec settings-page activity-field" data-page="activity" aria-labelledby="set-activity" hidden>
             <h3 id="set-activity">Activity</h3>
             <label class="toggle">
               <input id="activity-playing" type="checkbox" />
@@ -1821,10 +1832,8 @@
               </div>
             </details>
           </section>
-        </div>
-        <div class="settings-col">
-          <section class="settings-sec set-voice" aria-labelledby="set-voice">
-            <h3 id="set-voice">Voice and video</h3>
+          <section class="settings-sec settings-page set-voice" data-page="voice" aria-labelledby="set-voice">
+            <h3 id="set-voice">Voice</h3>
             <label class="field">
               <span>Microphone</span>
               <select id="mic-select"></select>
@@ -1876,26 +1885,6 @@
               <small id="speaker-hint" class="hint" aria-live="polite"></small>
             </div>
             <label class="field">
-              <span>Camera</span>
-              <select id="cam-select"></select>
-            </label>
-            <label id="cam-preview-field" class="toggle">
-              <input id="cam-preview-input" type="checkbox" />
-              <span>Show my camera before it turns on <small class="toggle-note">(how you look, and which camera, each time you turn it on in a call)</small></span>
-            </label>
-            <label class="toggle">
-              <input id="cam-mirror-input" type="checkbox" />
-              <span>Mirror my camera <small class="toggle-note">(only as you see yourself: everyone else sees you the right way round)</small></span>
-            </label>
-            <label class="field">
-              <span>Screen share quality</span>
-              <select id="share-quality">
-                <option value="sharp">Sharp: text and detail (30 fps)</option>
-                <option value="smooth">Smooth: games and video (60 fps)</option>
-                <option value="saver">Data saver (720p)</option>
-              </select>
-            </label>
-            <label class="field">
               <span>Friend's volume <output id="volume-value" class="field-value">100%</output></span>
               <input id="volume-input" type="range" min="0" max="300" step="5" value="100" />
               <small id="volume-hint" class="hint">Above 100% makes a quiet friend louder. It works best with headphones.</small>
@@ -1928,15 +1917,37 @@
                 <small id="duck-status" class="toggle-note" hidden></small></span>
             </label>
             <label class="toggle">
-              <input id="stats-input" type="checkbox" />
-              <span>Show stream stats on the video <small class="toggle-note">(for when a stream looks off)</small></span>
-            </label>
-            <label class="toggle">
               <input id="trace-input" type="checkbox" />
               <span>Call debug log <small class="toggle-note">(notes what happens to your calls' connections, never what's said, and sends them to whoever runs this Rainlit server, to find out why calls drop. Kept for a week.)</small></span>
             </label>
           </section>
-        </div>
+          <section class="settings-sec settings-page set-video" data-page="video" aria-labelledby="set-video">
+            <h3 id="set-video">Video</h3>
+            <label class="field">
+              <span>Camera</span>
+              <select id="cam-select"></select>
+            </label>
+            <label id="cam-preview-field" class="toggle">
+              <input id="cam-preview-input" type="checkbox" />
+              <span>Show my camera before it turns on <small class="toggle-note">(how you look, and which camera, each time you turn it on in a call)</small></span>
+            </label>
+            <label class="toggle">
+              <input id="cam-mirror-input" type="checkbox" />
+              <span>Mirror my camera <small class="toggle-note">(only as you see yourself: everyone else sees you the right way round)</small></span>
+            </label>
+            <label class="field">
+              <span>Screen share quality</span>
+              <select id="share-quality">
+                <option value="sharp">Sharp: text and detail (30 fps)</option>
+                <option value="smooth">Smooth: games and video (60 fps)</option>
+                <option value="saver">Data saver (720p)</option>
+              </select>
+            </label>
+            <label class="toggle">
+              <input id="stats-input" type="checkbox" />
+              <span>Show stream stats on the video <small class="toggle-note">(for when a stream looks off)</small></span>
+            </label>
+          </section>
       </div>
       <div class="settings-foot">
         <p id="app-note" class="conn-info" hidden></p>
