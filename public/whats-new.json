@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "id": "2026-11-12b",
+      "date": "2026-11-12",
+      "title": "Bigger rooms",
+      "items": [
+        {
+          "title": "Your pet's room can grow",
+          "text": "Your pet's room can grow now, with dew: wider, then a higher ceiling, up to twice as wide and a third taller, with space for more things. Find the next size in the Dew tab under Its room. A room wider than the window is looked round by dragging it, with arrows at the edges and a Whole room button.",
+          "media": "/whats-new/2026-11-12-rooms.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12",
       "date": "2026-11-12",
       "title": "/tts, and Settings in pages",
