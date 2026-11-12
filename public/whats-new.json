@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "id": "2026-11-11c",
+      "date": "2026-11-11",
+      "title": "Notifications",
+      "items": [
+        {
+          "title": "A bell for the friendly things",
+          "text": "A bell by your profile now collects the friendly things: someone signing your guestbook, asking or answering a question, or petting your pet. Kept for 30 days, with a dot you can turn off in Settings. Messages, mentions and friend requests keep their own dots.",
+          "media": "/whats-new/2026-11-11c-notifications.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-11b",
       "date": "2026-11-11",
       "title": "Pet capsules",
