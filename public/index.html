@@ -1765,6 +1765,15 @@
               <input id="sounds-input" type="checkbox" />
               <span>Play a sound for new messages</span>
             </label>
+            <label class="field">
+              <span>Read /tts messages aloud</span>
+              <select id="tts-select">
+                <option value="open">In the conversation I have open, and my call</option>
+                <option value="all">Anywhere I'd hear about a message</option>
+                <option value="off">Never</option>
+              </select>
+              <small class="hint">A message that starts with /tts is read out, as "Name said: ..." in your device's voice, to whoever has this on. Handy when someone can't look at the screen, or can't talk.</small>
+            </label>
             <label class="toggle">
               <input id="clicks-input" type="checkbox" />
               <span>Soft click when you press things <small class="toggle-note">(in calls, mute, deafen, camera and switching speaker each have their own sound)</small></span>

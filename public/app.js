@@ -36,6 +36,8 @@ const ANDROID = (() => {
       download: method('download'),
       saveData: method('saveData'),
       openExternal: method('openExternal'),
+      speak: method('speak'),
+      stopSpeaking: method('stopSpeaking'),
       // (Capacitor's own: the clock and battery at the top, dark or light to suit the theme.)
       systemBars: (style) => cap.nativePromise('SystemBars', 'setStyle', { style }),
       addListener: (event, fn) => cap.addListener('Rainlit', event, fn),
@@ -148,7 +150,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name', 'rain-note', 'rain-calls-input',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'tts-select', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -300,6 +302,7 @@ const S = {
   voicePeople: (() => { try { return JSON.parse(store.get('voicePeople', '{}')) || {}; } catch { return {}; } })(), // voice channels: each person's voice, for you
   showStats: store.get('streamStats', 'off') === 'on',
   sounds: store.get('sounds', 'on') !== 'off',
+  tts: ['open', 'all', 'off'].includes(store.get('tts', 'open')) ? store.get('tts', 'open') : 'open', // /tts messages read aloud: where
   clickSounds: store.get('clickSounds', 'on') !== 'off',
   soundStyle: store.get('soundStyle', 'rainlit') === 'classic' ? 'classic' : 'rainlit', // (see SOUND_STYLES)
   embeds: store.get('embeds', 'on') !== 'off', // link previews
@@ -1443,6 +1446,7 @@ function micLive() {
 function toggleDeafen() {
   if (!S.inCall) return;
   S.deafened = !S.deafened;
+  if (S.deafened) stopSpeaking();
   playControlSound(S.deafened ? 'deafen' : 'undeafen');
   applyMic();
   applyVolume();
@@ -5364,6 +5368,7 @@ function showEdited(li, text, editedAt, mentions = null) {
   body._text = text;
   appendFormatted(body, text, c ? S.spaces.get(c.spaceId) : null, body._everyone);
   body.classList.toggle('jumbo', isJumbo(text));
+  if (body.dataset.tts) body.prepend(ttsTag()); // (still the one read aloud)
   const tag = document.createElement('span');
   tag.className = 'msg-edited';
   tag.textContent = '(edited)';
@@ -5377,7 +5382,7 @@ function messageText(li) {
   const body = li && li.querySelector('.msg-text');
   if (!body) return '';
   if (typeof body._text === 'string') return body._text; // (as it was typed, its formatting's marks too)
-  return [...body.childNodes].filter((n) => !(n.classList && n.classList.contains('msg-edited')))
+  return [...body.childNodes].filter((n) => !(n.classList && (n.classList.contains('msg-edited') || n.classList.contains('msg-tts'))))
     .map((n) => (n.dataset && n.dataset.raw !== undefined ? n.dataset.raw : n.textContent)).join('');
 }
 
@@ -6601,6 +6606,10 @@ function renderMessage(m) {
     body._everyone = Boolean(m.everyone);
     appendFormatted(body, m.text, inChannel ? S.spaces.get(inChannel.spaceId) : null, body._everyone);
     body.classList.toggle('jumbo', isJumbo(m.text));
+    if (m.meta && m.meta.tts) {
+      body.dataset.tts = '1';
+      body.prepend(ttsTag());
+    }
     li.append(messageHead(who, m.at), body);
     showEmbeds(li, m.text);
   } else if (m.kind === 'file') {
@@ -6960,6 +6969,7 @@ function onDmMessage(m) {
     loadMembers(S.channels.get(dm.channelId).spaceId).then(() => refreshNames(dm, m.author));
   }
   if (fromThem && dm.channelId) notifyChannel(dm, m);
+  if (fromThem) speakMessage(dm, m);
   if (fromThem && !dm.channelId && (DESKTOP || ANDROID)) {
     const body = m.kind === 'text' ? plainEmoji(plainFormat(m.text)) : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     appNotify({ title: friendName(friendId), body }); // only shows if you're not looking at Rainlit
@@ -7039,6 +7049,54 @@ function onDmRead({ dm: dmId, at }) {
   dm.mentions = after.filter((u) => u.mention).length;
   renderFriends();
   updateTitle();
+}
+
+// ----- /tts: a message read aloud -----
+// One sent with /tts (its meta says) is spoken as it arrives, "Name said: ...", in the device's
+// voice, if Settings says so for where it came from: the conversation you have open, or the call
+// you're in (a friend's DM during your call with them; a space's channels while you're in its
+// voice room), or anywhere you'd hear about a message at all. Never your own, nor from someone
+// you've blocked, nor a muted channel, nor while you're deafened. The name is its letters and
+// digits alone (symbols read out are a mouthful); links are "a link"; a long message is cut.
+function speakMessage(dm, m) {
+  if (S.tts === 'off' || !m.meta || !m.meta.tts || m.kind !== 'text') return;
+  if (S.deafened || (S.voice && S.voice.deafened) || (S.blocked && S.blocked.has(m.author))) return;
+  const c = dm.channelId ? S.channels.get(dm.channelId) : null;
+  const space = c && S.spaces.get(c.spaceId);
+  if (c && (c.muted || !space || space.notify === 'none')) return;
+  const open = S.openDm === dm.friendId;
+  const inCall = !c && S.inCall && S.callWith === dm.friendId;
+  const inRoom = Boolean(c && S.voice && S.voice.spaceId === c.spaceId);
+  if (S.tts === 'open' && !open && !inCall && !inRoom) return;
+  const name = friendName(m.author).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || 'Someone';
+  const words = plainEmoji(plainFormat(m.text)).replace(/https?:\/\/\S+/gi, 'a link').replace(/:[a-z0-9_]+:/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
+  if (!words) return;
+  speak(`${name} said: ${words}`);
+}
+
+// (The little tag on one.)
+function ttsTag() {
+  const tag = document.createElement('span');
+  tag.className = 'msg-tts';
+  tag.textContent = 'TTS';
+  tag.title = 'Sent with /tts: read aloud to whoever has that on';
+  return tag;
+}
+
+// Said aloud: the Android app's own voice (its page can't), else the browser's.
+function speak(text) {
+  if (ANDROID && ANDROID.speak) return ANDROID.speak({ text }).catch(() => {});
+  if (!('speechSynthesis' in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05;
+    speechSynthesis.speak(u);
+  } catch {}
+}
+
+function stopSpeaking() {
+  if (ANDROID && ANDROID.stopSpeaking) ANDROID.stopSpeaking().catch(() => {});
+  if ('speechSynthesis' in window) try { speechSynthesis.cancel(); } catch {}
 }
 
 // A message in a channel: a sound and a notification if it mentions you, or if you asked to
@@ -10373,6 +10431,7 @@ async function fillDeviceLists() {
   el.shareQuality.value = S.shareQuality;
   renderVolumeCap();
   el.soundsInput.checked = S.sounds;
+  el.ttsSelect.value = S.tts;
   el.clicksInput.checked = S.clickSounds;
   el.embedsInput.checked = S.embeds;
   el.compactInput.checked = S.compactChat;
@@ -23508,6 +23567,11 @@ async function init() {
     const target = e.target.closest && e.target.closest(CLICKABLE);
     if (target && !target.disabled && e.target !== el.clicksInput && !target.closest('[data-sound], [data-call], [data-voice]:not([data-voice="hear"]):not([data-voice="sounds"])')) playClick();
   }, true);
+  el.ttsSelect.addEventListener('change', () => {
+    S.tts = el.ttsSelect.value;
+    store.set('tts', S.tts);
+    if (S.tts === 'off') stopSpeaking();
+  });
   el.soundsInput.addEventListener('change', () => {
     S.sounds = el.soundsInput.checked;
     store.set('sounds', S.sounds ? 'on' : 'off');

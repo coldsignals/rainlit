@@ -17,6 +17,7 @@ import android.media.AudioAttributes;
 import android.media.AudioPlaybackConfiguration;
 import android.media.AudioRecordingConfiguration;
 import android.media.MediaRecorder;
+import android.speech.tts.TextToSpeech;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -211,6 +212,11 @@ public class RainlitPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         handler.removeCallbacks(watchPhone); // (this page is gone; a new one takes over)
+        if (tts != null) {
+            tts.shutdown();
+            tts = null;
+            ttsReady = false;
+        }
         getContext().unregisterComponentCallbacks(memoryWatch);
     }
 
@@ -526,6 +532,54 @@ public class RainlitPlugin extends Plugin {
         } catch (RuntimeException e) {
             call.reject("No browser found");
         }
+    }
+
+    // ----- /tts: a message read aloud (app.js speak) -----
+    // Android's own voice (the page's speech synthesis doesn't work in a WebView). Made the first
+    // time, then kept; during a call it goes out as the call's voice does (the same route: a car's
+    // Bluetooth, say), otherwise as media.
+
+    private TextToSpeech tts = null;
+    private boolean ttsReady = false;
+    private final java.util.ArrayDeque<String> ttsWaiting = new java.util.ArrayDeque<>();
+
+    @PluginMethod
+    public void speak(PluginCall call) {
+        String text = call.getString("text", "");
+        if (text.isEmpty()) {
+            call.resolve();
+            return;
+        }
+        if (tts == null) {
+            ttsWaiting.add(text);
+            tts = new TextToSpeech(getContext().getApplicationContext(), (status) -> {
+                ttsReady = status == TextToSpeech.SUCCESS;
+                if (!ttsReady) {
+                    ttsWaiting.clear();
+                    return;
+                }
+                while (!ttsWaiting.isEmpty()) say(ttsWaiting.poll());
+            });
+        } else if (ttsReady) {
+            say(text);
+        }
+        call.resolve();
+    }
+
+    private void say(String text) {
+        boolean inCall = CallService.running;
+        tts.setAudioAttributes(new AudioAttributes.Builder()
+            .setUsage(inCall ? AudioAttributes.USAGE_VOICE_COMMUNICATION : AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build());
+        tts.speak(text, TextToSpeech.QUEUE_ADD, null, "rainlit-" + System.nanoTime());
+    }
+
+    @PluginMethod
+    public void stopSpeaking(PluginCall call) {
+        ttsWaiting.clear();
+        if (tts != null && ttsReady) tts.stop();
+        call.resolve();
     }
 
     // ----- Notifications while the app is running -----

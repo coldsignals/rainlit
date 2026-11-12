@@ -2637,6 +2637,8 @@ a.embed-author:hover .embed-name { text-decoration: underline; }
 }
 
 .msg-edited { margin-left: 6px; color: var(--mist); font-size: 12px; white-space: nowrap; user-select: none; }
+/* (A /tts message: read aloud to whoever has that on.) */
+.msg-tts { display: inline-block; margin-right: 6px; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--mist); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; line-height: 16px; vertical-align: 2px; user-select: none; }
 
 /* Editing a message: a note above the message box. */
 .edit-bar {

@@ -1893,9 +1893,12 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     if (!gif) return fail(res, 400, "That GIF didn't come through right. Try another.");
     fields = { id, dm: req.dm.id, author: req.user.id, kind: 'gif', meta: gif, replyTo };
   } else {
-    const text = String(b.text || '').slice(0, MESSAGE_MAX);
-    if (!text.trim()) return fail(res, 400, "You can't send an empty message.");
-    fields = { id, dm: req.dm.id, author: req.user.id, kind: 'text', text, replyTo };
+    let text = String(b.text || '').slice(0, MESSAGE_MAX);
+    // "/tts" first: read aloud to whoever gets it (their app, if they've let it: app.js speakMessage).
+    const tts = /^\/tts(?:\s|$)/i.test(text);
+    if (tts) text = text.replace(/^\/tts\s*/i, '');
+    if (!text.trim()) return fail(res, 400, tts ? 'Put what to say after /tts.' : "You can't send an empty message.");
+    fields = { id, dm: req.dm.id, author: req.user.id, kind: 'text', text, replyTo, ...(tts ? { meta: { tts: true } } : {}) };
   }
   const message = req.dm.save ? dms.addMessage(fields) : dms.passing(fields);
   const mentions = withReplyMention(req.channel && fields.kind === 'text' ? spaces.mentionsIn(fields.text, req.channel, req.member) : null, req, replyTo);
