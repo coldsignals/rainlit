@@ -3461,6 +3461,12 @@ function stageFull() {
 }
 
 function setStageFull(on) {
+  // (The whole call made big with a screen being shared and nothing of it big yet: the screen's
+  // what's wanted big, not someone's picture.)
+  if (on && el.stage.classList.contains('grid') && !callTileVideo(S.callFocus || '') && callTileVideo('peer:screen')) {
+    S.callFocus = 'peer:screen';
+    renderCallGrid();
+  }
   if (ANDROID) el.stage.classList.toggle('full', on);
   else if (on) el.stage.requestFullscreen().catch(() => {});
   if (!on) {
