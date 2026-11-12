@@ -567,7 +567,8 @@ async function pickMic(android = Boolean(ANDROID)) {
   if (S.devices.mic) {
     relabelDevice('mic', mics);
     if (mics.some((d) => d.deviceId === S.devices.mic)) return S.devices.mic;
-    // (Gone, and not found by its name: as if none were picked.)
+    // (Gone, and not found by its name: the default one, said so.)
+    if (!android) micFellBack(S.devices.mic, null, null);
   }
   const wired = android && mics.find((d) => /wired headset/i.test(d.label));
   return wired ? wired.deviceId : '';
@@ -592,10 +593,47 @@ async function getMicTrack(deviceId, android = Boolean(ANDROID), plain = false) 
     if (track && ownNoise() && !plain) return await cleanMic(track, deviceId, android);
     return track;
   } catch (err) {
-    if (deviceId && (err.name === 'NotFoundError' || err.name === 'OverconstrainedError')) return getMicTrack('', android, plain);
-    throw err;
+    if (!deviceId || !cantOpenMic(err)) throw err;
+    // (Once more, by its id alone: it may be the effects it can't do.)
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: deviceId } } });
+      const track = s.getAudioTracks()[0];
+      if (track && ownNoise() && !plain) return await cleanMic(track, deviceId, android);
+      return track;
+    } catch {}
+    const track = await getMicTrack('', android, plain);
+    micFellBack(deviceId, err, track);
+    return track;
   } finally {
     closeBridge(bridge);
+  }
+}
+
+// The microphone that's picked couldn't be opened (unplugged, a virtual one whose app isn't
+// running, an id that's gone stale): the default one's in use instead, and that's said, so a mic
+// that's quietly the wrong one (a dead one) isn't a mystery. Once a minute at most.
+const cantOpenMic = (err) => Boolean(err && (err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'NotReadableError'));
+function micFellBack(wantedId, err, track) {
+  const want = store.get('micLabel', '') || 'the one picked in Settings';
+  const got = (track && track.label) || 'the default one';
+  const how = err ? `couldn't be opened${err.name ? ` (${err.name})` : ''}` : "isn't there";
+  S.micFallback = { at: Date.now(), want, got, how };
+  trace('mic-fallback', { want, got, why: err ? err.name || 'error' : 'missing' });
+  if (S.micFallbackToldAt && Date.now() - S.micFallbackToldAt < 60_000) return;
+  S.micFallbackToldAt = Date.now();
+  toast(`Your mic, ${want}, ${how}, so ${got} is in use. Check Settings.`, 9000);
+}
+
+// In a voice channel: the same, the picked mic or the default one, said so.
+async function openVoiceMic(room, mic, options) {
+  try {
+    await room.localParticipant.setMicrophoneEnabled(true, options);
+  } catch (err) {
+    if (!mic || !cantOpenMic(err)) throw err;
+    if (room.options && room.options.audioCaptureDefaults) delete room.options.audioCaptureDefaults.deviceId;
+    await room.localParticipant.setMicrophoneEnabled(true, { ...S.micFx });
+    const pub = room.localParticipant.getTrackPublication(VK.Track.Source.Microphone);
+    micFellBack(mic, err, pub && pub.track && pub.track.mediaStreamTrack);
   }
 }
 
@@ -10301,7 +10339,7 @@ function refillMics() {
 async function startMicTest() {
   if (micTest) return;
   unlockSounds();
-  const t = (micTest = { state: 'starting', loudest: 0, chunks: [], muting: Boolean(S.inCall || S.voice) });
+  const t = (micTest = { state: 'starting', began: Date.now(), loudest: 0, chunks: [], muting: Boolean(S.inCall || S.voice) });
   renderMicTest();
   let track;
   try {
@@ -10325,6 +10363,7 @@ async function startMicTest() {
   }
   t.state = 'listening';
   t.started = Date.now();
+  if (S.micFallback && S.micFallback.at >= t.began) t.fallback = S.micFallback;
   t.timer = setTimeout(() => finishMicTest(t), MIC_TEST_MS);
   t.tick = setInterval(() => {
     if (!t.muting && (S.inCall || S.voice)) return stopMicTest(); // (a call's begun: it has the mic now)
@@ -10354,9 +10393,11 @@ function playMicTest(t) {
   if (t.meter) t.meter.disconnect();
   if (micTest !== t) return;
   const name = (t.track && t.track.label) || 'your microphone';
+  // (Not the one picked: that first, whatever else it says.)
+  const wrong = t.fallback ? `Your mic, ${t.fallback.want}, ${t.fallback.how}, so this tested ${name} instead. ` : '';
   const end = (note, tone) => {
     micTest = null;
-    renderMicTest(note, tone);
+    renderMicTest(wrong + note, wrong ? 'bad' : tone);
   };
   // (Next to nothing, under -60 dB, with something said: it's off, muted, or blocked. A muted mic
   // sends silence, but the browser's clean-up can leave a whisper of something in it.)
@@ -14919,7 +14960,7 @@ async function joinVoice(channelId) {
     const mic = await pickMic();
     if (S.voice !== v) return;
     const audio = {
-      audioCaptureDefaults: { ...S.micFx, ...(mic ? { deviceId: mic } : {}) },
+      audioCaptureDefaults: { ...S.micFx, ...(mic ? { deviceId: { exact: mic } } : {}) },
       ...(S.devices.speaker ? { audioOutput: { deviceId: S.devices.speaker } } : {}),
     };
     let room;
@@ -14946,7 +14987,7 @@ async function joinVoice(channelId) {
     if (v.speak && !v.muted) {
       const bridge = await micBridge(mic); // (Android: see micBridge)
       try {
-        await room.localParticipant.setMicrophoneEnabled(true);
+        await openVoiceMic(room, mic);
         await noiseForVoice(room);
         applyVoicePtt();
       } catch (err) {
@@ -15457,7 +15498,7 @@ function voiceDevicesChanged() {
       .then(async (mic) => {
         const bridge = await micBridge(mic); // (Android: see micBridge)
         try {
-          await v.room.localParticipant.setMicrophoneEnabled(true, { ...S.micFx, ...(mic ? { deviceId: mic } : {}) });
+          await openVoiceMic(v.room, mic, { ...S.micFx, ...(mic ? { deviceId: { exact: mic } } : {}) });
           await noiseForVoice(v.room);
         } finally {
           closeBridge(bridge);
