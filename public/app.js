@@ -15937,6 +15937,7 @@ function renderVoiceView() {
   }
   for (const [key, tile] of v.tiles) {
     if (!wanted.has(key)) {
+      if (tile.classList.contains('page-full')) pageFullscreen(tile, false);
       tile.remove();
       v.tiles.delete(key);
     }
@@ -16043,11 +16044,34 @@ function focusTile(key) {
   renderVoiceView();
 }
 
-const canFullscreen = () => Boolean(document.fullscreenEnabled) && !ANDROID;
+// (The Android app's page can't go full screen the browser's way: a tile fills the page itself
+// there, pageFullscreen.)
+const canFullscreen = () => Boolean(document.fullscreenEnabled) || Boolean(ANDROID);
 
 function toggleTileFullscreen(tile) {
+  if (ANDROID) return pageFullscreen(tile, !tile.classList.contains('page-full'));
   if (document.fullscreenElement === tile) document.exitFullscreen().catch(() => {});
   else tile.requestFullscreen().catch(() => {});
+}
+
+// A tile over the whole page (the Android app): fixed, over everything, black round the picture,
+// room left for the phone's bars; the phone turned to landscape, where it lets a page ask, and
+// back after. Off again from its button, or when the tile goes (the stream ending).
+function pageFullscreen(tile, on) {
+  if (tile.classList.contains('page-full') === on) return;
+  for (const other of document.querySelectorAll('.voice-tile.page-full')) if (other !== tile) other.classList.remove('page-full');
+  tile.classList.toggle('page-full', on);
+  document.documentElement.classList.toggle('has-page-full', on);
+  const o = screen.orientation;
+  try {
+    if (on && o && o.lock) o.lock('landscape').catch(() => {});
+    else if (!on && o && o.unlock) o.unlock();
+  } catch {}
+  const full = tile.querySelector('.tile-full');
+  if (full) {
+    full.title = on ? 'Leave full screen' : 'Full screen';
+    full.setAttribute('aria-label', full.title);
+  }
 }
 
 function setVoiceVideoOnly(on) {

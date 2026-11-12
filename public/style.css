@@ -773,6 +773,17 @@ button.person.in-call:hover { background: color-mix(in srgb, var(--online) 18%, 
 /* Full screen (a video's own button). */
 .voice-tile:fullscreen { border-radius: 0; background: #000; cursor: default; }
 .voice-tile:fullscreen video { object-fit: contain; }
+/* (The Android app: a tile over the whole page instead, app.js pageFullscreen; the phone's bars
+   left room, as a video full screen there has.) */
+.voice-tile.page-full {
+  position: fixed; inset: 0; z-index: 1500; width: auto; height: auto; aspect-ratio: auto; border-radius: 0; background: #000; cursor: default;
+  padding: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) var(--safe-area-inset-right, env(safe-area-inset-right, 0px))
+    var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+}
+.voice-grid.focused > .voice-tile.page-full { flex: none; aspect-ratio: auto; max-height: none; }
+.voice-tile.page-full video { width: 100%; height: 100%; object-fit: contain; }
+.voice-tile.page-full .tile-tools { opacity: 1; top: calc(8px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); right: calc(8px + var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); }
+html.has-page-full { overflow: hidden; }
 /* A screen's sound: its mute and volume (top left; on hover, or always when muted or on a
    touch screen). */
 .tile-audio {
