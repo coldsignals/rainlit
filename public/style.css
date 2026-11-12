@@ -1446,7 +1446,13 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   background: linear-gradient(115deg, #ff7eb6, #b77bff 55%, #5aa9ff); color: #fff; font-size: 11px; font-weight: 700;
 }
 .whats-new-row { flex: none; padding: 12px 22px 18px; border-top: 1px solid var(--line); }
-.whats-new-btn { padding: 0; font: inherit; font-size: inherit; color: var(--lamp-text); font-weight: 600; }
+.settings-foot-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.whats-new-btn { position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px 7px 11px; color: var(--lamp-text); }
+.whats-new-btn .icon { width: 17px; height: 17px; }
+.whats-new-btn.has-new::after {
+  content: ""; position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--lamp); box-shadow: 0 0 0 2px var(--panel), 0 0 6px 1px var(--lamp-glow);
+}
 
 .jump-float { position: relative; flex: none; height: 0; z-index: 3; }
 .jump-present {

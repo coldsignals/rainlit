@@ -77,6 +77,7 @@
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
       <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></symbol>
       <symbol id="i-note" viewBox="0 0 24 24"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5Z"/><path d="M15 3v5a1 1 0 0 0 1 1h5"/><path d="M7 13h6M7 17h9"/></symbol>
+      <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3c.6 3.9 2.6 6.4 7 7-4.4.6-6.4 3.1-7 7-.6-3.9-2.6-6.4-7-7 4.4-.6 6.4-3.1 7-7Z"/><path d="M5 2.5c.3 1.6 1 2.4 2.5 2.7-1.5.3-2.2 1.1-2.5 2.7-.3-1.6-1-2.4-2.5-2.7 1.5-.3 2.2-1.1 2.5-2.7Z"/></symbol>
       <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></symbol>
       <symbol id="i-repost" viewBox="0 0 24 24"><path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/></symbol>
       <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.1v13.8a1 1 0 0 0 1.5.9l11-6.9a1 1 0 0 0 0-1.7l-11-6.9A1 1 0 0 0 8 5.1Z" fill="currentColor"/></symbol>
@@ -1950,12 +1951,16 @@
           </section>
       </div>
       <div class="settings-foot">
-        <p id="app-note" class="conn-info" hidden></p>
+        <!-- (What's new: its own button, plain to see; a dot on it while there's something unseen.) -->
+        <div class="settings-foot-row">
+          <button id="whats-new-btn" class="small-btn whats-new-btn" type="button"><svg class="icon"><use href="#i-sparkle"/></svg>What's new</button>
+          <p id="app-note" class="conn-info" hidden></p>
+        </div>
         <p id="server-note" class="conn-info" hidden>Server: <span id="server-host"></span> · <button type="button" id="server-change-btn" class="text-btn">Change</button></p>
         <p id="push-note" class="conn-info" hidden></p>
         <p id="conn-info" class="conn-info"></p>
         <p class="conn-info">Rainlit is free software (GNU AGPL). <a id="source-link" href="https://github.com/coldsignals/rainlit" target="_blank" rel="noopener">Source code</a> · Emoji: <a href="/fonts/TWEMOJI-LICENSE.txt" target="_blank" rel="noopener">Twemoji</a> (CC-BY 4.0) <a class="legal-link x-link" href="https://x.com/rainlitapp" target="_blank" rel="noopener" aria-label="Rainlit on X (@rainlitapp)" title="Rainlit on X (@rainlitapp)"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></a></p>
-        <p class="conn-info"><a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms of service</a> · <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="legal-link" href="/switching" target="_blank" rel="noopener">Switching from Discord</a> · <button id="whats-new-btn" class="text-btn whats-new-btn" type="button">What's new</button><span></span><a id="support-link" href="/support" hidden>Rainlit Glow</a></p>
+        <p class="conn-info"><a class="legal-link" href="/terms" target="_blank" rel="noopener">Terms of service</a> · <a class="legal-link" href="/privacy" target="_blank" rel="noopener">Privacy policy</a> · <a class="legal-link" href="/switching" target="_blank" rel="noopener">Switching from Discord</a><span></span><a id="support-link" href="/support" hidden>Rainlit Glow</a></p>
       </div>
     </form>
   </dialog>

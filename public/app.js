@@ -5810,10 +5810,11 @@ async function whatsNewEntries() {
 
 async function maybeWhatsNew() {
   clearTimeout(S.whatsNewWait);
-  if (!S.me || S.whatsNewDone) return;
+  if (!S.me) return;
   const list = await whatsNewEntries();
   const fresh = list.filter((e) => e.id > (S.whatsNewSeen || ''));
-  if (!fresh.length) return;
+  el.whatsNewBtn.classList.toggle('has-new', fresh.length > 0); // (the dot on Settings' button, till it's looked at)
+  if (!fresh.length || S.whatsNewDone) return;
   if (S.inCall || S.startingCall || S.voice || document.querySelector('dialog[open]') || announceQueue.length) {
     S.whatsNewWait = setTimeout(maybeWhatsNew, 15_000); // (later: after the call, or the box that's open)
     return;
@@ -5898,6 +5899,7 @@ function onWhatsNewClosed() {
   const id = whatsNewMarks;
   whatsNewMarks = '';
   if (!id || id <= (S.whatsNewSeen || '')) return;
+  el.whatsNewBtn.classList.remove('has-new');
   S.whatsNewSeen = id;
   api('POST', '/whats-new/seen', { id }).catch(() => {});
 }
