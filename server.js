@@ -1732,6 +1732,7 @@ api.post('/dew/pats', needUser, dewRoute((req, b) => ({ dew: dew.pat(req.user.id
 api.post('/dew/collectors', needUser, dewRoute((req, b) => ({ dew: dew.buy(req.user.id, String(b.key || '')) })));
 api.post('/dew/upgrades', needUser, dewRoute((req, b) => ({ dew: dew.upgrade(req.user.id, String(b.key || '')) })));
 api.post('/dew/items', needUser, dewRoute((req, b) => dew.unlock(req.user, b)));
+api.post('/dew/room', needUser, dewRoute((req) => dew.room(req.user))); // (its room, grown a tier)
 api.post(['/dew/drop', '/dew/rainbow'], needUser, dewRoute((req, b) => {
   const out = dew.catchDrop(req.user.id);
   // (Your other devices and tabs: gone from them too.)

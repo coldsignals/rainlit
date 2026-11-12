@@ -2801,7 +2801,7 @@
   function inRoom(room, kind) {
     const size = () => {
       const P = roomPx(room);
-      return { P, W: room.clientWidth || 480, H: room.clientHeight || P * ROOM_ROWS };
+      return { P, W: room.clientWidth || 480, H: room.clientHeight || P * 42 };
     };
     return {
       box: room, watch: room, card: null, scrolls: false,
@@ -2811,15 +2811,22 @@
         const h = w * PET_H;
         // (Its feet on the open floor, in front of the furniture, which stands 13 rows up from the
         // bottom (a bed, 10): never up on the skirting or a desk. A pet that floats can go anywhere.)
-        const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, P * (ROOM_ROWS - 10));
+        const y0 = PETS[kind] && PETS[kind].floats ? h + P * 2 : Math.max(h + 6, H - P * 10);
         return { s: 1, w, h, top: 0, bottom: H, x0: w / 2 + P, x1: Math.max(w / 2 + P, W - w / 2 - P), y0, y1: Math.max(y0, H - P * 2), P, W };
+      },
+      // (The part of the room that's showing, where its pet can be: to start off in sight.)
+      seen(v) {
+        const sc = room.prView && room.prView.prScroll;
+        if (!sc || !sc.clientWidth) return v;
+        const x0 = clampTo(sc.scrollLeft + v.w / 2 + v.P, v.x0, v.x1);
+        return { x0, x1: clampTo(sc.scrollLeft + sc.clientWidth - v.w / 2 - v.P, x0, v.x1) };
       },
       nap() {
         const beds = room.prRoom ? room.prRoom.things.filter((t) => t.list === 'stand' && !t.tried && STANDS[t.key] && STANDS[t.key].nap) : [];
         if (!beds.length) return null;
         const { P, W } = size();
         const t = beds[Math.floor(Math.random() * beds.length)];
-        const s = spotOf(t);
+        const s = spotOf(t, geoIn(room));
         // (In it: a little up from its bottom, as far up as it's big.)
         return { x: (leftOf(t, s, P, W) + s.w / 2) * P, y: (s.top + s.h - 2 * t.size) * P };
       },
@@ -2979,7 +2986,8 @@
       const next = me.plan.shift();
       if (next) return next();
       if (Number.isNaN(me.x)) {
-        me.x = rand(v.x0, v.x1);
+        const seen = me.where.seen ? me.where.seen(v) : v;
+        me.x = rand(seen.x0, seen.x1);
         me.y = rand(v.y0, v.y1);
         return mode(calm ? 'rest' : 'idle', rand(0.6, 1.6));
       }
@@ -3100,7 +3108,7 @@
         const art = t && thingOf(t.list, t.key, t.tint);
         const inside = m.querySelector('.pr-reflect-in');
         if (!art || !art.glass || !inside) continue;
-        const s = spotOf(t);
+        const s = spotOf(t, geoIn(room));
         const K = 0.62; // (how big it looks in the mirror)
         const floorY = art.glassY * t.size * P * 1.42; // (the floor's edge, in the glass)
         const glass = inside.parentElement;
@@ -3395,7 +3403,7 @@
     function dressIn(wear) {
       node.querySelector('.hp-pet-sprite').style.backgroundImage = petSheet(kind, pet.coat, wear);
     }
-    const life = { key, node, attach, stop, saw, did, refit, closeCare, tend, dressIn, wake, info: () => me.info };
+    const life = { key, node, attach, stop, saw, did, refit, closeCare, tend, dressIn, wake, info: () => me.info, get bounds() { return me.where ? me.where.view() : null; }, go: (x, y) => walkTo(x, y, 'run') };
     return life;
   }
 
@@ -3404,11 +3412,30 @@
   // the rain outside, and its things, wherever its owner's put them: rugs, things on the wall,
   // things hanging from the ceiling and things standing on the floor (a pet bed is where it naps).
   // A few of each, and some of Glow's. Its owner picks them (lib/pets.js keeps them). It's all
-  // measured in the room's own pixels (--px: the same size as its pet's), 42 of them tall: 26 of
-  // wall and 16 of floor.
+  // measured in the room's own pixels (--px: the same size as its pet's). How big the room is
+  // comes in tiers, each bought with dew (ROOM_TIERS, the same as lib/pets.js: across, down, how
+  // much of that is wall, and how many things fit): 92 by 42 to begin with, up to twice as wide
+  // and a third taller. One wider than the app's view of it is looked round (roomView).
 
-  const ROOM_ROWS = 42;
-  const WALL_ROWS = 26;
+  const ROOM_TIERS = [
+    { cols: 92, rows: 42, wall: 26, things: 24 },
+    { cols: 115, rows: 42, wall: 26, things: 28, label: 'A wider room', about: 'A quarter as wide again.', cost: 1e9 },
+    { cols: 115, rows: 49, wall: 31, things: 32, label: 'A higher ceiling', about: 'More wall to hang things on.', cost: 100e9 },
+    { cols: 138, rows: 49, wall: 31, things: 36, label: 'Wider still', about: 'Half as wide again as it began.', cost: 10e12 },
+    { cols: 138, rows: 56, wall: 36, things: 40, label: 'A high ceiling', about: 'Higher still, with a deeper floor.', cost: 5e15 },
+    { cols: 184, rows: 56, wall: 36, things: 48, label: 'A grand room', about: 'Twice as wide as it began.', cost: 5e18 },
+  ];
+  const tierOf = (v) => (Number.isInteger(v) && v >= 0 && v < ROOM_TIERS.length ? v : 0);
+  const geoOf = (tier) => ROOM_TIERS[tierOf(tier)];
+  const geoIn = (node) => {
+    const r = node && node.closest('.pr-room');
+    return r && r.prRoom ? r.prRoom.geo : ROOM_TIERS[0];
+  };
+  // (Where each kind of thing can be, rows down: its top for what's on the wall or hangs from the
+  // ceiling, its bottom for a rug or what stands on the floor.)
+  const thingY = (list, geo) => ({ hang: [0, geo.wall + 2], ceiling: [0, geo.wall - 2], rug: [geo.wall + 2, geo.rows], stand: [geo.wall + 3, geo.rows] })[list];
+  // (Wall tiles are drawn as tall as the tallest wall; a lower wall shows their bottom part.)
+  const WALL_ROWS = 36;
   const ROOM_DEFAULT = { wall: 'stripes', floor: 'wood', sky: 'auto', light: 'day' };
 
   // (Pixels made to a shape: a flat oval in rings, from the middle out.)
@@ -4241,8 +4268,7 @@
   // rug or of what stands on the floor (as far back as the skirting, to the front). `size`: three
   // quarters as big, to half as big again. `flip`: facing the other way.
   const THING_LISTS = ['stand', 'hang', 'ceiling', 'rug'];
-  const THINGS_MAX = 24;
-  const THING_Y = { hang: [0, 28], ceiling: [0, 24], rug: [28, 42], stand: [29, 42] };
+  const THINGS_MAX = ROOM_TIERS[ROOM_TIERS.length - 1].things;
 
   // The window (its weather in its panes: paintSky).
   const WINDOW_ROWS = outlined(['aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', ...Array(5).fill('a........aa........a'), 'aaaaaaaaaaaaaaaaaaaa', 'bbbbbbbbbbbbbbbbbbbb', '.cccccccccccccccccc.']);
@@ -4364,8 +4390,9 @@
     win.style.setProperty('--fx-h', String(s.fh || 1));
   }
 
-  // A room's pixel: as big as its pet's (a pet is 22 of them across).
-  const roomPx = (el) => Math.round(clampTo((el.clientWidth || 480) * 0.24, 88, 132) / 22);
+  // A room's pixel: as big as its pet's (a pet is 22 of them across), by how wide the view of the
+  // room is (the room itself may be wider than the view: its tier's columns of them).
+  const roomPx = (el) => Math.round(clampTo(((el.prView || el).clientWidth || 480) * 0.24, 88, 132) / 22);
   const isThing = (t) => Boolean(t && THING_LISTS.includes(t.list) && Object.hasOwn(ROOM[t.list], t.key) && t.key !== 'none');
   // (A room from before things could be moved, or none yet: its window, something on the wall, a rug
   // and a thing in each corner, where they were (lib/pets.js says the same).)
@@ -4383,8 +4410,10 @@
   const roomOf = (room) => {
     const r = { ...ROOM_DEFAULT };
     for (const [slot, list] of Object.entries(ROOM_SLOTS)) if (room && ROOM[list][room[slot]]) r[slot] = room[slot];
-    r.things = (room && Array.isArray(room.things) ? room.things : legacyThings(room)).filter(isThing).slice(0, THINGS_MAX + 1).map((t) => {
-      const [y0, y1] = THING_Y[t.list];
+    r.tier = tierOf(room && room.tier);
+    r.geo = geoOf(r.tier);
+    r.things = (room && Array.isArray(room.things) ? room.things : legacyThings(room)).filter(isThing).slice(0, r.geo.things + 1).map((t) => {
+      const [y0, y1] = thingY(t.list, r.geo);
       return {
         list: t.list, key: t.key, x: clampTo(num(t.x, 0.5), 0, 1), y: clampTo(Math.round(num(t.y, y0)), y0, y1), size: clampTo(num(t.size, 1), 0.75, 1.5), flip: t.flip === true,
         tint: clampTo(Math.round(num(t.tint, 0)), 0, tintsOf(t.list, t.key)), ...(t.tried ? { tried: true } : {}),
@@ -4397,19 +4426,19 @@
   // the room: on the wall, or above the skirting for what hangs from the ceiling, or on the floor),
   // and how far forward it is (`depth`: where it stands, for what's on the floor; a pet bed's a
   // little further back, so its pet's in front of it, lying in it).
-  function spotOf(t) {
+  function spotOf(t, geo = ROOM_TIERS[0]) {
     const art = thingOf(t.list, t.key);
     const w = art.w * t.size;
     const h = art.h * t.size;
-    const top = t.list === 'hang' || t.list === 'ceiling' ? clampTo(t.y, 0, Math.max(0, THING_Y[t.list][1] - h))
-      : clampTo(t.y, t.list === 'rug' ? Math.min(ROOM_ROWS, 28 + h) : Math.max(29, h), ROOM_ROWS) - h;
+    const top = t.list === 'hang' || t.list === 'ceiling' ? clampTo(t.y, 0, Math.max(0, thingY(t.list, geo)[1] - h))
+      : clampTo(t.y, t.list === 'rug' ? Math.min(geo.rows, geo.wall + 2 + h) : Math.max(geo.wall + 3, h), geo.rows) - h;
     return { w, h, top, depth: top + h - (ROOM[t.list][t.key].nap ? 3 * t.size : 0) };
   }
   // (Where its left side is, in the room's pixels, `x` of the way along the room beside it.)
   const leftOf = (t, s, P, W) => t.x * Math.max(0, W / P - s.w);
   function placeThing(n) {
     const t = n.prThing;
-    const s = spotOf(t);
+    const s = spotOf(t, geoIn(n));
     n.style.setProperty('--x', String(t.x));
     n.style.setProperty('--w', String(s.w));
     n.style.setProperty('--h', String(s.h));
@@ -4450,7 +4479,7 @@
       if (!info) continue;
       const color = info.window ? L.window : (tintOf(t.list, t.key, t.tint) || {}).glow || info.glow ? L.glow : '';
       if (!color) continue;
-      const s = spotOf(t);
+      const s = spotOf(t, r.geo);
       const x = `calc((100% - var(--px) * ${s.w}) * ${t.x} + var(--px) * ${s.w / 2})`;
       const y = `calc(var(--px) * ${s.top + s.h * (info.lightY ?? (info.window ? 0.42 : 0.5))})`;
       const reach = L.reach * (info.window ? 1.15 : 1) * Math.sqrt(t.size);
@@ -4511,20 +4540,176 @@
   // to see, not its own yet). Its wallpaper, floor and skirting, then its things: on the wall (its
   // windows, with the weather in them), hanging from the ceiling, rugs, and what stands on the
   // floor, nearer the front over what's further back.
+  // The view of a room: the room's twice as wide as it (and as tall as it), so you look round it:
+  // dragging it along (a finger, or the mouse), the wheel sideways (or with shift), the arrows at
+  // its edges. "Whole room" shows all of it at once, smaller. The room's element becomes the
+  // view's child (the view takes its place and its margins), and anything of the room's that isn't
+  // the room (the dew count, boosts, "pick a pet") goes up to the view. It opens on the middle
+  // (where an older room's things are).
+  function roomView(el) {
+    if (el.prView) return el.prView;
+    const view = document.createElement('div');
+    view.className = 'pr-view';
+    // (The room scrolls inside a box of its own, so the arrows and the rest stay put at the edges.)
+    const sc = document.createElement('div');
+    sc.className = 'pr-scroll';
+    el.replaceWith(view);
+    view.append(sc);
+    sc.append(el);
+    for (const n of el.querySelectorAll(':scope > .pet-room-empty, :scope > .pet-dew, :scope > .dew-boosts')) view.append(n);
+    el.prView = view;
+    view.prScroll = sc;
+    const arrow = (dir) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `pr-pan pr-pan-${dir}`;
+      b.title = dir === 'left' ? 'Further left' : 'Further right';
+      b.setAttribute('aria-label', b.title);
+      b.innerHTML = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${dir === 'left' ? 'M12 4 6 10l6 6' : 'm8 4 6 6-6 6'}"/></svg>`;
+      b.addEventListener('click', () => {
+        const from = sc.scrollLeft;
+        const want = clampTo(from + (dir === 'left' ? -0.6 : 0.6) * sc.clientWidth, 0, Math.max(0, sc.scrollWidth - sc.clientWidth));
+        const t0 = performance.now();
+        const glide = (t) => {
+          const k = Math.min(1, (t - t0) / 240);
+          pan.to(from + (want - from) * (1 - (1 - k) ** 3));
+          if (k < 1) requestAnimationFrame(glide);
+        };
+        requestAnimationFrame(glide);
+      });
+      return b;
+    };
+    const whole = document.createElement('button');
+    whole.type = 'button';
+    whole.className = 'pr-whole';
+    whole.addEventListener('click', () => pan.fit(!view.classList.contains('pr-fit')));
+    const pan = {
+      // (Where it's looking, 0 to 1 along the room, kept across its being drawn again.)
+      at: 0.5,
+      settle() {
+        const most = sc.scrollWidth - sc.clientWidth;
+        sc.scrollLeft = view.classList.contains('pr-fit') ? 0 : pan.at * most;
+        pan.edges();
+      },
+      edges() {
+        const most = sc.scrollWidth - sc.clientWidth;
+        const fit = view.classList.contains('pr-fit');
+        view.classList.toggle('pr-wide', fit || most > 2);
+        view.classList.toggle('pr-more-left', !fit && sc.scrollLeft > 2);
+        view.classList.toggle('pr-more-right', !fit && sc.scrollLeft < most - 2);
+        whole.textContent = fit ? 'Closer' : 'Whole room';
+        whole.title = fit ? 'Back to looking round the room' : 'See the whole room at once';
+      },
+      to(left, byHand = true) {
+        const most = Math.max(0, sc.scrollWidth - sc.clientWidth);
+        sc.scrollLeft = clampTo(left, 0, most);
+        pan.at = most ? sc.scrollLeft / most : 0.5;
+        if (byHand) pan.handAt = Date.now();
+        pan.edges();
+      },
+      // (Its pet near an edge of the view, or past it: the view glides to keep it in sight. Not for
+      // a few seconds after you've looked round yourself, nor doing the room up, nor seeing it whole.)
+      handAt: 0,
+      follow() {
+        const pet = el.hpPet && el.hpPet.node;
+        if (!pet || !pet.isConnected || drag || view.classList.contains('pr-fit') || el.classList.contains('pr-arranging') || Date.now() - pan.handAt < 5000) return;
+        const m = /translate\(([-\d.]+)px/.exec(pet.style.transform);
+        if (!m) return;
+        const mid = Number(m[1]) + pet.offsetWidth / 2;
+        const w = sc.clientWidth;
+        const seen = mid - sc.scrollLeft;
+        if (seen > w * 0.2 && seen < w * 0.8) return;
+        const most = Math.max(0, sc.scrollWidth - w);
+        const want = clampTo(mid - w / 2, 0, most);
+        const step = (want - sc.scrollLeft) * 0.12;
+        if (Math.abs(step) < 0.5) return;
+        pan.to(sc.scrollLeft + step, false);
+      },
+      by(part) {
+        pan.to(sc.scrollLeft + part * sc.clientWidth);
+      },
+      fit(on) {
+        on = Boolean(on) && !el.classList.contains('pr-arranging');
+        if (view.classList.contains('pr-fit') === on) return;
+        view.classList.toggle('pr-fit', on);
+        view.style.setProperty('--fit', on ? String(sc.clientWidth / (roomPx(el) * el.prRoom.geo.cols)) : '1');
+        pan.settle();
+        if (el.hpPet) el.hpPet.refit();
+        pan.edges();
+      },
+    };
+    view.prPan = pan;
+    view.append(arrow('left'), arrow('right'), whole);
+    const following = setInterval(() => {
+      if (!view.isConnected) return clearInterval(following);
+      pan.follow();
+    }, 60);
+    // (Dragged along, when its things aren't being dragged about: not a click on its pet, then.)
+    let drag = null;
+    view.addEventListener('pointerdown', (e) => {
+      if (e.button > 0 || el.classList.contains('pr-arranging') || view.classList.contains('pr-fit') || e.target.closest('.pr-pan, .pr-whole, .pet-dew, .dew-boosts, .dew-rainbow')) return;
+      drag = { id: e.pointerId, x: e.clientX, left: sc.scrollLeft, moved: false };
+    });
+    view.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x;
+      if (!drag.moved && Math.abs(dx) < 6) return;
+      if (!drag.moved) {
+        drag.moved = true;
+        try { view.setPointerCapture(e.pointerId); } catch {}
+        view.classList.add('pr-panning');
+      }
+      pan.to(drag.left - dx);
+    });
+    const end = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const moved = drag.moved;
+      drag = null;
+      view.classList.remove('pr-panning');
+      if (moved) view.prPanned = Date.now();
+    };
+    view.addEventListener('pointerup', end);
+    view.addEventListener('pointercancel', end);
+    view.addEventListener('click', (e) => {
+      if (view.prPanned && Date.now() - view.prPanned < 400 && !e.target.closest('.pr-pan, .pr-whole')) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }, true);
+    view.addEventListener('wheel', (e) => {
+      if (view.classList.contains('pr-fit')) return;
+      const dx = e.deltaX || (e.shiftKey ? e.deltaY : 0);
+      if (!dx) return;
+      e.preventDefault();
+      pan.to(sc.scrollLeft + dx);
+    }, { passive: false });
+    sc.addEventListener('scroll', () => { if (!drag) pan.edges(); }, { passive: true });
+    return view;
+  }
+
   function furnish(el, room, opts = {}) {
     const r = roomOf(room);
     if (isThing(opts.tried)) r.things.push({ ...roomOf({ things: [opts.tried] }).things[0], tried: true });
     el.prRoom = r;
     el.classList.add('pr-room');
+    const view = roomView(el);
     const px = roomPx(el);
-    el.style.setProperty('--px', `${px}px`);
+    view.style.setProperty('--px', `${px}px`);
+    view.style.setProperty('--cols', String(r.geo.cols));
+    view.style.setProperty('--rows', String(r.geo.rows));
+    view.style.setProperty('--wall', String(r.geo.wall));
+    if (el.prTier !== r.tier) {
+      el.prTier = r.tier;
+      queueMicrotask(() => view.prPan.settle()); // (grown: looked at from its middle again)
+    }
     if (!el.prSized) {
       el.prSized = true;
       new ResizeObserver(() => {
-        el.style.setProperty('--px', `${roomPx(el)}px`);
+        view.style.setProperty('--px', `${roomPx(el)}px`);
         if (el.hpPet) el.hpPet.refit();
         if (el.prArrange) el.prArrange.drawn();
-      }).observe(el);
+        view.prPan.settle();
+      }).observe(view);
     }
     let scene = el.querySelector('.pr-scene');
     if (!scene) {
@@ -4580,16 +4765,23 @@
   function newThing(el, list, key) {
     const P = roomPx(el);
     const W = el.clientWidth || 480;
-    const t = { list, key, x: 0.5, y: { hang: 4, ceiling: 2, rug: 40, stand: 29 }[list], size: 1, flip: false };
-    const s = spotOf(t);
+    const geo = el.prRoom ? el.prRoom.geo : ROOM_TIERS[0];
+    const t = { list, key, x: 0.5, y: { hang: 4, ceiling: 2, rug: geo.rows - 2, stand: geo.wall + 3 }[list], size: 1, flip: false };
+    const s = spotOf(t, geo);
     const others = (el.prRoom ? el.prRoom.things : []).filter((u) => u.list === list);
     const free = (x) => others.every((u) => {
-      const a = spotOf(u);
+      const a = spotOf(u, geo);
       const ax = leftOf(u, a, P, W);
       const bx = leftOf({ x }, s, P, W);
       return ax >= bx + s.w || bx >= ax + a.w || a.top >= s.top + s.h || s.top >= a.top + a.h;
     });
-    t.x = [0.5, 0.3, 0.7, 0.15, 0.85, 0.4, 0.6, 0.05, 0.95, 0.22, 0.78].find(free) ?? 0.5;
+    // (In the part of the room that's showing, from its middle out.)
+    const sc = el.prView && el.prView.prScroll;
+    const room = Math.max(1, W / P - s.w);
+    const mid = sc ? clampTo((sc.scrollLeft + sc.clientWidth / 2) / P - s.w / 2, 0, room) / room : 0.5;
+    const span = sc ? Math.min(0.5, sc.clientWidth / P / room / 2) : 0.5;
+    const tries = [0, -0.2, 0.2, -0.35, 0.35, -0.1, 0.1, -0.45, 0.45, -0.28, 0.28].map((d) => clampTo(mid + d * span * 2, 0, 1));
+    t.x = tries.find(free) ?? tries[0];
     return t;
   }
 
@@ -4724,10 +4916,11 @@
       const t = things()[i];
       const P = roomPx(el);
       const W = el.clientWidth || 480;
-      const s = spotOf(t0);
+      const geo = geoIn(el);
+      const s = spotOf(t0, geo);
       const room = Math.max(0, W / P - s.w);
       t.x = room > 0 ? clampTo(Math.round(((leftOf(t0, s, P, W) + dx) / room) * 1000) / 1000, 0, 1) : 0.5;
-      const [y0, y1] = THING_Y[t.list];
+      const [y0, y1] = thingY(t.list, geo);
       t.y = clampTo(Math.round((t.list === 'hang' || t.list === 'ceiling' ? s.top : s.top + s.h) + dy), y0, y1);
       placeThing(nodeOf(i));
     }
@@ -4739,7 +4932,7 @@
       const list = things();
       const order = list.map((t, i) => i).sort((a, b) => {
         const ta = list[a], tb = list[b];
-        return RANK[tb.list] - RANK[ta.list] || (ta.list === 'stand' ? spotOf(tb).depth - spotOf(ta).depth : 0) || b - a;
+        return RANK[tb.list] - RANK[ta.list] || (ta.list === 'stand' ? spotOf(tb, geoIn(el)).depth - spotOf(ta, geoIn(el)).depth : 0) || b - a;
       });
       for (const i of order) {
         const t = list[i];
@@ -4827,6 +5020,7 @@
       set(on) {
         st.on = Boolean(on);
         el.classList.toggle('pr-arranging', st.on);
+        if (el.prView) el.prView.prPan.fit(false);
         if (st.on) el.tabIndex = 0;
         else el.removeAttribute('tabindex');
         if (!st.on) st.sel = -1;
@@ -5445,7 +5639,7 @@
     // (a piece's video popped up, or its sound played, to try: the editor)
     popVideo, closeTopPopup, playSound,
     petEl, petRoom, petMeters, fullWords, happyWords,
-    ROOM, ROOM_DEFAULT, ROOM_SLOTS, THING_LISTS, THINGS_MAX, furnish, newThing, arrange, roomSwatch, dewIcon, thingArt: thingOf, MORE, WEAR, WEAR_SLOTS, canWear,
+    ROOM, ROOM_DEFAULT, ROOM_SLOTS, THING_LISTS, THINGS_MAX, ROOM_TIERS, roomGeo: (room) => geoOf(room && room.tier), furnish, newThing, arrange, roomSwatch, dewIcon, thingArt: thingOf, MORE, WEAR, WEAR_SLOTS, canWear,
     // (its owner fed the page's pet, or played with it, from elsewhere: it does it)
     petDid: (page, what, info) => { if (page.hpPet) page.hpPet.did(what, info); },
     // (the sheet of a pet's frames, to look at them)

@@ -3184,15 +3184,39 @@ button.person.open { background: var(--dusk-hi); }
 .settings.pet-dialog { width: min(560px, calc(100vw / var(--zoom) - 24px)); }
 /* (Everything in it is in front or behind the rest of it, not the box: scrolled, it all goes under
    the box's head.) */
-.pet-room {
-  position: relative; overflow: hidden; height: calc(var(--px, 6px) * 42); isolation: isolate;
+/* The view of a room (homepage.js roomView): as wide as the box, the room (twice as wide) inside
+   it, looked round by dragging, the wheel, the arrows at its edges; or all of it at once, smaller
+   ("Whole room": --fit). */
+.pr-view {
+  position: relative; overflow: hidden; height: calc(var(--px, 6px) * var(--rows, 42) * var(--fit, 1) + 4px); isolation: isolate;
   margin: 0 -20px; border-block: 2px solid var(--line); background: #2a1f33;
+  touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
+.pr-view.pr-panning { cursor: grabbing; }
+.pr-scroll { height: 100%; overflow: hidden; }
+.pr-scroll > .pr-room { width: max(100%, calc(var(--px, 6px) * var(--cols, 92))); height: calc(var(--px, 6px) * var(--rows, 42)); transform-origin: 0 0; }
+.pr-view.pr-fit .pr-room { transform: scale(var(--fit, 1)); }
+.pr-pan {
+  position: absolute; top: 50%; z-index: 1001; width: 34px; height: 44px; margin-top: -22px; padding: 0; border: 0;
+  background: rgba(20, 24, 38, 0.55); color: #fff; cursor: pointer; opacity: 0; transition: opacity 0.15s; pointer-events: none;
+}
+.pr-pan svg { width: 22px; height: 22px; }
+.pr-pan-left { left: 0; border-radius: 0 10px 10px 0; }
+.pr-pan-right { right: 0; border-radius: 10px 0 0 10px; }
+.pr-view.pr-more-left > .pr-pan-left, .pr-view.pr-more-right > .pr-pan-right { opacity: 0.85; pointer-events: auto; }
+.pr-pan:hover { background: rgba(20, 24, 38, 0.85); }
+.pr-whole {
+  position: absolute; right: 8px; top: 8px; z-index: 1001; padding: 4px 9px; border: 2px solid #2a1f33; border-radius: 0;
+  background: rgba(20, 24, 38, 0.82); color: #e6f6ff; font: 400 10px/1.2 Silkscreen, var(--font, sans-serif); letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer;
+}
+.pr-whole:hover { background: #2a1f33; }
+.pr-view:not(.pr-wide) > .pr-whole { display: none; }
+.pet-room { position: relative; overflow: hidden; }
 .pr-scene { position: absolute; inset: 0; z-index: 0; }
 .pr-scene i { position: absolute; display: block; image-rendering: pixelated; background-repeat: repeat; }
-.pr-wall { left: 0; right: 0; top: 0; height: calc(var(--px) * 26); }
-.pr-floor { left: 0; right: 0; bottom: 0; height: calc(var(--px) * 16); }
-.pr-base { left: 0; right: 0; top: calc(var(--px) * 25); height: calc(var(--px) * 3); background-size: calc(var(--px) * 8) 100%; }
+.pr-wall { left: 0; right: 0; top: 0; height: calc(var(--px) * var(--wall, 26)); background-position: 0 100%; }
+.pr-floor { left: 0; right: 0; bottom: 0; height: calc(var(--px) * (var(--rows, 42) - var(--wall, 26))); }
+.pr-base { left: 0; right: 0; top: calc(var(--px) * (var(--wall, 26) - 1)); height: calc(var(--px) * 3); background-size: calc(var(--px) * 8) 100%; }
 .pr-scene .pr-twinkle { inset: 0; animation: pr-twinkle 1.8s steps(1) infinite; }
 @keyframes pr-twinkle { 50% { opacity: 0.2; } }
 /* Its things (homepage.js furnish), wherever they've been put: --x of the way across the room beside
@@ -3276,7 +3300,8 @@ button.person.open { background: var(--dusk-hi); }
    round it and a little bar by it (flip it, smaller, bigger, put it away), and one tried on (not
    theirs yet) dotted round. Its pet keeps out of the way meanwhile. The room stays in view, under
    the box's head, while what's to add to it scrolls by. */
-.pet-dialog.arranging .pet-room { position: sticky; top: var(--stick, 60px); z-index: 2; }
+.pet-dialog.arranging .pr-view { position: sticky; top: var(--stick, 60px); z-index: 2; }
+.pet-dialog.arranging .pr-whole { display: none; }
 .pr-arranging { touch-action: none; cursor: pointer; }
 .pr-arranging:focus { outline: none; }
 .pr-arranging:focus-visible { box-shadow: inset 0 0 0 2px var(--lamp); }
@@ -3478,6 +3503,8 @@ button.person.open { background: var(--dusk-hi); }
 .dew-collectors { display: grid; gap: 6px; }
 .dew-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 6px 8px; border: 2px solid var(--line); background: var(--deep); }
 .dew-row .dew-icon { width: 30px; height: 30px; }
+/* (Its room's row: a little room for its picture.) */
+.dew-icon-room { background: linear-gradient(#5a4a6e 0 58%, #2a1f33 58% 66%, #a8783f 66%); border: 2px solid #2a1f33; image-rendering: pixelated; }
 .dew-row strong { display: block; font: 400 13px/1.2 Silkscreen, var(--font, sans-serif); letter-spacing: 0.02em; }
 .dew-row span { display: block; color: var(--mist); font-size: 12.5px; line-height: 1.35; }
 .dew-buy { justify-content: center; min-width: 96px; font: 400 12.5px/1 Silkscreen, var(--font, sans-serif); }

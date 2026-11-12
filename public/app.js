@@ -162,7 +162,7 @@ for (const id of [
   'pet-capsules-box', 'pet-capsules', 'pet-capsules-note', 'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
   'pet-wear', 'pet-wear-rows', 'pet-wear-dew', 'pet-wear-dew-text', 'pet-wear-dew-btn',
-  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'dew-fx', 'dew-hero', 'drop-chime', 'drop-sky', 'dew-info', 'dew-info-title', 'dew-info-about', 'dew-info-buy', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
+  'pet-dew', 'pet-dew-n', 'pet-dew-pane', 'dew-total', 'dew-rates', 'dew-note', 'dew-room', 'dew-upgrades', 'dew-collectors', 'dew-msg', 'dew-boosts', 'dew-drops', 'drops-anywhere', 'dew-fx', 'dew-hero', 'drop-chime', 'drop-sky', 'dew-info', 'dew-info-title', 'dew-info-about', 'dew-info-buy', 'achievement', 'ach-icon', 'ach-kind', 'ach-name', 'dew-milestones', 'dew-milestones-sum', 'dew-milestone-grid', 'dew-milestone-said', 'pet-decor-dew', 'pet-decor-dew-text', 'pet-decor-dew-btn',
   'sounds-btn', 'soundboard', 'sb-list', 'sb-volume', 'soundboard-input', 'soundboard-value', 'space-sounds', 'sound-style',
   'menu-record', 'call-record-input', 'call-record-note', 'call-record-delete', 'call-record-kept',
   'cam-preview', 'cam-preview-form', 'cam-preview-video', 'cam-preview-status', 'cam-preview-select', 'cam-preview-always', 'cam-preview-cancel', 'cam-preview-go',
@@ -18725,7 +18725,7 @@ function renderPetTabs() {
   // (Doing up its room: its things to move about, with the room in view as the rest scrolls by.)
   const arranging = S.petTab === 'decor' && Boolean(S.room) && !S.petTry;
   el.pet.classList.toggle('arranging', arranging);
-  if (arranging) el.petRoom.style.setProperty('--stick', `${el.pet.querySelector('.settings-head').offsetHeight}px`);
+  if (arranging) (el.petRoom.prView || el.petRoom).style.setProperty('--stick', `${el.pet.querySelector('.settings-head').offsetHeight}px`);
   arrangeRoom().set(arranging);
 }
 
@@ -18797,7 +18797,7 @@ function renderPetDecor() {
   head.textContent = 'Things for its room';
   const note = document.createElement('p');
   note.className = 'pet-note';
-  note.textContent = `Pick one to put it in (as many as you like, up to ${Homepage.THINGS_MAX}). Then drag things about in the room, and tap or click one to flip it, make it bigger or smaller, or put it away.`;
+  note.textContent = `Pick one to put it in (as many as you like, up to ${Homepage.roomGeo(S.room).things}: a bigger room, from the Dew tab, holds more). Then drag things about in the room, and tap or click one to flip it, make it bigger or smaller, or put it away.`;
   el.petDecorRows.append(head, note, ...THING_ROWS.map(([list, label]) => {
     const things = Homepage.ROOM[list];
     const opts = decorOrder(list, Object.keys(things).filter((key) => key !== 'none' && (!things[key].perk || supporting() || glowShown() || count(list, key)))).map((key) => {
@@ -18868,8 +18868,8 @@ function addThing(list, key) {
     }
     return;
   }
-  if (roomThings().length >= Homepage.THINGS_MAX) {
-    toast(`Its room has space for ${Homepage.THINGS_MAX} things: put one away first.`);
+  if (roomThings().length >= Homepage.roomGeo(S.room).things) {
+    toast(`Its room has space for ${Homepage.roomGeo(S.room).things} things: put one away first, or get it a bigger room in the Dew tab.`);
     return;
   }
   S.room = { ...S.room, things: [...roomThings(), Homepage.newThing(el.petRoom, list, key)] };
@@ -19525,6 +19525,7 @@ function renderDew() {
   el.dewNote.textContent = !d.pats ? `Pat ${p ? petCalled(p) : 'your pet'} up there in its room, and it shakes some off.`
     : d.happyMore >= 0.005 && p ? `${petName(p)} is happy, so what collects it brings ${Math.round(d.happyMore * 100)}% more.`
       : 'A happy pet means what collects it brings more: up to a quarter more.';
+  renderDewRoom();
   renderDewUpgrades();
   renderDewCollectors();
   renderDewBoosts();
@@ -19532,6 +19533,63 @@ function renderDew() {
   renderDewMilestones();
   renderDewCount();
   if (dewStage.on) dewStage.measure();
+}
+
+// Its room's size (lib/pets.js ROOM_TIERS): how big it is now, and the next size, with its price,
+// to get; or, at the biggest, that it's as big as rooms go for now.
+function renderDewRoom() {
+  const tiers = S.dewShop.rooms || [];
+  const tier = Math.min(tiers.length - 1, Math.max(0, (S.room && S.room.tier) || 0));
+  const now = tiers[tier];
+  const next = tiers[tier + 1];
+  if (!now) return el.dewRoom.replaceChildren();
+  let row = el.dewRoom.querySelector('.dew-row');
+  if (!row) {
+    row = document.createElement('div');
+    row.className = 'dew-row';
+    const icon = document.createElement('i');
+    icon.className = 'dew-icon dew-icon-room';
+    const words = document.createElement('div');
+    words.append(document.createElement('strong'), document.createElement('span'));
+    const buy = document.createElement('button');
+    buy.type = 'button';
+    buy.className = 'dew-buy';
+    const drop = document.createElement('i');
+    drop.className = 'dew-drop';
+    buy.append(drop, document.createTextNode(''));
+    buy.addEventListener('click', growRoom);
+    row.append(icon, words, buy);
+    el.dewRoom.replaceChildren(row);
+  }
+  const set = (node, text) => { if (node.textContent !== text) node.textContent = text; };
+  const size = (g) => `${g.cols} by ${g.rows}`;
+  set(row.querySelector('strong'), next ? next.label : 'As big as rooms go');
+  set(row.querySelector('div > span'), next ? `${next.about} Its room's ${size(now)} now; ${size(next)} after, with space for ${next.things} things.` : `Its room's ${size(now)}, with space for ${now.things} things. More sizes may come along.`);
+  const buy = row.querySelector('.dew-buy');
+  buy.hidden = !next;
+  if (next) {
+    buy.dataset.dewPrice = String(next.cost);
+    set(buy.lastChild, dewWords(next.cost));
+    buy.setAttribute('aria-label', `Get ${next.label.toLowerCase()} for ${dewWords(next.cost)} dew`);
+  }
+}
+
+// (The next size, got: the room grows, its things kept where they were.)
+async function growRoom() {
+  el.dewMsg.hidden = true;
+  await sendPats();
+  let d;
+  try {
+    d = await api('POST', '/dew/room');
+  } catch (err) {
+    el.dewMsg.textContent = err.message;
+    el.dewMsg.hidden = false;
+    return;
+  }
+  setDew(d.dew);
+  S.room = d.room;
+  if (el.pet.open) renderPet();
+  toast(`Its room's grown: ${d.room.things.length ? 'everything stayed where it was, with' : ''} new space to fill.`.replace(': new', ': new'));
 }
 
 // Upgrades ready to get (patted enough, enough of a collector, or of them all, made enough, caught
