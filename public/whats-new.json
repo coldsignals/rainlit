@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-11-12",
+      "date": "2026-11-12",
+      "title": "/tts",
+      "items": [
+        {
+          "title": "Read it out loud",
+          "text": "Start a message with /tts and it’s read aloud to whoever has TTS Enabled. Handy when someone’s driving and can't check their device, or can’t talk. Choose where it speaks in Settings > Messages and sounds."
+        }
+      ]
+    },
+    {
       "id": "2026-11-11c",
       "date": "2026-11-11",
       "title": "Notifications",
