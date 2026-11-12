@@ -53,6 +53,7 @@ supporters.whenChanged((userId) => badgeChanged(userId));
 const themes = require('./lib/themes');
 const cards = require('./lib/cards');
 const feedback = require('./lib/feedback');
+const notices = require('./lib/notices');
 const images = require('./lib/images');
 const { imageKind } = images;
 const embeds = require('./lib/embeds');
@@ -1502,13 +1503,15 @@ api.post('/homepages/:who/guestbook', needUser, (req, res) => {
   const { owner, page } = found;
   if (owner.id === req.user.id) return fail(res, 400, "That's your own guestbook.");
   if (!homepages.hasGuestbook(page.doc)) return fail(res, 400, "There's no guestbook on this page.");
+  let entry;
   try {
-    homepages.sign(owner.id, req.user.id, (req.body || {}).text);
+    entry = homepages.sign(owner.id, req.user.id, (req.body || {}).text);
   } catch (err) {
     if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
     throw err;
   }
   realtime.sendToUser(owner.id, { type: 'guestbook-new', from: req.user.display_name });
+  notify(owner.id, 'guestbook', req.user.id, entry);
   res.json(guestbookJson(owner, page, req.user));
 });
 
@@ -1516,7 +1519,7 @@ api.delete('/homepages/:who/guestbook/:entryId', needUser, (req, res) => {
   const found = guestbookPage(req, res);
   if (!found) return;
   try {
-    homepages.unsign(found.owner.id, req.params.entryId, req.user.id);
+    if (homepages.unsign(found.owner.id, req.params.entryId, req.user.id)) forgetNotice(found.owner.id, req.params.entryId);
   } catch (err) {
     if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
     throw err;
@@ -1557,13 +1560,16 @@ api.post('/homepages/:who/questions', needUser, needConfirmed, (req, res) => {
   if (owner.id === req.user.id) return fail(res, 400, "That's your own box.");
   if (!box) return fail(res, 400, "There's no question box on this page.");
   if (anonymous && !box.anon) return fail(res, 400, "They aren't taking anonymous questions.");
+  let asked;
   try {
-    homepages.ask(owner.id, req.user.id, (req.body || {}).text, anonymous);
+    asked = homepages.ask(owner.id, req.user.id, (req.body || {}).text, anonymous);
   } catch (err) {
     if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
     throw err;
   }
   realtime.sendToUser(owner.id, { type: 'question-new', from: anonymous ? null : req.user.display_name });
+  // (Asked anonymously: nobody's name kept with it.)
+  notify(owner.id, 'question', anonymous ? null : req.user.id, asked);
   res.json(questionsJson(owner, page, req.user));
 });
 
@@ -1582,7 +1588,10 @@ api.put('/homepages/:who/questions/:questionId', needUser, (req, res) => {
   }
   if (!q) return fail(res, 404, "That question isn't there any more.");
   // (Whoever asked hears it's been answered, the first time.)
-  if (!q.answered_at) realtime.sendToUser(q.asker_id, { type: 'question-answered', by: owner.display_name, owner: owner.id });
+  if (!q.answered_at) {
+    realtime.sendToUser(q.asker_id, { type: 'question-answered', by: owner.display_name, owner: owner.id });
+    notify(q.asker_id, 'answer', owner.id, `${q.id}:a`);
+  }
   res.json(questionsJson(owner, page, req.user));
 });
 
@@ -1590,7 +1599,7 @@ api.delete('/homepages/:who/questions/:questionId', needUser, (req, res) => {
   const found = guestbookPage(req, res);
   if (!found) return;
   try {
-    homepages.unask(found.owner.id, req.params.questionId, req.user.id);
+    if (homepages.unask(found.owner.id, req.params.questionId, req.user.id)) forgetNotice(found.owner.id, req.params.questionId);
   } catch (err) {
     if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
     throw err;
@@ -1604,13 +1613,38 @@ api.delete('/homepages/me/question-stops', needUser, (req, res) => {
   res.json({ ok: true, stoppedCount: 0 });
 });
 
+// ----- Notifications -----
+// (lib/notices.js) The friendly things that happened, behind the bell by your profile: kept as they
+// happen (here: notify), listed, and marked looked at. Wherever they're signed in hears there's
+// something new, for the bell's dot; nothing more than that.
+function notify(userId, kind, fromId, ref) {
+  if (notices.record(userId, kind, fromId, ref)) realtime.sendToUser(userId, { type: 'notice', unread: notices.unread(userId) });
+}
+function notifyPetted(ownerId, fromId) {
+  if (ownerId === fromId) return;
+  const pet = pets.get(ownerId);
+  if (pet && notices.petted(ownerId, fromId, pet.name || '')) realtime.sendToUser(ownerId, { type: 'notice', unread: notices.unread(ownerId) });
+}
+// (What one was about is gone, a guestbook entry or a question, and its answer's: so are they.)
+function forgetNotice(ownerId, ref) {
+  notices.forget(ref);
+  notices.forget(`${ref}:a`);
+  realtime.sendToUser(ownerId, { type: 'notice', unread: notices.unread(ownerId) });
+}
+api.get('/notices', needUser, (req, res) => res.json(notices.list(req.user.id)));
+api.post('/notices/seen', needUser, (req, res) => {
+  notices.seen(req.user.id);
+  realtime.sendToUser(req.user.id, { type: 'notice', unread: 0 });
+  res.json({ ok: true });
+});
+
 // Someone's pet, on their homepage: anyone who can see the page can pet it (without an account
 // too, if the page is public).
 api.post('/homepages/:who/pet', (req, res) => {
   const found = guestbookPage(req, res);
   if (!found) return;
   if (!pets.onHomepage(found.owner.id)) return fail(res, 400, "There's no pet on this page.");
-  pets.petIt(found.owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip));
+  if (pets.petIt(found.owner.id, req.user ? req.user.id : homepages.visitorKey(req.ip))) notifyPetted(found.owner.id, req.user ? req.user.id : null);
   res.json({ pet: pets.onHomepage(found.owner.id) });
 });
 
@@ -1677,7 +1711,7 @@ api.post('/users/:id/pet', needUser, (req, res) => {
   const u = petOwnerFor(req, res);
   if (!u) return;
   if (!pets.visiting(u.id)) return fail(res, 404, "They don't have a pet.");
-  pets.petIt(u.id, req.user.id);
+  if (pets.petIt(u.id, req.user.id)) notifyPetted(u.id, req.user.id);
   res.json({ pet: pets.visiting(u.id) });
 });
 

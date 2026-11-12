@@ -155,6 +155,7 @@ for (const id of [
   'glow', 'glow-because', 'glow-get', 'glow-price',
   'feedback', 'feedback-form', 'feedback-shot-btn', 'feedback-shot-input', 'feedback-shot-preview', 'feedback-shot-img', 'feedback-shot-remove', 'feedback-btn', 'feedback-note', 'feedback-what', 'feedback-text', 'feedback-diag-field', 'feedback-diag',
   'feedback-diag-what', 'feedback-diag-text', 'feedback-error', 'feedback-sent', 'feedback-send', 'feedback-mine-wrap', 'feedback-mine', 'feedback-admin-list',
+  'notices-btn', 'notices', 'notices-list', 'notices-empty', 'notice-dot-input',
   'pet-btn', 'pet-btn-face', 'pet-btn-dot', 'pet', 'pet-room', 'pet-room-empty', 'pet-care', 'pet-name', 'pet-since', 'pet-meters', 'pet-petted', 'pet-feed', 'pet-play', 'pet-msg',
   'pet-capsules-box', 'pet-capsules', 'pet-capsules-note', 'pet-pick-title', 'pet-kinds', 'pet-glow-box', 'pet-glow-kinds', 'pet-try', 'pet-try-text', 'pet-try-btn', 'pet-about', 'pet-name-input', 'pet-coats', 'pet-home', 'pet-release', 'pet-btn-input',
   'pet-decor', 'pet-decor-rows', 'pet-decor-try', 'pet-decor-try-text', 'pet-decor-try-btn', 'pet-wear-try', 'pet-wear-try-text', 'pet-wear-try-btn',
@@ -304,6 +305,7 @@ const S = {
   embeds: store.get('embeds', 'on') !== 'off', // link previews
   compactChat: store.get('compactChat', 'off') === 'on', // messages without people's pictures beside them
   petButton: store.get('petButton', 'on') !== 'off', // your pet's button, by your profile
+  noticeDot: store.get('noticeDot', 'on') !== 'off', // the dot on the bell, for new notifications
   facing: store.get('camFacing', ''), // on a phone, the camera used last: front ('user') or back ('environment')
   callSounds: store.get('callSounds', 'on') !== 'off',
   typing: new Map(), // conversation -> who's typing in it right now -> when to stop showing it
@@ -1978,6 +1980,12 @@ function handleServerMessage(msg) {
     case 'question-new':
       // (Someone asked you something in your homepage's box: from is null if they asked anonymously.)
       if (!Homepage.onAsked(msg.from)) toast(`${msg.from || 'Someone'} asked you a question. It's in the box on your homepage.`);
+      return;
+    case 'notice':
+      // (Something new behind the bell, or it's been looked at somewhere else.)
+      if (S.me) S.me.notices = msg.unread;
+      renderNoticeDot();
+      if (msg.unread && el.notices.open) loadNotices();
       return;
     case 'question-answered':
       if (!Homepage.onAnswered(msg.owner, msg.by)) toast(`${msg.by} answered your question.`);
@@ -10215,6 +10223,7 @@ async function fillDeviceLists() {
   el.embedsInput.checked = S.embeds;
   el.compactInput.checked = S.compactChat;
   el.petBtnInput.checked = S.petButton;
+  el.noticeDotInput.checked = S.noticeDot;
   el.callSoundsInput.checked = S.callSounds;
   el.duckField.hidden = !ANDROID;
   el.duckInput.checked = store.get('duck', 'on') !== 'off';
@@ -11076,10 +11085,98 @@ function renderMe() {
   el.adminBtn.hidden = !S.me.isAdmin;
   el.homeTitle.textContent = `Hi, ${S.me.displayName}`;
   renderFeedbackDot();
+  renderNoticeDot();
 }
 
 // A reply to feedback you sent, not looked at yet: a dot on Settings, and on its Send feedback, till
 // you've opened it (wherever you were when it came).
+// ----- Notifications -----
+// (lib/notices.js) The friendly things that happened: someone signed your guestbook, asked you a
+// question, answered one of yours, or petted your pet. Behind the bell by your profile, newest
+// first; a dot on it when there's something new (unless that's turned off, in Settings). No sound,
+// nothing pushed. Opening it is looking at them.
+function renderNoticeDot() {
+  const n = (S.me && S.me.notices) || 0;
+  el.noticesBtn.classList.toggle('has-new', n > 0 && S.noticeDot);
+  const label = n ? `Notifications (${n} new)` : 'Notifications';
+  el.noticesBtn.title = label;
+  el.noticesBtn.setAttribute('aria-label', label);
+}
+
+// What one says: who (in bold; nobody, if they asked anonymously or have no account), and what.
+function noticeWords(n) {
+  const who = n.from ? n.from.displayName : '';
+  switch (n.kind) {
+    case 'guestbook': return [who, ' signed your guestbook'];
+    case 'question': return [who || 'Someone', ' asked you a question'];
+    case 'answer': return [who, ' answered your question'];
+    case 'petted': {
+      const pet = n.pet || 'your pet';
+      const times = n.n > 1 ? ` ${n.n} times` : '';
+      return [who || (n.n > 1 ? 'Visitors' : 'A visitor'), ` petted ${pet}${times}`];
+    }
+    default: return ['', ''];
+  }
+}
+
+// Where one goes: your homepage (its guestbook, its question box), theirs (their answer), or your pet.
+function openNotice(n) {
+  el.notices.close();
+  if (n.kind === 'petted') openPet();
+  else if (n.kind === 'answer' && n.from) Homepage.open(n.from.id);
+  else Homepage.open(S.me.id);
+}
+
+function noticeItem(n, isNew) {
+  const li = document.createElement('li');
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = `notice${isNew ? ' new' : ''}`;
+  b.dataset.kind = n.kind;
+  const [who, what] = noticeWords(n);
+  const text = document.createElement('span');
+  text.className = 'notice-text';
+  const name = document.createElement('strong');
+  name.textContent = who;
+  text.append(name, what);
+  const when = document.createElement('small');
+  when.className = 'notice-when';
+  when.textContent = fmtWhen(n.at);
+  b.append(makeFace(n.from || { id: '', displayName: '?' }, null), text, when);
+  if (isNew) {
+    const dot = document.createElement('i');
+    dot.className = 'notice-dot';
+    dot.title = 'New';
+    b.append(dot);
+  }
+  b.addEventListener('click', () => openNotice(n));
+  li.append(b);
+  return li;
+}
+
+async function loadNotices() {
+  let d;
+  try {
+    d = await api('GET', '/notices');
+  } catch (err) {
+    toast(err.message);
+    return;
+  }
+  el.noticesEmpty.hidden = d.notices.length > 0;
+  el.noticesList.replaceChildren(...d.notices.map((n) => noticeItem(n, n.at > d.seenAt)));
+  // (Looked at: here, and wherever else you're signed in.)
+  if ((S.me && S.me.notices) || d.notices.some((n) => n.at > d.seenAt)) {
+    if (S.me) S.me.notices = 0;
+    renderNoticeDot();
+    api('POST', '/notices/seen').catch(() => {});
+  }
+}
+
+function openNotices() {
+  if (!el.notices.open) el.notices.showModal();
+  loadNotices();
+}
+
 function renderFeedbackDot() {
   const n = (S.me && S.me.feedbackReplies) || 0;
   for (const b of [el.appSettingsBtn, el.feedbackBtn]) b.classList.toggle('has-reply', n > 0);
@@ -22572,7 +22669,7 @@ async function init() {
   // needs an answer: 18+, an announcement, sharing what you're doing).
   el.whatsNew.addEventListener('close', onWhatsNewClosed);
   el.whatsNewBtn.addEventListener('click', openWhatsNew);
-  for (const d of [el.whatsNew, el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim, el.events, el.eventEdit, el.freeTimes]) {
+  for (const d of [el.whatsNew, el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim, el.events, el.eventEdit, el.freeTimes, el.notices]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 
@@ -22587,6 +22684,7 @@ async function init() {
 
   // ----- Your pet -----
   el.petBtn.addEventListener('click', openPet);
+  el.noticesBtn.addEventListener('click', openNotices);
   el.petFeed.addEventListener('click', () => tendPet('feed'));
   el.petPlay.addEventListener('click', () => tendPet('play'));
   el.petNameInput.addEventListener('change', () => savePet({ name: el.petNameInput.value }));
@@ -23116,6 +23214,11 @@ async function init() {
     S.compactChat = el.compactInput.checked;
     store.set('compactChat', S.compactChat ? 'on' : 'off');
     document.body.classList.toggle('compact-chat', S.compactChat);
+  });
+  el.noticeDotInput.addEventListener('change', () => {
+    S.noticeDot = el.noticeDotInput.checked;
+    store.set('noticeDot', S.noticeDot ? 'on' : 'off');
+    renderNoticeDot();
   });
   el.petBtnInput.addEventListener('change', () => {
     S.petButton = el.petBtnInput.checked;

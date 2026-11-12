@@ -322,6 +322,9 @@
           <i id="pet-btn-face" class="pet-btn-face" aria-hidden="true"></i>
           <span id="pet-btn-dot" class="pet-btn-dot" hidden></span>
         </button>
+        <button id="notices-btn" class="icon-btn ghost" type="button" aria-label="Notifications" title="Notifications" aria-haspopup="dialog">
+          <svg class="icon"><use href="#i-bell"/></svg>
+        </button>
         <button id="admin-btn" class="icon-btn ghost" type="button" aria-label="Invites and accounts" title="Invites and accounts" hidden>
           <svg class="icon"><use href="#i-key"/></svg>
         </button>
@@ -1454,6 +1457,16 @@
     </div>
   </dialog>
 
+  <!-- Notifications: the friendly things that happened (lib/notices.js) -->
+  <dialog id="notices" class="settings space-dialog notices-dialog" aria-labelledby="notices-title">
+    <div class="settings-inner">
+      <div class="settings-head"><h2 id="notices-title">Notifications</h2><button class="icon-btn ghost" type="button" data-close aria-label="Close"><svg class="icon"><use href="#i-close"/></svg></button></div>
+      <p id="notices-empty" class="mod-text" hidden>Nothing yet. When someone signs your guestbook, asks or answers a question, or pets your pet, you'll find it here.</p>
+      <ol id="notices-list" class="notices-list"></ol>
+      <p class="hint notices-hint">Kept for 30 days. Messages, mentions and friend requests aren't here: they have their own dots.</p>
+    </div>
+  </dialog>
+
   <!-- A timeout, kick or ban -->
   <dialog id="mod-dialog" class="settings space-dialog" aria-labelledby="mod-title">
     <form id="mod-form" class="settings-inner" novalidate>
@@ -1731,6 +1744,10 @@
             <label class="toggle">
               <input id="pet-btn-input" type="checkbox" />
               <span>Pet button by your profile <small class="toggle-note">(where you adopt a pet and look after it; turned off, its room is still in your homepage's Pet tab)</small></span>
+            </label>
+            <label class="toggle">
+              <input id="notice-dot-input" type="checkbox" />
+              <span>Dot on the bell <small class="toggle-note">(when there's something new in your notifications: a guestbook entry, a question or an answer, your pet petted)</small></span>
             </label>
           </section>
           <section class="settings-sec set-messages" aria-labelledby="set-messages">

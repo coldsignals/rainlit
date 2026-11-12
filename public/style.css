@@ -1070,12 +1070,26 @@ li.suspended > .grow { color: var(--danger-text); }
 @keyframes admin-dot { 50% { box-shadow: 0 0 0 2px var(--admin-dot-ring, color-mix(in srgb, var(--dusk) 50%, var(--deep))), 0 0 13px 5px color-mix(in srgb, var(--danger) 50%, transparent); } }
 @media (prefers-reduced-motion: reduce) { #admin-btn.has-reports::after { animation: none; } }
 /* A reply to your feedback, not looked at yet (app.js renderFeedbackDot): a dot in the lamp's light. */
-#app-settings-btn, #feedback-btn { position: relative; }
-#app-settings-btn.has-reply::after, #feedback-btn.has-reply::after {
+#app-settings-btn, #feedback-btn, #notices-btn { position: relative; }
+#app-settings-btn.has-reply::after, #feedback-btn.has-reply::after, #notices-btn.has-new::after {
   content: ""; position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%;
   background: var(--lamp); box-shadow: 0 0 0 2px var(--deep), 0 0 6px 1px var(--lamp-glow);
 }
 #feedback-btn.has-reply::after { top: -3px; right: -3px; }
+/* Notifications (app.js renderNotices): each a row to click, who it's from, what happened, and when;
+   the new ones with the lamp's dot beside them. */
+.notices-list { list-style: none; margin: -6px 0 0; padding: 0; display: grid; gap: 2px; max-height: min(60vh, 460px); overflow-y: auto; overscroll-behavior: contain; }
+.notices-list:empty { display: none; }
+.notice {
+  width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 2px 10px;
+  padding: 8px 10px; border: 0; border-radius: var(--radius); background: none; color: inherit; font: inherit; text-align: left;
+}
+.notice:hover { background: var(--dusk); }
+.notice > .face { grid-row: span 2; }
+.notice-text { min-width: 0; overflow-wrap: anywhere; }
+.notice-when { grid-column: 2; color: var(--mist); font-size: 12px; }
+.notice-dot { grid-row: 1 / span 2; grid-column: 3; width: 8px; height: 8px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 6px 1px var(--lamp-glow); }
+.notices-hint { margin: 0; }
 .me-card.carded #admin-btn { --admin-dot-ring: color-mix(in srgb, var(--card-c1) 45%, var(--card-c2)); }
 .mod-text { margin: -6px 0 0; color: var(--mist); font-size: 14px; }
 .mod-list { list-style: none; margin: -6px 0 0; padding: 0; display: grid; gap: 4px; }
