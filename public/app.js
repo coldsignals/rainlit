@@ -11415,6 +11415,17 @@ function showSettingsPage(name) {
   for (const sec of el.settings.querySelectorAll('.settings-page')) sec.classList.toggle('off', sec.dataset.page !== page);
   store.set('settingsPage', page);
   el.settings.scrollTop = 0;
+  // (On a phone the list is a row: the one picked brought into view, and the row fading at an
+  // edge with more past it.)
+  const current = buttons.find((b) => b.dataset.page === page);
+  if (current && el.settingsNav.scrollWidth > el.settingsNav.clientWidth) current.scrollIntoView({ block: 'nearest', inline: 'center' });
+  settingsNavEdges();
+}
+
+function settingsNavEdges() {
+  const n = el.settingsNav;
+  n.classList.toggle('more-left', n.scrollLeft > 4);
+  n.classList.toggle('more-right', n.scrollLeft + n.clientWidth < n.scrollWidth - 4);
 }
 
 function renderFeedbackDot() {
@@ -23332,14 +23343,16 @@ async function init() {
   for (const btn of [el.settingsBtn, el.appSettingsBtn]) {
     btn.addEventListener('click', async () => {
       await fillDeviceLists();
-      showSettingsPage(store.get('settingsPage', 'theme'));
       el.settings.showModal();
+      showSettingsPage(store.get('settingsPage', 'theme')); // (once it's open and has a size: the row's edges)
     });
   }
   el.settingsNav.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-page]');
     if (b) showSettingsPage(b.dataset.page);
   });
+  el.settingsNav.addEventListener('scroll', settingsNavEdges, { passive: true });
+  window.addEventListener('resize', () => { if (el.settings.open) settingsNavEdges(); });
   el.micSelect.addEventListener('change', onMicChange);
   for (const input of [el.echoInput, el.gainInput]) input.addEventListener('change', onMicFxChange);
   el.noiseSelect.addEventListener('change', onNoiseChange);
