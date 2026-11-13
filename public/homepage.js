@@ -3427,7 +3427,11 @@
   ];
   const tierOf = (v) => (Number.isInteger(v) && v >= 0 && v < ROOM_TIERS.length ? v : 0);
   const geoOf = (tier) => ROOM_TIERS[tierOf(tier)];
+  // (A thing's node says which room's it is (prGeo), from when it's made: before it's in the room,
+  // closest() finds nothing, and the first room's size was being used, which put a wall thing
+  // dragged low back up when the room was drawn again.)
   const geoIn = (node) => {
+    if (node && node.prGeo) return node.prGeo;
     const r = node && node.closest('.pr-room');
     return r && r.prRoom ? r.prRoom.geo : ROOM_TIERS[0];
   };
@@ -4487,12 +4491,13 @@
     }
     layer.style.background = [...pools, L.dim].join(', ');
   }
-  function thingNode(t, i, sky) {
+  function thingNode(t, i, sky, geo = ROOM_TIERS[0]) {
     const info = ROOM[t.list][t.key];
     const n = document.createElement('i');
     n.className = `pr-thing pr-${t.list} pr-${t.key}`;
     n.dataset.i = String(i);
     n.prThing = t;
+    n.prGeo = geo;
     paintThing(n);
     if (info.window) paintSky(n, sky);
     if (info.flicker) n.classList.add('pr-flicker');
@@ -4765,7 +4770,7 @@
     if (r.sky === 'auto') el.prSkyTimer = setInterval(() => { for (const w of el.querySelectorAll('.pr-window')) paintSky(w, 'auto'); }, 5 * 60_000);
     const base = layer('pr-base', null);
     base.style.backgroundImage = `url("${BASEBOARD}")`;
-    const nodes = r.things.map((t, i) => thingNode(t, i, r.sky));
+    const nodes = r.things.map((t, i) => thingNode(t, i, r.sky, r.geo));
     const of = (list) => nodes.filter((n) => n.prThing.list === list);
     scene.replaceChildren(layer('pr-wall', thingOf('wall', r.wall), true), layer('pr-floor', thingOf('floor', r.floor), true), base, ...of('hang'), ...of('ceiling'), ...of('rug'));
     // (What stands on the floor is in the room itself, with its pet, not behind it with the rest.)
