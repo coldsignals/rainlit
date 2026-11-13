@@ -1329,12 +1329,26 @@ function windowShareStream(port, choice, fps) {
     last = null;
     vw.close().catch(() => {});
     if (aw) aw.close().catch(() => {});
+    if (S.shareSound === sound) S.shareSound = null;
   };
   // (Behind: a frame's skipped, rather than piling up.)
   const put = (frame) => {
     if (vw.desiredSize !== null && vw.desiredSize <= 0) return frame.close();
     vw.write(frame).catch(() => {});
   };
+  // Its sound: a piece dropped is a hole in it, so pieces queue while this thread's busy (up to
+  // 300 ms of them; past that, the newest go). Counted, with gaps in what the app sent, for the
+  // stream stats and the call debug log (share-sound, every 10 s while any went wrong).
+  const sound = { got: 0, dropped: 0, gaps: 0, pending: 0, lastTs: 0 };
+  S.shareSound = sound;
+  const soundTrace = setInterval(() => {
+    if (over) return clearInterval(soundTrace);
+    const d = { got: sound.got - (sound.saidGot || 0), dropped: sound.dropped - (sound.saidDropped || 0), gaps: sound.gaps - (sound.saidGaps || 0) };
+    sound.saidGot = sound.got;
+    sound.saidDropped = sound.dropped;
+    sound.saidGaps = sound.gaps;
+    if (audio && (d.dropped || d.gaps)) trace('share-sound', d);
+  }, 10_000);
   port.onmessage = (e) => {
     const m = e.data || {};
     if (m.t === 'v') {
@@ -1355,10 +1369,17 @@ function windowShareStream(port, choice, fps) {
       lastAt = performance.now();
       put(frame);
     } else if (m.t === 'a' && aw) {
-      if (aw.desiredSize !== null && aw.desiredSize <= 0) return;
+      sound.got++;
+      if (sound.lastTs && m.ts - sound.lastTs > 25_000) sound.gaps++; // (more than 25 ms between 10 ms pieces: the app skipped)
+      sound.lastTs = m.ts;
+      if (sound.pending >= 30) return void sound.dropped++;
       try {
-        aw.write(new AudioData({ format: 'f32', sampleRate: m.rate, numberOfFrames: m.frames, numberOfChannels: m.channels, timestamp: m.ts, data: new Float32Array(m.data) })).catch(() => {});
-      } catch {}
+        sound.pending++;
+        aw.write(new AudioData({ format: 'f32', sampleRate: m.rate, numberOfFrames: m.frames, numberOfChannels: m.channels, timestamp: m.ts, data: new Float32Array(m.data) })).catch(() => {}).finally(() => { sound.pending--; });
+      } catch {
+        sound.pending--;
+        sound.dropped++;
+      }
     } else if (m.t === 'noaudio') {
       noWindowSound(m);
     } else if (m.t === 'ended') {
@@ -3201,6 +3222,10 @@ function renderStreamStats(conn, video, stats, pair, route, ping) {
     const lossPct = lostNow + gotNow > 0 ? ((lostNow / (lostNow + gotNow)) * 100).toFixed(1) : '0.0';
     lines.push(`Receiving ${inb.frameWidth}×${inb.frameHeight}, ${Math.round(inb.framesPerSecond || 0)} fps, ${mbps(inb.bytesReceived, prev.inBytes, inb.timestamp, prev.inAt)} Mb/s, ${lossPct}% lost`);
     lines.push(`          ${codec(inb)}${inb.decoderImplementation ? ` (${inb.decoderImplementation})` : ''}${inb.freezeCount ? `, froze ${inb.freezeCount}×` : ''}`);
+  }
+  if (out && S.shareSound && S.local.screenAudio) {
+    const ss = S.shareSound;
+    lines.push(`Screen sound: ${ss.got} pieces${ss.dropped ? `, ${ss.dropped} dropped here` : ''}${ss.gaps ? `, ${ss.gaps} gaps from the app` : ''}${!ss.dropped && !ss.gaps ? ', no holes' : ''}`);
   }
   if (!out && !inb) lines.push('No video right now');
   conn.lastStats = now;
