@@ -150,7 +150,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name', 'rain-note', 'rain-calls-input',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'settings-nav', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'tts-select', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'settings-nav', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'tts-select', 'tts-volume', 'tts-volume-value', 'tts-test-btn', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -303,6 +303,7 @@ const S = {
   showStats: store.get('streamStats', 'off') === 'on',
   sounds: store.get('sounds', 'on') !== 'off',
   tts: ['open', 'all', 'off'].includes(store.get('tts', 'open')) ? store.get('tts', 'open') : 'open', // /tts messages read aloud: where
+  ttsVolume: Math.min(100, Math.max(10, Number(store.get('ttsVolume', '100')) || 100)), // ...and how loud, in percent
   clickSounds: store.get('clickSounds', 'on') !== 'off',
   soundStyle: store.get('soundStyle', 'rainlit') === 'classic' ? 'classic' : 'rainlit', // (see SOUND_STYLES)
   embeds: store.get('embeds', 'on') !== 'off', // link previews
@@ -7126,11 +7127,13 @@ function ttsTag() {
 
 // Said aloud: the Android app's own voice (its page can't), else the browser's.
 function speak(text) {
-  if (ANDROID && ANDROID.speak) return ANDROID.speak({ text }).catch(() => {});
+  const volume = S.ttsVolume / 100;
+  if (ANDROID && ANDROID.speak) return ANDROID.speak({ text, volume }).catch(() => {});
   if (!('speechSynthesis' in window)) return;
   try {
     const u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05;
+    u.volume = volume;
     speechSynthesis.speak(u);
   } catch {}
 }
@@ -10473,6 +10476,8 @@ async function fillDeviceLists() {
   renderVolumeCap();
   el.soundsInput.checked = S.sounds;
   el.ttsSelect.value = S.tts;
+  el.ttsVolume.value = String(S.ttsVolume);
+  el.ttsVolumeValue.textContent = `${S.ttsVolume}%`;
   el.clicksInput.checked = S.clickSounds;
   el.embedsInput.checked = S.embeds;
   el.compactInput.checked = S.compactChat;
@@ -23751,6 +23756,15 @@ async function init() {
     S.tts = el.ttsSelect.value;
     store.set('tts', S.tts);
     if (S.tts === 'off') stopSpeaking();
+  });
+  el.ttsVolume.addEventListener('input', () => {
+    S.ttsVolume = Number(el.ttsVolume.value) || 100;
+    el.ttsVolumeValue.textContent = `${S.ttsVolume}%`;
+    store.set('ttsVolume', String(S.ttsVolume));
+  });
+  el.ttsTestBtn.addEventListener('click', () => {
+    stopSpeaking();
+    speak(`${(S.me && S.me.displayName) || 'Someone'} said: this is how a message read aloud sounds.`);
   });
   el.soundsInput.addEventListener('change', () => {
     S.sounds = el.soundsInput.checked;

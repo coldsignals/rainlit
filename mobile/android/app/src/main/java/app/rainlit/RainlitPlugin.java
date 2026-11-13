@@ -543,9 +543,13 @@ public class RainlitPlugin extends Plugin {
     private boolean ttsReady = false;
     private final java.util.ArrayDeque<String> ttsWaiting = new java.util.ArrayDeque<>();
 
+    private float ttsVolume = 1f;
+
     @PluginMethod
     public void speak(PluginCall call) {
         String text = call.getString("text", "");
+        Float v = call.getFloat("volume");
+        if (v != null) ttsVolume = Math.max(0.1f, Math.min(1f, v));
         if (text.isEmpty()) {
             call.resolve();
             return;
@@ -572,7 +576,9 @@ public class RainlitPlugin extends Plugin {
             .setUsage(inCall ? AudioAttributes.USAGE_VOICE_COMMUNICATION : AudioAttributes.USAGE_MEDIA)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
             .build());
-        tts.speak(text, TextToSpeech.QUEUE_ADD, null, "rainlit-" + System.nanoTime());
+        android.os.Bundle params = new android.os.Bundle();
+        params.putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, ttsVolume);
+        tts.speak(text, TextToSpeech.QUEUE_ADD, params, "rainlit-" + System.nanoTime());
     }
 
     @PluginMethod
