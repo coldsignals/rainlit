@@ -6811,6 +6811,7 @@ async function sendText(friendId, text, replyTo = null) {
   try {
     const { message } = await postMessage(friendId, { id, text, replyTo });
     appendMessage(dm, message);
+    if (message.meta && message.meta.tts) speakMessage(dm, message, true); // (read to you too: you hear what they hear)
   } catch (err) {
     markSendFailed(li, err, () => sendText(friendId, text, replyTo));
   }
@@ -7098,7 +7099,7 @@ function onDmRead({ dm: dmId, at }) {
 // voice room), or anywhere you'd hear about a message at all. Never your own, nor from someone
 // you've blocked, nor a muted channel, nor while you're deafened. The name is its letters and
 // digits alone (symbols read out are a mouthful); links are "a link"; a long message is cut.
-function speakMessage(dm, m) {
+function speakMessage(dm, m, mine = false) {
   if (S.tts === 'off' || !m.meta || !m.meta.tts || m.kind !== 'text') return;
   if (S.deafened || (S.voice && S.voice.deafened) || (S.blocked && S.blocked.has(m.author))) return;
   const c = dm.channelId ? S.channels.get(dm.channelId) : null;
@@ -7108,7 +7109,7 @@ function speakMessage(dm, m) {
   const inCall = !c && S.inCall && S.callWith === dm.friendId;
   const inRoom = Boolean(c && S.voice && S.voice.spaceId === c.spaceId);
   if (S.tts === 'open' && !open && !inCall && !inRoom) return;
-  const name = friendName(m.author).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || 'Someone';
+  const name = mine ? 'You' : friendName(m.author).replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || 'Someone';
   const words = plainEmoji(plainFormat(m.text)).replace(/https?:\/\/\S+/gi, 'a link').replace(/:[a-z0-9_]+:/gi, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
   if (!words) return;
   speak(`${name} said: ${words}`);
@@ -12160,12 +12161,27 @@ async function onSpaceNotify(e) {
 
 let mentionPick = { open: false, items: [], index: 0, start: 0 };
 
+// What a message can start with: a slash and one of these (the picker shows them as you type).
+const SLASH_COMMANDS = [
+  { cmd: 'tts', about: 'Read this message aloud, to you and whoever has that on' },
+];
+
 function canSeeChannel(space, c, m) {
   return !c.private || m.owner || isAdministrator(space, m) || m.roles.some((r) => c.seeRoles.includes(r));
 }
 
 function onMentionInput() {
   const caretAt = el.chatInput.selectionStart;
+  // (A slash command, at the very start: the commands there are, as it's typed.)
+  const slash = el.chatInput.value.slice(0, caretAt).match(/^\/([a-z]*)$/i);
+  if (slash) {
+    const q = slash[1].toLowerCase();
+    const items = SLASH_COMMANDS.filter((c) => c.cmd.startsWith(q)).map((c) => ({ command: c, insert: c.cmd }));
+    if (items.length) {
+      mentionPick = { open: true, items, index: 0, start: 0 };
+      return renderMentionPick();
+    }
+  }
   const colon = el.chatInput.value.slice(0, caretAt).match(/(^|[^\w:<])[:]([A-Za-z0-9_]{2,32})$/);
   if (colon) {
     const q = colon[2].toLowerCase();
@@ -12211,6 +12227,10 @@ function renderMentionPick() {
       name.textContent = item.person.displayName;
       sub.textContent = `@${item.person.username}`;
       b.append(makeFace(item.person, null), name, sub);
+    } else if (item.command) {
+      name.textContent = `/${item.command.cmd}`;
+      sub.textContent = item.command.about;
+      b.append(name, sub);
     } else {
       name.textContent = '@everyone';
       sub.textContent = 'everyone who can see this channel';
@@ -12231,7 +12251,7 @@ function pickMention(item) {
   const v = el.chatInput.value;
   const caret = el.chatInput.selectionStart;
   if (item.emoji) composeEmoji.set(item.emoji.name, item.emoji);
-  const text = item.emoji ? `${item.insert} ` : `@${item.insert} `;
+  const text = item.emoji ? `${item.insert} ` : item.command ? `/${item.insert} ` : `@${item.insert} `;
   setChatText(v.slice(0, mentionPick.start) + text + v.slice(caret));
   const pos = mentionPick.start + text.length;
   el.chatInput.setSelectionRange(pos, pos);
