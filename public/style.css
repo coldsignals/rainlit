@@ -13,8 +13,9 @@
 
 /* ================= Themes ================= */
 /* Rainlit's colours: its own (the night, lit by a lamp), and each theme's, from Settings > Theme
-   (app.js: THEMES). Everyone has Rainlit, Dark, Midnight and Light; people supporting Rainlit also
-   have Sakura, Monsoon, Aurora and Fireflies, with weather of their own. A theme goes on <html> as
+   (app.js: THEMES). Everyone has Rainlit, Dark, Midnight, Slate, Forest, Light, Paper and High
+   contrast; people supporting Rainlit also have Sakura, Monsoon, Fireflies, Maple, Aurora, Event
+   Horizon, Deep Sea, Ember and Thunderhead, with weather of their own. A theme goes on <html> as
    data-theme (boot.js puts it on before anything's drawn), and Settings shows each one in
    miniature ([data-theme-preview]). */
 :root, [data-theme-preview] {
@@ -79,6 +80,46 @@ emoji-picker { --emoji-font-family: var(--emoji-font); }
 }
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="light"] .menu-homepage span { background-image: linear-gradient(115deg, #d63384, #8a4fd8, #2f7bd8); }
+/* Slate: cool blue-grey, with a blue lamp. */
+:root[data-theme="slate"], [data-theme-preview="slate"] {
+  --night: #1a2028; --deep: #141a21; --dusk: #232b35; --dusk-hi: #2c3642; --line: #3a4654;
+  --mist: #a7b4c4; --faint: #6e7c8e; --text: #eef2f7; --offline: #6e7c8e;
+  --lamp: #7fb3ff; --lamp-ink: #0b1f3a; --lamp-glow: rgba(127, 179, 255, 0.3);
+  --away: #f5c46b; --rail: #10151b; --scrim: rgba(6, 9, 13, 0.62); --rain: 170, 190, 215;
+}
+/* Forest: deep green, by a leaf-green light. */
+:root[data-theme="forest"], [data-theme-preview="forest"] {
+  --night: #141d17; --deep: #0e1510; --dusk: #1d2a21; --dusk-hi: #26352a; --line: #344a3b;
+  --mist: #a9bcad; --faint: #6b7f70; --text: #eef4ee; --offline: #6b7f70;
+  --lamp: #9fd47a; --lamp-ink: #0f2306; --lamp-glow: rgba(159, 212, 122, 0.3);
+  --away: #f0c05a; --scrim: rgba(4, 9, 5, 0.62); --rain: 190, 215, 190;
+}
+/* Paper: warm daylight, like a page (Light's rules for words and the rain, in warmer tones). */
+:root[data-theme="paper"], [data-theme-preview="paper"] {
+  --night: #f7f3ec; --deep: #efe9df; --dusk: #e6dfd2; --dusk-hi: #dcd3c3; --line: #cfc4b1;
+  --mist: #6a6054; --faint: #978b7c; --text: #241d14;
+  --lamp: #d4822e; --lamp-ink: #2a1704; --lamp-text: #8a4d10; --lamp-glow: rgba(212, 130, 46, 0.36);
+  --danger: #c8443a; --danger-soft: rgba(200, 68, 58, 0.12); --danger-text: #a9281f;
+  --online: #2d8a4e; --away: #c98a12; --offline: #978b7c; --voice-live: #7b4fe0;
+  --rail: #e4dccd; --panel: #fbf8f2; --pop: #fbf8f2; --scrim: rgba(50, 40, 28, 0.42);
+  --rain: 110, 88, 60; --rain-blend: multiply; --tint-mix: 62%;
+  --perk-ink: linear-gradient(115deg, #2f6fc4, #7d45cf 50%, #a86400);
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236a6054' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+:root[data-theme="paper"] { color-scheme: light; }
+:root[data-theme="paper"] .menu-homepage span { background-image: linear-gradient(115deg, #d63384, #8a4fd8, #2f7bd8); }
+/* High contrast: black and white, a yellow lamp, and sharper edges (a thicker line round whatever
+   has the focus), for eyes that want them. */
+:root[data-theme="contrast"], [data-theme-preview="contrast"] {
+  --night: #000; --deep: #000; --dusk: #161616; --dusk-hi: #242424; --line: #707070;
+  --mist: #d4d4d4; --faint: #a0a0a0; --text: #fff; --offline: #a0a0a0;
+  --lamp: #ffd400; --lamp-ink: #000; --lamp-glow: rgba(255, 212, 0, 0.35);
+  --danger: #ff5c5c; --danger-soft: rgba(255, 92, 92, 0.2); --danger-text: #ffa3a3;
+  --online: #4cff8a; --away: #ffd400; --voice-live: #c9a3ff;
+  --rail: #000; --panel: #0a0a0a; --pop: #0a0a0a; --scrim: rgba(0, 0, 0, 0.8); --rain: 255, 255, 255;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d4d4d4' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+:root[data-theme="contrast"] :focus-visible { outline-width: 3px; }
 
 /* Supporters' themes (their weather: app.js). Sakura: cherry blossoms at night, under lanterns. */
 :root[data-theme="sakura"], [data-theme-preview="sakura"] {
@@ -167,6 +208,38 @@ emoji-picker { --emoji-font-family: var(--emoji-font); }
 /* (Behind a conversation's messages: frosted lightly, so words over its bright ring read; Home
    keeps it sharp. Its stars are drawn over everything, crisp.) */
 :root[data-theme="horizon"] .chat-log { background: rgba(10, 9, 18, 0.18); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+
+/* Deep Sea: far under the waves, the light from the surface coming down in a shaft, and bubbles
+   rising (app.js drawRisers). */
+:root[data-theme="deepsea"], [data-theme-preview="deepsea"] {
+  --night: #061018; --deep: #040b11; --dusk: #0d1c27; --dusk-hi: #132634; --line: #1f3a4c;
+  --mist: #9cc0cf; --faint: #5d7f8f; --text: #e6f4f8;
+  --lamp: #3ee6d0; --lamp-ink: #03241f; --lamp-glow: rgba(62, 230, 208, 0.3);
+  --away: #f0c05a; --offline: #5d7f8f;
+  --scrim: rgba(2, 8, 12, 0.66); --rain: 160, 230, 230;
+  --backdrop: linear-gradient(104deg, transparent 34%, rgba(62, 230, 208, 0.05) 44%, rgba(62, 230, 208, 0.07) 48%, transparent 58%), linear-gradient(180deg, rgba(40, 150, 170, 0.18), transparent 42%);
+  --mini-sky: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cg fill='none' stroke='%23a6e8e4' stroke-opacity='.7'%3E%3Ccircle cx='8' cy='24' r='2.4'/%3E%3Ccircle cx='25' cy='9' r='1.5'/%3E%3Ccircle cx='21' cy='30' r='1'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 36px 36px;
+}
+/* Ember: by the hearth, its glow from below, and embers rising from it. */
+:root[data-theme="ember"], [data-theme-preview="ember"] {
+  --night: #140e0b; --deep: #0e0907; --dusk: #221611; --dusk-hi: #2c1d16; --line: #43302a;
+  --mist: #cfb7aa; --faint: #8c7266; --text: #f8ede6;
+  --lamp: #ff9a3c; --lamp-ink: #2e1504; --lamp-glow: rgba(255, 154, 60, 0.32);
+  --away: #f5c46b; --offline: #8c7266;
+  --scrim: rgba(12, 6, 3, 0.64); --rain: 255, 170, 90;
+  --backdrop: radial-gradient(ellipse 70% 42% at 50% 108%, rgba(255, 120, 50, 0.18), transparent 70%);
+  --mini-sky: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cg fill='%23ffb060'%3E%3Ccircle cx='7' cy='28' r='1.4'/%3E%3Ccircle cx='26' cy='12' r='1.1' fill-opacity='.85'/%3E%3Ccircle cx='18' cy='21' r='.8' fill-opacity='.6'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 36px 36px;
+}
+/* Thunderhead: a storm overhead, its clouds low, and lightning now and then (app.js drawLightning). */
+:root[data-theme="thunderhead"], [data-theme-preview="thunderhead"] {
+  --night: #15121f; --deep: #0f0d17; --dusk: #201c2e; --dusk-hi: #2a2539; --line: #3c3652;
+  --mist: #b3aec8; --faint: #716b88; --text: #efecf8;
+  --lamp: #a9b8ff; --lamp-ink: #0f1540; --lamp-glow: rgba(169, 184, 255, 0.32);
+  --away: #f5c46b; --offline: #716b88;
+  --scrim: rgba(5, 4, 10, 0.66); --rain: 200, 210, 240;
+  --backdrop: radial-gradient(ellipse 70% 38% at 28% -10%, rgba(130, 140, 190, 0.16), transparent 70%), radial-gradient(ellipse 60% 34% at 82% -8%, rgba(100, 110, 170, 0.14), transparent 70%);
+  --mini-sky: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Cg stroke='%23c8d2f0' stroke-opacity='.5' stroke-linecap='round'%3E%3Cpath d='M6 2l-2 8M18 9l-2 8M12 17l-2 8M24 19l-2 8'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 26px 26px;
+}
 
 /* Over pictures and video: dark glass, with the night's own words and lines whatever the theme. */
 .lightbox, .stage.full, .voice-tile:fullscreen, .tile-audio, .tile-tools, .voice-tile-name, .video-label,
@@ -3085,7 +3158,7 @@ button.person.open { background: var(--dusk-hi); }
    Settings is open. */
 .theme-lists { display: grid; gap: 10px; }
 .theme-list { --sel: var(--lamp-text); display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 12px 8px; }
-.theme-card { display: grid; gap: 6px; min-width: 0; padding: 0; border: 0; background: none; color: var(--mist); font-size: 13px; font-weight: 650; }
+.theme-card { display: grid; align-content: start; gap: 6px; min-width: 0; padding: 0; border: 0; background: none; color: var(--mist); font-size: 13px; font-weight: 650; }
 .theme-card:hover, .theme-card[aria-pressed="true"] { color: var(--text); }
 .theme-card:focus-visible { outline: none; }
 .theme-shot { display: grid; border-radius: 11px; outline: 2px solid transparent; outline-offset: 2px; transition: outline-color 0.15s; }
@@ -3126,7 +3199,7 @@ button.person.open { background: var(--dusk-hi); }
     var(--backdrop), var(--night);
 }
 .tm-main::after { content: ""; position: absolute; inset: 0; background: var(--mini-sky); pointer-events: none; }
-.theme-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+.theme-name { text-align: center; line-height: 1.2; } /* (a long name on two lines) */
 .theme-card.extra .theme-name::after {
   content: ''; display: inline-block; width: 7px; height: 10px; margin-left: 5px; vertical-align: -1px;
   background: var(--sel);
@@ -4174,7 +4247,13 @@ button.perk-tag:hover { filter: brightness(1.08); }
 .glow-themes [data-theme-preview="fireflies"] .tm-main::after { animation: glow-blink 2.6s ease-in-out infinite; }
 .glow-themes [data-theme-preview="maple"] .tm-main::after { animation: glow-petals 8s linear infinite; }
 .glow-themes [data-theme-preview="horizon"] .tm-main::after { animation: glow-blink 5s ease-in-out infinite; }
+.glow-themes [data-theme-preview="deepsea"] .tm-main::after { animation: glow-bubbles 5s linear infinite; }
+.glow-themes [data-theme-preview="ember"] .tm-main::after { animation: glow-bubbles 3.5s linear infinite; }
+.glow-themes [data-theme-preview="thunderhead"] .tm-main::after { animation: glow-downpour 0.7s linear infinite; }
+.glow-themes [data-theme-preview="thunderhead"] .tm-main { animation: glow-flash 8s linear infinite; }
 @keyframes glow-petals { to { background-position: 38px 38px; } }
+@keyframes glow-bubbles { to { background-position: 0 -36px; } }
+@keyframes glow-flash { 0%, 83%, 87%, 100% { filter: brightness(1); } 84%, 89% { filter: brightness(1.8); } }
 @keyframes glow-downpour { to { background-position: 0 26px; } }
 @keyframes glow-snow { to { background-position: 0 24px, 0 0; } }
 @keyframes glow-blink { 50% { opacity: 0.3; } }
@@ -4250,5 +4329,5 @@ button.perk-tag:hover { filter: brightness(1.08); }
   .glow-price { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .glow-dialog[open], .glow-sparks, .glow-drop, .glow-themes .tm-main::after, .glow-levels img { animation: none !important; }
+  .glow-dialog[open], .glow-sparks, .glow-drop, .glow-themes .tm-main, .glow-themes .tm-main::after, .glow-levels img { animation: none !important; }
 }

@@ -7850,7 +7850,7 @@ window.rainlitBack = () => {
 // ================= Weather =================
 // Light rain falling over the app, drawn on one canvas; or the weather of a Glow theme instead: a
 // monsoon's downpour, cherry blossom petals, maple leaves, snow under the aurora, fireflies, stars
-// falling into a black hole. Near
+// falling into a black hole, bubbles rising from the deep, a hearth's embers, a thunderstorm. Near
 // drops are longer, faster and brighter than far ones (near petals and snowflakes, bigger and
 // faster). It stops while you're in a call, or looking at a voice channel's (it would be over
 // everyone's videos and streams), unless it's kept going then (Settings), and whenever the tab is
@@ -7877,6 +7877,9 @@ const WEATHER = {
   snow: { name: 'Snow', per: 14000, min: 40, max: 140 },
   fireflies: { name: 'Fireflies', per: 40000, min: 12, max: 42 },
   infall: { name: 'Stars falling in', per: 10000, min: 50, max: 180 },
+  bubbles: { name: 'Rising bubbles', per: 26000, min: 18, max: 70 },
+  embers: { name: 'Rising embers', per: 22000, min: 20, max: 80 },
+  storm: { name: 'Thunderstorm', per: 8000, min: 70, max: 260, layers: DOWNPOUR_LAYERS, slant: 0.2 },
 };
 const between = (a, b) => a + Math.random() * (b - a);
 let weather = 'rain';
@@ -7909,6 +7912,7 @@ function setWeather(kind) {
   el.weatherName.textContent = WEATHER[next].name;
   if (next === weather) return;
   weather = next;
+  stormNext = stormAt = 0; // (a storm's first lightning: soon after it starts)
   if (S.rainFrame) sizeRain(true);
 }
 
@@ -7945,6 +7949,7 @@ function rainBoxChanged() {
 
 function newDrop(w, h, anywhere) {
   if (weather === 'infall') return newStar(w, h, anywhere);
+  if (weather === 'bubbles' || weather === 'embers') return newRiser(w, h, anywhere);
   const W = WEATHER[weather];
   if (W.layers) {
     const layer = Math.random() < 0.45 ? 0 : Math.random() < 0.65 ? 1 : 2;
@@ -7995,10 +8000,93 @@ function rainStep(now) {
   const h = rainH;
   const ctx = el.rain.getContext('2d');
   ctx.clearRect(0, 0, el.rain.width / rainDpr, el.rain.height / rainDpr); // (all of it)
-  if (WEATHER[weather].layers) drawRain(ctx, dt, w, h);
-  else if (weather === 'fireflies') drawFireflies(ctx, dt, w, h, now / 1000);
+  if (WEATHER[weather].layers) {
+    drawRain(ctx, dt, w, h);
+    if (weather === 'storm') drawLightning(ctx, now, w, h);
+  } else if (weather === 'fireflies') drawFireflies(ctx, dt, w, h, now / 1000);
   else if (weather === 'infall') drawInfall(ctx, dt, w, h);
+  else if (weather === 'bubbles' || weather === 'embers') drawRisers(ctx, dt, w, h, now / 1000);
   else drawDrifting(ctx, dt, w, h, now / 1000);
+}
+
+// Deep Sea's bubbles and Ember's embers rise instead, swaying, from the bottom: a bubble a ring of
+// light with a glint on it, up to the top; an ember a glowing speck that flickers, and burns out
+// partway up (near ones bigger, faster and brighter).
+const EMBER_TONES = ['255, 176, 96', '255, 132, 56', '255, 214, 140'];
+function newRiser(w, h, anywhere) {
+  const near = Math.random();
+  const ember = weather === 'embers';
+  const y = anywhere ? Math.random() * h : h + 10;
+  return {
+    x: Math.random() * w, y, near,
+    size: ember ? 0.8 + near * 1.6 : 1.6 + near * 3.4,
+    rise: ember ? 26 + near * 44 : 18 + near * 34,
+    sway: ember ? between(6, 16) : between(4, 14), swayRate: between(0.5, 1.4), phase: Math.random() * Math.PI * 2,
+    flicker: between(4, 9), tone: Math.floor(Math.random() * EMBER_TONES.length),
+    top: ember ? Math.min(y - 30, h * between(0.1, 0.65)) : -12, // (where it's gone: an ember burns out partway up)
+  };
+}
+function drawRisers(ctx, dt, w, h, t) {
+  const ember = weather === 'embers';
+  for (const d of rainDrops) {
+    d.y -= d.rise * dt;
+    if (d.y < d.top) {
+      Object.assign(d, newRiser(w, h, false));
+      continue;
+    }
+    const x = d.x + Math.sin(t * d.swayRate + d.phase) * d.sway;
+    const r = d.size;
+    if (ember) {
+      const left = (d.y - d.top) / Math.max(1, h + 10 - d.top); // (of its climb: fading over the last third)
+      const flick = 0.55 + 0.45 * Math.sin(t * d.flicker + d.phase);
+      const a = Math.min(1, left * 3) * flick * (0.5 + d.near * 0.5);
+      ctx.fillStyle = `rgba(${EMBER_TONES[d.tone]}, ${(a * 0.25).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(x, d.y, r * 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(${EMBER_TONES[d.tone]}, ${a.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(x, d.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      const a = 0.22 + d.near * 0.38;
+      ctx.strokeStyle = `rgba(${rainColor}, ${a.toFixed(3)})`;
+      ctx.lineWidth = 0.8 + d.near * 0.5;
+      ctx.beginPath();
+      ctx.arc(x, d.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = `rgba(${rainColor}, ${(a * 0.9).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(x - r * 0.35, d.y - r * 0.35, Math.max(0.5, r * 0.22), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// Thunderhead's lightning: now and then (every 15 to 45 seconds or so), the sky lights up for a
+// moment, twice in quick succession as lightning does, and gently: a wash of the rain's colour over
+// the canvas (blended to lighten) at a fifth at the very most, brighter at the top. None at all for
+// anyone who's asked their device for less motion.
+let stormNext = 0;
+let stormAt = 0;
+const calmMotion = matchMedia('(prefers-reduced-motion: reduce)');
+function drawLightning(ctx, now, w, h) {
+  if (calmMotion.matches) return;
+  if (!stormNext) stormNext = now + between(3000, 9000);
+  if (now >= stormNext) {
+    stormAt = now;
+    stormNext = now + between(15000, 45000);
+  }
+  const ms = now - stormAt;
+  if (!stormAt || ms > 420) return;
+  const pulse = (start, len) => (ms < start || ms > start + len ? 0 : 1 - (ms - start) / len);
+  const a = 0.2 * Math.max(pulse(0, 110), 0.7 * pulse(150, 270));
+  if (a <= 0.002) return;
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, `rgba(${rainColor}, ${a.toFixed(3)})`);
+  sky.addColorStop(1, `rgba(${rainColor}, ${(a * 0.3).toFixed(3)})`);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, h);
 }
 
 // Event Horizon's weather: stars drawn in by the black hole in its sky (style.css draws it: at
@@ -10253,9 +10341,10 @@ function renderTransfer(t) {
 // ---------------- Settings ----------------
 
 // ----- Theme -----
-// Settings > Theme: Rainlit's own, Dark, Midnight (black, for OLED screens), Light, or Auto (Light
-// or Rainlit, as the device is set); and six that come with Glow, each with weather of
-// its own, which anyone else can try on while Settings is open. Yours is kept with your account,
+// Settings > Theme: Rainlit's own, Dark, Midnight (black, for OLED screens), Slate, Forest, Light,
+// Paper, High contrast, or Auto (Light or Rainlit, as the device is set); and nine that come with
+// Glow, each with weather of its own, which anyone else can try on while Settings is open. (light:
+// a daytime one, for the phone's bars.) Yours is kept with your account,
 // so it's the same everywhere (lib/themes.js), and on this device for the next start (boot.js puts
 // it on before anything's drawn). Their colours are in style.css.
 
@@ -10263,7 +10352,11 @@ const THEMES = [
   { id: 'rainlit', name: 'Rainlit', about: 'the night, lit by a lamp' },
   { id: 'dark', name: 'Dark', about: 'plain greys' },
   { id: 'midnight', name: 'Midnight', about: 'black, for OLED screens' },
-  { id: 'light', name: 'Light', about: 'daytime' },
+  { id: 'slate', name: 'Slate', about: 'cool blue-grey, with a blue lamp' },
+  { id: 'forest', name: 'Forest', about: 'deep green, by a leaf-green light' },
+  { id: 'light', name: 'Light', light: true, about: 'daytime' },
+  { id: 'paper', name: 'Paper', light: true, about: 'warm daylight, like a page' },
+  { id: 'contrast', name: 'High contrast', about: 'black and white, with a yellow lamp and sharper edges' },
   { id: 'auto', name: 'Auto', about: 'Light or Rainlit, as your device is set' },
   { id: 'sakura', name: 'Sakura', extra: true, weather: 'petals', about: 'cherry blossoms at night, and falling petals' },
   { id: 'monsoon', name: 'Monsoon', extra: true, weather: 'downpour', about: 'deep green, and the rains' },
@@ -10271,6 +10364,9 @@ const THEMES = [
   { id: 'maple', name: 'Maple', extra: true, weather: 'leaves', about: 'autumn at dusk, and falling leaves' },
   { id: 'aurora', name: 'Aurora', extra: true, weather: 'snow', about: 'the northern lights, and snow' },
   { id: 'horizon', name: 'Event Horizon', extra: true, weather: 'infall', about: 'a black hole, and stars falling in' },
+  { id: 'deepsea', name: 'Deep Sea', extra: true, weather: 'bubbles', about: 'far under the waves, and bubbles rising' },
+  { id: 'ember', name: 'Ember', extra: true, weather: 'embers', about: 'by the hearth, and embers rising' },
+  { id: 'thunderhead', name: 'Thunderhead', extra: true, weather: 'storm', about: 'a storm overhead, with lightning now and then' },
 ];
 const themeById = (id) => THEMES.find((t) => t.id === id) || THEMES[0];
 // What supporters get is marked with this, on a tag (see .perk-box): the supporter plan's name
@@ -10305,7 +10401,7 @@ function showTheme() {
   const night = getComputedStyle(root).getPropertyValue('--night').trim();
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta && night) meta.content = night;
-  if (ANDROID) ANDROID.systemBars(id === 'light' ? 'LIGHT' : 'DARK').catch(() => {});
+  if (ANDROID) ANDROID.systemBars(themeById(id).light ? 'LIGHT' : 'DARK').catch(() => {});
   setWeather(themeById(id).weather || 'rain');
 }
 
