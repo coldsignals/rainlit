@@ -150,7 +150,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name', 'rain-note', 'rain-calls-input',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'settings-nav', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'tts-select', 'tts-volume', 'tts-volume-value', 'tts-test-btn', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'settings-nav', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'tts-select', 'tts-volume', 'tts-volume-value', 'tts-test-btn', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'relay-field', 'relay-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -301,6 +301,7 @@ const S = {
   voiceStreamSound: (() => { try { return JSON.parse(store.get('voiceStreamSound', '{}')) || {}; } catch { return {}; } })(), // voice channels: each person's screen's sound
   voicePeople: (() => { try { return JSON.parse(store.get('voicePeople', '{}')) || {}; } catch { return {}; } })(), // voice channels: each person's voice, for you
   showStats: store.get('streamStats', 'off') === 'on',
+  relay: store.get('callRelay', 'off') === 'on', // (calls through the relay server, not the direct route)
   sounds: store.get('sounds', 'on') !== 'off',
   tts: ['open', 'all', 'off'].includes(store.get('tts', 'open')) ? store.get('tts', 'open') : 'open', // /tts messages read aloud: where
   ttsVolume: Math.min(100, Math.max(10, Number(store.get('ttsVolume', '100')) || 100)), // ...and how loud, in percent
@@ -1085,12 +1086,15 @@ function screenVp8Why(conn, out, stats) {
 // carried the next size up with room to spare for about eight, so the picture doesn't keep
 // flipping. (Not in a share's first seconds, while the connection is still being measured. Sharp
 // keeps its size, since text has to stay readable.)
+// (The last rungs, for a thin pipe, give up frames before more size: at a few hundred kb/s, 540
+// lines at 15 a second are sharper to watch than 360 at 30, and a show reads fine at 15.)
 const SCREEN_STEPS = [
   { height: 0, kbps: 3500, fps: 60 }, // (as it's captured)
   { height: 720, kbps: 1900, fps: 60 },
   { height: 540, kbps: 1100, fps: 30 },
-  { height: 360, kbps: 550, fps: 30 },
-  { height: 270, kbps: 0, fps: 30 },
+  { height: 540, kbps: 700, fps: 15 },
+  { height: 360, kbps: 450, fps: 15 },
+  { height: 270, kbps: 0, fps: 15 },
 ];
 
 // How much to shrink a w x h picture to about `target` lines: a height near it that divides the
@@ -2456,7 +2460,9 @@ function addLogEntry(e) {
 function createPeer() {
   closePeer();
   trace('pc-new', { fails: S.failCount || undefined });
-  const pc = new RTCPeerConnection({ iceServers: S.iceServers });
+  // (Through the relay only, if Settings says so and there is one: another route, for when the
+  // direct one between two homes is the slow part.)
+  const pc = new RTCPeerConnection({ iceServers: S.iceServers, iceTransportPolicy: S.relay && S.hasTurn ? 'relay' : 'all' });
   const conn = {
     pc,
     pcId: randomId(),
@@ -10488,6 +10494,8 @@ async function fillDeviceLists() {
   el.duckInput.checked = store.get('duck', 'on') !== 'off';
   renderDuckStatus();
   el.statsInput.checked = S.showStats;
+  el.relayInput.checked = S.relay;
+  el.relayField.hidden = !S.hasTurn;
   el.traceInput.checked = S.trace;
   el.rainInput.checked = S.rain;
   el.rainCallsInput.checked = S.rainCalls;
@@ -23685,6 +23693,12 @@ async function init() {
     S.showStats = el.statsInput.checked;
     store.set('streamStats', S.showStats ? 'on' : 'off');
     if (!S.showStats) el.streamStats.hidden = true;
+  });
+  el.relayInput.addEventListener('change', () => {
+    S.relay = el.relayInput.checked;
+    store.set('callRelay', S.relay ? 'on' : 'off');
+    // (In a call: connected again, the other way, from this side.)
+    if (S.inCall && S.conn) createPeer();
   });
   el.duckInput.addEventListener('change', () => {
     store.set('duck', el.duckInput.checked ? 'on' : 'off');
