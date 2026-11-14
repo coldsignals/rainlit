@@ -3023,6 +3023,7 @@ api.delete('/events/:eventId', needUser, needEvent, (req, res) => {
   const out = events.remove(req.event.id, { all: req.query.all === '1' });
   spaces.log(req.event.space_id, req.user.id, 'event-cancel', null, { name: req.event.title, ...(req.query.all === '1' && req.event.series ? { all: true } : {}) });
   tellEventChanges(req.event.space_id, out);
+  for (const id of out.gone || []) notices.forget(id); // (its heads-up and start, out of the bell)
   res.json({ ok: true, gone: out.gone, made: out.made });
 });
 
@@ -3031,7 +3032,15 @@ api.put('/events/:eventId/answer', needUser, needEvent, eventRoute((req, res) =>
   events.answer(req.event.id, req.user.id, String((req.body || {}).answer || ''));
   const event = events.one(req.event.id);
   tellEvent(event);
-  res.json({ event });
+  watchEvents(); // (a heads-up of theirs to wake for)
+  res.json({ event, remind: events.remindOf(req.event.id, req.user.id) });
+}));
+
+// When you're told it's coming up: minutes before (0: not), for one you're going to or might be.
+api.put('/events/:eventId/remind', needUser, needEvent, eventRoute((req, res) => {
+  events.setRemind(req.event.id, req.user.id, (req.body || {}).minutes);
+  watchEvents();
+  res.json({ remind: events.remindOf(req.event.id, req.user.id) });
 }));
 
 // Your free times, and those of a space's members (who've set theirs, and haven't blocked you or
@@ -3050,16 +3059,34 @@ api.get('/spaces/:spaceId/free-times', needUser, needMember, (req, res) => {
   res.json({ free, members: spaces.memberIds(req.space.id).length });
 });
 
-// Starting: those going (or who might be) are told, wherever they are; a phone with Rainlit in the
-// background gets a notification. Woken for the next to start (a minute at most, to look again),
-// and now and then the long-over ones go.
+// Coming up: each person going (or who might be) gets their heads-up when its time comes (15
+// minutes before, or what they picked): in the bell, and on a phone with Rainlit in the background.
+// Starting: they're all told, wherever they are, and it's in the bell too; a phone with Rainlit in
+// the background gets a notification. Woken for the next of either (a minute at most, to look
+// again), and now and then the long-over ones go.
+const eventAbout = (event, space) => ({ title: event.title, space: space ? space.name : '', spaceId: event.spaceId });
+function eventNotice(userId, kind, event, space, extra = {}) {
+  if (notices.record(userId, kind, null, event.id, { ...eventAbout(event, space), ...extra })) {
+    realtime.sendToUser(userId, { type: 'notice', unread: notices.unread(userId) });
+  }
+}
 let eventTimer = 0;
 function watchEvents() {
   clearTimeout(eventTimer);
   const now = Date.now();
+  for (const { userId, event, minutes } of events.headsUps(now)) {
+    const space = spaces.getSpace(event.spaceId);
+    eventNotice(userId, 'event-soon', event, space, { minutes });
+    const words = `${event.title} starts ${events.startsIn(minutes)}${space && space.name ? ` in ${space.name}` : ''}`;
+    realtime.sendToUser(userId, { type: 'event-soon', space: event.spaceId, event, minutes, words });
+    if (!realtime.isOnline(userId)) {
+      push.send(userId, { type: 'message', from: { id: `ev:${event.id}`, name: words } }, { topic: `eventsoon${event.id}`, ttl: Math.max(60, minutes * 60) });
+    }
+  }
   for (const event of events.starting(now)) {
     const space = spaces.getSpace(event.spaceId);
     for (const id of new Set([...event.going, ...event.maybe])) {
+      eventNotice(id, 'event-start', event, space);
       realtime.sendToUser(id, { type: 'event-start', space: event.spaceId, event });
       if (!realtime.isOnline(id)) {
         push.send(id, { type: 'message', from: { id: `ev:${event.id}`, name: `${event.title} is starting${space && space.name ? ` in ${space.name}` : ''}` } },

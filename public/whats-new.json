@@ -1,6 +1,29 @@
 {
   "entries": [
     {
+      "id": "2026-11-14",
+      "date": "2026-11-14",
+      "title": "More themes, and event reminders",
+      "items": [
+        {
+          "title": "Four more themes",
+          "text": "Settings > Theme has four more for everyone: Slate, a cool blue-grey with a blue lamp; Forest, deep green; Paper, warm daylight like a page; and High contrast, black and white with a yellow lamp and sharper edges.",
+          "media": "/whats-new/2026-11-14-themes.webp"
+        },
+        {
+          "title": "Three more with weather of their own",
+          "glow": true,
+          "text": "Deep Sea, far under the waves with bubbles rising; Ember, by the hearth with embers drifting up; and Thunderhead, a storm overhead with lightning now and then. Try any of them on from Settings.",
+          "media": "/whats-new/2026-11-14-glow-themes.webp"
+        },
+        {
+          "title": "Event reminders",
+          "text": "Going to an event, or maybe? You get a heads-up 15 minutes before it starts, in the bell and on your phone, and its start is kept in the bell too. Pick another time, or none, with Remind me on the event's card.",
+          "media": "/whats-new/2026-11-14-reminders.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-12b",
       "date": "2026-11-12",
       "title": "Bigger rooms",

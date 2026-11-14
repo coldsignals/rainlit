@@ -2154,6 +2154,8 @@ function handleServerMessage(msg) {
       return onEventGone(msg.space, msg.id);
     case 'event-start':
       return onEventStart(msg.space, msg.event);
+    case 'event-soon':
+      return onEventSoon(msg.space, msg.event, msg.words);
     case 'me':
       return setMe(msg.user);
     case 'badge-new':
@@ -11492,13 +11494,34 @@ function noticeWords(n) {
       const times = n.n > 1 ? ` ${n.n} times` : '';
       return [who || (n.n > 1 ? 'Visitors' : 'A visitor'), ` petted ${pet}${times}`];
     }
+    case 'event-soon':
+    case 'event-start': {
+      const a = n.about || {};
+      const where = a.space ? ` in ${a.space}` : '';
+      return [a.title || 'An event', n.kind === 'event-soon' ? ` starts ${startsIn(a.minutes || 15)}${where}` : ` started${where}`];
+    }
     default: return ['', ''];
   }
 }
 
-// Where one goes: your homepage (its guestbook, its question box), theirs (their answer), or your pet.
+// "in 15 minutes", "in an hour", "tomorrow" (lib/events.js startsIn, the same).
+function startsIn(minutes) {
+  if (minutes < 60) return `in ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 20) return hours === 1 ? 'in an hour' : `in ${hours} hours`;
+  return hours < 36 ? 'tomorrow' : `in ${Math.round(hours / 24)} days`;
+}
+
+// Where one goes: your homepage (its guestbook, its question box), theirs (their answer), your pet,
+// or an event's space's events.
 function openNotice(n) {
   el.notices.close();
+  if (n.kind === 'event-soon' || n.kind === 'event-start') {
+    const spaceId = n.about && n.about.spaceId;
+    if (spaceId && S.spaces.has(spaceId)) openEvents(spaceId);
+    else toast("That event's space isn't one you're in anymore.");
+    return;
+  }
   if (n.kind === 'petted') openPet();
   else if (n.kind === 'answer' && n.from) Homepage.open(n.from.id);
   else Homepage.open(S.me.id);
@@ -11519,7 +11542,13 @@ function noticeItem(n, isNew) {
   const when = document.createElement('small');
   when.className = 'notice-when';
   when.textContent = fmtWhen(n.at);
-  b.append(makeFace(n.from || { id: '', displayName: '?' }, null), text, when);
+  let face;
+  if (n.kind === 'event-soon' || n.kind === 'event-start') {
+    face = document.createElement('span');
+    face.className = 'face notice-icon';
+    face.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>';
+  } else face = makeFace(n.from || { id: '', displayName: '?' }, null);
+  b.append(face, text, when);
   if (isNew) {
     const dot = document.createElement('i');
     dot.className = 'notice-dot';
@@ -14295,16 +14324,57 @@ function eventCard(space, e) {
   }
   foot.append(answers, actions);
   li.append(foot);
+  // (Going, or might be, and it's still to come: when you're told it's coming up.)
+  if ((mine === 'going' || mine === 'maybe') && e.startsAt > serverNow()) {
+    const remind = document.createElement('label');
+    remind.className = 'event-remind';
+    remind.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg><span>Remind me</span>';
+    const pick = document.createElement('select');
+    pick.dataset.act = 'remind';
+    for (const [m, words] of REMIND_CHOICES) pick.add(new Option(words, String(m)));
+    const now = (space.reminds || {})[e.id];
+    pick.value = String(now === undefined ? 15 : now);
+    pick.addEventListener('change', () => remindEvent(space, e, Number(pick.value)));
+    remind.append(pick);
+    li.append(remind);
+  }
   return li;
 }
 
+const REMIND_CHOICES = [[15, '15 minutes before'], [60, 'an hour before'], [1440, 'a day before'], [0, 'not at all']];
+
 async function answerEvent(e, answer) {
   try {
-    const { event } = await api('PUT', `/events/${e.id}/answer`, { answer });
+    const { event, remind } = await api('PUT', `/events/${e.id}/answer`, { answer });
+    const space = S.spaces.get(event.spaceId);
+    if (space) {
+      space.reminds = space.reminds || {};
+      if (remind === null || remind === undefined) delete space.reminds[event.id];
+      else space.reminds[event.id] = remind;
+    }
     onEvent(event.spaceId, event);
   } catch (err) {
     toast(err.message);
   }
+}
+
+async function remindEvent(space, e, minutes) {
+  try {
+    const { remind } = await api('PUT', `/events/${e.id}/remind`, { minutes });
+    space.reminds = space.reminds || {};
+    space.reminds[e.id] = remind;
+  } catch (err) {
+    toast(err.message);
+    if (el.events.open) renderEvents();
+  }
+}
+
+// One you're going to (or might be) coming up soon: a word, and the desktop or Android app's
+// notification (it's in the bell too).
+function onEventSoon(spaceId, event, words) {
+  onEvent(spaceId, event);
+  toast(words, 8000);
+  appNotify({ title: words, body: 'On Rainlit' });
 }
 
 async function joinEvent(spaceId, channelId) {

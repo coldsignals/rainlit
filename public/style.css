@@ -1037,6 +1037,13 @@ li.suspended > .grow { color: var(--danger-text); }
 .event-answer.going[aria-pressed="true"] { background: color-mix(in srgb, var(--online) 22%, transparent); color: var(--online); }
 .event-answer.no[aria-pressed="true"] { background: var(--danger-soft); color: var(--danger-text); }
 .event-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+/* (When you're told it's coming up: a quiet line under it.) */
+.event-remind { display: flex; align-items: center; gap: 6px; color: var(--mist); font-size: 13px; }
+.event-remind .icon { flex: none; width: 15px; height: 15px; }
+.event-remind select {
+  min-width: 0; padding: 3px 26px 3px 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--select-arrow) right 6px center / 14px no-repeat, var(--deep); color: var(--text); font-size: 13px; appearance: none;
+}
 /* Planning one: a name, when, who's free, where, and about it. */
 /* (Its day on a line of its own, its start and end side by side: room for "01:00 PM", in any language.) */
 .event-when-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
@@ -1187,6 +1194,8 @@ li.suspended > .grow { color: var(--danger-text); }
 }
 .notice:hover { background: var(--dusk); }
 .notice > .face { grid-row: span 2; }
+.notice-icon { display: grid; place-items: center; border-radius: 50%; background: var(--dusk-hi); color: var(--lamp-text); }
+.notice-icon .icon { width: 18px; height: 18px; }
 .notice-text { min-width: 0; overflow-wrap: anywhere; }
 .notice-when { grid-column: 2; color: var(--mist); font-size: 12px; }
 .notice-dot { grid-row: 1 / span 2; grid-column: 3; width: 8px; height: 8px; border-radius: 50%; background: var(--lamp); box-shadow: 0 0 6px 1px var(--lamp-glow); }
