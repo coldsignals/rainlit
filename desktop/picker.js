@@ -8,7 +8,7 @@ let chosen = null;
 let native = { window: false, audio: false }; // (what the app can capture itself: see main.js)
 
 const EVERYTHING = "Everything your computer is playing, except Rainlit itself, so your friend won't hear their own voice.";
-const JUST_THE_APP = "Only the sound of the app you're sharing.";
+const JUST_THE_APP = "Only the sound of the app you're sharing, every window of it (Windows can't tell one window's sound from another's). To keep something out, play it in a different app.";
 
 function card(s) {
   const btn = document.createElement('button');
