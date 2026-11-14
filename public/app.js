@@ -1125,8 +1125,11 @@ function screenFitStep(conn) {
 }
 
 // (From the stats, every couple of seconds: pair.availableOutgoingBitrate, what the connection
-// carries now.)
-function fitScreenToConnection(conn, pair) {
+// carries now. That figure only grows as more is sent, so while little is (a dark, still scene
+// takes next to nothing) it reads low though the connection's fine: a step down needs the
+// encoder itself to say the connection's holding it back (video.held), or the estimate alone
+// talked the share down to 270 lines on a good connection.)
+function fitScreenToConnection(conn, pair, video = {}) {
   const sender = screenSender(conn);
   const track = sender && sender.track;
   if (!track || track !== S.local.screen || S.shareQuality !== 'smooth') {
@@ -1138,7 +1141,7 @@ function fitScreenToConnection(conn, pair) {
   const kbps = pair && pair.availableOutgoingBitrate ? pair.availableOutgoingBitrate / 1000 : 0;
   if (!kbps || Date.now() - fit.since < 8000) return;
   let next = fit.step;
-  if (kbps < SCREEN_STEPS[fit.step].kbps * 0.85) {
+  if (kbps < SCREEN_STEPS[fit.step].kbps * 0.85 && video.held === 'bandwidth') {
     fit.up = 0;
     if (++fit.down >= 3) {
       next = Math.min(fit.step + 1, SCREEN_STEPS.length - 1);
@@ -3143,7 +3146,7 @@ function startStats(conn) {
       renderStreamStats(conn, video, stats, pair, route, ping);
       traceVideo(conn, video);
       checkScreenEncoder(conn, video.out, stats);
-      fitScreenToConnection(conn, pair);
+      fitScreenToConnection(conn, pair, video);
     } catch {}
   };
   update();
