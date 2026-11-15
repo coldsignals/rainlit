@@ -62,9 +62,12 @@
     pond: { label: 'Pond', colors: ['Deep water', 'Shallow water'], c1: '#0b3a46', c2: '#3f9a8e' },
     lava: { label: 'Lava lamp', colors: ['Liquid', 'Wax'], c1: '#4a1a7a', c2: '#ff7a2f' },
     bounce: { label: 'Bouncing logo', colors: ['Background', 'Logo'], c1: '#000000', c2: '#5ad1ff' },
+    rainglass: { label: 'Rain on glass', colors: ['Night', 'Lights'], c1: '#0c1424', c2: '#ffb85c' },
     mystify: { label: 'Mystify', colors: ['Background', 'Lines'], c1: '#000000', c2: '#4ff0ff' },
     globe: { label: 'Snow globe', colors: ['Sky', 'Snow'], c1: '#2a4a7f', c2: '#ffffff' },
     constellations: { label: 'Constellations', colors: ['Sky', 'Stars'], c1: '#0b1230', c2: '#d6e4ff' },
+    city: { label: 'City at night', colors: ['Sky', 'Windows'], c1: '#151b3d', c2: '#ffd27a' },
+    fireplace: { label: 'Fireplace', colors: ['Stone', 'Fire'], c1: '#6a5a52', c2: '#ff8a2a' },
   };
   // ---------- Effects around a picture ----------
   // Picked in Your card (app.js), and seen wherever someone's picture is shown big enough. Each is
@@ -164,12 +167,15 @@
   }
 
   const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', leaves: 'Autumn leaves', fog: 'Fog', stars: 'Twinkling stars', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms', embers: 'Embers', meteors: 'Shooting stars', lanterns: 'Floating lanterns' };
-  const TRAILS = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', stars: 'Stars', bubbles: 'Bubbles', raindrops: 'Raindrops', pixels: 'Pixels' };
+  const TRAILS = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', stars: 'Stars', bubbles: 'Bubbles', raindrops: 'Raindrops', pixels: 'Pixels', paws: 'Paw prints', torch: 'Torchlight' };
+  // (Stamps for a guestbook entry: lib/homepages.js STAMPS.)
+  const STAMPS = ['heart', 'star', 'sparkle', 'moon', 'flame', 'raindrop', 'umbrella', 'flower', 'leaf', 'mushroom', 'ghost', 'crown',
+    'bolt', 'gem', 'rainbow', 'smiley', 'music', 'controller', 'rocket', 'planet', 'coffee', 'skull', 'sword'];
   const CLICKS = { none: 'Nothing', confetti: 'Confetti', hearts: 'Hearts', stars: 'Stars', ripples: 'Ripples', fireworks: 'Fireworks' };
   // Glow's extras (lib/homepages.js): anyone can see them on a page, people with Glow can use them.
   const PERKS = {
     fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms', 'embers', 'meteors', 'lanterns'],
-    pattern: ['starfield', 'bokeh', 'holo', 'waves'], scene: ['pipes', 'pond', 'lava', 'mystify', 'globe', 'constellations'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels'],
+    pattern: ['starfield', 'bokeh', 'holo', 'waves'], scene: ['pipes', 'pond', 'lava', 'mystify', 'globe', 'constellations', 'city', 'fireplace'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels', 'paws', 'torch'],
     click: ['confetti', 'hearts', 'stars', 'ripples', 'fireworks'], pet: ['drop', 'dragon', 'fox'], piece: ['fortune'],
   };
 
@@ -1386,6 +1392,20 @@
       const words = document.createElement('p');
       words.textContent = e.text;
       li.append(who, when, words);
+      if (e.stamp && PIXEL[e.stamp]) {
+        const stamp = document.createElement('span');
+        stamp.className = 'hp-gb-stamp';
+        stamp.title = PIXEL_NAMES[e.stamp] || '';
+        const paper = document.createElement('i');
+        const pic = document.createElement('img');
+        pic.alt = PIXEL_NAMES[e.stamp] || '';
+        pic.src = pixelSrc(e.stamp);
+        pic.draggable = false;
+        paper.append(pic);
+        stamp.append(paper);
+        li.classList.add('stamped');
+        li.append(stamp);
+      }
       if (e.canDelete) {
         const x = document.createElement('button');
         x.type = 'button';
@@ -1452,6 +1472,35 @@
       const error = document.createElement('p');
       error.className = 'hp-sign-error';
       error.hidden = true;
+      // (A stamp to put on it, if they like.)
+      const stamps = document.createElement('div');
+      stamps.className = 'hp-sign-stamps';
+      stamps.setAttribute('role', 'group');
+      stamps.setAttribute('aria-label', 'A stamp on it');
+      for (const key of ['', ...STAMPS]) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'hp-sign-stamp';
+        b.dataset.stamp = key;
+        b.title = key ? PIXEL_NAMES[key] : 'No stamp';
+        b.setAttribute('aria-label', b.title);
+        if (key) {
+          const pic = document.createElement('img');
+          pic.alt = '';
+          pic.src = pixelSrc(key);
+          b.append(pic);
+        } else {
+          b.textContent = 'None';
+        }
+        b.addEventListener('click', () => {
+          d.stamp = key;
+          for (const o of stamps.children) o.setAttribute('aria-pressed', String(o === b));
+        });
+        stamps.append(b);
+      }
+      const stampLabel = document.createElement('p');
+      stampLabel.className = 'hp-sign-label';
+      stampLabel.textContent = 'Add a stamp';
       const row = document.createElement('div');
       row.className = 'hp-sign-row';
       const cancel = document.createElement('button');
@@ -1464,7 +1513,7 @@
       send.className = 'hp-sign-send';
       send.textContent = 'Sign it';
       row.append(cancel, send);
-      form.append(h, box, error, row);
+      form.append(h, box, stampLabel, stamps, error, row);
       d.append(form);
       document.body.append(d);
       form.addEventListener('submit', async (e) => {
@@ -1472,7 +1521,7 @@
         const { node: target, ctx: c } = d.for;
         send.disabled = true;
         try {
-          const data = await guestbookCall(c, 'POST', '', { text: box.value });
+          const data = await guestbookCall(c, 'POST', '', { text: box.value, ...(d.stamp ? { stamp: d.stamp } : {}) });
           d.close();
           loadGuestbook(target, c, data);
         } catch (err) {
@@ -1487,6 +1536,8 @@
     d.querySelector('h2').textContent = `Sign ${ctx.owner.displayName}'s guestbook`;
     d.querySelector('textarea').value = '';
     d.querySelector('.hp-sign-error').hidden = true;
+    d.stamp = '';
+    for (const o of d.querySelectorAll('.hp-sign-stamp')) o.setAttribute('aria-pressed', String(!o.dataset.stamp));
     d.showModal();
     d.querySelector('textarea').focus();
   }
@@ -5293,7 +5344,7 @@
   // motion).
 
   const FX_COLORS = {
-    sparkles: ['#fff6c9', '#ffffff', '#ffe08a', '#dccbff'], hearts: ['#ff6b9d', '#ff8fc6', '#ff4d6d', '#ffc2d9'],
+    sparkles: ['#fff6c9', '#ffffff', '#ffe08a', '#dccbff'], hearts: ['#ff6b9d', '#ff8fc6', '#ff4d6d', '#ffc2d9'], paws: ['#f1e4d6'],
     stars: ['#ffd84d', '#ffe98a', '#ffb347', '#fff3b0'], raindrops: ['#8ad7ff', '#6ec3f2', '#b5e6ff'],
     confetti: ['#ff5f8f', '#ffa24c', '#ffe14d', '#6be07e', '#57c7ff', '#a57bff'],
     pixels: ['#7dff8a', '#57c7ff', '#ff5f8f', '#ffd84d', '#ffffff'], fireworks: ['#ffd84d', '#ff6b6b', '#7ff6ff', '#9dff7a', '#c99bff', '#ffa24c'],
@@ -5309,6 +5360,7 @@
   }
   const FX_SHAPES = typeof Path2D === 'function' ? {
     hearts: new Path2D('M0 .34C-.14 .24-.56 0-.56-.28C-.56-.48-.4-.58-.24-.56C-.11-.54 0-.45 0-.34C0-.45.11-.54.24-.56C.4-.58.56-.48.56-.28C.56 0 .14.24 0 .34Z'),
+    paws: new Path2D('M-.34 .22a.34 .28 0 1 0 .68 0a.34 .28 0 1 0-.68 0ZM-.5-.2a.13 .15 0 1 0 .26 0a.13 .15 0 1 0-.26 0ZM-.27-.44a.13 .16 0 1 0 .26 0a.13 .16 0 1 0-.26 0ZM.01-.44a.13 .16 0 1 0 .26 0a.13 .16 0 1 0-.26 0ZM.24-.2a.13 .15 0 1 0 .26 0a.13 .15 0 1 0-.26 0Z'),
     sparkles: new Path2D('M0-1Q.14-.14 1 0Q.14.14 0 1Q-.14.14-1 0Q-.14-.14 0-1Z'),
     stars: new Path2D(starPath(5, 1, 0.46)),
     raindrops: new Path2D('M0-1C.3-.52.56-.16.56.2A.56.56 0 0 1-.56.2C-.56-.16-.3-.52 0-1Z'),
@@ -5361,7 +5413,21 @@
       bubbles: (x, y) => add({ shape: 'bubble', x, y, vx: rand(-8, 8), vy: rand(-44, -22), g: -12, size: rand(4, 10), life: 1.3, wob: rand(0, 6) }),
       raindrops: (x, y) => add({ shape: 'raindrops', x: x + rand(-5, 5), y, vx: 0, vy: rand(20, 50), g: 420, size: rand(4, 6.5), life: 0.6, rot: 0 }),
       pixels: (x, y) => add({ shape: 'square', x: x + rand(-5, 5), y: y + rand(-5, 5), vx: rand(-12, 12), vy: rand(-6, 30), g: 70, size: rand(3, 6), life: 0.8, color: anyOf(FX_COLORS.pixels) }),
+      // (Prints left where the pointer walked: left, right, left, along its way, fading.)
+      paws: (x, y) => {
+        foot = -foot;
+        const side = heading + Math.PI / 2;
+        add({ shape: 'paws', x: x + Math.cos(side) * 7 * foot, y: y + Math.sin(side) * 7 * foot, vx: 0, vy: 0, g: 0, size: 12, life: 1.8, rot: heading + Math.PI / 2, color: '#f1e4d6' });
+      },
+      torch: () => {},
     };
+    // (Torchlight: the page dark but round the pointer, while a mouse is over it.)
+    let torch = null;
+    let torchFade = 0;
+    let demoUntil = 0; // (Torchlight shown in the editor: until then)
+    let heading = 0;
+    let foot = 1;
+    const STEP = { paws: 24 };
     const BURST = {
       confetti: (x, y) => {
         for (let i = 0; i < 28; i++) {
@@ -5403,7 +5469,37 @@
       at = now;
       size();
       g.setTransform(1, 0, 0, 1, 0, 0);
-      if (drawn) g.clearRect(drawn[0], drawn[1], drawn[2] - drawn[0], drawn[3] - drawn[1]);
+      if (demoUntil > now) torch = { x: w * (0.22 + 0.56 * (1 - (demoUntil - now) / 1800)), y: h * (0.5 + Math.sin((demoUntil - now) / 300) * 0.08) };
+      else if (demoUntil) {
+        demoUntil = 0;
+        torch = null;
+      }
+      const dark = (chosen.trail === 'torch' && live && (torch || torchFade > 0)) || torchFade > 0 || demoUntil > now;
+      if (dark || drawn === 'all') g.clearRect(0, 0, cv.width, cv.height);
+      else if (drawn) g.clearRect(drawn[0], drawn[1], drawn[2] - drawn[0], drawn[3] - drawn[1]);
+      if (dark) {
+        torchFade = clampTo(torchFade + (torch ? dt : -dt) * 2.5, 0, 1);
+        g.globalAlpha = 1;
+        g.fillStyle = 'rgba(4, 5, 12, ' + (0.82 * torchFade).toFixed(3) + ')';
+        g.fillRect(0, 0, cv.width, cv.height);
+        if (torch) {
+          const r = 150 * dpr;
+          const light = g.createRadialGradient(torch.x * dpr, torch.y * dpr, 0, torch.x * dpr, torch.y * dpr, r);
+          light.addColorStop(0, 'rgba(0, 0, 0, 1)');
+          light.addColorStop(0.55, 'rgba(0, 0, 0, 0.85)');
+          light.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          g.globalCompositeOperation = 'destination-out';
+          g.fillStyle = light;
+          g.fillRect(torch.x * dpr - r, torch.y * dpr - r, r * 2, r * 2);
+          g.globalCompositeOperation = 'source-over';
+          // (A warm edge to the light.)
+          const warm = g.createRadialGradient(torch.x * dpr, torch.y * dpr, r * 0.2, torch.x * dpr, torch.y * dpr, r);
+          warm.addColorStop(0, 'rgba(255, 200, 120, 0.1)');
+          warm.addColorStop(1, 'rgba(255, 200, 120, 0)');
+          g.fillStyle = warm;
+          g.fillRect(torch.x * dpr - r, torch.y * dpr - r, r * 2, r * 2);
+        }
+      }
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = parts.length - 1; i >= 0; i--) {
         const p = parts[i];
@@ -5431,8 +5527,12 @@
         y1 = Math.max(y1, p.y + r);
       }
       g.globalAlpha = 1;
-      drawn = x1 > x0 ? [Math.max(0, Math.floor(x0 * dpr) - 2), Math.max(0, Math.floor(y0 * dpr) - 2), Math.min(cv.width, Math.ceil(x1 * dpr) + 2), Math.min(cv.height, Math.ceil(y1 * dpr) + 2)] : null;
-      raf = parts.length ? requestAnimationFrame(tick) : 0;
+      drawn = dark ? 'all' : x1 > x0 ? [Math.max(0, Math.floor(x0 * dpr) - 2), Math.max(0, Math.floor(y0 * dpr) - 2), Math.min(cv.width, Math.ceil(x1 * dpr) + 2), Math.min(cv.height, Math.ceil(y1 * dpr) + 2)] : null;
+      raf = parts.length || torch || torchFade > 0 || demoUntil > now ? requestAnimationFrame(tick) : 0;
+      if (!raf && drawn === 'all') {
+        g.clearRect(0, 0, cv.width, cv.height);
+        drawn = null;
+      }
     }
     function draw(p) {
       const k = p.t / p.life;
@@ -5499,14 +5599,28 @@
     on.addEventListener('pointermove', (e) => {
       if (!live || chosen.trail === 'none' || e.pointerType === 'touch' || calm.matches) return;
       const { x, y } = point(e);
-      if (last) gap += Math.hypot(x - last.x, y - last.y);
+      if (chosen.trail === 'torch') {
+        torch = { x, y };
+        if (!raf) {
+          at = performance.now();
+          raf = requestAnimationFrame(tick);
+        }
+        return;
+      }
+      if (last) {
+        gap += Math.hypot(x - last.x, y - last.y);
+        if (x !== last.x || y !== last.y) heading = Math.atan2(y - last.y, x - last.x);
+      }
       last = { x, y };
-      if (gap < 13) return;
+      if (gap < (STEP[chosen.trail] || 13)) return;
       gap = 0;
       size();
       TRAIL[chosen.trail](x, y);
     }, { passive: true });
-    on.addEventListener('pointerleave', () => { last = null; });
+    on.addEventListener('pointerleave', () => {
+      last = null;
+      torch = null;
+    });
     on.addEventListener('pointerdown', (e) => {
       if (!live || chosen.click === 'none' || calm.matches || e.button > 0) return;
       const { x, y } = point(e);
@@ -5520,13 +5634,27 @@
         if (!BURST[chosen.click]) chosen.click = 'none';
         live = Boolean(isLive);
         last = null;
+        torch = null;
+        if (drawn === 'all' && chosen.trail !== 'torch') {
+          torchFade = 0;
+          g.setTransform(1, 0, 0, 1, 0, 0);
+          g.clearRect(0, 0, cv.width, cv.height);
+          drawn = null;
+        }
       },
       // A taste of them (in the editor, as one's picked): a trail across the middle, then a burst.
       demo(which = chosen) {
         if (calm.matches) return;
         size();
-        const trail = TRAIL[which.trail];
+        const trail = which.trail === 'torch' ? null : TRAIL[which.trail];
         const burst = BURST[which.click];
+        if (which.trail === 'torch') {
+          demoUntil = performance.now() + 1800;
+          if (!raf) {
+            at = performance.now();
+            raf = requestAnimationFrame(tick);
+          }
+        }
         if (trail) {
           for (let i = 0; i <= 36; i++) {
             const k = i / 36;

@@ -1514,7 +1514,7 @@ api.post('/homepages/:who/guestbook', needUser, (req, res) => {
   if (!homepages.hasGuestbook(page.doc)) return fail(res, 400, "There's no guestbook on this page.");
   let entry;
   try {
-    entry = homepages.sign(owner.id, req.user.id, (req.body || {}).text);
+    entry = homepages.sign(owner.id, req.user.id, (req.body || {}).text, String((req.body || {}).stamp || '') || null);
   } catch (err) {
     if (err instanceof homepages.HomepageError) return fail(res, err.status, err.message);
     throw err;

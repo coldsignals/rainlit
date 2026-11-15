@@ -9,8 +9,9 @@
 //   poke(x, y)     (pressed there)
 //   still()        (one picture that stands for it: for someone who'd rather things didn't
 //                  move, and the editor's swatches)
-// Starfield flight, Bubbles and Bouncing logo are everyone's; Pipes, Pond, Lava lamp, Mystify, Snow
-// globe and Constellations come with Glow (lib/homepages.js keeps to that).
+// Starfield flight, Bubbles, Bouncing logo and Rain on glass are everyone's; Pipes, Pond, Lava lamp,
+// Mystify, Snow globe, Constellations, City at night and Fireplace come with Glow (lib/homepages.js
+// keeps to that).
 
 const rgbOf = (hex) => {
   const n = parseInt(String(hex || '').replace('#', '').padEnd(6, '0').slice(0, 6), 16) || 0;
@@ -1885,4 +1886,548 @@ function constellations(g, c1, c2) {
   };
 }
 
-export const SCENES = { warp, bubbles, bounce, pipes, pond, lava, mystify, globe, constellations };
+// ---------- Rain on glass ----------
+// Looking out through a rainy window at night: lights beyond it, out of focus, and the glass
+// beaded with rain; now and then a drop slides down, gathering the beads in its way and leaving a
+// clear trail behind (the beads come back, slowly). The pointer wipes the glass like a finger;
+// a click or a tap is a drop landing there, and running down.
+function rainglass(g, c1, c2) {
+  const night = rgbOf(c1);
+  const light = rgbOf(c2);
+  const tints = [light, mix(light, [255, 110, 90], 0.5), mix(light, [120, 190, 255], 0.55), mix(light, [255, 255, 255], 0.4)];
+  let w = 1;
+  let h = 1;
+  let k = 1;
+  let back = null;
+  let glass = null;
+  let gx = null;
+  let drops = [];
+  let px = null;
+  let py = null;
+  let clock = 0;
+  const bead = (x, y, r) => {
+    // (A bead on the glass: the light behind it, upside down, small; a dark rim below, a glint above.)
+    gx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+    gx.beginPath();
+    gx.arc(x, y, r, 0, Math.PI * 2);
+    gx.fill();
+    gx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
+    gx.lineWidth = Math.max(0.6, r * 0.35);
+    gx.beginPath();
+    gx.arc(x, y, r * 0.85, 0.15 * Math.PI, 0.85 * Math.PI);
+    gx.stroke();
+    gx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    gx.beginPath();
+    gx.arc(x - r * 0.3, y - r * 0.35, Math.max(0.4, r * 0.24), 0, Math.PI * 2);
+    gx.fill();
+  };
+  const wipe = (x, y, r) => {
+    gx.globalCompositeOperation = 'destination-out';
+    gx.beginPath();
+    gx.arc(x, y, r, 0, Math.PI * 2);
+    gx.fill();
+    gx.globalCompositeOperation = 'source-over';
+  };
+  const newDrop = (x, y) => ({ x, y, r: rand(3.8, 6.5), vy: 0, rest: rand(0.2, 1.6), left: 0 });
+  const paint = () => {
+    g.drawImage(back, 0, 0, w, h);
+    g.drawImage(glass, 0, 0, w, h);
+    for (const d of drops) {
+      const rx = d.r;
+      const ry = d.r * 1.22;
+      // (The view through it: the lights behind, upside down and small.)
+      g.save();
+      g.beginPath();
+      g.ellipse(d.x, d.y, rx, ry, 0, 0, Math.PI * 2);
+      g.clip();
+      g.translate(d.x, d.y);
+      g.scale(1, -1);
+      const span = d.r * 7;
+      g.drawImage(back, clamp(d.x - span, 0, w - span * 2) * k, clamp(d.y - span, 0, h - span * 2) * k, span * 2 * k, span * 2 * k, -rx, -ry, rx * 2, ry * 2);
+      g.restore();
+      g.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+      g.lineWidth = 1.1;
+      g.beginPath();
+      g.ellipse(d.x, d.y, rx, ry, 0, 0.1 * Math.PI, 0.9 * Math.PI);
+      g.stroke();
+      g.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      g.beginPath();
+      g.arc(d.x - rx * 0.35, d.y - ry * 0.4, Math.max(0.6, d.r * 0.25), 0, Math.PI * 2);
+      g.fill();
+    }
+  };
+  const drawBack = () => {
+    back = canvasOf(w * k, h * k);
+    const b = back.getContext('2d');
+    b.scale(k, k);
+    const sky = b.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, css(shade(night, -0.25)));
+    sky.addColorStop(1, css(shade(night, 0.12)));
+    b.fillStyle = sky;
+    b.fillRect(0, 0, w, h);
+    // (Lights, out of focus: street lamps, windows, cars far off.)
+    for (let i = 0; i < (w * h) / 5200; i++) {
+      const r = rand(10, 46);
+      const x = rand(-r, w + r);
+      const y = h * (0.35 + Math.random() ** 0.7 * 0.65);
+      const t = tints[Math.floor(Math.random() * tints.length)];
+      const glow = b.createRadialGradient(x, y, 0, x, y, r);
+      const a = rand(0.12, 0.42);
+      glow.addColorStop(0, css(t, a));
+      glow.addColorStop(0.7, css(t, a * 0.75));
+      glow.addColorStop(1, css(t, 0));
+      b.fillStyle = glow;
+      b.beginPath();
+      b.arc(x, y, r, 0, Math.PI * 2);
+      b.fill();
+    }
+    // (And the glass misted over a little.)
+    b.fillStyle = css(mix(night, [190, 200, 220], 0.4), 0.12);
+    b.fillRect(0, 0, w, h);
+  };
+  const scatter = (n) => {
+    for (let i = 0; i < n; i++) bead(rand(0, w), rand(0, h), Math.random() ** 2 * 2.6 + 0.9);
+  };
+  return {
+    fps: 30,
+    resize(nw, nh) {
+      w = nw;
+      h = nh;
+      k = g.canvas.width / w;
+      drawBack();
+      glass = canvasOf(w * k, h * k);
+      gx = glass.getContext('2d');
+      gx.scale(k, k);
+      scatter(Math.round((w * h) / 1100));
+      drops = Array.from({ length: Math.round(clamp(w / 45, 8, 30)) }, () => newDrop(rand(0, w), rand(0, h)));
+    },
+    frame(dt) {
+      clock += dt;
+      scatter(Math.round((w * h) / 300000 + Math.random() * 0.7)); // (it's still raining: beads come back)
+      for (const d of drops) {
+        // (A drop sticks, then slides; it slides faster the bigger it gets, gathering beads in its way.)
+        if (d.rest > 0) {
+          d.rest -= dt;
+          continue;
+        }
+        d.vy = Math.min(d.vy + 260 * dt, 40 + d.r * 22);
+        const was = d.y;
+        d.y += d.vy * dt;
+        d.x += Math.sin(clock * 3 + d.y * 0.05) * 6 * dt;
+        wipe(d.x, d.y, d.r * 1.1);
+        d.left += d.y - was;
+        if (d.left > 9) {
+          d.left = 0;
+          bead(d.x + rand(-1, 1), d.y - d.r * 1.6, rand(0.6, 1.2)); // (its trail)
+        }
+        d.r = Math.min(9, d.r + dt * 0.25);
+        if (Math.random() < dt * 0.5) {
+          d.rest = rand(0.1, 0.9);
+          d.vy = 0;
+        }
+        if (d.y - d.r > h) Object.assign(d, newDrop(rand(0, w), rand(-40, h * 0.5)));
+      }
+      if (px !== null) wipe(px, py, 16);
+      paint();
+    },
+    point(x, y) {
+      px = x;
+      py = y;
+    },
+    poke(x, y) {
+      if (drops.length > 40) drops.shift();
+      const d = newDrop(x, y);
+      d.r = 5;
+      d.rest = 0;
+      d.vy = 30;
+      drops.push(d);
+    },
+    still() {
+      paint();
+    },
+    things: () => ({ drops: drops.length }),
+  };
+}
+
+// ---------- City at night ----------
+// A skyline after dark, far towers to near ones (moving with the pointer, nearer ones more), their
+// windows lit and going out and coming on, lights blinking on the tallest, traffic below. A click
+// or a tap in the sky is a firework; on a building, its lights all come on.
+function city(g, c1, c2) {
+  const sky = rgbOf(c1);
+  const lamp = rgbOf(c2);
+  let w = 1;
+  let h = 1;
+  let k = 1;
+  let skyPic = null;
+  let layers = [];
+  let cars = [];
+  let sparks = [];
+  let blinks = [];
+  let px = null;
+  let clock = 0;
+  let flip = 0;
+  const M = 70; // (each row of buildings is this much wider each side, for moving with the pointer)
+  const drawSky = () => {
+    skyPic = canvasOf(w * k, h * k);
+    const b = skyPic.getContext('2d');
+    b.scale(k, k);
+    const air = b.createLinearGradient(0, 0, 0, h);
+    air.addColorStop(0, css(shade(sky, -0.45)));
+    air.addColorStop(0.65, css(sky));
+    air.addColorStop(1, css(mix(sky, lamp, 0.3)));
+    b.fillStyle = air;
+    b.fillRect(0, 0, w, h);
+    for (let i = 0; i < (w * h) / 6000; i++) {
+      b.fillStyle = 'rgba(255, 255, 255, ' + rand(0.2, 0.7) + ')';
+      b.fillRect(rand(0, w), rand(0, h * 0.5), rand(0.6, 1.4), rand(0.6, 1.4));
+    }
+    const moon = b.createRadialGradient(w * 0.82, h * 0.16, 0, w * 0.82, h * 0.16, 60);
+    moon.addColorStop(0, 'rgba(255, 248, 225, 0.95)');
+    moon.addColorStop(0.3, 'rgba(255, 248, 225, 0.9)');
+    moon.addColorStop(0.34, 'rgba(255, 240, 200, 0.18)');
+    moon.addColorStop(1, 'rgba(255, 240, 200, 0)');
+    b.fillStyle = moon;
+    b.fillRect(w * 0.82 - 60, h * 0.16 - 60, 120, 120);
+  };
+  // (A row of buildings: their shapes and windows, drawn once; a window's light changed on its own.)
+  const makeLayer = (depth) => {
+    const ground = h * (0.9 - depth * 0.08);
+    const tone = mix(shade(sky, -0.55), sky, 0.45 - depth * 0.2);
+    const pic = canvasOf((w + M * 2) * k, h * k);
+    const b = pic.getContext('2d');
+    b.scale(k, k);
+    const buildings = [];
+    const windows = [];
+    let x = 0;
+    while (x < w + M * 2) {
+      const bw = rand(36, 90) * (1 + depth * 0.25);
+      const bh = rand(0.18, 0.5) * h * (1 - depth * 0.25) + (Math.random() < 0.12 ? h * 0.15 : 0);
+      const top = ground - bh;
+      buildings.push({ x, top, w: bw });
+      b.fillStyle = css(shade(tone, rand(-0.08, 0.06)));
+      b.fillRect(x, top, bw, h - top);
+      if (Math.random() < 0.3) b.fillRect(x + bw * 0.4, top - 14, bw * 0.2, 14); // (a roof's top)
+      if (bh > h * 0.42 && depth > 0) blinks.push({ layer: depth, x: x + bw / 2, y: top - 16, phase: rand(0, 3) });
+      const cw = 6 + depth * 1.5;
+      const gap = 5 + depth;
+      for (let wy = top + 10; wy < ground - 12; wy += cw + gap) {
+        for (let wx = x + 7; wx < x + bw - cw - 4; wx += cw + gap) {
+          windows.push({ x: wx, y: wy, s: cw, on: Math.random() < 0.38, warm: Math.random() });
+        }
+      }
+      x += bw + rand(2, 10);
+    }
+    b.fillStyle = css(shade(tone, -0.1));
+    b.fillRect(0, ground, w + M * 2, h - ground);
+    const layer = { depth, pic, b, windows, buildings, ground };
+    for (const win of windows) drawWindow(layer, win);
+    return layer;
+  };
+  const drawWindow = (layer, win) => {
+    const b = layer.b;
+    b.fillStyle = win.on ? css(mix(lamp, [255, 255, 255], win.warm * 0.35), 0.9 - layer.depth * 0.15) : css(shade(sky, -0.6), 0.9);
+    b.fillRect(win.x, win.y, win.s, win.s * 1.3);
+  };
+  const shift = (layer) => (px === null ? 0 : ((px / w) - 0.5) * -M * (0.25 + layer.depth * 0.35));
+  const paint = () => {
+    g.drawImage(skyPic, 0, 0, w, h);
+    for (const layer of layers) {
+      const sx = shift(layer);
+      g.drawImage(layer.pic, -M + sx, 0, w + M * 2, h);
+    }
+    // (Red lights on the tallest, blinking.)
+    for (const bl of blinks) {
+      const on = (Math.sin(clock * 2.4 + bl.phase) + 1) / 2;
+      g.fillStyle = 'rgba(255, 70, 60, ' + (0.2 + on * 0.8).toFixed(2) + ')';
+      g.beginPath();
+      g.arc(bl.x - M + shift(layers[bl.layer]), bl.y, 1.8 + on, 0, Math.PI * 2);
+      g.fill();
+    }
+    // (Traffic: headlights one way, tail lights the other.)
+    const road = h * 0.955;
+    g.fillStyle = 'rgba(10, 10, 16, 0.85)';
+    g.fillRect(0, road - 6, w, h - road + 6);
+    for (const c of cars) {
+      const y = road + (c.dir > 0 ? -2 : 4);
+      const streak = g.createLinearGradient(c.x - c.dir * 26, 0, c.x, 0);
+      const col = c.dir > 0 ? '255, 245, 220' : '255, 60, 50';
+      streak.addColorStop(0, 'rgba(' + col + ', 0)');
+      streak.addColorStop(1, 'rgba(' + col + ', 0.9)');
+      g.fillStyle = streak;
+      g.fillRect(Math.min(c.x, c.x - c.dir * 26), y - 1.2, 26, 2.4);
+    }
+    g.globalCompositeOperation = 'lighter';
+    for (const s of sparks) {
+      g.globalAlpha = clamp(1 - s.t / s.life, 0, 1);
+      g.fillStyle = s.color;
+      g.fillRect(s.x - 1.2, s.y - 1.2, 2.4, 2.4);
+    }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+  };
+  return {
+    fps: 30,
+    resize(nw, nh) {
+      w = nw;
+      h = nh;
+      k = g.canvas.width / w;
+      blinks = [];
+      drawSky();
+      layers = [makeLayer(0), makeLayer(1), makeLayer(2)];
+      cars = Array.from({ length: Math.round(clamp(w / 90, 4, 16)) }, () => ({ x: rand(0, w), dir: Math.random() < 0.5 ? 1 : -1, v: rand(50, 110) }));
+      sparks = [];
+    },
+    frame(dt) {
+      clock += dt;
+      flip += dt;
+      while (flip > 0.25) {
+        flip -= 0.25;
+        const layer = layers[1 + Math.floor(Math.random() * 2)];
+        const win = layer.windows[Math.floor(Math.random() * layer.windows.length)];
+        if (win) {
+          win.on = !win.on;
+          drawWindow(layer, win);
+        }
+      }
+      for (const c of cars) {
+        c.x += c.dir * c.v * dt;
+        if (c.x > w + 40) c.x = -40;
+        else if (c.x < -40) c.x = w + 40;
+      }
+      for (const s of sparks) {
+        s.t += dt;
+        s.vy += 90 * dt;
+        s.vx *= Math.exp(-dt * 1.4);
+        s.vy *= Math.exp(-dt * 1.4);
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+      }
+      sparks = sparks.filter((s) => s.t < s.life);
+      paint();
+    },
+    point(x) {
+      px = x;
+    },
+    poke(x, y) {
+      const near = layers[2];
+      const at = x + M - shift(near);
+      const hit = near.buildings.find((bd) => at >= bd.x && at <= bd.x + bd.w && y >= bd.top);
+      if (hit) {
+        for (const win of near.windows) {
+          if (win.x >= hit.x && win.x <= hit.x + hit.w) {
+            win.on = true;
+            drawWindow(near, win);
+          }
+        }
+        return;
+      }
+      const colors = ['#ffd27a', '#ff7ab8', '#7ad7ff', '#b9ff7a', '#ffffff'];
+      const c = colors[Math.floor(Math.random() * colors.length)];
+      for (let i = 0; i < 46; i++) {
+        const a = (i / 46) * Math.PI * 2;
+        const v = rand(60, 150);
+        sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: rand(1, 1.6), color: c });
+      }
+      if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
+    },
+    still() {
+      paint();
+    },
+    things: () => ({ windows: layers.reduce((n, l) => n + l.windows.filter((x) => x.on).length, 0), sparks: sparks.length }),
+  };
+}
+
+// ---------- Fireplace ----------
+// A fire in a stone hearth: flames licking up from the logs, sparks and embers rising, and its
+// light flickering on the stones round it. A click or a tap stirs it: it flares, and sparks fly.
+function fireplace(g, c1, c2) {
+  const stone = rgbOf(c1);
+  const flame = rgbOf(c2);
+  let w = 1;
+  let h = 1;
+  let k = 1;
+  let wall = null;
+  let box = null; // (the fire's opening: x, y, w, h)
+  let parts = [];
+  let sparks = [];
+  let flare = 0;
+  let clock = 0;
+  let owed = 0;
+  const sprites = [];
+  const sprite = (inner, outer) => {
+    const c = canvasOf(64, 64);
+    const x = c.getContext('2d');
+    const grad = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, inner);
+    grad.addColorStop(0.4, outer);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    x.fillStyle = grad;
+    x.fillRect(0, 0, 64, 64);
+    return c;
+  };
+  const drawWall = () => {
+    wall = canvasOf(w * k, h * k);
+    const b = wall.getContext('2d');
+    b.scale(k, k);
+    b.fillStyle = css(shade(stone, -0.35));
+    b.fillRect(0, 0, w, h);
+    // (Stones, in rows, each a little different.)
+    const rowH = 34;
+    for (let y = 0, row = 0; y < h; y += rowH, row++) {
+      for (let x = row % 2 ? -30 : 0; x < w; ) {
+        const sw = rand(50, 90);
+        b.fillStyle = css(shade(stone, rand(-0.18, 0.12)));
+        b.beginPath();
+        b.roundRect(x + 2, y + 2, sw - 4, rowH - 4, 6);
+        b.fill();
+        x += sw;
+      }
+    }
+    const bw = Math.min(w * 0.62, 560);
+    const bh = Math.min(h * 0.42, 340);
+    box = { x: (w - bw) / 2, y: h * 0.9 - bh, w: bw, h: bh };
+    // (The mantel, and the hearth's opening: dark, deeper at the back.)
+    b.fillStyle = css(shade(stone, -0.55));
+    b.fillRect(box.x - 40, box.y - 46, box.w + 80, 22);
+    b.fillStyle = css(shade(stone, -0.2));
+    b.fillRect(box.x - 40, box.y - 50, box.w + 80, 6);
+    const inside = b.createLinearGradient(0, box.y, 0, box.y + box.h);
+    inside.addColorStop(0, '#050303');
+    inside.addColorStop(1, '#1a0d08');
+    b.fillStyle = inside;
+    b.beginPath();
+    b.roundRect(box.x, box.y, box.w, box.h, [box.w * 0.18, box.w * 0.18, 0, 0]);
+    b.fill();
+    // (The floor in front.)
+    b.fillStyle = css(shade(stone, -0.45));
+    b.fillRect(0, h * 0.9, w, h * 0.1);
+    // (Logs.)
+    const ly = box.y + box.h - 18;
+    const log = (x, y, len, tilt) => {
+      b.save();
+      b.translate(x, y);
+      b.rotate(tilt);
+      b.fillStyle = '#4a2a18';
+      b.beginPath();
+      b.roundRect(-len / 2, -10, len, 20, 10);
+      b.fill();
+      b.fillStyle = '#7a4a2c';
+      b.beginPath();
+      b.ellipse(len / 2 - 4, 0, 6, 9, 0, 0, Math.PI * 2);
+      b.fill();
+      b.restore();
+    };
+    log(w / 2 - box.w * 0.12, ly, box.w * 0.42, -0.12);
+    log(w / 2 + box.w * 0.12, ly, box.w * 0.42, 0.14);
+    log(w / 2, ly - 10, box.w * 0.34, 0.02);
+  };
+  const emit = (n, strong = 1) => {
+    for (let i = 0; i < n; i++) {
+      const spread = box.w * 0.24;
+      const off = rand(-1, 1);
+      parts.push({ x: w / 2 + off * Math.abs(off) * spread, y: box.y + box.h - 26, vx: rand(-10, 10), vy: -rand(90, 170) * strong, s: rand(42, 78) * strong * (1 - Math.abs(off) * 0.4), t: 0, life: rand(0.45, 0.85) });
+    }
+  };
+  const paint = () => {
+    g.drawImage(wall, 0, 0, w, h);
+    const flick = 0.8 + Math.sin(clock * 9) * 0.06 + Math.sin(clock * 23) * 0.05 + flare * 0.25;
+    // (The fire, inside its opening.)
+    g.save();
+    g.beginPath();
+    g.roundRect(box.x, box.y, box.w, box.h, [box.w * 0.18, box.w * 0.18, 0, 0]);
+    g.clip();
+    g.globalCompositeOperation = 'lighter';
+    // (A glow under the logs, then the flames: each tall and narrow, shrinking as it rises.)
+    const bed = g.createRadialGradient(w / 2, box.y + box.h - 22, 0, w / 2, box.y + box.h - 22, box.w * 0.34);
+    bed.addColorStop(0, css(mix(flame, [255, 230, 160], 0.5), 0.55 * flick));
+    bed.addColorStop(1, css(flame, 0));
+    g.fillStyle = bed;
+    g.fillRect(box.x, box.y, box.w, box.h);
+    for (const p of parts) {
+      const a = p.t / p.life;
+      const pic = sprites[a < 0.3 ? 0 : a < 0.65 ? 1 : 2];
+      const s = p.s * (1 - a * 0.75);
+      g.globalAlpha = clamp((1 - a) ** 1.3, 0, 1);
+      g.drawImage(pic, p.x - s * 0.36, p.y - s * 0.62, s * 0.72, s * 1.24);
+    }
+    g.restore();
+    // (Sparks, out into the room.)
+    g.globalCompositeOperation = 'lighter';
+    for (const s of sparks) {
+      g.globalAlpha = clamp(1 - s.t / s.life, 0, 1);
+      g.fillStyle = s.t < s.life * 0.5 ? '#fff1b0' : css(flame);
+      g.fillRect(s.x - 1, s.y - 1, 2, 2);
+    }
+    // (Its light on the stones.)
+    g.globalAlpha = 1;
+    const cx = w / 2;
+    const cy = box.y + box.h * 0.7;
+    const glow = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * 0.7);
+    glow.addColorStop(0, css(flame, 0.2 * flick));
+    glow.addColorStop(0.5, css(flame, 0.07 * flick));
+    glow.addColorStop(1, css(flame, 0));
+    g.fillStyle = glow;
+    g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'source-over';
+  };
+  const step = (dt) => {
+    clock += dt;
+    flare = Math.max(0, flare - dt * 0.8);
+    owed += dt * (120 + flare * 160);
+    const n = Math.floor(owed);
+    owed -= n;
+    emit(n, 1 + flare * 0.5);
+    for (const p of parts) {
+      p.t += dt;
+      p.vx += Math.sin(clock * 3 + p.y * 0.03) * 30 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.x += (w / 2 - p.x) * dt * 1.3; // (drawn in towards the middle as they rise)
+    }
+    parts = parts.filter((p) => p.t < p.life);
+    if (Math.random() < dt * (2 + flare * 20)) {
+      sparks.push({ x: w / 2 + rand(-box.w * 0.2, box.w * 0.2), y: box.y + box.h - 30, vx: rand(-30, 30), vy: -rand(80, 200), t: 0, life: rand(1, 2.4) });
+    }
+    for (const s of sparks) {
+      s.t += dt;
+      s.vx += Math.sin(clock * 5 + s.y * 0.1) * 40 * dt;
+      s.vy += 20 * dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+    }
+    sparks = sparks.filter((s) => s.t < s.life);
+  };
+  return {
+    fps: 30,
+    resize(nw, nh) {
+      w = nw;
+      h = nh;
+      k = g.canvas.width / w;
+      if (!sprites.length) {
+        sprites.push(sprite('rgba(255, 250, 220, 1)', css(mix(flame, [255, 230, 150], 0.6), 0.8)));
+        sprites.push(sprite(css(mix(flame, [255, 220, 120], 0.4), 0.95), css(flame, 0.6)));
+        sprites.push(sprite(css(mix(flame, [200, 40, 20], 0.5), 0.7), css(mix(flame, [120, 20, 10], 0.6), 0.3)));
+      }
+      drawWall();
+      parts = [];
+      sparks = [];
+      for (let i = 0; i < 40; i++) step(1 / 30);
+    },
+    frame(dt) {
+      step(dt);
+      paint();
+    },
+    point() {},
+    poke() {
+      flare = 1;
+      for (let i = 0; i < 24; i++) sparks.push({ x: w / 2 + rand(-box.w * 0.25, box.w * 0.25), y: box.y + box.h - 30, vx: rand(-90, 90), vy: -rand(120, 300), t: 0, life: rand(0.8, 2) });
+    },
+    still() {
+      paint();
+    },
+    things: () => ({ flames: parts.length, sparks: sparks.length, flare: +flare.toFixed(2) }),
+  };
+}
+
+export const SCENES = { warp, bubbles, bounce, pipes, pond, lava, mystify, globe, constellations, rainglass, city, fireplace };
