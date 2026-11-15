@@ -5894,16 +5894,33 @@
   // The weather on a page (behind its pieces), or on someone's card. (A thunderstorm has more to it:
   // clouds drifting along the top, and lightning. Only drawn again when it's changed, so it carries
   // on as the page or card around it is.)
-  const SKY_PARTS = { storm: ['hp-storm-clouds far', 'hp-storm-clouds', 'hp-storm-bolt far', 'hp-storm-bolt'] };
+  const SKY_PARTS = { storm: ['hp-storm-clouds far', 'hp-storm-clouds', 'hp-storm-bolt far', 'hp-storm-bolt'], meteors: ['hp-meteor', 'hp-meteor', 'hp-meteor'] };
+  // (Shooting stars: each on a time of its own, and somewhere new each time it comes: in the upper
+  // part of the sky, mostly falling down to the left, now and then to the right.)
+  const METEOR_TIMES = [11, 17, 23];
+  const aimMeteor = (m) => {
+    const right = Math.random() < 0.3;
+    m.style.left = `${(right ? 5 : 30) + Math.random() * 60}%`;
+    m.style.top = `${Math.random() * 45}%`;
+    m.style.setProperty('--a', `${right ? 25 + Math.random() * 20 : 135 + Math.random() * 20}deg`);
+    m.style.setProperty('--len', `${90 + Math.random() * 80}px`);
+    m.style.setProperty('--d', `${200 + Math.random() * 160}px`);
+  };
   function setSky(sky, kind) {
     const k = SKIES[kind] ? kind : 'none';
     if (sky.dataset.sky === k) return;
     sky.dataset.sky = k;
     sky.className = `hp-sky hp-sky-${k}`;
     inStep(sky);
-    sky.replaceChildren(...(SKY_PARTS[k] || []).map((cls) => {
+    sky.replaceChildren(...(SKY_PARTS[k] || []).map((cls, i) => {
       const part = document.createElement('i');
       part.className = cls;
+      if (cls === 'hp-meteor') {
+        part.style.setProperty('--t', `${METEOR_TIMES[i]}s`);
+        part.style.setProperty('--late', `${[9.5, 12, 14][i]}s`);
+        aimMeteor(part);
+        part.addEventListener('animationiteration', () => aimMeteor(part));
+      }
       return part;
     }));
   }
