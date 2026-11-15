@@ -163,12 +163,12 @@
     return fx;
   }
 
-  const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', leaves: 'Autumn leaves', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms', embers: 'Embers' };
+  const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', leaves: 'Autumn leaves', fog: 'Fog', stars: 'Twinkling stars', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms', embers: 'Embers', meteors: 'Shooting stars', lanterns: 'Floating lanterns' };
   const TRAILS = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', stars: 'Stars', bubbles: 'Bubbles', raindrops: 'Raindrops', pixels: 'Pixels' };
   const CLICKS = { none: 'Nothing', confetti: 'Confetti', hearts: 'Hearts', stars: 'Stars', ripples: 'Ripples', fireworks: 'Fireworks' };
   // Glow's extras (lib/homepages.js): anyone can see them on a page, people with Glow can use them.
   const PERKS = {
-    fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms', 'embers'],
+    fx: ['shimmer', 'lamplight'], frame: ['gilded', 'neon'], sky: ['fireflies', 'aurora', 'storm', 'blossoms', 'embers', 'meteors', 'lanterns'],
     pattern: ['starfield', 'bokeh', 'holo', 'waves'], scene: ['pipes', 'pond', 'lava', 'mystify', 'globe', 'constellations'], trail: ['sparkles', 'hearts', 'stars', 'bubbles', 'raindrops', 'pixels'],
     click: ['confetti', 'hearts', 'stars', 'ripples', 'fireworks'], pet: ['drop', 'dragon', 'fox'], piece: ['fortune'],
   };

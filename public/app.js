@@ -133,7 +133,7 @@ for (const id of [
   'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
   'card-dialog', 'card-preview', 'card-preview-face', 'card-preview-name', 'card-preview-username', 'card-preview-status', 'card-c1', 'card-c2',
   'card-patterns', 'card-glow-patterns-box', 'card-glow-patterns', 'card-fonts', 'card-skies', 'card-glow-skies-box', 'card-glow-skies',
-  'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain', 'card-decos', 'card-glow-decos-box', 'card-glow-decos',
+  'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain', 'card-decos', 'card-glow-decos-box', 'card-glow-decos', 'card-finishes', 'card-glow-finishes-box', 'card-glow-finishes',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-homepage-new', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block', 'mp-sound', 'mp-mute-them', 'mp-volume', 'mp-volume-value',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name', 'profile-save-bar', 'profile-save-error', 'profile-save-text', 'profile-undo', 'profile-save',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
@@ -18288,7 +18288,7 @@ function dressCard(node, card, name, size = 22) {
     node.style.removeProperty('--card-c1');
     node.style.removeProperty('--card-c2');
     delete node.dataset.ink;
-    for (const old of node.querySelectorAll(':scope > .card-banner, :scope > .card-sky')) old.remove();
+    for (const old of node.querySelectorAll(':scope > .card-banner, :scope > .card-sky, :scope > .card-finish')) old.remove();
     node.cardLook = '';
     return;
   }
@@ -18297,10 +18297,17 @@ function dressCard(node, card, name, size = 22) {
   node.dataset.ink = (shade(c.c1) + shade(c.c2)) / 2 > 150 ? 'dark' : 'light';
   // (Its pattern and weather are only drawn again when they've changed, so they carry on as the
   // profile around them is redrawn.)
-  const look = [c.c1, c.c2, c.pattern, c.sky].join('|');
+  const look = [c.c1, c.c2, c.pattern, c.sky, c.finish].join('|');
   if (node.cardLook === look) return;
   node.cardLook = look;
-  for (const old of node.querySelectorAll(':scope > .card-banner, :scope > .card-sky')) old.remove();
+  for (const old of node.querySelectorAll(':scope > .card-banner, :scope > .card-sky, :scope > .card-finish')) old.remove();
+  // (Its finish, over the pattern and weather, under what's on it.)
+  if (c.finish && c.finish !== 'none' && CARD_FINISHES[c.finish]) {
+    const finish = document.createElement('div');
+    finish.className = `card-finish card-finish-${c.finish}`;
+    finish.setAttribute('aria-hidden', 'true');
+    node.prepend(finish);
+  }
   if (c.sky && c.sky !== 'none') {
     const sky = document.createElement('div');
     sky.className = 'card-sky';
@@ -18344,13 +18351,19 @@ function readsOn(color, card) {
 // for anyone without Glow, are there to try on (on your card here; never kept).
 
 const CARD_COLORS = ['#1d2133', '#2b2233', '#3a4157', '#4b5563', '#1f2c4a', '#2f4a3a', '#6b2737', '#5b3a29', '#7a7590', '#4c8dff', '#8ae4ff', '#6ad07a', '#9be3c1', '#ffd23f', '#ff9f43', '#ef4d5e', '#ff8cc6', '#c9b3ff', '#a57bff', '#ffffff', '#000000'];
-const CARD_START = { c1: '#3a4157', c2: '#1d2133', pattern: 'none', font: 'rainlit', sky: 'none' };
+const CARD_START = { c1: '#3a4157', c2: '#1d2133', pattern: 'none', font: 'rainlit', sky: 'none', finish: 'none' };
+// A finish over all of it (lib/looks.js FINISHES): everyone's, and Glow's.
+const CARD_FINISHES = {
+  none: { label: 'None' }, grain: { label: 'Paper grain' }, brushed: { label: 'Brushed metal' }, glass: { label: 'Glossy' },
+  foil: { label: 'Holographic foil', glow: true }, gilded: { label: 'Gilded edge', glow: true },
+};
 let cardSaveTimer = 0;
 
 // (Your card as it's being made: yours, changed, with anything of Glow's being tried on.)
 const cardMade = () => ({ ...CARD_START, ...(S.cardDraft || {}) });
 const cardShown = () => (S.cardDraft || S.cardTry ? { ...cardMade(), ...(S.cardTry || {}) } : null);
-const cardGlow = (field, key) => Boolean(window.Homepage && Homepage.PERKS[field === 'pattern' ? 'pattern' : 'sky'].includes(key));
+const cardGlow = (field, key) => (field === 'finish' ? Boolean(CARD_FINISHES[key] && CARD_FINISHES[key].glow)
+  : Boolean(window.Homepage && Homepage.PERKS[field === 'pattern' ? 'pattern' : 'sky'].includes(key)));
 
 function openCard() {
   S.cardTry = null;
@@ -18375,6 +18388,7 @@ function renderCard() {
   renderCardPatterns();
   renderCardFonts();
   renderCardSkies();
+  renderCardFinishes();
   markCardColors();
   const tried = S.cardTry ? Object.entries(S.cardTry)[0] : S.decoTry ? ['deco', S.decoTry] : null;
   el.cardTry.hidden = !tried;
@@ -18384,6 +18398,7 @@ function renderCard() {
 }
 
 const cardLabel = (field, key) => (field === 'deco' ? Homepage.DECOS[key] && Homepage.DECOS[key].label
+  : field === 'finish' ? CARD_FINISHES[key] && CARD_FINISHES[key].label
   : field === 'pattern' ? Homepage.PATTERNS[key] : Homepage.SKIES[key]) || key;
 
 // Around your picture: nothing, one of everyone's effects, or one of Glow's (anyone else can try
@@ -18544,6 +18559,40 @@ function renderCardSkies() {
   el.cardGlowSkies.replaceChildren(...glow.map(chip));
   el.cardGlowSkiesBox.hidden = !glow.length;
 }
+
+// Its finish: none, everyone's, or Glow's.
+function renderCardFinishes() {
+  const c = { ...cardMade(), ...(S.cardTry || {}) };
+  const chip = (key) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `card-chip${S.cardTry && S.cardTry.finish === key ? ' trying' : ''}`;
+    b.setAttribute('aria-pressed', String(Boolean(S.cardDraft || S.cardTry) && (c.finish || 'none') === key));
+    b.textContent = CARD_FINISHES[key].label;
+    b.addEventListener('click', () => pickCard('finish', key));
+    return b;
+  };
+  const all = Object.keys(CARD_FINISHES);
+  el.cardFinishes.replaceChildren(...all.filter((k) => !CARD_FINISHES[k].glow).map(chip));
+  const glow = all.filter((k) => CARD_FINISHES[k].glow && (supporting() || glowShown() || (S.me.card && S.me.card.finish === k)));
+  el.cardGlowFinishes.replaceChildren(...glow.map(chip));
+  el.cardGlowFinishesBox.hidden = !glow.length;
+}
+
+// Holographic foil catches the light where the pointer is, over any card that has it.
+let foilFrame = 0;
+document.addEventListener('pointermove', (e) => {
+  if (foilFrame || !e.target || !e.target.closest) return;
+  const card = e.target.closest('.carded');
+  const foil = card && card.querySelector(':scope > .card-finish-foil');
+  if (!foil) return;
+  foilFrame = requestAnimationFrame(() => {
+    foilFrame = 0;
+    const r = card.getBoundingClientRect();
+    foil.style.setProperty('--fx', Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)).toFixed(3));
+    foil.style.setProperty('--fy', Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)).toFixed(3));
+  });
+}, { passive: true });
 
 // Picking something for it: kept (a moment later, while a colour's being dragged); or, one of
 // Glow's for someone without it, tried on (again: taken off). Glow's box shows the first time.

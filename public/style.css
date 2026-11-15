@@ -664,7 +664,7 @@ a.x-link .icon { width: 16px; height: 16px; }
    along the top and weather, smaller; their name in its font. */
 .member-row.carded { position: relative; overflow: hidden; isolation: isolate; margin: 3px 0; padding-right: 8px; border-radius: 12px; }
 .member-row.carded::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, var(--card-c1), var(--card-c2)); }
-.member-row > :is(.card-banner, .card-sky) { z-index: -1; }
+.member-row > :is(.card-banner, .card-sky, .card-finish) { z-index: -1; }
 .member-row > .card-banner { right: auto; width: calc(100% / 0.6); transform: scale(0.6); transform-origin: 0 0; }
 .member-row > .card-sky { inset: auto; left: 0; top: 0; width: calc(100% / 0.6); height: calc(100% / 0.6); transform: scale(0.6); transform-origin: 0 0; border-radius: 0; }
 .member-list .member-row.carded .member:hover { background: var(--card-raise); }
@@ -1389,7 +1389,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
   border: 1px solid var(--card-line); border-radius: 14px;
   background: linear-gradient(180deg, var(--card-c1), var(--card-c2)) border-box;
 }
-.me-card.carded > :not(.card-banner, .card-sky) { position: relative; z-index: 1; }
+.me-card.carded > :not(.card-banner, .card-sky, .card-finish) { position: relative; z-index: 1; }
 .me-card > .card-banner { right: auto; width: calc(100% / 0.6); transform: scale(0.6); transform-origin: 0 0; }
 .me-card > .card-sky { inset: auto; left: 0; top: 0; width: calc(100% / 0.6); height: calc(100% / 0.6); transform: scale(0.6); transform-origin: 0 0; border-radius: 0; }
 .me-card.carded :is(.me-btn, .icon-btn.ghost):hover { background: var(--card-raise); }
@@ -1425,7 +1425,7 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .panel-member.carded { position: relative; overflow: hidden; isolation: isolate; margin: 2px 0; }
 .panel-member.carded::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, var(--card-c1), var(--card-c2)); }
 .panel-member.carded:hover::before { filter: brightness(1.12); }
-.panel-member > :is(.card-banner, .card-sky) { z-index: -1; }
+.panel-member > :is(.card-banner, .card-sky, .card-finish) { z-index: -1; }
 .panel-member > .card-banner { right: auto; width: calc(100% / 0.5); transform: scale(0.5); transform-origin: 0 0; }
 .panel-member > .card-sky { inset: auto; left: 0; top: 0; width: calc(100% / 0.5); height: calc(100% / 0.5); transform: scale(0.5); transform-origin: 0 0; border-radius: 0; }
 .panel-member.carded .face[data-presence]::after { border-color: color-mix(in srgb, var(--card-c1) 45%, var(--card-c2)); }
@@ -1740,6 +1740,34 @@ button.person:hover, .person:focus-within { background: var(--dusk); }
 .card-banner .hp-backdrop { position: absolute; left: 0; top: 0; width: 160%; height: 160%; transform: scale(0.625); transform-origin: 0 0; } /* (Glow's moving ones, closer together) */
 .card-sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit; }
 .card-sky .hp-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+/* A card's finish, over all of it (app.js CARD_FINISHES). */
+.card-finish { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: inherit; }
+.card-finish-grain { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E"); opacity: 0.32; }
+.card-finish-brushed {
+  background: linear-gradient(105deg, transparent 25%, rgba(255, 255, 255, 0.13) 42%, transparent 58%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, rgba(0, 0, 0, 0.05) 1px 2px, transparent 2px 4px);
+}
+.card-finish-glass { background: linear-gradient(165deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05) 38%, transparent 38.5%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+/* (Foil: a rainbow sheen where the pointer is (app.js), and a slower one drifting by.) */
+.card-finish-foil {
+  background: linear-gradient(115deg, transparent 18%, rgba(255, 110, 200, 0.75) 32%, rgba(255, 225, 110, 0.75) 42%, rgba(110, 255, 195, 0.75) 52%, rgba(110, 170, 255, 0.75) 62%, rgba(190, 120, 255, 0.6) 70%, transparent 82%) no-repeat,
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.06) 0 2px, transparent 2px 7px);
+  background-size: 260% 260%; background-position: calc(var(--fx, 0.3) * 100%) calc(var(--fy, 0.3) * 100%);
+  mix-blend-mode: screen; opacity: 0.62; transition: background-position 0.25s ease-out;
+}
+.card-finish-foil::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(60deg, transparent 40%, rgba(255, 255, 255, 0.35) 50%, transparent 60%) no-repeat; background-size: 300% 100%;
+  animation: card-sheen 7s ease-in-out infinite;
+}
+@keyframes card-sheen { 0%, 40% { background-position: 150% 0; } 100% { background-position: -50% 0; } }
+/* (Gilded: a gold edge, with light running round it.) */
+@property --gild { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.card-finish-gilded::before, .card-finish-gilded::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2.5px; -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.card-finish-gilded::before { background: linear-gradient(135deg, #fff1c1, #d4a43a 28%, #8a6420 50%, #f2d27a 72%, #b8862e); }
+.card-finish-gilded::after { background: conic-gradient(from var(--gild), transparent 0 78%, rgba(255, 255, 255, 0.95) 88%, transparent 96%); animation: card-gild 6s linear infinite; }
+@keyframes card-gild { to { --gild: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .card-finish::before, .card-finish::after { animation: none; } }
 /* Your card's own box: you on it, then its colours, a pattern, a font for your name, and weather. */
 .settings.card-dialog { width: min(480px, calc(100vw / var(--zoom) - 24px)); }
 .card-preview { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--panel); }

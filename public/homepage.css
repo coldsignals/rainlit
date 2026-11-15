@@ -823,6 +823,30 @@ a.hp-button:hover .hp-in { filter: brightness(1.12); }
   animation: hp-rise 9s linear var(--phase, 0s) infinite;
 }
 .hp-sky-embers::after { opacity: 0.7; background-position: 120px 80px; animation-duration: 13s; }
+/* (Fog drifting across, in banks.) */
+.hp-sky-fog::before, .hp-sky-fog::after {
+  top: 0; bottom: 0; left: 0; width: calc(100% + 300px);
+  background: radial-gradient(ellipse 150px 46px at 80px 60%, rgba(235, 240, 250, 0.2), transparent 70%), radial-gradient(ellipse 120px 38px at 230px 35%, rgba(235, 240, 250, 0.15), transparent 70%), radial-gradient(ellipse 130px 40px at 170px 85%, rgba(235, 240, 250, 0.17), transparent 70%); background-size: 300px 100%; background-repeat: repeat-x;
+  --drift: -300px; animation: hp-drift 34s linear var(--phase, 0s) infinite;
+}
+.hp-sky-fog::after { opacity: 0.7; top: 18%; animation-duration: 52s; transform: scaleX(-1); }
+/* (Stars, some of them twinkling.) */
+.hp-sky-stars::before, .hp-sky-stars::after { inset: 0; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cg fill='%23ffffff'%3E%3Ccircle cx='14' cy='22' r='1.1'/%3E%3Ccircle cx='96' cy='12' r='.8'/%3E%3Ccircle cx='170' cy='40' r='1.3'/%3E%3Ccircle cx='60' cy='88' r='.9'/%3E%3Ccircle cx='132' cy='104' r='1.1'/%3E%3Ccircle cx='200' cy='130' r='.8'/%3E%3Ccircle cx='30' cy='160' r='1.2'/%3E%3Ccircle cx='110' cy='190' r='.9'/%3E%3Ccircle cx='182' cy='206' r='1'/%3E%3C/g%3E%3C/svg%3E"); }
+.hp-sky-stars::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cg fill='%23fff3c4'%3E%3Cpath transform='translate(40 52)' d='M0-4L1-1 4 0 1 1 0 4-1 1-4 0-1-1Z'/%3E%3Cpath transform='translate(190 30) scale(.8)' d='M0-4L1-1 4 0 1 1 0 4-1 1-4 0-1-1Z'/%3E%3Cpath transform='translate(130 150) scale(1.1)' d='M0-4L1-1 4 0 1 1 0 4-1 1-4 0-1-1Z'/%3E%3Cpath transform='translate(230 210) scale(.7)' d='M0-4L1-1 4 0 1 1 0 4-1 1-4 0-1-1Z'/%3E%3Cpath transform='translate(60 228) scale(.9)' d='M0-4L1-1 4 0 1 1 0 4-1 1-4 0-1-1Z'/%3E%3C/g%3E%3C/svg%3E"); animation: hp-twinkle 3.4s ease-in-out var(--phase, 0s) infinite; }
+@keyframes hp-twinkle { 50% { opacity: 0.25; } }
+/* (Now and then, a shooting star.) */
+.hp-sky-meteors::before, .hp-sky-meteors::after {
+  top: -260px; left: 0; width: calc(100% + 520px); height: calc(100% + 520px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='520' height='520'%3E%3Cdefs%3E%3ClinearGradient id='m' x1='0' y1='1' x2='1' y2='0'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23fff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M300 120 L380 40' stroke='url(%23m)' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='380' cy='40' r='2.2' fill='%23fff'/%3E%3C/svg%3E"); animation: hp-meteor 7s linear var(--phase, 0s) infinite;
+}
+.hp-sky-meteors::after { background-position: 260px 180px; animation-duration: 11s; animation-delay: calc(var(--phase, 0s) - 4s); }
+@keyframes hp-meteor { 0% { transform: translate(0, 0); opacity: 0; } 2% { opacity: 1; } 11% { transform: translate(-260px, 260px); opacity: 0; } 100% { transform: translate(-260px, 260px); opacity: 0; } }
+/* (Paper lanterns, lit, rising slowly.) */
+.hp-sky-lanterns::before, .hp-sky-lanterns::after {
+  top: 0; left: -40px; right: -40px; height: calc(100% + 240px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cdefs%3E%3CradialGradient id='g'%3E%3Cstop offset='0' stop-color='%23ffd98a' stop-opacity='.55'/%3E%3Cstop offset='1' stop-color='%23ff9a3c' stop-opacity='0'/%3E%3C/radialGradient%3E%3ClinearGradient id='l' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ffe6a8'/%3E%3Cstop offset='1' stop-color='%23ff9440'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg%3E%3Ccircle cx='50' cy='60' r='16' fill='url(%23g)'/%3E%3Crect x='44' y='52' width='12' height='15' rx='4' fill='url(%23l)'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='170' cy='150' r='13' fill='url(%23g)'/%3E%3Crect x='165' y='144' width='10' height='12' rx='3.5' fill='url(%23l)'/%3E%3C/g%3E%3Cg opacity='.8'%3E%3Ccircle cx='120' cy='215' r='10' fill='url(%23g)'/%3E%3Crect x='116' y='210' width='8' height='10' rx='3' fill='url(%23l)'/%3E%3C/g%3E%3C/svg%3E"); animation: hp-rise 22s linear var(--phase, 0s) infinite;
+}
+.hp-sky-lanterns::after { opacity: 0.65; background-size: 160px 160px; background-position: 70px 40px; animation-duration: 30s; }
 @keyframes hp-petals {
   0% { transform: translate(0, 0); }
   50% { transform: translate(24px, 120px); }
