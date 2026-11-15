@@ -18308,6 +18308,7 @@ function dressCard(node, card, name, size = 22) {
     const finish = document.createElement('div');
     finish.className = `card-finish card-finish-${c.finish}`;
     finish.setAttribute('aria-hidden', 'true');
+    if (H.fxInStep) H.fxInStep(finish); // (its sheen or light carrying on, as it's drawn again)
     node.prepend(finish);
   }
   if (c.sky && c.sky !== 'none') {

@@ -165,7 +165,30 @@
     fx.dataset.fx = key;
     fx.setAttribute('aria-hidden', 'true');
     fx.innerHTML = DECO_PARTS[key] ? DECO_PARTS[key]() : '';
+    fxInStep(fx);
     return fx;
+  }
+  // Something that moves (an effect round a picture, a card's finish), in step with the page's
+  // clock: once it's on the page, each of its animations (its pseudo-elements' too) is put where
+  // it'd be had it started with the page, so one made again (a list drawn again) carries on where
+  // the last was rather than starting over. (Hidden till then: a frame, or a few if it's not on the
+  // page yet. Setting the time leaves a paused one paused.)
+  function fxInStep(node) {
+    node.style.visibility = 'hidden';
+    let tries = 0;
+    const go = () => {
+      if (!node.isConnected && ++tries < 30) return void requestAnimationFrame(go);
+      const now = document.timeline && document.timeline.currentTime != null ? document.timeline.currentTime : performance.now();
+      if (node.getAnimations) {
+        for (const a of node.getAnimations({ subtree: true })) {
+          try {
+            a.currentTime = now;
+          } catch {}
+        }
+      }
+      node.style.visibility = '';
+    };
+    requestAnimationFrame(go);
   }
 
   const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', leaves: 'Autumn leaves', fog: 'Fog', stars: 'Twinkling stars', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms', embers: 'Embers', meteors: 'Shooting stars', lanterns: 'Floating lanterns' };
@@ -5886,7 +5909,7 @@
   }
 
   window.Homepage = {
-    WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES, DECOS, decoEl,
+    WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES, DECOS, decoEl, fxInStep,
     COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP, SCENES, sceneSwatch, windowSwatch,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
     // (a call's starting: any song playing stops)
