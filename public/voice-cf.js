@@ -831,8 +831,11 @@
     // and joined again). A slot whose sound never came, or stopped coming for 8 seconds (a mic
     // sends a little even muted, so it isn't that), is let go of and asked for again; still not
     // coming, not again for a while (15 seconds, doubling to 4 minutes: a locked phone sends
-    // nothing, and that's not this end's to fix; coming for 10 seconds, it's as new). And the list
-    // of who's sending what is gone through again, in case a change to it was missed.
+    // nothing, and that's not this end's to fix; coming for 10 seconds, it's as new). Asked for
+    // again and still nothing: the receiving connection itself may be the trouble (once, straight
+    // from a DM call, a friend stayed unheard till the app was restarted), so it's made afresh, as
+    // a restart would (once in 30 seconds at most). And the list of who's sending what is gone
+    // through again, in case a change to it was missed.
     async heal() {
       // (Not while the connection itself is down: that's rejoin's.)
       if (this.closed || this.healing || this.rejoining || this.reconnecting || !this.subPc || !this.subSession || this.subPc.connectionState !== 'connected') return;
@@ -858,6 +861,12 @@
           }
           if (now - (x.flowAt || x.openAt || now) < 8000 || (h && now < h.next)) continue;
           const n = h ? h.n : 0;
+          if (n >= 1 && now - (this.resubAt || 0) > 30_000) {
+            console.warn('[voice]', `${x.kind} from ${String(x.user).slice(0, 6)}: still nothing, so a fresh receiving connection`);
+            this.healed.set(x.key, { n: n + 1, last: now, next: now + Math.min(240_000, 15_000 * 2 ** n) });
+            this.refresh().catch(() => {});
+            return;
+          }
           this.healed.set(x.key, { n: n + 1, last: now, next: now + Math.min(240_000, 15_000 * 2 ** n) });
           console.warn('[voice]', `${x.kind} from ${String(x.user).slice(0, 6)}: nothing coming, so it's fetched again`);
           x.state = 'closing';
@@ -1005,6 +1014,13 @@
       await this.api('POST', `/channels/${this.channelId}/voice/unpull`, { mids: done.map((x) => x.mid) });
       this.dead += done.length;
       if (this.dead >= 24) await this.resubscribe();
+    }
+
+    // Everything coming in fetched again, on a fresh receiving connection: the heal's last resort,
+    // and a tile's Reconnect (someone sent but not coming).
+    refresh() {
+      this.resubAt = Date.now();
+      return this.queue(() => this.resubscribe());
     }
 
     // The receiving connection's grown (closed slots can't be used again): a fresh one, getting

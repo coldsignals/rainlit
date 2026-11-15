@@ -15326,6 +15326,7 @@ S.voiceStates = new Map();
 function voiceWatchers(v, members) {
   v.watching ||= new Set();
   v.viewers ||= new Set();
+  v.unheard ||= new Map();
   const sharing = new Set(members.filter((m) => m.screen).map((m) => m.id));
   let stopped = false;
   for (const id of v.watching) if (!sharing.has(id)) { v.watching.delete(id); stopped = true; }
@@ -16234,7 +16235,18 @@ function renderVoiceView() {
       tile.append(label);
     }
     const mic = p.getTrackPublication(VK.Track.Source.Microphone);
-    const muted = !mic || mic.isMuted;
+    // (What their mic is doing: muted (they did that); none (they're sending no sound: theirs to
+    // look at); or sent, and not coming in here yet (ours: Reconnect, after 8 seconds of it).)
+    const st = states.get(p.identity);
+    let micSays = '';
+    if (source !== 'screen') {
+      if (p.identity === S.clientId || !v.room || !v.room.refresh) micSays = !mic || mic.isMuted ? 'muted' : '';
+      else if (st && st.muted) micSays = 'muted';
+      else if (st && st.pub && !st.pub.mic) micSays = 'nomic';
+      else if (!mic || !mic.track) micSays = unheardFor(v, p.identity) ? 'unheard' : '';
+      else micSays = mic.isMuted ? 'muted' : '';
+      if (mic && mic.track) v.unheard.delete(p.identity);
+    }
     const others = source === 'screen' && p.identity !== S.clientId;
     const viewers = source === 'screen' && !others ? v.viewers.size : 0;
     label.replaceChildren(`${source === 'screen' ? `${person.displayName}'s screen${viewers ? ` · ${viewers} watching` : ''}` : person.id === S.clientId ? `${person.displayName} (you)` : person.displayName}`);
@@ -16244,7 +16256,24 @@ function renderVoiceView() {
     watchOffer(tile, others && !track ? (v.watching.has(p.identity) ? 'tuning' : 'offer') : '', person.displayName);
     tileTools(tile, Boolean(track), others && v.watching.has(p.identity));
     renderTileSound(tile, p, source);
-    if (source !== 'screen' && muted) label.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Muted"><use href="#i-mic-off"/></svg>');
+    if (micSays === 'muted') label.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Muted"><use href="#i-mic-off"/></svg>');
+    else if (micSays === 'nomic') label.insertAdjacentHTML('beforeend', '<span class="tile-nomic" title="They\'re here, but sending no sound: their mic may be blocked, unplugged or not picked">No mic</span>');
+    else if (micSays === 'unheard') {
+      label.insertAdjacentHTML('beforeend', '<span class="tile-unheard">Can\'t hear them yet</span>');
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.className = 'tile-reconnect';
+      again.textContent = 'Reconnect';
+      again.title = 'Fetch everyone\'s sound again, on a fresh connection';
+      again.addEventListener('click', (e) => {
+        e.stopPropagation();
+        v.unheard.clear();
+        again.disabled = true;
+        again.textContent = 'Reconnecting';
+        v.room.refresh().catch(() => {});
+      });
+      label.append(again);
+    }
     if (source !== 'screen' && person.id !== S.clientId && personSound(person.id).m) label.insertAdjacentHTML('beforeend', MUTED_FOR_YOU);
     // (Here, but stepped away.)
     if (source !== 'screen' && person.id !== S.clientId && person.presence === 'away') label.insertAdjacentHTML('beforeend', '<span class="tile-away">Away</span>');
@@ -16441,6 +16470,19 @@ function unboost(v, a) {
 }
 
 // (By the name of someone you've muted for yourself: in the channel's list, and on their tile.)
+// How long someone in your voice channel, not muted and sending their mic, hasn't come through
+// here: true from 8 seconds on (shorter's just joining). The tiles are looked at again then.
+function unheardFor(v, id) {
+  v.unheard ||= new Map();
+  const since = v.unheard.get(id);
+  if (!since) {
+    v.unheard.set(id, Date.now());
+    setTimeout(() => { if (S.voice === v && v.unheard.has(id)) renderVoiceView(); }, 8100);
+    return false;
+  }
+  return Date.now() - since >= 8000;
+}
+
 const MUTED_FOR_YOU = '<svg class="icon off muted-for-you" role="img" aria-label="Muted for you"><title>Muted for you</title><use href="#i-speaker-off"/></svg>';
 
 // Whether someone's in the voice channel you're in with you (not you): their volume is yours to set.
@@ -16563,6 +16605,7 @@ function voiceChannelItem(c) {
       if (m.video) row.insertAdjacentHTML('beforeend', '<svg class="icon" aria-label="Camera on"><use href="#i-cam"/></svg>');
       if (m.deafened) row.insertAdjacentHTML('beforeend', '<svg class="icon off" aria-label="Deafened"><use href="#i-headphones-off"/></svg>');
       else if (m.muted) row.insertAdjacentHTML('beforeend', '<svg class="icon off" aria-label="Muted"><use href="#i-mic-off"/></svg>');
+      else if (m.id !== S.clientId && m.pub && !m.pub.mic) row.insertAdjacentHTML('beforeend', '<span class="no-mic-tag" title="Here, but sending no sound">no mic</span>');
       if (m.id !== S.clientId && personSound(m.id).m) row.insertAdjacentHTML('beforeend', MUTED_FOR_YOU);
       row.addEventListener('click', () => openMiniProfile(m.id));
       row.addEventListener('contextmenu', (e) => {

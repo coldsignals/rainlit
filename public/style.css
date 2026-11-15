@@ -755,6 +755,11 @@ a.x-link .icon { width: 16px; height: 16px; }
 .voice-person-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .voice-person .icon { width: 14px; height: 14px; flex: none; }
 .voice-person .icon.off { color: var(--danger); }
+.no-mic-tag { flex: none; padding: 0 5px; border: 1px solid var(--line); border-radius: 4px; color: var(--mist); font-size: 10.5px; font-weight: 700; }
+/* (A tile's word on someone's mic: none being sent, or sent and not coming yet, with Reconnect.) */
+.tile-nomic, .tile-unheard { padding: 1px 7px; border-radius: 6px; background: rgba(0, 0, 0, 0.45); color: #ffd28a; font-size: 12px; font-weight: 700; }
+.tile-reconnect { margin-left: 2px; padding: 2px 9px; border: 0; border-radius: 6px; background: #f5b94a; color: #22190a; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; pointer-events: auto; }
+.tile-reconnect:disabled { opacity: 0.7; cursor: default; }
 .live-tag { flex: none; padding: 0 5px; border-radius: 4px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.04em; }
 .voice-panel { display: grid; gap: 6px; padding: 10px 10px 8px; border-top: 1px solid var(--line); background: var(--deep); }
 .voice-where { display: flex; align-items: center; gap: 8px; padding: 2px 4px; border: 0; background: none; text-align: left; }
