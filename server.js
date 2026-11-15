@@ -757,6 +757,15 @@ api.patch('/me', needUser, (req, res) => {
     if (!['auto', 'away', 'dnd', 'invisible'].includes(b.presence)) return fail(res, 400, 'Pick online, away, do not disturb or appear offline.');
     set.presence = b.presence;
   }
+  // (The effect around your picture: lib/cards.js cleanDeco.)
+  if ('deco' in b) {
+    try {
+      set.deco = cards.cleanDeco(req.user, b.deco);
+    } catch (err) {
+      if (err instanceof cards.CardError) return fail(res, err.status, err.message);
+      throw err;
+    }
+  }
   if ('theme' in b) {
     const theme = String(b.theme || '');
     if (!themes.known(theme)) return fail(res, 400, "That isn't one of Rainlit's themes.");

@@ -66,6 +66,103 @@
     globe: { label: 'Snow globe', colors: ['Sky', 'Snow'], c1: '#2a4a7f', c2: '#ffffff' },
     constellations: { label: 'Constellations', colors: ['Sky', 'Stars'], c1: '#0b1230', c2: '#d6e4ff' },
   };
+  // ---------- Effects around a picture ----------
+  // Picked in Your card (app.js), and seen wherever someone's picture is shown big enough. Each is
+  // a few elements over the picture, drawn by homepage.css (.fx-*), sized by the box round the
+  // picture (container units), so they look the same at any size. lib/looks.js has the same lists.
+  const DECOS = {
+    ring: { label: 'Gold ring' }, orbit: { label: 'Orbit' }, halo: { label: 'Halo' }, ears: { label: 'Cat ears' },
+    headphones: { label: 'Headphones' }, moon: { label: 'Moon and stars' }, laurel: { label: 'Laurel' }, pixel: { label: 'Pixel frame' },
+    raincloud: { label: 'Raincloud', glow: true }, moons: { label: 'Orbiting moons', glow: true }, flames: { label: 'Ring of fire', glow: true },
+    aurora: { label: 'Aurora', glow: true }, holo: { label: 'Holographic', glow: true }, neon: { label: 'Neon', glow: true },
+    globe: { label: 'Snow globe', glow: true }, fireflies: { label: 'Fireflies', glow: true }, horizon: { label: 'Event horizon', glow: true },
+    petals: { label: 'Falling petals', glow: true }, storm: { label: 'Thunderstorm', glow: true },
+  };
+  const svg = (box, inner, extra = '') => `<svg viewBox="0 0 ${box} ${box}" aria-hidden="true"${extra}>${inner}</svg>`;
+  // (A laurel: a leafy branch up each side, drawn once.)
+  function laurelSvg() {
+    let stems = '';
+    let leaves = '';
+    for (const side of [-1, 1]) {
+      const nodes = [];
+      for (let k = 0; k < 7; k++) {
+        const deg = side < 0 ? 104 + k * 19 : 76 - k * 19;
+        const a = (deg * Math.PI) / 180;
+        nodes.push([50 + Math.cos(a) * 40.5, 50 + Math.sin(a) * 40.5, deg + side * -90]);
+      }
+      stems += `<polyline points="${nodes.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')}" />`;
+      nodes.forEach(([x, y, dir], k) => {
+        const size = 1 - k * 0.06;
+        for (const turn of [-32, 32]) {
+          const r = ((dir + turn) * Math.PI) / 180;
+          const rx = 5.4 * size;
+          const cx = x + Math.cos(r) * rx;
+          const cy = y + Math.sin(r) * rx;
+          leaves += `<ellipse cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" rx="${rx.toFixed(1)}" ry="${(2.3 * size).toFixed(1)}" transform="rotate(${(dir + turn).toFixed(0)} ${cx.toFixed(1)} ${cy.toFixed(1)})" fill="${(k + (turn > 0 ? 1 : 0)) % 2 ? '#6aa84f' : '#93cb6f'}" />`;
+        }
+      });
+    }
+    return svg(100, `<g fill="none" stroke="#577f3f" stroke-width="1.2" stroke-linecap="round">${stems}</g>${leaves}`);
+  }
+  // (A pixel frame: a ring of squares round the picture, lit from the top left.)
+  function pixelSvg() {
+    const N = 36;
+    let rects = '';
+    for (let y = 0; y < N; y++) {
+      let run = null;
+      const flush = (x) => {
+        if (run) rects += `<rect x="${run.x}" y="${y}" width="${x - run.x}" height="1" fill="${run.c}" />`;
+        run = null;
+      };
+      for (let x = 0; x <= N; x++) {
+        const d = Math.hypot(x + 0.5 - N / 2, y + 0.5 - N / 2);
+        const lit = x + y < N - 4;
+        const c = x === N ? null : d >= 12.3 && d < 14 ? (lit ? '#cfeaff' : '#7cc2ff') : d >= 14 && d < 15.6 ? (lit ? '#5aa9ff' : '#2f6fd1') : d >= 15.6 && d < 16.8 ? '#1b2142' : null;
+        if (run && run.c !== c) flush(x);
+        if (c && !run) run = { x, c };
+      }
+    }
+    return svg(36, rects, ' shape-rendering="crispEdges"');
+  }
+  const each = (n, fn) => Array.from({ length: n }, (_, i) => fn(i)).join('');
+  // (Somewhere between, the same each time for the same i: so a picture's petals or snow are where
+  // they were when it's drawn again.)
+  const fxAt = (i, k, lo, hi) => (lo + ((Math.sin(i * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1 * (hi - lo)).toFixed(1);
+  const orbit = (moons) => `<i class="orbit">${moons}</i>`;
+  const DECO_PARTS = {
+    ring: () => '<i class="rg"></i>',
+    orbit: () => '<i class="rg"></i><i class="rg"></i>',
+    halo: () => '<i></i>',
+    ears: () => '<i></i><i></i>',
+    headphones: () => svg(100, '<path d="M13 57 A38 38 0 0 1 87 57" fill="none" stroke="#2e3340" stroke-width="5" stroke-linecap="round"/><path d="M17 50 A34 34 0 0 1 83 50" fill="none" stroke="#4d5568" stroke-width="1.2" stroke-linecap="round"/><rect x="3" y="43" width="15" height="29" rx="6.5" fill="#2e3340"/><rect x="14" y="46" width="5.5" height="23" rx="2.7" fill="#4c8dff"/><rect x="82" y="43" width="15" height="29" rx="6.5" fill="#2e3340"/><rect x="80.5" y="46" width="5.5" height="23" rx="2.7" fill="#4c8dff"/><rect x="5" y="46" width="3" height="12" rx="1.5" fill="#4d5568"/>'),
+    moon: () => '<i class="crescent"></i><b></b><b></b><b></b>',
+    laurel: laurelSvg,
+    pixel: pixelSvg,
+    raincloud: () => `<i class="cloud"></i>${each(5, (i) => `<b style="left:${58 + i * 6}cqw;animation-delay:-${fxAt(i, 1, 0, 1.1)}s"></b>`)}`,
+    moons: () => {
+      const moons = '<i class="arm"><b></b></i><i class="arm small"><b></b></i>';
+      return `<i class="back">${orbit(moons)}</i><i class="front">${orbit(moons)}</i>`;
+    },
+    flames: () => `<i class="glow"></i>${each(14, (i) => `<b style="--a:${(i * 360) / 14}deg;animation-delay:-${fxAt(i, 2, 0, 0.9)}s"></b>`)}`,
+    aurora: () => '<i class="soft"><i class="rg"></i></i><i class="rg"></i>',
+    holo: () => '<i class="rg"></i><i class="glint"></i>',
+    neon: () => '<i class="n1"></i><i class="n2"></i>',
+    globe: () => `<i class="snow">${each(11, (i) => `<b style="left:${fxAt(i, 3, 2, 92)}%;--s:${fxAt(i, 4, 1.2, 2.6)}cqw;animation-duration:${fxAt(i, 5, 3.5, 6.5)}s;animation-delay:-${fxAt(i, 6, 0, 6)}s"></b>`)}</i><i class="glass"></i><i class="base"></i>`,
+    fireflies: () => each(6, (i) => `<i style="--r:${fxAt(i, 7, 30, 46)}cqw;animation-duration:${fxAt(i, 8, 7, 14)}s;animation-delay:-${fxAt(i, 9, 0, 14)}s;animation-direction:${i % 2 ? 'reverse' : 'normal'}"><b style="animation-delay:-${fxAt(i, 10, 0, 2.6)}s"></b></i>`),
+    horizon: () => '<i class="back"><i class="disk"></i></i><i class="photon"></i><i class="front"><i class="disk"></i></i>',
+    petals: () => each(7, (i) => `<b style="left:${fxAt(i, 11, 4, 88)}%;animation-duration:${fxAt(i, 12, 4.5, 8)}s;animation-delay:-${fxAt(i, 13, 0, 8)}s"></b>`),
+    storm: () => '<i class="rg"></i><i class="flash"></i><i class="bolt"></i>',
+  };
+  // An effect's elements, to put over a picture (its parent: position relative, and round).
+  function decoEl(key) {
+    const fx = document.createElement('span');
+    fx.className = `fx fx-${key}`;
+    fx.dataset.fx = key;
+    fx.setAttribute('aria-hidden', 'true');
+    fx.innerHTML = DECO_PARTS[key] ? DECO_PARTS[key]() : '';
+    return fx;
+  }
+
   const SKIES = { none: 'Nothing', rain: 'Rain', snow: 'Snow', sparkles: 'Sparkles', hearts: 'Floating hearts', leaves: 'Autumn leaves', fireflies: 'Fireflies', aurora: 'Aurora', storm: 'Thunderstorm', blossoms: 'Cherry blossoms', embers: 'Embers' };
   const TRAILS = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', stars: 'Stars', bubbles: 'Bubbles', raindrops: 'Raindrops', pixels: 'Pixels' };
   const CLICKS = { none: 'Nothing', confetti: 'Confetti', hearts: 'Hearts', stars: 'Stars', ripples: 'Ripples', fireworks: 'Fireworks' };
@@ -1191,7 +1288,12 @@
     // (Inside the piece, so it can size everything by the piece: see .hp-me in homepage.css.)
     const card = document.createElement('div');
     card.className = 'hp-me-in';
-    card.append(avatarEl(owner), words);
+    const face = avatarEl(owner);
+    if (owner.deco && DECOS[owner.deco]) {
+      face.classList.add('hp-avatar-fx');
+      face.append(decoEl(owner.deco));
+    }
+    card.append(face, words);
     node.append(card);
   }
 
@@ -5654,7 +5756,7 @@
   }
 
   window.Homepage = {
-    WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES,
+    WIDTH, FONTS, EFFECTS, BOXES, FRAMES, TAPES, PAPERS, ME_STYLES, PATTERNS, SKIES, PERKS, PIXEL, PIXEL_NAMES, DECOS, decoEl,
     COUNTERS, GUESTBOOKS, MUSICS, SHELVES, BUTTONS, ASKS, PETS, TRAILS, CLICKS, PIECE_NAMES, WINDOWS, TASKBARS, DESKTOP, SCENES, sceneSwatch, windowSwatch,
     pixelSrc, pixelRatio, backgroundStyle, patternSwatch, patternLayer, pieceEl, starter, mount, setSky, light, hush,
     // (a call's starting: any song playing stops)

@@ -1399,3 +1399,149 @@ button.hp-perk-tag { border: 0; cursor: pointer; }
 .hp-chip-trying { outline: 2px dashed #b77bff; outline-offset: 2px; }
 .hp-perks .hp-perk-note { margin: 10px 0 0; color: #6b5840; font-size: 12.5px; }
 .hp-perk-more { margin-left: 2px; padding: 0; border: 0; background: none; color: #7d45cf; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+/* ---------- Effects around a picture (homepage.js DECOS): over a .face in the app, or a homepage's
+   "me" piece. Their box reaches past the picture by 22% on each side; within it the picture's edge
+   is 34.7cqw from the middle. ---------- */
+.fx { position: absolute; inset: -22%; z-index: 1; pointer-events: none; container-type: size; }
+.fx i, .fx b { position: absolute; display: block; }
+.fx svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+/* (A ring: masked to its edge.) */
+.fx .rg {
+  inset: 11.5%; border-radius: 50%; padding: 2.6%; box-sizing: border-box;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+/* (Behind the picture: hidden where the picture is.) */
+.fx .back { inset: 0; -webkit-mask: radial-gradient(circle closest-side, transparent 69.2%, #000 70.4%); mask: radial-gradient(circle closest-side, transparent 69.2%, #000 70.4%); }
+.fx .front { inset: 0; }
+@keyframes fx-spin { to { rotate: 360deg; } }
+@keyframes fx-bob { 50% { translate: 0 -2cqw; } }
+.hp-avatar-fx { overflow: visible; }
+.hp-avatar-fx img { border-radius: 50%; }
+.face[data-presence]::after { z-index: 2; }
+
+/* Everyone's. */
+.fx-ring { filter: drop-shadow(0 0 3px rgba(245, 185, 74, 0.55)); }
+.fx-ring .rg { background: conic-gradient(from 200deg, #fff0bf, #f5b94a, #b8742a, #f5b94a, #fff0bf); }
+.fx-orbit { filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 1px rgba(0, 0, 0, 0.5)); }
+.fx-orbit .rg { inset: 7%; padding: 2.2%; background: repeating-conic-gradient(rgba(255, 255, 255, 0.95) 0 2.5deg, transparent 2.5deg 11.25deg); animation: fx-spin 40s linear infinite; }
+.fx-orbit .rg + .rg { inset: 2.5%; padding: 1.3%; opacity: 0.6; background: repeating-conic-gradient(#b9d3ff 0 1.6deg, transparent 1.6deg 7.5deg); animation-duration: 64s; animation-direction: reverse; }
+.fx-halo i {
+  left: 25cqw; top: 1cqw; width: 50cqw; height: 13cqw; box-sizing: border-box; border-radius: 50%;
+  border: 2.4cqw solid #ffe28a; box-shadow: 0 0 2.5cqw #ffd36b, inset 0 0 1.5cqw #fff3c4;
+  animation: fx-bob 3.2s ease-in-out infinite;
+}
+.fx-ears i { top: 6cqw; width: 24cqw; height: 22cqw; background: #3b3542; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.fx-ears i::after { content: ''; position: absolute; inset: 32% 25% 0; background: #d9a3a8; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.fx-ears i:first-child { left: 17cqw; rotate: -22deg; }
+.fx-ears i:last-child { right: 17cqw; rotate: 22deg; animation: fx-twitch 7s ease-in-out infinite; }
+@keyframes fx-twitch { 0%, 88%, 100% { rotate: 22deg; } 91% { rotate: 31deg; } 94% { rotate: 20deg; } }
+.fx-moon .crescent { left: 69cqw; top: 3cqw; width: 19cqw; height: 19cqw; border-radius: 50%; box-shadow: -4.5cqw 3.5cqw 0 0 #ffe7a3; filter: drop-shadow(0 0 1.5cqw rgba(255, 231, 163, 0.6)); }
+.fx-moon b { width: 5cqw; height: 5cqw; background: #fff6d0; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: fx-twinkle 2.8s ease-in-out infinite; }
+.fx-moon b:nth-of-type(1) { left: 88cqw; top: 26cqw; }
+.fx-moon b:nth-of-type(2) { left: 58cqw; top: 2cqw; width: 3.5cqw; height: 3.5cqw; animation-delay: -1s; }
+.fx-moon b:nth-of-type(3) { left: 93cqw; top: 6cqw; width: 3cqw; height: 3cqw; animation-delay: -1.9s; }
+@keyframes fx-twinkle { 50% { scale: 0.5; opacity: 0.5; } }
+.fx-laurel, .fx-pixel { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
+
+/* Glow's. */
+.fx-raincloud .cloud {
+  left: 56cqw; top: 13cqw; width: 34cqw; height: 12cqw; border-radius: 12cqw; background: #eef2f9;
+  box-shadow: inset 0 -2.2cqw 0 #c6d0e2, 0 1cqw 2.5cqw rgba(0, 0, 0, 0.25); animation: fx-bob 4s ease-in-out infinite;
+}
+.fx-raincloud .cloud::before, .fx-raincloud .cloud::after { content: ''; position: absolute; border-radius: 50%; background: #eef2f9; }
+.fx-raincloud .cloud::before { left: 5cqw; top: -6cqw; width: 13cqw; height: 13cqw; }
+.fx-raincloud .cloud::after { left: 13cqw; top: -9cqw; width: 16cqw; height: 16cqw; }
+.fx-raincloud b { top: 24cqw; width: 1.3cqw; height: 7cqw; border-radius: 1cqw; background: linear-gradient(rgba(170, 215, 255, 0), #b9dcff); box-shadow: 0 0 1cqw rgba(140, 200, 255, 0.6); animation: fx-drop 1.1s linear infinite; }
+@keyframes fx-drop { from { translate: 0 0; opacity: 0; } 15% { opacity: 1; } to { translate: -2.5cqw 42cqw; opacity: 0; } }
+/* (Two moons round it, on a tilted path: in front of the picture going one way, behind it the other.) */
+.fx-moons .orbit { inset: 0; transform: rotate(-16deg) scaleY(0.32); }
+.fx-moons .arm { inset: 0; animation: fx-spin 8s linear infinite; }
+.fx-moons .arm b {
+  left: calc(50% + 37cqw); top: calc(50% - 7cqw); width: 14cqw; height: 14cqw; border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #fff 0 8%, #d9dee9 30%, #8e98ad 78%); box-shadow: 0 0 2cqw rgba(220, 230, 255, 0.5);
+  animation: fx-unspin 8s linear infinite, fx-near 8s step-end infinite;
+}
+.fx-moons .arm.small, .fx-moons .arm.small b { animation-duration: 13s; animation-delay: -5s; }
+.fx-moons .arm.small b { left: calc(50% + 42cqw); top: calc(50% - 5cqw); width: 10cqw; height: 10cqw; background: radial-gradient(circle at 35% 32%, #fff6dc 0 8%, #f3c16b 35%, #b9792f 85%); }
+.fx-moons .back .arm b { animation-name: fx-unspin, fx-far; }
+@keyframes fx-unspin { from { transform: rotate(0deg) scaleY(3.125); } to { transform: rotate(-360deg) scaleY(3.125); } }
+@keyframes fx-near { 0% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes fx-far { 0% { opacity: 0; } 50% { opacity: 1; } }
+.fx-flames .glow { inset: 10%; border-radius: 50%; box-shadow: 0 0 4cqw 1.5cqw rgba(255, 120, 40, 0.55), inset 0 0 3cqw rgba(255, 150, 60, 0.5); }
+.fx-flames b {
+  left: calc(50% - 6cqw); top: calc(50% - 21cqw); width: 12cqw; height: 21cqw; transform-origin: 50% 100%;
+  rotate: var(--a); transform: translateY(-28cqw);
+  background: linear-gradient(to top, #ff4d14 0%, #ff8a1f 30%, #ffc23d 62%, #fff0a8 100%);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 0C56 22 80 34 88 58C96 84 76 100 50 100C24 100 4 84 12 58C18 40 34 34 38 18C44 30 46 12 50 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 0C56 22 80 34 88 58C96 84 76 100 50 100C24 100 4 84 12 58C18 40 34 34 38 18C44 30 46 12 50 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  animation: fx-flicker 0.9s ease-in-out infinite alternate;
+}
+/* (Its heart: a brighter flame inside each.) */
+.fx-flames b::after {
+  content: ''; position: absolute; left: 28%; right: 28%; top: 42%; bottom: 4%;
+  background: linear-gradient(to top, #ffd24a, #fffbe0); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 0C56 22 80 34 88 58C96 84 76 100 50 100C24 100 4 84 12 58C18 40 34 34 38 18C44 30 46 12 50 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M50 0C56 22 80 34 88 58C96 84 76 100 50 100C24 100 4 84 12 58C18 40 34 34 38 18C44 30 46 12 50 0Z'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+@keyframes fx-flicker { from { transform: translateY(-28cqw) scale(0.88, 0.72); } to { transform: translateY(-28cqw) scale(1.04, 1.12); } }
+.fx-aurora .soft { inset: 0; filter: blur(1.4cqw); }
+.fx-aurora .rg { background: conic-gradient(#5affb5, #4fd0ff, #a77bff, #ff8ad8, #5affb5); }
+.fx-aurora .soft .rg { inset: 8%; padding: 4.5%; opacity: 0.9; animation: fx-spin 10s linear infinite, fx-hue 12s ease-in-out infinite alternate; }
+.fx-aurora > .rg { inset: 12%; padding: 1.2%; animation: fx-spin 16s linear infinite reverse; }
+@keyframes fx-hue { to { filter: hue-rotate(70deg); } }
+.fx-holo { filter: drop-shadow(0 0 3px rgba(190, 160, 255, 0.6)); }
+.fx-holo .rg { padding: 3%; background: conic-gradient(#ff6b8b, #ffd23f, #6ad07a, #4fd0ff, #a57bff, #ff6b8b); animation: fx-spin 5s linear infinite; }
+.fx-holo .glint { inset: 15.3%; border-radius: 50%; overflow: hidden; }
+.fx-holo .glint::before {
+  content: ''; position: absolute; inset: -20%;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.55) 48%, rgba(180, 220, 255, 0.3) 52%, transparent 62%);
+  animation: fx-glint 4s ease-in-out infinite;
+}
+@keyframes fx-glint { 0%, 55% { translate: -110% 0; } 100% { translate: 110% 0; } }
+.fx-neon i { border-radius: 50%; box-sizing: border-box; }
+.fx-neon .n1 { inset: 10.5%; border: 1cqw solid #ffd6f6; box-shadow: 0 0 1.5cqw 0.4cqw #ff4fd8, inset 0 0 1.5cqw 0.4cqw #ff4fd8; animation: fx-buzz 5s infinite; }
+.fx-neon .n2 { inset: 5%; border: 0.8cqw solid #d6fdff; box-shadow: 0 0 1.5cqw 0.4cqw #2fe6ff, inset 0 0 1.2cqw 0.3cqw #2fe6ff; animation: fx-buzz 7s -2s infinite; }
+@keyframes fx-buzz { 0%, 86%, 90%, 94%, 100% { opacity: 1; } 88%, 92% { opacity: 0.25; } }
+.fx-globe .snow { inset: 15.3%; border-radius: 50%; overflow: hidden; }
+.fx-globe .snow b { top: -6%; width: var(--s); height: var(--s); border-radius: 50%; background: #fff; box-shadow: 0 0 0.6cqw rgba(255, 255, 255, 0.8); animation: fx-snowfall 5s linear infinite; }
+@keyframes fx-snowfall { 50% { translate: 2.5cqw 38cqw; } to { translate: -1cqw 76cqw; } }
+.fx-globe .glass {
+  inset: 13%; box-sizing: border-box; border-radius: 50%; border: 0.7cqw solid rgba(220, 240, 255, 0.5);
+  background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.55) 0 5%, transparent 12%), radial-gradient(circle, transparent 62%, rgba(200, 230, 255, 0.2) 72%);
+}
+.fx-globe .base { left: 27cqw; bottom: 2cqw; width: 46cqw; height: 13cqw; border-radius: 1cqw; background: linear-gradient(#a26a42, #6b4126); clip-path: polygon(12% 0, 88% 0, 100% 100%, 0 100%); }
+.fx-globe .base::before { content: ''; position: absolute; left: 0; right: 0; top: 20%; height: 18%; background: #e8c46a; }
+.fx-fireflies > i { inset: 0; animation: fx-spin 10s linear infinite; }
+.fx-fireflies b {
+  left: calc(50% + var(--r) - 2.5cqw); top: calc(50% - 2.5cqw); width: 5cqw; height: 5cqw; border-radius: 50%;
+  background: radial-gradient(circle, #fbffd0 0 18%, #dcf55a 40%, rgba(200, 240, 60, 0) 70%);
+  animation: fx-blink 2.6s ease-in-out infinite;
+}
+@keyframes fx-blink { 0%, 100% { opacity: 0.2; scale: 0.7; } 50% { opacity: 1; scale: 1.15; } }
+.fx-horizon .photon { inset: 13.6%; border-radius: 50%; box-shadow: 0 0 0.8cqw 0.5cqw rgba(255, 236, 210, 0.95), 0 0 4cqw 1.5cqw rgba(255, 150, 80, 0.45), 0 0 9cqw 2cqw rgba(160, 110, 255, 0.25); }
+.fx-horizon .disk { left: -4cqw; right: -4cqw; top: 50%; height: 108cqw; margin-top: -54cqw; transform: rotate(-12deg) scaleY(0.22); }
+.fx-horizon .front .disk { clip-path: inset(50% 0 0 0); }
+.fx-horizon .back .disk { clip-path: inset(0 0 50% 0); }
+.fx-horizon .disk::before, .fx-horizon .disk::after { content: ''; position: absolute; inset: 0; border-radius: 50%; }
+.fx-horizon .disk::before { background: radial-gradient(closest-side, transparent 66%, rgba(255, 244, 225, 0.95) 70%, rgba(255, 170, 95, 0.85) 79%, rgba(190, 120, 255, 0.3) 90%, transparent 100%); }
+.fx-horizon .disk::after {
+  background: conic-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.6) 8%, rgba(255, 255, 255, 0) 20% 50%, rgba(255, 255, 255, 0.45) 58%, rgba(255, 255, 255, 0) 70%);
+  -webkit-mask: radial-gradient(closest-side, transparent 66%, #000 71% 84%, transparent 96%); mask: radial-gradient(closest-side, transparent 66%, #000 71% 84%, transparent 96%);
+  animation: fx-spin 6s linear infinite;
+}
+.fx-petals b { top: -4%; width: 6cqw; height: 4.5cqw; border-radius: 80% 0 80% 0; background: linear-gradient(135deg, #ffd3e5, #ff9fc6); animation: fx-petal 6s linear infinite; }
+@keyframes fx-petal {
+  0% { translate: 0 0; rotate: 0deg; opacity: 0; } 10% { opacity: 0.95; } 50% { translate: 5cqw 50cqw; }
+  90% { opacity: 0.9; } 100% { translate: -3cqw 104cqw; rotate: 320deg; opacity: 0; }
+}
+.fx-storm .rg { inset: 10%; padding: 3.4%; background: conic-gradient(from 20deg, #2b2d45, #5b6188, #2b2d45 30%, #6f78a8, #2b2d45 60%, #4b5075, #2b2d45); animation: fx-spin 18s linear infinite; }
+.fx-storm .flash { inset: 8%; border-radius: 50%; box-shadow: 0 0 3cqw 1.5cqw rgba(200, 215, 255, 0.9), inset 0 0 2cqw 1cqw rgba(220, 230, 255, 0.8); opacity: 0; animation: fx-flash 5s infinite; }
+.fx-storm .bolt { right: 4cqw; top: 1cqw; width: 12cqw; height: 24cqw; background: #fff6b0; clip-path: polygon(60% 0, 10% 55%, 48% 55%, 30% 100%, 90% 40%, 52% 40%, 72% 0); opacity: 0; animation: fx-flash 5s infinite; }
+@keyframes fx-flash { 0%, 70%, 74%, 78%, 100% { opacity: 0; } 72%, 76% { opacity: 1; } }
+
+/* (In a conversation, a message's picture keeps still unless the pointer's over the message; and
+   nothing moves for anyone who's asked their device for less motion.) */
+.msg-face .fx *, .msg-face .fx *::before, .msg-face .fx *::after { animation-play-state: paused; }
+li:hover > .msg-face .fx *, li:hover > .msg-face .fx *::before, li:hover > .msg-face .fx *::after { animation-play-state: running; }
+@media (prefers-reduced-motion: reduce) {
+  .fx *, .fx *::before, .fx *::after { animation-play-state: paused !important; }
+}

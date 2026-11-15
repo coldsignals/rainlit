@@ -133,7 +133,7 @@ for (const id of [
   'group-info', 'group-info-title', 'group-rename-form', 'group-rename-input', 'group-notify', 'group-people-title', 'group-add-btn', 'group-people', 'group-leave-btn',
   'card-dialog', 'card-preview', 'card-preview-face', 'card-preview-name', 'card-preview-username', 'card-preview-status', 'card-c1', 'card-c2',
   'card-patterns', 'card-glow-patterns-box', 'card-glow-patterns', 'card-fonts', 'card-skies', 'card-glow-skies-box', 'card-glow-skies',
-  'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain',
+  'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain', 'card-decos', 'card-glow-decos-box', 'card-glow-decos',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-homepage-new', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block', 'mp-sound', 'mp-mute-them', 'mp-volume', 'mp-volume-value',
   'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name', 'profile-save-bar', 'profile-save-error', 'profile-save-text', 'profile-undo', 'profile-save',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
@@ -11655,7 +11655,9 @@ function faceColor(id) {
 
 // A round profile picture (or initial), with an online/away/offline dot if presence is given.
 function renderFace(node, user, presence) {
+  const fx = node.querySelector(':scope > .fx'); // (kept, still moving: decoFace changes it if it's to)
   node.replaceChildren();
+  if (fx) node.append(fx);
   node.style.setProperty('--face-bg', faceColor(user.id || ''));
   const letter = initial(user.displayName || user.username || '?');
   if (user.avatar) {
@@ -11669,6 +11671,17 @@ function renderFace(node, user, presence) {
   }
   if (presence) node.dataset.presence = presence;
   else delete node.dataset.presence;
+}
+
+// The effect around someone's picture (homepage.js DECOS), if they've one (key: another, to try one
+// on). Only changed when it's another one, so it carries on moving as the face is drawn again.
+function decoFace(node, user, key = user && user.deco) {
+  const had = node.querySelector(':scope > .fx');
+  const want = key && window.Homepage && Homepage.DECOS[key] ? key : '';
+  if (had && had.dataset.fx === want) return node;
+  if (had) had.remove();
+  if (want) node.append(Homepage.decoEl(want));
+  return node;
 }
 
 function makeFace(user, presence, size = '') {
@@ -11768,7 +11781,8 @@ async function loadMembers(spaceId) {
 
 // A person's picture beside their message (see .msg-face in style.css).
 function addFace(li, userId) {
-  const face = makeFace(profileOf(userId) || { id: userId, displayName: friendName(userId) }, null, 'msg-face');
+  const who = profileOf(userId) || { id: userId, displayName: friendName(userId) };
+  const face = decoFace(makeFace(who, null, 'msg-face'), who);
   face.setAttribute('aria-hidden', 'true');
   li.prepend(face);
 }
@@ -11777,7 +11791,7 @@ function addFace(li, userId) {
 function refreshFaces(dm, userId) {
   const user = profileOf(userId);
   if (!user) return;
-  for (const face of dm.log.querySelectorAll(`li[data-author="${CSS.escape(userId)}"] > .msg-face`)) renderFace(face, user, null);
+  for (const face of dm.log.querySelectorAll(`li[data-author="${CSS.escape(userId)}"] > .msg-face`)) decoFace(renderFace(face, user, null) || face, user);
 }
 
 // Messages drawn before their author's name was known.
@@ -17123,6 +17137,7 @@ const birthdayNow = (p) => (p && p.id === S.clientId ? myBirthdayToday() : Boole
 
 // Balloons and confetti on someone's picture, on their birthday (`node`: a .face), or none.
 function partyFace(node, user) {
+  decoFace(node, user);
   const had = node.querySelector(':scope > .bday');
   const party = birthdayNow(user);
   if (had && !party) had.remove();
@@ -18190,6 +18205,7 @@ function renderMiniProfile() {
   el.mpName.textContent = p.displayName;
   // Their birthday (yours, by your clock): balloons on their picture, and a line saying so.
   const party = !blocked && birthdayNow(p);
+  decoFace(el.mpFace, blocked ? {} : p);
   if (party) partyFace(el.mpFace, p);
   el.mpBirthday.hidden = !party;
   if (party) {
@@ -18338,6 +18354,7 @@ const cardGlow = (field, key) => Boolean(window.Homepage && Homepage.PERKS[field
 
 function openCard() {
   S.cardTry = null;
+  S.decoTry = '';
   S.cardDraft = S.me.card ? { ...S.me.card } : null;
   el.cardMsg.hidden = true;
   if (!el.cardDialog.open) el.cardDialog.showModal();
@@ -18349,6 +18366,8 @@ function renderCard() {
   if (!S.me || !window.Homepage) return;
   renderFace(el.cardPreviewFace, S.me, myPresence());
   partyFace(el.cardPreviewFace, S.me);
+  decoFace(el.cardPreviewFace, S.me, S.decoTry || S.me.deco || '');
+  renderCardDecos();
   el.cardPreviewName.textContent = S.me.displayName;
   el.cardPreviewUsername.textContent = `@${S.me.username}`;
   el.cardPreviewStatus.textContent = S.me.statusText || '';
@@ -18357,14 +18376,74 @@ function renderCard() {
   renderCardFonts();
   renderCardSkies();
   markCardColors();
-  const tried = S.cardTry ? Object.entries(S.cardTry)[0] : null;
+  const tried = S.cardTry ? Object.entries(S.cardTry)[0] : S.decoTry ? ['deco', S.decoTry] : null;
   el.cardTry.hidden = !tried;
   if (tried) withGlow(el.cardTryText, `${cardLabel(...tried)}: one of Glow's. It's on your card here to see, but not saved.`);
   el.cardTryBtn.hidden = !glowShown();
   el.cardPlain.disabled = !S.cardDraft;
 }
 
-const cardLabel = (field, key) => (field === 'pattern' ? Homepage.PATTERNS[key] : Homepage.SKIES[key]) || key;
+const cardLabel = (field, key) => (field === 'deco' ? Homepage.DECOS[key] && Homepage.DECOS[key].label
+  : field === 'pattern' ? Homepage.PATTERNS[key] : Homepage.SKIES[key]) || key;
+
+// Around your picture: nothing, one of everyone's effects, or one of Glow's (anyone else can try
+// one on, on the picture up top here); each shown on your own picture.
+function renderCardDecos() {
+  const on = S.decoTry || S.me.deco || '';
+  const tile = (key) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `card-deco${S.decoTry && S.decoTry === key ? ' trying' : ''}`;
+    b.dataset.deco = key;
+    b.setAttribute('aria-pressed', String(on === key));
+    const label = document.createElement('span');
+    label.textContent = key ? Homepage.DECOS[key].label : 'None';
+    const face = makeFace(S.me, null, 'big');
+    if (key) decoFace(face, S.me, key);
+    b.append(face, label);
+    b.addEventListener('click', () => pickDeco(key));
+    return b;
+  };
+  const all = Object.keys(Homepage.DECOS);
+  const shown = (box, keys) => {
+    // (Drawn again only when what's in it has changed: their effects keep moving.)
+    const want = keys.join() + '|' + on + '|' + S.decoTry;
+    if (box.decoShown === want) return;
+    box.decoShown = want;
+    box.replaceChildren(...keys.map(tile));
+  };
+  shown(el.cardDecos, ['', ...all.filter((k) => !Homepage.DECOS[k].glow)]);
+  const glow = all.filter((k) => Homepage.DECOS[k].glow && (supporting() || glowShown() || S.me.deco === k));
+  shown(el.cardGlowDecos, glow);
+  el.cardGlowDecosBox.hidden = !glow.length;
+}
+
+// Picking one: kept; or, one of Glow's for someone without it, tried on (again: taken off).
+async function pickDeco(key) {
+  const d = key && Homepage.DECOS[key];
+  if (d && d.glow && !supporting() && S.me.deco !== key) {
+    S.decoTry = S.decoTry === key ? '' : key;
+    renderCard();
+    if (S.decoTry && !S.cardGlowTold && glowShown()) {
+      S.cardGlowTold = true;
+      openGlow({ because: `${d.label}: one of Glow's. It's on your picture here to see, but not saved.` });
+    }
+    return;
+  }
+  S.decoTry = '';
+  const was = S.me.deco || null;
+  S.me.deco = key || null;
+  renderCard();
+  el.cardMsg.hidden = true;
+  try {
+    setMe((await api('PATCH', '/me', { deco: key || null })).user);
+  } catch (err) {
+    S.me.deco = was;
+    renderCard();
+    el.cardMsg.textContent = err.message;
+    el.cardMsg.hidden = false;
+  }
+}
 
 // Its colours: a row each for the top and the bottom (and any colour at all, at the end).
 function renderCardColors() {
@@ -23352,6 +23431,7 @@ async function init() {
   el.cardDialog.addEventListener('close', () => {
     if (cardSaveTimer) saveCard(); // (a colour still being kept)
     S.cardTry = null;
+    S.decoTry = '';
   });
 
   // ----- Your pet -----
