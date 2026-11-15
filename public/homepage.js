@@ -137,7 +137,9 @@
     orbit: () => '<i class="rg"></i><i class="rg"></i>',
     halo: () => '<i></i>',
     ears: () => '<i></i><i></i>',
-    headphones: () => svg(100, '<path d="M13 57 A38 38 0 0 1 87 57" fill="none" stroke="#2e3340" stroke-width="5" stroke-linecap="round"/><path d="M17 50 A34 34 0 0 1 83 50" fill="none" stroke="#4d5568" stroke-width="1.2" stroke-linecap="round"/><rect x="3" y="43" width="15" height="29" rx="6.5" fill="#2e3340"/><rect x="14" y="46" width="5.5" height="23" rx="2.7" fill="#4c8dff"/><rect x="82" y="43" width="15" height="29" rx="6.5" fill="#2e3340"/><rect x="80.5" y="46" width="5.5" height="23" rx="2.7" fill="#4c8dff"/><rect x="5" y="46" width="3" height="12" rx="1.5" fill="#4d5568"/>'),
+    // (The band over the top of the picture, the cups at its ears: raised after a first look, when the
+    // band crossed the top of the picture.)
+    headphones: () => svg(100, '<path d="M13 41 A38 38 0 0 1 87 41" fill="none" stroke="#2e3340" stroke-width="5" stroke-linecap="round"/><path d="M17 34 A34 34 0 0 1 83 34" fill="none" stroke="#4d5568" stroke-width="1.2" stroke-linecap="round"/><rect x="3" y="32" width="15" height="29" rx="6.5" fill="#2e3340"/><rect x="14" y="35" width="5.5" height="23" rx="2.7" fill="#4c8dff"/><rect x="82" y="32" width="15" height="29" rx="6.5" fill="#2e3340"/><rect x="80.5" y="35" width="5.5" height="23" rx="2.7" fill="#4c8dff"/><rect x="5" y="35" width="3" height="12" rx="1.5" fill="#4d5568"/>'),
     moon: () => '<i class="crescent"></i><b></b><b></b><b></b>',
     laurel: laurelSvg,
     pixel: pixelSvg,
