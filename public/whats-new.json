@@ -1,6 +1,51 @@
 {
   "entries": [
     {
+      "id": "2026-11-14b",
+      "date": "2026-11-14",
+      "title": "Picture effects, cards and homepages",
+      "items": [
+        {
+          "title": "Effects around your picture",
+          "text": "Your card has a new section, Around your picture: a gold ring, a halo, cat ears, headphones, a laurel and more, seen wherever your picture is.",
+          "media": "/whats-new/2026-11-14b-picture.webp"
+        },
+        {
+          "title": "Eleven that move",
+          "glow": true,
+          "text": "A raincloud, orbiting moons, a ring of fire, an aurora, a snow globe, an event horizon and more, moving around your picture.",
+          "media": "/whats-new/2026-11-14b-picture-glow.webp"
+        },
+        {
+          "title": "Card finishes and weather",
+          "text": "Give your card a finish: paper grain, brushed metal or glossy. And new weather for cards and homepages: fog or twinkling stars.",
+          "media": "/whats-new/2026-11-14b-cards.webp"
+        },
+        {
+          "title": "Foil and gold",
+          "glow": true,
+          "text": "Holographic foil that catches the light as you move over it, a gilded edge, and shooting stars or floating lanterns.",
+          "media": "/whats-new/2026-11-14b-cards-glow.webp"
+        },
+        {
+          "title": "Rain on glass",
+          "text": "A new homepage background: lights through a rainy window, drops sliding down the glass. Move over it to wipe the glass.",
+          "media": "/whats-new/2026-11-14b-rainglass.webp"
+        },
+        {
+          "title": "City at night and Fireplace",
+          "glow": true,
+          "text": "Two new homepage backgrounds, plus paw prints behind your visitors, or a torch for them to look around a dark page with.",
+          "media": "/whats-new/2026-11-14b-homepages-glow.webp"
+        },
+        {
+          "title": "Guestbook stamps",
+          "text": "Signing a guestbook? Put a stamp on it.",
+          "media": "/whats-new/2026-11-14b-stamps.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-14",
       "date": "2026-11-14",
       "title": "More themes, and event reminders",
