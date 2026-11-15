@@ -489,7 +489,7 @@
           <button id="stream-mute" class="icon-btn ghost" type="button" aria-label="Mute the stream" title="Mute the stream">
             <svg class="icon"><use href="#i-speaker"/></svg>
           </button>
-          <input id="stream-volume" type="range" min="0" max="300" step="5" value="100" aria-label="Stream volume" title="Stream volume" />
+          <input id="stream-volume" type="range" min="0" max="500" step="5" value="100" aria-label="Stream volume" title="Stream volume" />
           <output id="stream-volume-value">100%</output>
         </div>
 
@@ -751,7 +751,7 @@
     <div id="pm-sound" class="pm-sound" role="group">
       <label id="pm-volume-field" class="pm-volume">
         <span class="pm-volume-head"><span>Volume</span><output id="pm-volume-value">100%</output></span>
-        <input id="pm-volume" type="range" min="0" max="200" step="5" value="100" aria-label="Their volume, for you" />
+        <input id="pm-volume" type="range" min="0" max="500" step="5" value="100" aria-label="Their volume, for you" />
       </label>
       <button id="pm-mute-them" class="pm-check" type="button" role="menuitemcheckbox" aria-checked="false">Mute for me</button>
     </div>
@@ -883,7 +883,7 @@
         <h3 class="mp-roles-title">Volume <small>just for you</small></h3>
         <div class="mp-sound-row">
           <button id="mp-mute-them" class="mp-sound-mute" type="button" aria-pressed="false" title="Mute for me" aria-label="Mute for me"><svg class="icon"><use href="#i-speaker"/></svg></button>
-          <input id="mp-volume" type="range" min="0" max="200" step="5" value="100" aria-label="Their volume, for you" />
+          <input id="mp-volume" type="range" min="0" max="500" step="5" value="100" aria-label="Their volume, for you" />
           <output id="mp-volume-value">100%</output>
         </div>
       </div>
@@ -1953,7 +1953,7 @@
             </div>
             <label class="field">
               <span>Friend's volume <output id="volume-value" class="field-value">100%</output></span>
-              <input id="volume-input" type="range" min="0" max="300" step="5" value="100" />
+              <input id="volume-input" type="range" min="0" max="500" step="5" value="100" />
               <small id="volume-hint" class="hint">Above 100% makes a quiet friend louder. It works best with headphones.</small>
             </label>
             <label class="field">

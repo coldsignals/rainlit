@@ -10987,14 +10987,14 @@ function applyVolume() {
 // cancel echo themselves, hear everything and cover it; on other phones it stops at 100%
 // (their volume buttons go louder). The Android app says which kind of phone it is.
 function volumeCap() {
-  return ANDROID && store.get('boostBreaksEcho', 'no') === 'yes' && S.micFx.echoCancellation ? 1 : 3;
+  return ANDROID && store.get('boostBreaksEcho', 'no') === 'yes' && S.micFx.echoCancellation ? 1 : 5; // (500%: a quiet mic)
 }
 
 function renderVolumeCap() {
   const capped = volumeCap() === 1;
-  el.volumeInput.max = capped ? '100' : '300';
+  el.volumeInput.max = capped ? '100' : '500';
   el.volumeInput.value = String(Math.round(S.volume * 100));
-  el.streamVolume.max = capped ? '100' : '300';
+  el.streamVolume.max = capped ? '100' : '500';
   el.volumeHint.textContent = capped
     ? "On this phone, echo cancelling can't cover sound above 100%, so use your volume buttons to go louder."
     : 'Above 100% makes a quiet friend louder. It works best with headphones.';
@@ -16343,17 +16343,17 @@ function setStreamSound(id, change) {
   if (v) for (const t of v.tiles.values()) if (t.dataset.who === id) renderTileSound(t);
 }
 
-// Each person's voice, for you, in voice channels (and groups' calls): { v: volume 0 to 2, m: muted
+// Each person's voice, for you, in voice channels (and groups' calls): { v: volume 0 to 5, m: muted
 // for you }, remembered for that person (as they were, forgotten). Right-click them (or their
 // tile), or open their profile from the channel's list: renderPersonSound.
 function personSound(id) {
   const s = S.voicePeople[id] || {};
-  return { v: typeof s.v === 'number' ? Math.min(2, Math.max(0, s.v)) : 1, m: Boolean(s.m) };
+  return { v: typeof s.v === 'number' ? Math.min(5, Math.max(0, s.v)) : 1, m: Boolean(s.m) };
 }
 
-// (As loud as you can make someone: 200%, through the volume boost; 100% on a phone whose echo
+// (As loud as you can make someone: 500%, through the volume boost; 100% on a phone whose echo
 // cancelling can't cover the boost, as with a friend in a call: see volumeCap.)
-const personCap = () => Math.min(2, volumeCap());
+const personCap = () => Math.min(5, volumeCap());
 
 function setPersonSound(id, change) {
   const was = personSound(id);
