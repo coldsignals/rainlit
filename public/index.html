@@ -1083,6 +1083,48 @@
   <!-- ============ Your card ============ -->
   <!-- (How your profile looks to everyone who opens it (lib/cards.js), with you on it to see. Glow's
        patterns and weather are there to try on.) -->
+  <!-- A new profile picture, before it's kept (app.js onAvatarPicked) -->
+  <dialog id="avatar-confirm" class="settings avatar-confirm" aria-labelledby="avatar-confirm-title">
+    <div class="settings-inner">
+      <div class="settings-head">
+        <h2 id="avatar-confirm-title">Your new picture</h2>
+        <button class="icon-btn ghost" type="button" data-close aria-label="Cancel"><svg class="icon"><use href="#i-close"/></svg></button>
+      </div>
+      <div class="avatar-preview">
+        <div class="avatar-crop-box">
+          <div id="avatar-crop" class="avatar-crop" tabindex="0" role="group" aria-label="Your picture: drag it, or use the arrow keys, to move it in the square">
+            <img id="avatar-crop-img" alt="" draggable="false" />
+          </div>
+          <label class="avatar-zoom"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><span class="sr-only">Zoom</span>
+            <input id="avatar-zoom" type="range" min="1" max="4" step="0.01" value="1" />
+          </label>
+        </div>
+        <div class="avatar-preview-spots">
+          <div class="avatar-preview-spot">
+            <small>On your profile</small>
+            <span id="avatar-preview-face" class="face xl"></span>
+          </div>
+          <div class="avatar-preview-spot">
+            <small>In a list</small>
+            <div class="avatar-preview-row"><span id="avatar-preview-list" class="face"></span><span class="avatar-preview-words"><strong data-avatar-preview-name></strong><small>Online</small></span></div>
+          </div>
+          <div class="avatar-preview-spot">
+            <small>On a message</small>
+            <div class="avatar-preview-row"><span id="avatar-preview-msg" class="face avatar-preview-msg"></span><span class="avatar-preview-words"><strong data-avatar-preview-name></strong><span>new picture, who dis</span></span></div>
+          </div>
+        </div>
+      </div>
+      <small class="hint">Drag it, and zoom, to pick the square that's kept; it's shown as a circle. A GIF still moves.</small>
+      <p id="avatar-confirm-error" class="form-error" role="alert" hidden></p>
+      <div class="avatar-confirm-row">
+        <button id="avatar-confirm-other" class="text-btn" type="button">Pick another</button>
+        <span class="avatar-confirm-gap"></span>
+        <button class="primary-btn small ghost-btn" type="button" data-close>Cancel</button>
+        <button id="avatar-confirm-save" class="primary-btn small" type="button">Save</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="card-dialog" class="settings card-dialog" aria-labelledby="card-title">
     <div class="settings-inner">
       <div class="settings-head">

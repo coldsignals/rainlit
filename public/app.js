@@ -135,7 +135,9 @@ for (const id of [
   'card-patterns', 'card-glow-patterns-box', 'card-glow-patterns', 'card-fonts', 'card-skies', 'card-glow-skies-box', 'card-glow-skies',
   'card-try', 'card-try-text', 'card-try-btn', 'card-msg', 'card-plain', 'card-decos', 'card-glow-decos-box', 'card-glow-decos', 'card-finishes', 'card-glow-finishes-box', 'card-glow-finishes',
   'mini-profile', 'mp-face', 'mp-name', 'mp-username', 'mp-badges', 'mp-presence', 'mp-status', 'mp-message', 'mp-call', 'mp-add', 'mp-edit', 'mp-homepage', 'mp-homepage-text', 'mp-homepage-new', 'mp-remove', 'mp-blocked', 'mp-safety', 'mp-report', 'mp-block', 'mp-sound', 'mp-mute-them', 'mp-volume', 'mp-volume-value',
-  'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input', 'profile-name', 'profile-save-bar', 'profile-save-error', 'profile-save-text', 'profile-undo', 'profile-save',
+  'profile', 'profile-form', 'profile-face', 'avatar-btn', 'avatar-remove-btn', 'avatar-input',
+  'avatar-confirm', 'avatar-preview-face', 'avatar-preview-list', 'avatar-preview-msg', 'avatar-confirm-error', 'avatar-confirm-other', 'avatar-confirm-save',
+  'avatar-crop', 'avatar-crop-img', 'avatar-zoom', 'profile-name', 'profile-save-bar', 'profile-save-error', 'profile-save-text', 'profile-undo', 'profile-save',
   'status-count', 'profile-status', 'profile-presence', 'profile-badges', 'blocked-details', 'blocked-count', 'blocked-list', 'profile-account', 'profile-homepage-link', 'profile-homepage-btn', 'profile-card-btn', 'profile-error', 'pw-current', 'pw-next', 'pw-btn', 'signout-btn', 'delete-details', 'delete-spaces', 'delete-password', 'delete-error', 'delete-btn',
   'files-details', 'export-btn', 'export-note', 'files-used', 'files-bar', 'files-note', 'files-list', 'storage-state', 'storage-file', 'storage-person',
   'support-card', 'support-badge', 'support-title', 'support-note', 'support-btn', 'support-link', 'support-admin', 'support-state', 'support-costs',
@@ -21541,24 +21543,141 @@ async function onExport() {
   }
 }
 
-async function onAvatarPicked() {
+// A picture picked: first seen as everyone will see it (round, cut from the middle), big, in a
+// list and on a message, with your effect round it; kept only when it's saved.
+let avatarPending = null; // ({ file, url }: the one being looked at)
+function onAvatarPicked() {
   const file = el.avatarInput.files[0];
   el.avatarInput.value = '';
   if (!file) return;
   if (file.size > 8 * 1024 * 1024) return showProfileError('Profile pictures can be up to 8 MB.');
   showProfileError('');
-  el.avatarBtn.disabled = true;
-  el.avatarBtn.textContent = 'Uploading';
+  dropAvatarPending();
+  avatarPending = { file, url: URL.createObjectURL(file), w: 0, h: 0, zoom: 1, x: 0, y: 0 };
+  el.avatarConfirmError.hidden = true;
+  el.avatarConfirmSave.disabled = true; // (till it's opened)
+  el.avatarZoom.value = '1';
+  el.avatarZoom.disabled = true;
+  for (const [face, presence] of [[el.avatarPreviewFace, myPresence()], [el.avatarPreviewList, myPresence()], [el.avatarPreviewMsg, null]]) {
+    renderFace(face, S.me, presence);
+    decoFace(face, S.me);
+  }
+  for (const n of el.avatarConfirm.querySelectorAll('[data-avatar-preview-name]')) n.textContent = S.me.displayName;
+  const pending = avatarPending;
+  el.avatarCropImg.onload = () => {
+    if (avatarPending !== pending) return;
+    pending.w = el.avatarCropImg.naturalWidth;
+    pending.h = el.avatarCropImg.naturalHeight;
+    el.avatarConfirmSave.disabled = false;
+    el.avatarZoom.disabled = false;
+    placeAvatarCrop();
+  };
+  // (One that won't show as a picture: said so, and it can't be saved.)
+  el.avatarCropImg.onerror = () => {
+    if (avatarPending !== pending) return;
+    el.avatarConfirmError.textContent = "That picture couldn't be opened. Try another (PNG, JPG, GIF or WebP).";
+    el.avatarConfirmError.hidden = false;
+    el.avatarConfirmSave.disabled = true;
+  };
+  el.avatarCropImg.src = pending.url;
+  if (!el.avatarConfirm.open) el.avatarConfirm.showModal();
+  el.avatarConfirmSave.focus();
+}
+
+// The square: how big the frame is (S, on the screen), and the picture under it, filling it at a
+// zoom of 1 (its shorter side across the square), up to four times that; x and y, where its top
+// left is, kept so the square's always on the picture.
+const avatarFrame = () => el.avatarCrop.clientWidth || 240;
+function avatarScale(p) {
+  return (avatarFrame() / Math.min(p.w, p.h)) * p.zoom;
+}
+function keepAvatarIn(p) {
+  const S = avatarFrame();
+  const k = avatarScale(p);
+  p.x = Math.min(0, Math.max(S - p.w * k, p.x));
+  p.y = Math.min(0, Math.max(S - p.h * k, p.y));
+}
+// (The square, in the picture's own pixels: what the server cuts out.)
+function avatarCropBox(p) {
+  const k = avatarScale(p);
+  const size = Math.max(1, Math.round(avatarFrame() / k));
+  return { left: Math.max(0, Math.round(-p.x / k)), top: Math.max(0, Math.round(-p.y / k)), size: Math.min(size, p.w, p.h) };
+}
+let avatarPreviewFrame = 0;
+function placeAvatarCrop(first = true) {
+  const p = avatarPending;
+  if (!p || !p.w) return;
+  if (first) {
+    // (To begin with, the middle of it.)
+    const S = avatarFrame();
+    const k = avatarScale(p);
+    p.x = (S - p.w * k) / 2;
+    p.y = (S - p.h * k) / 2;
+  }
+  keepAvatarIn(p);
+  const k = avatarScale(p);
+  Object.assign(el.avatarCropImg.style, { width: `${p.w * k}px`, height: `${p.h * k}px`, transform: `translate(${p.x}px, ${p.y}px)` });
+  // (The small ones, as they'll be: the square drawn small, a frame at a time at most.)
+  if (avatarPreviewFrame) return;
+  avatarPreviewFrame = requestAnimationFrame(() => {
+    avatarPreviewFrame = 0;
+    if (avatarPending !== p) return;
+    const c = avatarCropBox(p);
+    const pic = document.createElement('canvas');
+    pic.width = pic.height = 168;
+    pic.getContext('2d').drawImage(el.avatarCropImg, c.left, c.top, c.size, c.size, 0, 0, 168, 168);
+    let url = '';
+    try {
+      url = pic.toDataURL('image/png');
+    } catch {
+      return;
+    }
+    const who = { ...S.me, avatar: url };
+    renderFace(el.avatarPreviewFace, who, myPresence());
+    renderFace(el.avatarPreviewList, who, myPresence());
+    renderFace(el.avatarPreviewMsg, who, null);
+  });
+}
+function zoomAvatar(z, about = null) {
+  const p = avatarPending;
+  if (!p || !p.w) return;
+  const S = avatarFrame();
+  const [ax, ay] = about || [S / 2, S / 2];
+  const k0 = avatarScale(p);
+  const sx = (ax - p.x) / k0;
+  const sy = (ay - p.y) / k0;
+  p.zoom = Math.min(4, Math.max(1, z));
+  const k1 = avatarScale(p);
+  p.x = ax - sx * k1;
+  p.y = ay - sy * k1;
+  el.avatarZoom.value = String(p.zoom);
+  placeAvatarCrop(false);
+}
+
+function dropAvatarPending() {
+  if (avatarPending) URL.revokeObjectURL(avatarPending.url);
+  avatarPending = null;
+}
+
+async function saveAvatarPending() {
+  if (!avatarPending) return;
+  const { file } = avatarPending;
+  const c = avatarCropBox(avatarPending);
+  el.avatarConfirmSave.disabled = true;
+  el.avatarConfirmSave.textContent = 'Saving';
+  el.avatarConfirmError.hidden = true;
   try {
-    const { user } = await api('PUT', '/me/avatar', file);
+    const { user } = await api('PUT', `/me/avatar?crop=${c.left},${c.top},${c.size}`, file);
     setMe(user);
     renderFace(el.profileFace, user, null);
     el.avatarRemoveBtn.hidden = false;
+    el.avatarConfirm.close();
   } catch (err) {
-    showProfileError(err.message);
+    el.avatarConfirmError.textContent = err.message;
+    el.avatarConfirmError.hidden = false;
+    el.avatarConfirmSave.disabled = false;
   } finally {
-    el.avatarBtn.disabled = false;
-    el.avatarBtn.textContent = 'Change picture';
+    el.avatarConfirmSave.textContent = 'Save';
   }
 }
 
@@ -23451,6 +23570,48 @@ async function init() {
   el.profileStatus.addEventListener('input', updateStatusCount);
   el.avatarBtn.addEventListener('click', () => el.avatarInput.click());
   el.avatarInput.addEventListener('change', onAvatarPicked);
+  el.avatarConfirmSave.addEventListener('click', saveAvatarPending);
+  el.avatarConfirmOther.addEventListener('click', () => el.avatarInput.click());
+  // (Closed: the picture let go, unless it's open again by then with another: the close comes a moment after.)
+  el.avatarConfirm.addEventListener('close', () => { if (!el.avatarConfirm.open) dropAvatarPending(); });
+  // (The square: dragged about, zoomed with the slider or the wheel, moved with the arrow keys.)
+  el.avatarZoom.addEventListener('input', () => zoomAvatar(Number(el.avatarZoom.value)));
+  let cropDrag = null;
+  el.avatarCrop.addEventListener('pointerdown', (e) => {
+    if (!avatarPending || !avatarPending.w || e.button > 0) return;
+    e.preventDefault();
+    el.avatarCrop.setPointerCapture(e.pointerId);
+    cropDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, px: avatarPending.x, py: avatarPending.y };
+    el.avatarCrop.classList.add('dragging');
+  });
+  el.avatarCrop.addEventListener('pointermove', (e) => {
+    if (!cropDrag || cropDrag.id !== e.pointerId || !avatarPending) return;
+    const zoom = uiZoom();
+    avatarPending.x = cropDrag.px + (e.clientX - cropDrag.x) / zoom;
+    avatarPending.y = cropDrag.py + (e.clientY - cropDrag.y) / zoom;
+    placeAvatarCrop(false);
+  });
+  const endCropDrag = () => {
+    cropDrag = null;
+    el.avatarCrop.classList.remove('dragging');
+  };
+  el.avatarCrop.addEventListener('pointerup', endCropDrag);
+  el.avatarCrop.addEventListener('pointercancel', endCropDrag);
+  el.avatarCrop.addEventListener('wheel', (e) => {
+    if (!avatarPending || !avatarPending.w) return;
+    e.preventDefault();
+    const r = el.avatarCrop.getBoundingClientRect();
+    const zoom = uiZoom();
+    zoomAvatar(avatarPending.zoom * Math.exp(-e.deltaY * 0.0015), [(e.clientX - r.left) / zoom, (e.clientY - r.top) / zoom]);
+  }, { passive: false });
+  el.avatarCrop.addEventListener('keydown', (e) => {
+    const step = { ArrowLeft: [8, 0], ArrowRight: [-8, 0], ArrowUp: [0, 8], ArrowDown: [0, -8] }[e.key];
+    if (!step || !avatarPending || !avatarPending.w) return;
+    e.preventDefault();
+    avatarPending.x += step[0];
+    avatarPending.y += step[1];
+    placeAvatarCrop(false);
+  });
   el.exportBtn.addEventListener('click', onExport);
   el.callRecordInput.addEventListener('change', onCallRecordToggle);
   el.callRecordDelete.addEventListener('click', onCallRecordDelete);
@@ -23479,7 +23640,7 @@ async function init() {
   // needs an answer: 18+, an announcement, sharing what you're doing).
   el.whatsNew.addEventListener('close', onWhatsNewClosed);
   el.whatsNewBtn.addEventListener('click', openWhatsNew);
-  for (const d of [el.whatsNew, el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.recordDialog, el.camPreview, el.soundTrim, el.events, el.eventEdit, el.freeTimes, el.notices]) {
+  for (const d of [el.whatsNew, el.myInvites, el.miniProfile, el.profile, el.admin, el.settings, el.summary, el.serverDialog, el.spaceNew, el.spaceInvite, el.spaceMembers, el.spaceSettings, el.spaceJoin, el.modDialog, el.reportDialog, el.groupPick, el.groupInfo, el.feedback, el.glow, el.pet, el.petVisit, el.cardDialog, el.avatarConfirm, el.recordDialog, el.camPreview, el.soundTrim, el.events, el.eventEdit, el.freeTimes, el.notices]) {
     closeOnBackdrop(d, (e) => e.target.closest('[data-close]'));
   }
 

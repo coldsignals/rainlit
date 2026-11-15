@@ -971,9 +971,12 @@ api.put('/me/avatar', needUser, express.raw({ type: () => true, limit: AVATAR_MA
   const kind = imageKind(buf);
   if (!kind) return fail(res, 400, 'Profile pictures can be PNG, JPG, GIF or WebP.');
   // A big one's made smaller (never more compressed), and a photo's hidden location comes out.
+  // (A square cut from it, if one was picked: ?crop=left,top,size, in its own pixels.)
+  const c = String(req.query.crop || '').split(',').map(Number);
+  const crop = c.length === 3 && c.every((n) => Number.isFinite(n) && n >= 0) && c[2] > 0 ? { left: c[0], top: c[1], size: c[2] } : null;
   let pic = { buf, ext: kind };
   try {
-    pic = await images.avatar(buf, kind);
+    pic = await images.avatar(buf, kind, crop);
   } catch {}
   // A new name each time, so everyone's browser fetches the new picture instead of a saved copy.
   const name = `${req.user.id}-${crypto.randomBytes(4).toString('hex')}.${pic.ext}`;
