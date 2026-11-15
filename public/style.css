@@ -4310,6 +4310,9 @@ button.perk-tag:hover { filter: brightness(1.08); }
   background: radial-gradient(ellipse 70% 40% at 50% 100%, rgba(120, 200, 140, 0.22), transparent 70%), linear-gradient(170deg, #161d3d, #28265a);
 }
 .glow-pet { display: grid; justify-items: center; gap: 4px; color: #cfd6f2; font-size: 12.5px; font-weight: 650; }
+/* (Effects around a picture, on yours.) */
+.glow-decos { justify-content: space-around; gap: 22px 18px; padding: 22px 12px 12px; border-radius: 14px; background: linear-gradient(160deg, #1b2140, #2b2f5c); }
+.glow-deco { display: grid; justify-items: center; gap: 14px; color: #cfd6f2; font-size: 12.5px; font-weight: 650; }
 .glow-pet .hp-pet { width: 110px; height: 92px; --pw: 110px; }
 /* (A homepage's extras, as they are on a page: a little night page of their own, with sparkles
    behind the pointer over it, and confetti for a click.) */

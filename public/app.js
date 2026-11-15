@@ -20940,6 +20940,16 @@ function showGlowExtras() {
     item.append(tile, Homepage.PATTERNS[pattern]);
     patterns.append(item);
   }
+  // (Effects around a picture: a few of Glow's, on yours.)
+  const decos = el.glow.querySelector('[data-glow-decos]');
+  if (decos && S.me) {
+    for (const key of ['raincloud', 'moons', 'flames', 'holo', 'globe', 'horizon']) {
+      const item = document.createElement('span');
+      item.className = 'glow-deco';
+      item.append(decoFace(makeFace(S.me, null, 'big'), S.me, key), Homepage.DECOS[key].label);
+      decos.append(item);
+    }
+  }
   Homepage.effectsOver(el.glow.querySelector('.glow-homepage'), { trail: 'sparkles', click: 'confetti' });
   // (Its weather as on a page: a thunderstorm's clouds and lightning too.)
   for (const sky of el.glow.querySelectorAll('.glow-sky .hp-sky')) {
