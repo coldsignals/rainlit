@@ -336,6 +336,8 @@
     </aside>
 
     <section class="content">
+      <!-- A message from somewhere else, for a moment (app.js previewMessage) -->
+      <div id="msg-previews" class="msg-previews" aria-live="polite"></div>
       <div id="home" class="home">
         <div class="home-inner">
           <img class="drop-small" src="/icons/mark.svg" alt="" width="44" height="44" />
@@ -1834,6 +1836,10 @@
             <label class="toggle">
               <input id="sounds-input" type="checkbox" />
               <span>Play a sound for new messages</span>
+            </label>
+            <label class="toggle">
+              <input id="previews-input" type="checkbox" />
+              <span>Show a preview of a message that comes in somewhere else <small class="toggle-note">(at the top of the conversation you're in, for a few seconds: click it to go there)</small></span>
             </label>
             <label class="field">
               <span>Read /tts messages aloud</span>

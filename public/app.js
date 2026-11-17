@@ -152,7 +152,7 @@ for (const id of [
   'chat-log', 'chat-form', 'chat-input', 'chat-mirror', 'chat-count', 'gif-btn', 'gif-panel', 'gif-search', 'gif-grid', 'gif-cols', 'gif-status', 'attach-btn', 'attach-tray', 'file-input', 'file-tpl', 'drop-overlay', 'drop-text',
   'mic-btn', 'deafen-btn', 'cam-btn', 'flip-btn', 'route-btn', 'screen-btn', 'screen-switch-btn', 'leave-btn', 'toast', 'rain', 'rain-input', 'weather-name', 'rain-note', 'rain-calls-input',
   'theme-list', 'theme-extras-box', 'theme-extras-title', 'theme-extras', 'theme-try', 'theme-try-text', 'theme-try-btn',
-  'settings', 'settings-nav', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'tts-select', 'tts-volume', 'tts-volume-value', 'tts-test-btn', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'relay-field', 'relay-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
+  'settings', 'settings-nav', 'ui-scale', 'mic-select', 'mic-hint', 'cam-select', 'speaker-field', 'speaker-select', 'share-quality', 'volume-input', 'volume-value', 'volume-hint', 'duck-field', 'duck-input', 'duck-status', 'noise-select', 'noise-hint', 'noise-strength-field', 'noise-strength', 'noise-strength-value', 'echo-input', 'gain-input', 'ptt-input', 'ptt-details', 'ptt-key-btn', 'ptt-hint', 'sounds-input', 'previews-input', 'msg-previews', 'tts-select', 'tts-volume', 'tts-volume-value', 'tts-test-btn', 'clicks-input', 'hp-autoplay-input', 'embeds-input', 'compact-input', 'stats-input', 'relay-field', 'relay-input', 'trace-input', 'stream-stats', 'stream-audio', 'stream-mute', 'stream-volume', 'stream-volume-value', 'app-note', 'push-note', 'get-apps', 'server-name', 'server-switch', 'server-switch-btn', 'server-note', 'server-host', 'server-change-btn', 'server-dialog', 'server-form', 'server-input', 'server-error', 'server-connect-btn', 'server-default-btn', 'rail', 'rail-home', 'rail-spaces', 'rail-add', 'rail-tip', 'events-btn', 'events-now', 'events-count', 'events', 'events-title', 'events-new', 'events-free', 'events-list', 'events-none', 'events-tab-coming', 'events-tab-past', 'event-repeats', 'event-scope', 'event-scope-q', 'event-scope-one', 'event-scope-all', 'event-edit', 'event-edit-form', 'event-edit-title', 'event-name', 'event-day', 'event-start', 'event-end', 'event-free', 'free-week-prev', 'free-week-label', 'free-week-next', 'free-week', 'free-week-note', 'event-where', 'event-place-field', 'event-place', 'event-about', 'event-error', 'event-delete', 'event-save', 'free-times', 'free-times-form', 'free-edit', 'free-tz', 'free-clear', 'free-save', 'free-times-btn', 'event-bar', 'event-bar-title', 'event-bar-sub', 'event-bar-join', 'event-bar-x', 'space-head', 'space-title', 'home-side', 'space-side', 'add-channel-btn', 'channel-list', 'voice-section', 'add-voice-btn', 'voice-list', 'voice-alone', 'voice-alone-text', 'voice-stay', 'voice-panel', 'voice-panel-status', 'voice-panel-name', 'voice-panel-where', 'voice-hear', 'voice-view', 'voice-back', 'voice-title', 'voice-sub', 'voice-video-only', 'voice-grid', 'voice-stats', 'voice-audio', 'space-menu', 'sm-invite', 'sm-members', 'sm-settings', 'sm-notify', 'sm-leave', 'mention-pick', 'space-new', 'space-create-form', 'space-create-name', 'space-join-form', 'space-join-code', 'space-import-form', 'space-import-link', 'space-import-preview', 'space-import-btn', 'space-new-error', 'space-invite', 'space-invite-name', 'space-invite-link', 'space-invite-copy', 'space-members', 'space-member-list', 'space-settings', 'space-tabs', 'space-general', 'space-roles', 'space-channels', 'space-moderation', 'mod-dialog', 'mod-form', 'mod-title', 'mod-text', 'mod-length-field', 'mod-length', 'mod-purge-field', 'mod-purge', 'mod-reason', 'mod-error', 'mod-confirm', 'space-rename-form', 'space-rename-input', 'space-pic', 'space-pic-btn', 'space-pic-remove', 'space-pic-input', 'space-channel-admin', 'space-danger', 'space-delete-btn', 'space-settings-error', 'flag-list', 'evidence-list', 'announce-form', 'announce-title', 'announce-body', 'announce-link', 'announce-change', 'announce-date', 'announce-soon', 'announce-error', 'announce-list',
   'announce-dialog', 'announce-from', 'announce-heading', 'announce-starts', 'announce-text', 'announce-read', 'announce-count', 'whats-new', 'whats-new-body', 'whats-new-more', 'whats-new-btn', 'age-gate', 'age-gate-title', 'age-gate-text', 'age-gate-yes', 'age-gate-no', 'age-gate-hint', 'age-dialog', 'age-dialog-title', 'age-dialog-text', 'space-join', 'space-join-icon', 'space-join-name', 'space-join-count', 'space-join-btn', 'space-join-error', 'call-sounds-input', 'conn-info', 'remote-audio',
   'summary', 'summary-title', 'summary-duration', 'summary-duration-label', 'summary-detail', 'summary-log',
   'lightbox', 'lightbox-img', 'lightbox-name', 'lightbox-save', 'lightbox-close',
@@ -305,6 +305,7 @@ const S = {
   showStats: store.get('streamStats', 'off') === 'on',
   relay: store.get('callRelay', 'off') === 'on', // (calls through the relay server, not the direct route)
   sounds: store.get('sounds', 'on') !== 'off',
+  previews: store.get('msgPreviews', 'on') !== 'off', // (a message from somewhere else, shown for a moment: previewMessage)
   tts: ['open', 'all', 'off'].includes(store.get('tts', 'open')) ? store.get('tts', 'open') : 'open', // /tts messages read aloud: where
   ttsVolume: Math.min(100, Math.max(10, Number(store.get('ttsVolume', '100')) || 100)), // ...and how loud, in percent
   clickSounds: store.get('clickSounds', 'on') !== 'off',
@@ -5638,6 +5639,7 @@ function letGoOf(dm) {
 
 // (at: a message's seq, to open around it rather than at the newest: see jumpToResult.)
 async function openDm(friendId, at = 0) {
+  dropPreviewsOf(friendId);
   if (!convExists(friendId)) return;
   const dm = dmFor(friendId);
   dm.heldUnread = false; // (back to it: read, as ever)
@@ -7025,6 +7027,7 @@ function onDmMessage(m) {
   }
   if (fromThem && dm.channelId) notifyChannel(dm, m);
   if (fromThem) speakMessage(dm, m);
+  if (fromThem) previewMessage(dm, m);
   if (fromThem && !dm.channelId && (DESKTOP || ANDROID)) {
     const body = m.kind === 'text' ? plainEmoji(plainFormat(m.text)) : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
     appNotify({ title: friendName(friendId), body }); // only shows if you're not looking at Rainlit
@@ -7176,6 +7179,119 @@ function notifyChannel(dm, m) {
     const where = isGroupSpace(space) ? groupTitle(space) : `#${c.name}`;
     appNotify({ title: mentioned ? `${who} mentioned you in ${where}` : `${who} in ${where}`, body });
   }
+}
+
+// ----- A message from somewhere else, for a moment -----
+// One that comes in where you're not looking (a friend's DM, a channel in another space, a group),
+// while you're looking at Rainlit: who, where, and the start of it, at the top of the conversation
+// you're in (msg-previews). Clicked, you're taken there. Six seconds, then it's gone (not while the
+// pointer's over it); a newer one from the same place takes its place, counting; three at most.
+// Only for what you'd be told of anyway (a channel's by its space's setting, a muted one only for
+// a mention); not on Do Not Disturb, nor from someone you've blocked. (Away from Rainlit, the
+// app's own notification does this.)
+const PREVIEW_MS = 6000;
+function previewMessage(dm, m) {
+  if (!S.previews || dnd() || lookingAway() || (S.blocked && S.blocked.has(m.author))) return;
+  if (S.openDm === dm.friendId && el.voiceView.hidden) return; // (you're looking at it)
+  let where;
+  let go;
+  let mentioned = false;
+  if (dm.channelId) {
+    const c = S.channels.get(dm.channelId);
+    const space = c && S.spaces.get(c.spaceId);
+    if (!space) return;
+    mentioned = mentionsMe(m);
+    if (space.notify === 'none' || (space.notify !== 'all' && !mentioned) || (c.muted && !mentioned)) return;
+    if (isGroupSpace(space)) {
+      where = groupTitle(space);
+      go = () => openGroup(space.id);
+    } else {
+      where = `#${c.name} · ${space.name}`;
+      go = async () => {
+        if (S.view !== space.id) await showSpace(space.id);
+        if (S.openDm !== dm.friendId) openDm(dm.friendId);
+      };
+    }
+  } else {
+    where = 'Direct message';
+    go = () => {
+      if (S.view !== 'home') showHome();
+      openDm(dm.friendId);
+    };
+  }
+  const words = m.kind === 'text' ? plainEmoji(plainFormat(m.text)).replace(/\s+/g, ' ').trim()
+    : m.kind === 'gif' ? 'Sent a GIF' : `Sent a file${m.file && m.file.name ? `: ${m.file.name}` : ''}`;
+  const who = profileOf(m.author) || { id: m.author, displayName: friendName(m.author) };
+  // (A newer one from the same place takes its place.)
+  const had = [...el.msgPreviews.children].find((n) => n.dataset.conv === dm.friendId);
+  const n = had ? (Number(had.dataset.n) || 1) + 1 : 1;
+  if (had) {
+    clearTimeout(had.timer);
+    had.remove();
+  }
+  const card = document.createElement('div');
+  card.className = `msg-preview${mentioned ? ' mention' : ''}`;
+  card.dataset.conv = dm.friendId;
+  card.dataset.n = String(n);
+  card.setAttribute('role', 'button');
+  card.tabIndex = 0;
+  const text = document.createElement('div');
+  text.className = 'msg-preview-text';
+  const head = document.createElement('div');
+  head.className = 'msg-preview-head';
+  const name = document.createElement('strong');
+  name.textContent = who.displayName || 'Someone';
+  const place = document.createElement('small');
+  place.textContent = mentioned ? `mentioned you in ${where}` : where;
+  head.append(name, place);
+  if (n > 1) {
+    const more = document.createElement('span');
+    more.className = 'msg-preview-n';
+    more.textContent = `${n} new`;
+    head.append(more);
+  }
+  const body = document.createElement('p');
+  body.textContent = words.length > 160 ? `${words.slice(0, 157)}...` : words;
+  text.append(head, body);
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.className = 'msg-preview-x';
+  x.setAttribute('aria-label', 'Dismiss');
+  x.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>';
+  card.append(decoFace(makeFace(who, null), who), text, x);
+  const gone = () => {
+    clearTimeout(card.timer);
+    card.classList.add('leaving');
+    setTimeout(() => card.remove(), 220);
+  };
+  const later = () => {
+    clearTimeout(card.timer);
+    card.timer = setTimeout(gone, PREVIEW_MS);
+  };
+  x.addEventListener('click', (e) => {
+    e.stopPropagation();
+    gone();
+  });
+  const open = () => {
+    gone();
+    Promise.resolve(go()).catch(() => {});
+  };
+  card.addEventListener('click', open);
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      open();
+    }
+  });
+  card.addEventListener('pointerenter', () => clearTimeout(card.timer));
+  card.addEventListener('pointerleave', later);
+  el.msgPreviews.prepend(card);
+  while (el.msgPreviews.children.length > 3) el.msgPreviews.lastElementChild.remove();
+  later();
+}
+// (Opening a conversation: any preview of it goes.)
+function dropPreviewsOf(conv) {
+  for (const n of [...el.msgPreviews.children]) if (n.dataset.conv === conv) n.remove();
 }
 
 // Something new from your friend. If you're not looking at their conversation (it's
@@ -10584,6 +10700,7 @@ async function fillDeviceLists() {
   el.shareQuality.value = S.shareQuality;
   renderVolumeCap();
   el.soundsInput.checked = S.sounds;
+  el.previewsInput.checked = S.previews;
   el.ttsSelect.value = S.tts;
   el.ttsVolume.value = String(S.ttsVolume);
   el.ttsVolumeValue.textContent = `${S.ttsVolume}%`;
@@ -24297,6 +24414,11 @@ async function init() {
     S.sounds = el.soundsInput.checked;
     store.set('sounds', S.sounds ? 'on' : 'off');
     if (S.sounds) playChime(true); // so you know what it sounds like
+  });
+  el.previewsInput.addEventListener('change', () => {
+    S.previews = el.previewsInput.checked;
+    store.set('msgPreviews', S.previews ? 'on' : 'off');
+    if (!S.previews) el.msgPreviews.replaceChildren();
   });
 
   // Ctrl+Shift+M mutes you and Ctrl+Shift+D deafens you, like Discord (in a call, or a voice channel).
