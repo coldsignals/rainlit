@@ -31,7 +31,9 @@ public class PushServiceImpl extends PushService {
     public void onMessage(PushMessage message, String instance) {
         // A note only matters if you're not looking at Rainlit; if you are, it already knows.
         if (RainlitPlugin.appVisible) return;
-        Notifications.showPush(this, new String(message.getContent(), StandardCharsets.UTF_8));
+        String json = new String(message.getContent(), StandardCharsets.UTF_8);
+        Speaker.fromPush(this, json); // (a /tts one, read aloud, if Settings says so)
+        Notifications.showPush(this, json);
     }
 
     @Override

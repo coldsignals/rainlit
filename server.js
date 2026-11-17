@@ -1813,12 +1813,48 @@ const conv = (rest = '') => [`/dms/:friendId${rest}`, `/channels/:channelId${res
 function tell(req, msg) {
   for (const id of req.channel ? spaces.channelAudience(req.channel) : req.audience) realtime.sendToUser(id, msg);
   // A new message for a friend who has Rainlit closed: a push notification to their phone.
-  // It says who it's from, never what it says.
+  // It says who it's from, never what it says (a /tts one says that, and where: ttsNote).
   const m = msg.type === 'dm-message' && msg.message;
   if (req.friendId && m && m.author === req.user.id && ['text', 'file', 'gif'].includes(m.kind) && !realtime.isOnline(req.friendId)) {
-    push.send(req.friendId, { type: 'message', from: { id: req.user.id, name: req.user.display_name } }, { ttl: 24 * 3600 });
+    push.send(req.friendId, { type: 'message', from: { id: req.user.id, name: req.user.display_name }, ...ttsNote(m, `/dms/${req.user.id}`) }, { ttl: 24 * 3600 });
   }
 }
+
+// ----- /tts with the phone's app in the background or closed -----
+// A /tts message's words, kept 10 minutes in memory (a DM that isn't saved is never written
+// down), for a phone to fetch and read aloud: its push note says only that there's one, and where
+// (Speaker.java). Fetched with the phone's own sign-in, by someone in that conversation, not from
+// someone they've blocked; as "Name said: ...", its formatting, links and spoilers made sayable.
+const ttsKept = new Map();
+const TTS_KEEP_MS = 10 * 60_000;
+function keepTts(m, dmId) {
+  if (!m || !m.meta || !m.meta.tts || m.kind !== 'text') return;
+  const now = Date.now();
+  for (const [k, v] of ttsKept) if (now - v.at > TTS_KEEP_MS || ttsKept.size > 500) ttsKept.delete(k);
+  ttsKept.set(m.id, { dm: dmId, author: m.author, text: m.text, at: now });
+}
+const ttsNote = (m, where) => (m && m.meta && m.meta.tts && m.kind === 'text' ? { tts: { path: `/api${where}/messages/${m.id}/spoken` } } : {});
+function sayable(text) {
+  return String(text || '')
+    .replace(/\|\|[\s\S]+?\|\|/g, ' a spoiler ')
+    .replace(/```(?:[\w+#.-]{1,20}\n)?([\s\S]*?)```/g, '$1')
+    .replace(/`([^`\n]+)`/g, '$1')
+    .replace(/(\*\*|__|~~)([\s\S]+?)\1/g, '$2')
+    .replace(/\*(?![\s*])([\s\S]*?[^\s*])\*(?!\*)/g, '$1')
+    .replace(/^> ?/gm, '')
+    .replace(/https?:\/\/\S+/gi, 'a link')
+    .replace(/:[a-z0-9_]+:/gi, ' ')
+    .replace(/\s+/g, ' ').trim().slice(0, 400);
+}
+api.get(conv('/messages/:messageId/spoken'), needUser, needConv, (req, res) => {
+  const t = ttsKept.get(String(req.params.messageId));
+  if (!t || t.dm !== req.dm.id || Date.now() - t.at > TTS_KEEP_MS || safety.hasBlocked(req.user.id, t.author)) return fail(res, 404, "That one's gone.");
+  const author = people.userById(t.author);
+  const name = String((author && author.display_name) || 'Someone').replace(/[^\p{L}\p{N}]+/gu, ' ').trim() || 'Someone';
+  const words = sayable(t.text);
+  if (!words) return fail(res, 404, "There's nothing to say.");
+  res.json({ said: `${name} said: ${words}` });
+});
 
 // Where "new messages" starts for you: what you've read, or (a channel you've never opened) when you joined its space.
 function readFloor(req) {
@@ -1920,8 +1956,9 @@ api.post(conv('/messages'), needUser, needConv, (req, res) => {
     if (mentions.ids.length) message.mentions = mentions.ids;
     if (mentions.everyone) message.everyone = true;
   }
+  keepTts(message, req.dm.id);
   tell(req, { type: 'dm-message', message, notes: req.notes ? dms.notesUsage(req.dm.id) : undefined });
-  if (req.channel) pushChannelMessage(req, mentions);
+  if (req.channel) pushChannelMessage(req, mentions, message);
   res.json({ message });
 });
 
@@ -1951,7 +1988,8 @@ function groupTitle(spaceId, forUserId) {
   return names.length > 3 ? `${names.slice(0, 3).join(', ')} and ${names.length - 3} more` : names.join(', ');
 }
 
-function pushChannelMessage(req, mentions) {
+function pushChannelMessage(req, mentions, message = null) {
+  const tts = ttsNote(message, `/channels/${req.channel.id}`);
   const ids = mentions ? mentions.ids : [];
   const everyone = Boolean(mentions && mentions.everyone);
   const who = req.user.display_name;
@@ -1963,12 +2001,12 @@ function pushChannelMessage(req, mentions) {
     if (!mentioned && spaces.channelMuted(req.channel.id, uid)) continue;
     if (safety.hasBlocked(uid, req.user.id)) continue;
     const key = `${uid}:${req.channel.id}`;
-    if (!mentioned && Date.now() - (lastChannelPush.get(key) || 0) < 60_000) continue;
+    if (!mentioned && !tts.tts && Date.now() - (lastChannelPush.get(key) || 0) < 60_000) continue; // (a /tts one always: it's read aloud)
     lastChannelPush.set(key, Date.now());
     const group = spaces.isGroup(spaces.getSpace(req.channel.space_id)) && groupTitle(req.channel.space_id, uid);
     const where = group || `#${req.channel.name}`;
     const name = mentioned ? `${who} mentioned you in ${where}` : `${who} in ${where}`;
-    push.send(uid, { type: 'message', from: { id: `ch:${req.channel.id}`, name } }, { ttl: 24 * 3600 });
+    push.send(uid, { type: 'message', from: { id: `ch:${req.channel.id}`, name }, ...tts }, { ttl: 24 * 3600 });
   }
 }
 

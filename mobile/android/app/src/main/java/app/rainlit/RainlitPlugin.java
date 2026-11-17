@@ -581,6 +581,15 @@ public class RainlitPlugin extends Plugin {
         tts.speak(text, TextToSpeech.QUEUE_ADD, params, "rainlit-" + System.nanoTime());
     }
 
+    // (Whether a /tts message is read aloud with the app in the background or closed, and how
+    // loud: Speaker.java keeps it, for when a push note comes.)
+    @PluginMethod
+    public void setTtsAway(PluginCall call) {
+        Float v = call.getFloat("volume");
+        Speaker.keep(getContext(), Boolean.TRUE.equals(call.getBoolean("on", false)), v != null ? v : 1f);
+        call.resolve();
+    }
+
     @PluginMethod
     public void stopSpeaking(PluginCall call) {
         ttsWaiting.clear();
