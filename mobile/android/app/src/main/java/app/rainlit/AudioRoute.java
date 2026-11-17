@@ -48,6 +48,12 @@ final class AudioRoute {
     }
     // Whether this call's sound plays as a call (true) or like music (false).
     private static boolean callSound = true;
+    // Where it was before a headset came: where it goes back to when that's unplugged.
+    private static String beforeHeadset = "speaker";
+
+    private static boolean headset(String k) {
+        return "wired".equals(k) || "bluetooth".equals(k);
+    }
 
     private static String kind(int type) {
         switch (type) {
@@ -70,6 +76,7 @@ final class AudioRoute {
     static void start(Context context, boolean echo, Listener listener) {
         AudioManager am = context.getSystemService(AudioManager.class);
         callSound = echo && AcousticEchoCanceler.isAvailable();
+        beforeHeadset = "speaker";
         if (callSound) {
             am.setMode(AudioManager.MODE_IN_COMMUNICATION);
             List<String> routes = available(context);
@@ -79,18 +86,34 @@ final class AudioRoute {
         }
         // (A page that started over brings a new listener: the old one's page is gone.)
         if (callback != null) am.unregisterAudioDeviceCallback(callback);
+        final Handler later = background();
         callback = new AudioDeviceCallback() {
             @Override
             public void onAudioDevicesAdded(AudioDeviceInfo[] added) {
+                // (A headset coming: where the sound was till now, for when it goes.)
+                String now = current(context);
+                if (!headset(now)) beforeHeadset = now;
                 listener.changed();
+                later.postDelayed(listener::changed, 800); // (again, once Android's lists have caught up)
             }
 
             @Override
             public void onAudioDevicesRemoved(AudioDeviceInfo[] removed) {
+                boolean gone = false;
+                for (AudioDeviceInfo d : removed) if (headset(kind(d.getType()))) gone = true;
+                final boolean headsetGone = gone;
                 listener.changed();
+                later.postDelayed(() -> {
+                    // (The headset unplugged, and none left: back where it was before it.)
+                    if (headsetGone && callSound) {
+                        List<String> routes = available(context);
+                        if (!routes.contains("wired") && !routes.contains("bluetooth")) set(context, beforeHeadset);
+                    }
+                    listener.changed();
+                }, 800);
             }
         };
-        am.registerAudioDeviceCallback(callback, background());
+        am.registerAudioDeviceCallback(callback, later);
     }
 
     static void stop(Context context) {
@@ -188,11 +211,19 @@ final class AudioRoute {
         if (!callSound) return false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             for (AudioDeviceInfo d : am.getAvailableCommunicationDevices()) {
-                if (route.equals(kind(d.getType()))) return am.setCommunicationDevice(d);
+                if (route.equals(kind(d.getType()))) {
+                    // (An earlier request let go of first: one for a headset that's since gone can
+                    // leave a new one unheeded.)
+                    am.clearCommunicationDevice();
+                    boolean ok = am.setCommunicationDevice(d);
+                    if (ok && !headset(route)) beforeHeadset = route;
+                    return ok;
+                }
             }
             return false;
         }
         am.setSpeakerphoneOn("speaker".equals(route));
+        if (!headset(route)) beforeHeadset = route;
         return true;
     }
 }

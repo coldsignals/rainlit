@@ -5153,16 +5153,31 @@ function renderRoute(routes) {
   el.routeBtn.title = `Sound is coming out of: ${ROUTE_LABEL[now] || now}. Tap to switch.`;
 }
 
+// (What there is, asked first: after a headset's unplugged, the list the page has can still have
+// it. And if a switch doesn't take, the next one along.)
 async function nextRoute() {
-  const r = S.audioRoute;
-  if (!ANDROID || !r) return;
-  const options = ROUTES.filter((x) => r.available.includes(x));
-  const next = options[(options.indexOf(r.current) + 1) % options.length];
-  if (!next || next === r.current) return;
+  if (!ANDROID || !S.audioRoute) return;
+  let r = S.audioRoute;
   try {
-    renderRoute(await ANDROID.setAudioRoute({ route: next }));
-    playControlSound('route');
+    r = (await ANDROID.audioRoutes()) || r;
+    renderRoute(r);
   } catch {}
+  if (!r || !r.available) return;
+  const options = ROUTES.filter((x) => r.available.includes(x));
+  const from = options.indexOf(r.current);
+  for (let i = 1; i < options.length; i++) {
+    const next = options[(from + i) % options.length];
+    if (!next || next === r.current) continue;
+    try {
+      const got = await ANDROID.setAudioRoute({ route: next });
+      trace('audio-out', { out: got && got.current, asked: next, ok: got && got.ok });
+      renderRoute(got);
+      if (got && got.current === next) {
+        playControlSound('route');
+        return;
+      }
+    } catch {}
+  }
 }
 
 // Signed out, there's no connection to the server to hear about updates, so coming back to

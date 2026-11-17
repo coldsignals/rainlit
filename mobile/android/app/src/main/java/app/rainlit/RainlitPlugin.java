@@ -487,8 +487,13 @@ public class RainlitPlugin extends Plugin {
 
     @PluginMethod
     public void setAudioRoute(PluginCall call) {
-        AudioRoute.set(getContext(), call.getString("route", "speaker"));
-        call.resolve(routes());
+        String route = call.getString("route", "speaker");
+        boolean ok = AudioRoute.set(getContext(), route);
+        JSObject result = routes();
+        // (Android takes a moment to say it's switched: taken, it's where it's going.)
+        if (ok) result.put("current", route);
+        result.put("ok", ok);
+        call.resolve(result);
     }
 
     // ----- Saving and opening files -----
