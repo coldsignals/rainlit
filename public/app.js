@@ -2387,6 +2387,7 @@ function handleServerMessage(msg) {
     case 'state':
       if (S.peer && msg.from === S.peer.id) {
         const wasSharing = Boolean(S.peer.state && S.peer.state.screen);
+        const wasCam = Boolean(S.peer.state && S.peer.state.cam);
         const wasOnPhone = Boolean(S.peer.state && S.peer.state.phone);
         const wasDeaf = Boolean(S.peer.state && S.peer.state.deaf);
         const wasWatching = Boolean(S.peer.state && S.peer.state.watching);
@@ -2410,6 +2411,8 @@ function handleServerMessage(msg) {
         if (msg.state && msg.state.deaf && !wasDeaf && !onPhone) toast(`${who} deafened: they can't hear you right now.`);
         const sharing = Boolean(msg.state && msg.state.screen);
         if (sharing !== wasSharing) playShareSound(sharing); // your friend started or stopped sharing
+        const cam = Boolean(msg.state && msg.state.cam);
+        if (cam !== wasCam && sharing === wasSharing) playCamSound(cam); // ...or their camera (a share's sound first, if both at once)
       }
       break;
     case 'delete':
@@ -7488,7 +7491,8 @@ function wakeSounds() {
 // kept just as they were). Both make the same sounds, the same way round (things starting or
 // coming on go up, things stopping or going off come down):
 //   chime: a new message. ring: a call coming in (and, quieter, yours going out). share: a
-//   screen share starting or stopping. watch: someone tuning in to your screen, or out. call:
+//   screen share starting or stopping. cam: someone else's camera coming on or going off.
+//   watch: someone tuning in to your screen, or out. call:
 //   someone joining or leaving a call. control: your own call buttons. click: any other button.
 // Each is given the sound player (ctx) and when to start (t).
 
@@ -7512,6 +7516,11 @@ const SOUND_STYLES = {
     share(ctx, t, starting) {
       const notes = starting ? [880, 1108.73, 1318.51] : [1318.51, 1108.73, 880]; // A5, C#6, E6
       notes.forEach((freq, i) => dropNote(ctx, freq, t + i * 0.075, { level: 0.13, length: 0.35, dest: dripRoom(ctx) }));
+    },
+    // Two round drops, lower than a share's: up as someone's camera comes on, down as it goes off.
+    cam(ctx, t, on) {
+      const notes = on ? [587.33, 739.99] : [739.99, 587.33]; // D5 and F#5
+      notes.forEach((freq, i) => dropNote(ctx, freq, t + i * 0.1, { level: 0.11, length: 0.32, glass: 0.1, dest: dripRoom(ctx) }));
     },
     // Two soft little drops, high: up as someone tunes in to your screen, down as they tune out.
     watch(ctx, t, joining) {
@@ -7580,6 +7589,11 @@ const SOUND_STYLES = {
     share(ctx, t, starting) {
       const notes = starting ? [783.99, 1046.5] : [1046.5, 783.99]; // G5 and C6
       notes.forEach((freq, i) => bellNote(ctx, freq, t + i * 0.11, 0.75));
+    },
+    // Two soft bell notes, lower than a share's: up as someone's camera comes on, down as it goes off.
+    cam(ctx, t, on) {
+      const notes = on ? [587.33, 739.99] : [739.99, 587.33]; // D5 and F#5
+      notes.forEach((freq, i) => bellNote(ctx, freq, t + i * 0.12, 0.55));
     },
     // A small, soft bell: high as someone tunes in to your screen, lower as they tune out.
     watch(ctx, t, joining) {
@@ -8387,6 +8401,12 @@ function drawFireflies(ctx, dt, w, h, t) {
     ctx.drawImage(fireflyGlow, f.x - r, f.y - r, r * 2, r * 2);
   }
   ctx.globalAlpha = 1;
+}
+
+// Someone else's camera coming on or going off (a DM call's friend, or someone in your voice channel).
+function playCamSound(on) {
+  if (!S.callSounds || !soundReady()) return;
+  styleSounds().cam(S.soundCtx, S.soundCtx.currentTime + 0.02, on);
 }
 
 // Screen sharing starting or stopping, for whoever's sharing and whoever's watching.
@@ -15487,6 +15507,17 @@ function voiceWatchers(v, members) {
     else if ([...v.sharers].some((id) => !theirs.has(id))) playShareSound(false);
   }
   v.sharers = theirs;
+  // (Someone's camera, on or off: only someone who was here already; one coming or going has the
+  // call's own sound.)
+  const here = new Set(members.map((m) => m.id));
+  const cams = new Set(members.filter((m) => m.video && m.id !== S.clientId).map((m) => m.id));
+  if (v.cams && v.here) {
+    const stayed = (id) => v.here.has(id) && here.has(id);
+    if ([...cams].some((id) => stayed(id) && !v.cams.has(id))) playCamSound(true);
+    else if ([...v.cams].some((id) => stayed(id) && !cams.has(id))) playCamSound(false);
+  }
+  v.cams = cams;
+  v.here = here;
   const mine = sharing.has(S.clientId);
   const viewers = new Set(mine ? members.filter((m) => m.id !== S.clientId && (m.watching || []).includes(S.clientId)).map((m) => m.id) : []);
   const came = [...viewers].some((id) => !v.viewers.has(id));
