@@ -1697,9 +1697,17 @@ api.delete('/pet', needUser, petRoute((req) => {
   return pets.get(req.user.id);
 }));
 api.post('/pet/swap', needUser, petRoute((req) => pets.swap(req.user, Number((req.body || {}).slot), req.body || {})));
-api.post('/pet/feed', needUser, petRoute((req) => pets.feed(req.user.id)));
-api.post('/pet/play', needUser, petRoute((req) => pets.play(req.user.id)));
+// (Its happiness changing: the dew collected till now counted first, at what it was.)
+api.post('/pet/feed', needUser, petRoute((req) => {
+  dew.collectNow(req.user.id);
+  return pets.feed(req.user.id);
+}));
+api.post('/pet/play', needUser, petRoute((req) => {
+  dew.collectNow(req.user.id);
+  return pets.play(req.user.id);
+}));
 api.post('/pet/pet', needUser, petRoute((req) => {
+  dew.collectNow(req.user.id);
   pets.petIt(req.user.id, req.user.id);
   return pets.get(req.user.id);
 }));

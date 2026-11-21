@@ -19210,9 +19210,11 @@ function renderPet() {
       petUrl: S.petTry ? null : '/api/pet/pet',
       onInfo: (info) => {
         if (S.petTry || !S.pet) return;
+        const was = S.pet.happy;
         Object.assign(S.pet, info);
         renderPetCare();
         renderPetButton();
+        if (info && typeof info.happy === 'number' && Math.abs(info.happy - was) > 0.001) dewAfterHappy();
       },
       onPat: patForDew,
     });
@@ -19876,6 +19878,16 @@ async function tendPet(what) {
   if (S.petLife) S.petLife.did(what, d.pet);
   renderPetCare();
   renderPetButton();
+  dewAfterHappy();
+}
+
+// The pet's happiness changed (fed, played with, petted): what it adds to dew, asked for again a
+// moment later (once, for a run of them), so the dew box says it and counts up by it.
+let dewHappyTimer = 0;
+function dewAfterHappy() {
+  if (!S.dew) return;
+  clearTimeout(dewHappyTimer);
+  dewHappyTimer = setTimeout(loadDew, 700);
 }
 
 // Letting it go, once you've said you're sure: it's gone for good.
