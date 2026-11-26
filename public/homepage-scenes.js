@@ -9,7 +9,7 @@
 //   poke(x, y)     (pressed there)
 //   still()        (one picture that stands for it: for someone who'd rather things didn't
 //                  move, and the editor's swatches)
-// Starfield flight, Bubbles, Bouncing logo and Rain on glass are everyone's; Pipes, Pond, Lava lamp,
+// Starfield flight, Bubbles, Bouncing logo, Rain on glass and the old browsers are everyone's; Pipes, Pond, Lava lamp,
 // Mystify, Snow globe, Constellations, City at night and Fireplace come with Glow (lib/homepages.js
 // keeps to that).
 
@@ -2430,4 +2430,383 @@ function fireplace(g, c1, c2) {
   };
 }
 
-export const SCENES = { warp, bubbles, bounce, pipes, pond, lava, mystify, globe, constellations, rainglass, city, fireplace };
+// ---------- An old web browser ----------
+// The page in a Rainscape window, as the web was seen around 1996 (Rain95's grey, bevelled) or 2002
+// (RainXP's blue and beige): its title ("Rainscape - Bea's homepage"), menus, Back, Forward,
+// Reload and Home, the address (a homepage of then's, with a tilde), a status bar, and a throbber
+// with rain in it. Its buttons light up under the pointer; one pressed, or the throbber, loads the
+// page again (a bar filling along the bottom), as it does now and then by itself. c1: the page;
+// c2: the title bar.
+function oldBrowser(style) {
+  return (g, c1, c2, opts = {}) => {
+    const xp = style === 'xp';
+    const page = rgbOf(c1);
+    const bar = rgbOf(c2);
+    const name = String(opts.name || 'my').slice(0, 40);
+    const slug = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '') || 'home';
+    const address = 'http://www.rainlit.app/~' + slug + '/index.html';
+    const title = (name === 'my' ? 'My' : name + "'s") + ' homepage - Rainscape';
+    const UI = '11px Tahoma, "MS Sans Serif", Verdana, sans-serif';
+    let w = 1;
+    let h = 1;
+    let k = 1;
+    let back = null;
+    let L = null; // (where everything is)
+    let px = null;
+    let py = null;
+    let clock = 0;
+    let loading = null; // ({ t, of }: a page loading, so far)
+    let nextLoad = rand(14, 26);
+    const grey = '#c0c0c0';
+    const beige = '#ece9d8';
+    const rect = (b, x, y, ww, hh, c) => { b.fillStyle = c; b.fillRect(x, y, ww, hh); };
+    // (Rain95's bevels: raised, as a button is, or sunk in, as a field is.)
+    const bevel = (b, x, y, ww, hh, up = true) => {
+      const [lt, dk, dk2] = up ? ['#ffffff', '#404040', '#808080'] : ['#808080', '#ffffff', '#dfdfdf'];
+      rect(b, x, y, ww, 1, lt); rect(b, x, y, 1, hh, lt);
+      rect(b, x, y + hh - 1, ww, 1, dk); rect(b, x + ww - 1, y, 1, hh, dk);
+      rect(b, x + 1, y + hh - 2, ww - 2, 1, dk2); rect(b, x + ww - 2, y + 1, 1, hh - 2, dk2);
+    };
+    const text = (b, s, x, y, { font = UI, color = '#000', align = 'left', max = 0 } = {}) => {
+      b.font = font;
+      b.fillStyle = color;
+      b.textAlign = align;
+      b.textBaseline = 'middle';
+      let t = s;
+      if (max > 0 && b.measureText(t).width > max) {
+        while (t.length > 1 && b.measureText(t + '...').width > max) t = t.slice(0, -1);
+        t += '...';
+      }
+      b.fillText(t, x, y);
+    };
+    // (Rainlit's drop.)
+    const drop = (b, cx, cy, r, tint = '#4c9bff') => {
+      b.beginPath();
+      b.moveTo(cx, cy - r * 1.5);
+      b.bezierCurveTo(cx + r * 0.2, cy - r * 0.9, cx + r, cy - r * 0.35, cx + r, cy + r * 0.2);
+      b.arc(cx, cy + r * 0.2, r, 0, Math.PI);
+      b.bezierCurveTo(cx - r, cy - r * 0.35, cx - r * 0.2, cy - r * 0.9, cx, cy - r * 1.5);
+      const gr = b.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+      gr.addColorStop(0, '#bfe0ff');
+      gr.addColorStop(1, tint);
+      b.fillStyle = gr;
+      b.fill();
+    };
+    // (A button's little picture: an arrow, two arrows round, or a house.)
+    const icon = (b, kind, cx, cy, s, color) => {
+      b.fillStyle = color;
+      b.strokeStyle = color;
+      b.lineWidth = Math.max(2, s * 0.18);
+      b.beginPath();
+      if (kind === 'back' || kind === 'forward') {
+        const d = kind === 'back' ? -1 : 1;
+        b.moveTo(cx + d * s * 0.55, cy);
+        b.lineTo(cx - d * s * 0.05, cy - s * 0.5);
+        b.lineTo(cx - d * s * 0.05, cy - s * 0.2);
+        b.lineTo(cx - d * s * 0.55, cy - s * 0.2);
+        b.lineTo(cx - d * s * 0.55, cy + s * 0.2);
+        b.lineTo(cx - d * s * 0.05, cy + s * 0.2);
+        b.lineTo(cx - d * s * 0.05, cy + s * 0.5);
+        b.closePath();
+        b.fill();
+      } else if (kind === 'reload') {
+        b.arc(cx, cy, s * 0.4, -Math.PI * 0.3, Math.PI * 1.4);
+        b.stroke();
+        b.beginPath();
+        b.moveTo(cx + s * 0.18, cy - s * 0.62);
+        b.lineTo(cx + s * 0.5, cy - s * 0.3);
+        b.lineTo(cx + s * 0.08, cy - s * 0.18);
+        b.closePath();
+        b.fill();
+      } else if (kind === 'home') {
+        b.moveTo(cx, cy - s * 0.55);
+        b.lineTo(cx + s * 0.55, cy - s * 0.02);
+        b.lineTo(cx + s * 0.38, cy - s * 0.02);
+        b.lineTo(cx + s * 0.38, cy + s * 0.5);
+        b.lineTo(cx - s * 0.38, cy + s * 0.5);
+        b.lineTo(cx - s * 0.38, cy - s * 0.02);
+        b.lineTo(cx - s * 0.55, cy - s * 0.02);
+        b.closePath();
+        b.fill();
+      }
+    };
+    const BUTTONS = [['back', 'Back'], ['forward', 'Forward'], ['reload', xp ? 'Refresh' : 'Reload'], ['home', 'Home']];
+    const lay = () => {
+      const top = xp ? 30 : 22;
+      const menu = xp ? 22 : 20;
+      const tools = xp ? 40 : 44;
+      const addr = 26;
+      const status = 22;
+      const toolsY = top + menu;
+      const addrY = toolsY + tools;
+      const pageY = addrY + addr + 2;
+      const bw = xp ? 74 : 52;
+      const buttons = BUTTONS.map(([key, label], i) => ({ key, label, x: 6 + i * (bw + (xp ? 4 : 2)), y: toolsY + 3, w: bw, h: tools - 6 }));
+      const throb = xp ? { x: w - 46, y: top + 1, w: 40, h: menu - 2 } : { x: w - 46, y: toolsY + 2, w: 40, h: tools - 4 };
+      return { top, menu, tools, addr, status, toolsY, addrY, pageY, buttons, throb };
+    };
+    const drawChrome = () => {
+      back = canvasOf(w * k, h * k);
+      const b = back.getContext('2d');
+      b.scale(k, k);
+      // (The page: its colour, all the way through; the window round it.)
+      rect(b, 0, 0, w, h, css(page));
+      const face = xp ? beige : grey;
+      // Title bar.
+      if (xp) {
+        const t = b.createLinearGradient(0, 0, 0, L.top);
+        t.addColorStop(0, css(shade(bar, 0.35)));
+        t.addColorStop(0.12, css(shade(bar, 0.08)));
+        t.addColorStop(0.45, css(bar));
+        t.addColorStop(0.85, css(shade(bar, -0.12)));
+        t.addColorStop(1, css(shade(bar, -0.3)));
+        b.fillStyle = t;
+        b.beginPath();
+        b.roundRect(0, 0, w, L.top + 6, [8, 8, 0, 0]);
+        b.fill();
+        drop(b, 16, L.top / 2 + 2, 5, '#9fd0ff');
+        text(b, title, 28, L.top / 2 + 1, { font: 'bold 13px "Trebuchet MS", Tahoma, sans-serif', color: '#fff', max: w - 130 });
+        [['_', '#2560e8'], ['□', '#2560e8'], ['×', '#d4421f']].forEach(([s, c], i) => {
+          const x = w - 26 * (3 - i) - 4;
+          b.fillStyle = c;
+          b.beginPath();
+          b.roundRect(x, 4, 22, 22, 3);
+          b.fill();
+          b.strokeStyle = '#fff';
+          b.lineWidth = 1;
+          b.stroke();
+          text(b, s, x + 11, 15, { font: 'bold 13px Tahoma, sans-serif', color: '#fff', align: 'center' });
+        });
+      } else {
+        rect(b, 0, 0, w, L.top, face);
+        bevel(b, 0, 0, w, h, true);
+        const t = b.createLinearGradient(3, 0, w - 3, 0);
+        t.addColorStop(0, css(bar));
+        t.addColorStop(1, css(mix(bar, [16, 132, 208], 0.75)));
+        b.fillStyle = t;
+        b.fillRect(3, 3, w - 6, L.top - 4);
+        drop(b, 12, L.top / 2 + 1, 4, '#9fd0ff');
+        text(b, title, 22, L.top / 2 + 1, { font: 'bold 11px Tahoma, "MS Sans Serif", sans-serif', color: '#fff', max: w - 90 });
+        ['_', '□', '×'].forEach((s, i) => {
+          const x = w - 3 - (3 - i) * 18 + (i === 2 ? 2 : 0);
+          rect(b, x, 5, 16, 14, face);
+          bevel(b, x, 5, 16, 14, true);
+          text(b, s, x + 8, 12, { font: 'bold 10px Tahoma, sans-serif', align: 'center' });
+        });
+      }
+      // Menus.
+      const menuY = L.top;
+      rect(b, xp ? 0 : 3, menuY, xp ? w : w - 6, L.menu, face);
+      let mx = 10;
+      for (const m of xp ? ['File', 'Edit', 'View', 'Favorites', 'Tools', 'Help'] : ['File', 'Edit', 'View', 'Go', 'Bookmarks', 'Help']) {
+        text(b, m, mx, menuY + L.menu / 2, { font: UI });
+        b.font = UI;
+        mx += b.measureText(m).width + 14;
+      }
+      // Toolbar.
+      if (xp) {
+        const t = b.createLinearGradient(0, L.toolsY, 0, L.toolsY + L.tools);
+        t.addColorStop(0, '#f7f6f0');
+        t.addColorStop(1, '#e3dfcf');
+        b.fillStyle = t;
+        b.fillRect(0, L.toolsY, w, L.tools);
+        rect(b, 0, L.toolsY, w, 1, '#d7d2bf');
+      } else {
+        rect(b, 3, L.toolsY, w - 6, L.tools, face);
+        rect(b, 3, L.toolsY, w - 6, 1, '#808080');
+        rect(b, 3, L.toolsY + 1, w - 6, 1, '#fff');
+      }
+      // Address.
+      const ay = L.addrY;
+      if (xp) {
+        rect(b, 0, ay, w, L.addr, beige);
+        rect(b, 0, ay, w, 1, '#d7d2bf');
+        text(b, 'Address', 8, ay + L.addr / 2, { color: '#5b5b5b' });
+        const fx = 58;
+        const fw = w - fx - 44;
+        rect(b, fx, ay + 3, fw, L.addr - 6, '#fff');
+        b.strokeStyle = '#7f9db9';
+        b.lineWidth = 1;
+        b.strokeRect(fx + 0.5, ay + 3.5, fw - 1, L.addr - 7);
+        drop(b, fx + 10, ay + L.addr / 2 + 1, 3.5);
+        text(b, address, fx + 20, ay + L.addr / 2, { max: fw - 26 });
+        // (Go.)
+        b.fillStyle = '#3c9a2e';
+        b.beginPath();
+        b.roundRect(w - 40, ay + 4, 18, 18, 3);
+        b.fill();
+        icon(b, 'forward', w - 31, ay + 13, 12, '#fff');
+        text(b, 'Go', w - 18, ay + L.addr / 2, { color: '#000' });
+      } else {
+        rect(b, 3, ay, w - 6, L.addr, face);
+        text(b, 'Location:', 10, ay + L.addr / 2);
+        const fx = 64;
+        const fw = w - fx - 10;
+        rect(b, fx, ay + 3, fw, L.addr - 6, '#fff');
+        bevel(b, fx, ay + 3, fw, L.addr - 6, false);
+        text(b, address, fx + 6, ay + L.addr / 2, { max: fw - 12 });
+      }
+      // The page's own edge.
+      if (xp) {
+        rect(b, 0, L.pageY - 2, w, 2, '#7f9db9');
+        rect(b, 0, L.pageY, 3, h - L.pageY, css(shade(bar, -0.1)));
+        rect(b, w - 3, L.pageY, 3, h - L.pageY, css(shade(bar, -0.1)));
+      } else {
+        rect(b, 3, L.pageY - 2, w - 6, 2, face);
+        bevel(b, 3, L.pageY - 2, w - 6, h - L.pageY - L.status + 2, false);
+      }
+      // Status bar (its words and its bar are drawn each time: paint).
+      const sy = h - L.status;
+      if (xp) {
+        rect(b, 0, sy, w, L.status, beige);
+        rect(b, 0, sy, w, 1, '#d7d2bf');
+        rect(b, w - 130, sy + 3, 1, L.status - 6, '#c3bfae');
+        b.fillStyle = '#3b82d1';
+        b.beginPath();
+        b.arc(w - 116, sy + L.status / 2, 6, 0, Math.PI * 2);
+        b.fill();
+        b.strokeStyle = '#d9ecff';
+        b.lineWidth = 1;
+        b.beginPath();
+        b.ellipse(w - 116, sy + L.status / 2, 3, 6, 0, 0, Math.PI * 2);
+        b.moveTo(w - 122, sy + L.status / 2);
+        b.lineTo(w - 110, sy + L.status / 2);
+        b.stroke();
+        text(b, 'Internet', w - 104, sy + L.status / 2);
+      } else {
+        rect(b, 3, sy, w - 6, L.status - 3, face);
+        bevel(b, 5, sy + 2, w - 160, L.status - 6, false);
+        bevel(b, w - 152, sy + 2, 120, L.status - 6, false);
+        bevel(b, w - 29, sy + 2, 24, L.status - 6, false);
+        // (A padlock, open: the web then.)
+        b.strokeStyle = '#505050';
+        b.lineWidth = 1.5;
+        b.beginPath();
+        b.arc(w - 17, sy + 8, 3, Math.PI, Math.PI * 1.9);
+        b.stroke();
+        rect(b, w - 21, sy + 9, 8, 6, '#7a6a2a');
+      }
+    };
+    const paint = () => {
+      g.drawImage(back, 0, 0, w, h);
+      // Its buttons: lit under the pointer.
+      for (const bt of L.buttons) {
+        const over = px !== null && px >= bt.x && px < bt.x + bt.w && py >= bt.y && py < bt.y + bt.h;
+        if (xp) {
+          if (over) {
+            g.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            g.strokeStyle = '#c1d2ee';
+            g.lineWidth = 1;
+            g.beginPath();
+            g.roundRect(bt.x + 0.5, bt.y + 0.5, bt.w - 1, bt.h - 1, 3);
+            g.fill();
+            g.stroke();
+          }
+          const round = bt.key === 'back' || bt.key === 'forward';
+          if (round) {
+            g.fillStyle = over ? '#4dbb3a' : '#3c9a2e';
+            g.beginPath();
+            g.arc(bt.x + 15, bt.y + bt.h / 2, 12, 0, Math.PI * 2);
+            g.fill();
+            icon(g, bt.key, bt.x + 15, bt.y + bt.h / 2, 14, '#fff');
+          } else {
+            icon(g, bt.key, bt.x + 15, bt.y + bt.h / 2, 16, bt.key === 'reload' ? '#3c9a2e' : '#3a6fc4');
+          }
+          text(g, bt.label, bt.x + 32, bt.y + bt.h / 2, { color: '#000' });
+        } else {
+          if (over) bevel(g, bt.x, bt.y, bt.w, bt.h, true);
+          icon(g, bt.key, bt.x + bt.w / 2, bt.y + 13, 16, bt.key === 'reload' ? '#2f7d32' : bt.key === 'home' ? '#8a5a16' : '#1f4fa8');
+          text(g, bt.label, bt.x + bt.w / 2, bt.y + bt.h - 8, { align: 'center' });
+        }
+      }
+      // The throbber: rain in it while a page is loading, still otherwise.
+      const tb = L.throb;
+      if (xp) {
+        g.fillStyle = '#fff';
+        g.fillRect(tb.x, tb.y, tb.w, tb.h);
+      } else {
+        g.fillStyle = '#000';
+        g.fillRect(tb.x, tb.y, tb.w, tb.h);
+        bevel(g, tb.x, tb.y, tb.w, tb.h, false);
+      }
+      g.save();
+      g.beginPath();
+      g.rect(tb.x + 2, tb.y + 2, tb.w - 4, tb.h - 4);
+      g.clip();
+      if (loading) {
+        g.strokeStyle = xp ? 'rgba(60, 120, 220, 0.8)' : 'rgba(140, 200, 255, 0.9)';
+        g.lineWidth = 1.2;
+        g.beginPath();
+        for (let i = 0; i < 7; i++) {
+          const x = tb.x + 4 + ((i * 11 + clock * 9) % (tb.w - 6));
+          const y = tb.y + ((i * 7 + clock * 70) % (tb.h + 8)) - 4;
+          g.moveTo(x, y);
+          g.lineTo(x - 2, y + 6);
+        }
+        g.stroke();
+      }
+      drop(g, tb.x + tb.w / 2, tb.y + tb.h / 2 + (xp ? 1 : 2), xp ? 5 : 8 + (loading ? Math.sin(clock * 8) * 1 : 0));
+      g.restore();
+      // The status bar's words, and a bar filling while it loads.
+      const sy = h - L.status;
+      const said = loading ? (loading.t < 0.4 ? 'Looking up host: www.rainlit.app...' : 'Transferring data from www.rainlit.app...') : xp ? 'Done' : 'Document: Done';
+      text(g, said, xp ? 8 : 10, sy + L.status / 2 - (xp ? 0 : 1), { max: w - 180 });
+      if (loading) {
+        const k2 = Math.min(1, loading.t / loading.of);
+        if (xp) {
+          const bx = w - 250;
+          g.strokeStyle = '#a5a598';
+          g.strokeRect(bx + 0.5, sy + 5.5, 110, L.status - 11);
+          for (let i = 0; i < Math.floor(k2 * 13); i++) {
+            g.fillStyle = '#3ca83c';
+            g.fillRect(bx + 3 + i * 8, sy + 8, 6, L.status - 16);
+          }
+        } else {
+          g.fillStyle = '#000080';
+          g.fillRect(w - 150, sy + 4, Math.round(116 * k2), L.status - 10);
+        }
+      }
+    };
+    const startLoad = () => {
+      if (!loading) loading = { t: 0, of: rand(1.8, 3.2) };
+    };
+    return {
+      fps: 15,
+      resize(nw, nh) {
+        w = nw;
+        h = nh;
+        k = g.canvas.width / w;
+        L = lay();
+        drawChrome();
+      },
+      frame(dt) {
+        clock += dt;
+        if (loading) {
+          loading.t += dt;
+          if (loading.t > loading.of + 0.3) {
+            loading = null;
+            nextLoad = rand(18, 40);
+          }
+        } else if ((nextLoad -= dt) <= 0) startLoad();
+        paint();
+      },
+      point(x, y) {
+        px = x;
+        py = y;
+      },
+      poke(x, y) {
+        const tb = L.throb;
+        const onButton = L.buttons.some((bt) => x >= bt.x && x < bt.x + bt.w && y >= bt.y && y < bt.y + bt.h);
+        if (onButton || (x >= tb.x && x < tb.x + tb.w && y >= tb.y && y < tb.y + tb.h)) startLoad();
+      },
+      still() {
+        paint();
+      },
+      things: () => ({ loading: Boolean(loading), page: L ? L.pageY : 0 }),
+    };
+  };
+}
+const browser95 = oldBrowser('95');
+const browserxp = oldBrowser('xp');
+
+export const SCENES = { warp, bubbles, bounce, pipes, pond, lava, mystify, globe, constellations, rainglass, city, fireplace, browser95, browserxp };

@@ -63,6 +63,8 @@
     lava: { label: 'Lava lamp', colors: ['Liquid', 'Wax'], c1: '#4a1a7a', c2: '#ff7a2f' },
     bounce: { label: 'Bouncing logo', colors: ['Background', 'Logo'], c1: '#000000', c2: '#5ad1ff' },
     rainglass: { label: 'Rain on glass', colors: ['Night', 'Lights'], c1: '#0c1424', c2: '#ffb85c' },
+    browser95: { label: 'Rain95 browser', colors: ['Page', 'Title bar'], c1: '#ffffff', c2: '#000080' },
+    browserxp: { label: 'RainXP browser', colors: ['Page', 'Title bar'], c1: '#ffffff', c2: '#0a5ce8' },
     mystify: { label: 'Mystify', colors: ['Background', 'Lines'], c1: '#000000', c2: '#4ff0ff' },
     globe: { label: 'Snow globe', colors: ['Sky', 'Snow'], c1: '#2a4a7f', c2: '#ffffff' },
     constellations: { label: 'Constellations', colors: ['Sky', 'Stars'], c1: '#0b1230', c2: '#d6e4ff' },
