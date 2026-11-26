@@ -4823,7 +4823,7 @@
       // (Whole room, or closer. `keep`: chosen, so it's remembered; otherwise, as when the room's
       // done up, just for now.)
       fit(on, keep = false) {
-        on = Boolean(on) && !el.classList.contains('pr-arranging');
+        on = Boolean(on);
         if (keep) try { localStorage.setItem('rainlit.roomWhole', on ? 'on' : 'off'); } catch {}
         // (Its size worked out again even when it was whole already: another room (visiting one
         // pet, then another's, smaller) or another width kept the last one's, and was drawn at
@@ -4835,6 +4835,7 @@
         if (was === on && view.style.getPropertyValue('--fit') === fitWas) return;
         pan.settle();
         if (el.hpPet) el.hpPet.refit();
+        if (el.prArrange) el.prArrange.drawn(); // (doing it up: the bar over what's picked out, placed again)
         pan.edges();
       },
     };
@@ -5072,12 +5073,20 @@
       }
       for (const b of tints.children) b.setAttribute('aria-pressed', String(Number(b.dataset.tint) === (t.tint || 0)));
       if (tools.hidden) return;
+      // (The whole room in view, drawn smaller: the bar its own size all the same, so it's grown
+      // back by as much, and placed by the size it's drawn at.)
+      const view = el.prView;
+      const k = view && view.classList.contains('pr-fit') ? Number(view.style.getPropertyValue('--fit')) || 1 : 1;
+      tools.style.transformOrigin = '0 0';
+      tools.style.transform = k !== 1 ? `scale(${1 / k})` : '';
+      const tw = tools.offsetWidth / k;
+      const th = tools.offsetHeight / k;
       const W = el.clientWidth;
       const H = el.clientHeight;
-      const left = n.offsetLeft + n.offsetWidth / 2 - tools.offsetWidth / 2;
-      tools.style.left = `${clampTo(left, 4, Math.max(4, W - tools.offsetWidth - 4))}px`;
-      const above = n.offsetTop - tools.offsetHeight - 6;
-      tools.style.top = `${above >= 4 ? above : Math.min(H - tools.offsetHeight - 4, n.offsetTop + n.offsetHeight + 6)}px`;
+      const left = n.offsetLeft + n.offsetWidth / 2 - tw / 2;
+      tools.style.left = `${clampTo(left, 4, Math.max(4, W - tw - 4))}px`;
+      const above = n.offsetTop - th - 6 / k;
+      tools.style.top = `${above >= 4 ? above : Math.min(H - th - 4, n.offsetTop + n.offsetHeight + 6 / k)}px`;
     }
     function select(i) {
       st.sel = i < things().length ? i : -1;
@@ -5226,8 +5235,7 @@
         st.on = Boolean(on);
         el.classList.toggle('pr-arranging', st.on);
         if (el.prView) {
-          if (st.on) el.prView.prPan.fit(false); // (closer, to move things about)
-          else el.prView.prPan.apply(); // (and back to whole after, if that's how it was left)
+          el.prView.prPan.apply(); // (whole, or closer, as it was left: things move about in either)
         }
         if (st.on) el.tabIndex = 0;
         else el.removeAttribute('tabindex');
