@@ -613,7 +613,8 @@
   }
 
   // Pictures and videos: uploaded, then onto the page at a sensible size (or a picture behind it).
-  async function upload(files, { background = false } = {}) {
+  async function upload(files, { background = false, pagePic = false } = {}) {
+    if (pagePic) background = true; // (one picture, for behind)
     for (const file of files) {
       if (!background && /^video\//.test(file.type)) {
         const f = await uploadVideo(file);
@@ -634,6 +635,10 @@
       try {
         const { file: f, usage } = await app.api('POST', '/homepages/me/files', file);
         state.data.usage = usage;
+        if (pagePic) {
+          change((doc) => { doc.bg = { ...doc.bg, pagePic: f.id, pageFit: doc.bg.pageFit || 'tile' }; });
+          continue;
+        }
         if (background) {
           change((doc) => { doc.bg = { ...doc.bg, kind: 'image', file: f.id, fit: doc.bg.fit || 'cover' }; });
           continue;
@@ -887,8 +892,8 @@
   }
 
   function uploadButton(label, opts = {}) {
-    const accept = `image/png,image/jpeg,image/gif,image/webp${opts.background ? '' : ',video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v'}`;
-    const input = el('input', { type: 'file', accept, multiple: !opts.background });
+    const accept = `image/png,image/jpeg,image/gif,image/webp${opts.background || opts.pagePic ? '' : ',video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v'}`;
+    const input = el('input', { type: 'file', accept, multiple: !opts.background && !opts.pagePic });
     input.addEventListener('change', () => {
       const files = [...input.files];
       input.value = '';
@@ -1160,6 +1165,17 @@
       if (glow.length) out.push(el('div', { style: { marginTop: '14px' } }, perkBox(el('div', { class: 'hp-grid' }, ...glow), tryingScene)));
       const [n1, n2] = (H.SCENES[current] || H.SCENES.warp).colors;
       out.push(field(n1, colors(bg.c1, (c) => setBg({ c1: c }))), field(n2, colors(bg.c2, (c) => setBg({ c2: c }))));
+      // (An old browser's page: a picture on it, as the old homepages had: a texture repeated, or
+      // a picture stretched to fill.)
+      if (current === 'browser95' || current === 'browserxp') {
+        out.push(h3('A picture on its page'),
+          el('p', { class: 'hp-note-small', text: 'Like the old homepages: a small texture repeated all over the page, or a picture stretched to fill it.' }),
+          el('div', { class: 'hp-grid', style: { margin: '8px 0' } },
+            uploadButton(bg.pagePic ? 'A different picture…' : 'Put a picture on it…', { pagePic: true }),
+            ...(bg.file && bg.file !== bg.pagePic ? [el('button', { class: 'hp-item wide', type: 'button', text: 'Use my background picture', onclick: () => setBg({ pagePic: bg.file, pageFit: bg.pageFit || 'tile' }) })] : []),
+            ...(bg.pagePic ? [el('button', { class: 'hp-item wide', type: 'button', text: 'No picture', onclick: () => setBg({ pagePic: null }) })] : [])));
+        if (bg.pagePic) out.push(field('The picture', chips({ tile: 'Repeat it', stretch: 'Stretch it to fill' }, bg.pageFit || 'tile', (pageFit) => setBg({ pageFit }))));
+      }
     }
     if (bg.kind === 'pattern') {
       // (Glow's move: they're in its box, to try on.)

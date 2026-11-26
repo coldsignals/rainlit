@@ -2457,6 +2457,19 @@ function oldBrowser(style) {
     let clock = 0;
     let loading = null; // ({ t, of }: a page loading, so far)
     let nextLoad = rand(14, 26);
+    // (A picture on its page, once it's come: repeated at its own size, or stretched to fill.)
+    let pic = null;
+    if (opts.picture && opts.picture.url && typeof Image === 'function') {
+      const img = new Image();
+      img.onload = () => {
+        pic = img;
+        if (L) {
+          drawChrome();
+          paint();
+        }
+      };
+      img.src = opts.picture.url;
+    }
     const grey = '#c0c0c0';
     const beige = '#ece9d8';
     const rect = (b, x, y, ww, hh, c) => { b.fillStyle = c; b.fillRect(x, y, ww, hh); };
@@ -2549,8 +2562,27 @@ function oldBrowser(style) {
       back = canvasOf(w * k, h * k);
       const b = back.getContext('2d');
       b.scale(k, k);
-      // (The page: its colour, all the way through; the window round it.)
+      // (The page: its colour, all the way through, and its picture, if it's one; the window round it.)
       rect(b, 0, 0, w, h, css(page));
+      if (pic) {
+        const top = L.pageY;
+        const ph = h - L.status - top;
+        b.save();
+        b.beginPath();
+        b.rect(0, top, w, ph);
+        b.clip();
+        if (opts.picture.fit === 'stretch') {
+          b.drawImage(pic, 0, top, w, ph);
+        } else {
+          const pat = b.createPattern(pic, 'repeat');
+          if (pat) {
+            pat.setTransform(new DOMMatrix([1, 0, 0, 1, 0, top]));
+            b.fillStyle = pat;
+            b.fillRect(0, top, w, ph);
+          }
+        }
+        b.restore();
+      }
       const face = xp ? beige : grey;
       // Title bar.
       if (xp) {
@@ -2771,7 +2803,7 @@ function oldBrowser(style) {
       if (!loading) loading = { t: 0, of: rand(1.8, 3.2) };
     };
     return {
-      fps: 15,
+      fps: 20, // (a frame every 50 ms at most: slower, and its clock would lag)
       resize(nw, nh) {
         w = nw;
         h = nh;

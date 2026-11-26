@@ -5785,7 +5785,13 @@
     stage.append(canvas);
     room.append(sky, stage);
     page.append(room);
-    if (doc.bg && doc.bg.kind === 'scene') page.hpScene = sceneOn(page, room, doc.bg, { name: ctx.owner.displayName || ctx.owner.username || '' });
+    if (doc.bg && doc.bg.kind === 'scene') {
+      page.hpScene = sceneOn(page, room, doc.bg, {
+        name: ctx.owner.displayName || ctx.owner.username || '',
+        // (An old browser's page: a picture on it, repeated or stretched.)
+        picture: doc.bg.pagePic && ctx.fileUrl ? { url: ctx.fileUrl(doc.bg.pagePic), fit: doc.bg.pageFit === 'stretch' ? 'stretch' : 'tile' } : null,
+      });
+    }
     if (!ctx.edit) firstSongStarts(page, canvas, opts);
     // Pieces can reach past the page's 800px, and below it. The page is in the middle of the view,
     // as it was made, with those showing around it; one that'd be out of view there moves it over
