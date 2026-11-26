@@ -4825,9 +4825,14 @@
       fit(on, keep = false) {
         on = Boolean(on) && !el.classList.contains('pr-arranging');
         if (keep) try { localStorage.setItem('rainlit.roomWhole', on ? 'on' : 'off'); } catch {}
-        if (view.classList.contains('pr-fit') === on) return;
+        // (Its size worked out again even when it was whole already: another room (visiting one
+        // pet, then another's, smaller) or another width kept the last one's, and was drawn at
+        // that: half a room, and half blank (Imbruski's report).)
+        const was = view.classList.contains('pr-fit');
+        const fitWas = view.style.getPropertyValue('--fit');
         view.classList.toggle('pr-fit', on);
         view.style.setProperty('--fit', on ? String(sc.clientWidth / (roomPx(el) * el.prRoom.geo.cols)) : '1');
+        if (was === on && view.style.getPropertyValue('--fit') === fitWas) return;
         pan.settle();
         if (el.hpPet) el.hpPet.refit();
         pan.edges();
@@ -4904,6 +4909,8 @@
       el.prSized = true;
       new ResizeObserver(() => {
         view.style.setProperty('--px', `${roomPx(el)}px`);
+        // (Whole, and the view's another size now: the room's size to fit it, again.)
+        if (view.classList.contains('pr-fit')) view.style.setProperty('--fit', String(view.prScroll.clientWidth / (roomPx(el) * el.prRoom.geo.cols)));
         if (el.hpPet) el.hpPet.refit();
         if (el.prArrange) el.prArrange.drawn();
         view.prPan.settle();
