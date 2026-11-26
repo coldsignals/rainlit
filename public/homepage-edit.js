@@ -548,11 +548,16 @@
 
   // ---------- Adding and changing pieces ----------
 
+  // (How much of the view an old browser background's window takes, at its top and its bottom:
+  // the page shows between them.)
+  const barsOf = (page) => ['top', 'bottom'].map((edge) => parseFloat(page.style.getPropertyValue(`--hp-chrome-${edge}`)) || 0);
+
   // Where to put something new: the middle of what's showing of the page.
   function spot(w, h) {
     const page = $('hp-page');
     const s = scale();
-    const y = (page.scrollTop + page.clientHeight / 2) / s;
+    const [top, bottom] = barsOf(page);
+    const y = (page.scrollTop + (page.clientHeight - top - bottom) / 2) / s;
     const jitter = () => Math.round((Math.random() - 0.5) * 60);
     return { x: round(clamp(H.WIDTH / 2 - w / 2 + jitter(), 0, H.WIDTH - w)), y: round(Math.max(20, y - h / 2 + jitter())) };
   }
@@ -956,7 +961,8 @@
           onclick: () => {
             // (Along the bottom of what's showing, the page's width.)
             const page = $('hp-page');
-            const y = (page.scrollTop + page.clientHeight) / scale() - 50;
+            const [top, bottom] = barsOf(page);
+            const y = (page.scrollTop + page.clientHeight - top - bottom) / scale() - 50;
             add({ t: 'taskbar', style: 'window', label: 'start', x: 0, y: round(Math.max(0, y)), r: 0, w: H.WIDTH, h: 36 });
           },
         }),

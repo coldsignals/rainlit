@@ -1607,3 +1607,17 @@ li:hover > .msg-face .fx *, li:hover > .msg-face .fx *::before, li:hover > .msg-
 .hp-sign-stamp img { width: 24px; height: 24px; image-rendering: pixelated; }
 .hp-sign-stamp:hover { border-color: #fff; }
 .hp-sign-stamp[aria-pressed="true"] { border-color: #f5b94a; background: #ffe6a8; box-shadow: 0 0 0 2px #f5b94a; }
+
+/* An old browser background's window (homepage-scenes.js, homepage.js sceneOn): its top (title,
+   menus, toolbar and address), its sides and its status bar, in front of what's on the page (a video
+   popped up, the Fit button and messages still over them), held in the view as the page scrolls
+   under them; the page starts under its top and ends over its status bar. */
+.hp-chrome { display: block; position: sticky; z-index: 5; }
+.hp-chrome-top { top: 0; left: 0; align-self: start; justify-self: start; }
+.hp-chrome-bottom { bottom: 0; left: 0; align-self: end; justify-self: start; }
+.hp-chrome-left, .hp-chrome-right { top: var(--hp-chrome-top, 0px); margin-top: var(--hp-chrome-top, 0px); align-self: start; }
+.hp-chrome-left { left: 0; justify-self: start; }
+.hp-chrome-right { right: 0; justify-self: end; }
+.hp-chromed .hp-stage { margin-top: var(--hp-chrome-top, 0px); margin-bottom: var(--hp-chrome-bottom, 0px); }
+.hp-page.hp-chromed ~ .hp-unzoom { bottom: 36px; } /* (over its status bar) */
+.hp-page.hp-chromed ~ .hp-toast { bottom: 38px; }

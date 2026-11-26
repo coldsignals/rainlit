@@ -2457,6 +2457,8 @@ function oldBrowser(style) {
     let clock = 0;
     let loading = null; // ({ t, of }: a page loading, so far)
     let nextLoad = rand(14, 26);
+    let layers = null; // ({ top, bottom, left, right }: its window's own layers, in front of the page)
+    let behind = false; // (the page behind them drawn, since it last changed)
     // (A picture on its page, once it's come: repeated at its own size, or stretched to fill.)
     let pic = null;
     if (opts.picture && opts.picture.url && typeof Image === 'function') {
@@ -2558,8 +2560,12 @@ function oldBrowser(style) {
       const throb = xp ? { x: w - 46, y: top + 1, w: 40, h: menu - 2 } : { x: w - 46, y: toolsY + 2, w: 40, h: tools - 4 };
       return { top, menu, tools, addr, status, toolsY, addrY, pageY, buttons, throb };
     };
+    // (How far its window comes in round the page: its top, its status bar, and its two sides.)
+    const { pageY: TOP, status: BOTTOM } = lay();
+    const SIDES = xp ? [3, 3] : [4, 5];
     const drawChrome = () => {
       back = canvasOf(w * k, h * k);
+      behind = false;
       const b = back.getContext('2d');
       b.scale(k, k);
       // (The page: its colour, all the way through, and its picture, if it's one; the window round it.)
@@ -2720,90 +2726,121 @@ function oldBrowser(style) {
       }
     };
     const paint = () => {
-      g.drawImage(back, 0, 0, w, h);
+      // (Its window on layers of its own, in front of what's on the page, when it's been given them
+      // (homepage.js sceneOn): its top (title, menus, toolbar and address), its two sides and its
+      // status bar. The page behind them is drawn just the once then: nothing in it moves.)
+      let gt = g;
+      let gb = g;
+      if (layers) {
+        if (!behind) {
+          g.drawImage(back, 0, 0, w, h);
+          const tall = h - L.pageY - L.status;
+          if (tall > 0) {
+            layers.left.drawImage(back, 0, L.pageY * k, SIDES[0] * k, tall * k, 0, 0, SIDES[0], tall);
+            layers.right.drawImage(back, (w - SIDES[1]) * k, L.pageY * k, SIDES[1] * k, tall * k, 0, 0, SIDES[1], tall);
+          }
+          behind = true;
+        }
+        gt = layers.top;
+        gb = layers.bottom;
+        gt.drawImage(back, 0, 0, w * k, L.pageY * k, 0, 0, w, L.pageY);
+        gb.drawImage(back, 0, (h - L.status) * k, w * k, L.status * k, 0, 0, w, L.status);
+        gb.save();
+        gb.translate(0, L.status - h); // (its status bar's drawn there as if at the bottom of it all)
+      } else {
+        g.drawImage(back, 0, 0, w, h);
+      }
       // Its buttons: lit under the pointer.
       for (const bt of L.buttons) {
         const over = px !== null && px >= bt.x && px < bt.x + bt.w && py >= bt.y && py < bt.y + bt.h;
         if (xp) {
           if (over) {
-            g.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            g.strokeStyle = '#c1d2ee';
-            g.lineWidth = 1;
-            g.beginPath();
-            g.roundRect(bt.x + 0.5, bt.y + 0.5, bt.w - 1, bt.h - 1, 3);
-            g.fill();
-            g.stroke();
+            gt.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            gt.strokeStyle = '#c1d2ee';
+            gt.lineWidth = 1;
+            gt.beginPath();
+            gt.roundRect(bt.x + 0.5, bt.y + 0.5, bt.w - 1, bt.h - 1, 3);
+            gt.fill();
+            gt.stroke();
           }
           const round = bt.key === 'back' || bt.key === 'forward';
           if (round) {
-            g.fillStyle = over ? '#4dbb3a' : '#3c9a2e';
-            g.beginPath();
-            g.arc(bt.x + 15, bt.y + bt.h / 2, 12, 0, Math.PI * 2);
-            g.fill();
-            icon(g, bt.key, bt.x + 15, bt.y + bt.h / 2, 14, '#fff');
+            gt.fillStyle = over ? '#4dbb3a' : '#3c9a2e';
+            gt.beginPath();
+            gt.arc(bt.x + 15, bt.y + bt.h / 2, 12, 0, Math.PI * 2);
+            gt.fill();
+            icon(gt, bt.key, bt.x + 15, bt.y + bt.h / 2, 14, '#fff');
           } else {
-            icon(g, bt.key, bt.x + 15, bt.y + bt.h / 2, 16, bt.key === 'reload' ? '#3c9a2e' : '#3a6fc4');
+            icon(gt, bt.key, bt.x + 15, bt.y + bt.h / 2, 16, bt.key === 'reload' ? '#3c9a2e' : '#3a6fc4');
           }
-          text(g, bt.label, bt.x + 32, bt.y + bt.h / 2, { color: '#000' });
+          text(gt, bt.label, bt.x + 32, bt.y + bt.h / 2, { color: '#000' });
         } else {
-          if (over) bevel(g, bt.x, bt.y, bt.w, bt.h, true);
-          icon(g, bt.key, bt.x + bt.w / 2, bt.y + 13, 16, bt.key === 'reload' ? '#2f7d32' : bt.key === 'home' ? '#8a5a16' : '#1f4fa8');
-          text(g, bt.label, bt.x + bt.w / 2, bt.y + bt.h - 8, { align: 'center' });
+          if (over) bevel(gt, bt.x, bt.y, bt.w, bt.h, true);
+          icon(gt, bt.key, bt.x + bt.w / 2, bt.y + 13, 16, bt.key === 'reload' ? '#2f7d32' : bt.key === 'home' ? '#8a5a16' : '#1f4fa8');
+          text(gt, bt.label, bt.x + bt.w / 2, bt.y + bt.h - 8, { align: 'center' });
         }
       }
       // The throbber: rain in it while a page is loading, still otherwise.
       const tb = L.throb;
       if (xp) {
-        g.fillStyle = '#fff';
-        g.fillRect(tb.x, tb.y, tb.w, tb.h);
+        gt.fillStyle = '#fff';
+        gt.fillRect(tb.x, tb.y, tb.w, tb.h);
       } else {
-        g.fillStyle = '#000';
-        g.fillRect(tb.x, tb.y, tb.w, tb.h);
-        bevel(g, tb.x, tb.y, tb.w, tb.h, false);
+        gt.fillStyle = '#000';
+        gt.fillRect(tb.x, tb.y, tb.w, tb.h);
+        bevel(gt, tb.x, tb.y, tb.w, tb.h, false);
       }
-      g.save();
-      g.beginPath();
-      g.rect(tb.x + 2, tb.y + 2, tb.w - 4, tb.h - 4);
-      g.clip();
+      gt.save();
+      gt.beginPath();
+      gt.rect(tb.x + 2, tb.y + 2, tb.w - 4, tb.h - 4);
+      gt.clip();
       if (loading) {
-        g.strokeStyle = xp ? 'rgba(60, 120, 220, 0.8)' : 'rgba(140, 200, 255, 0.9)';
-        g.lineWidth = 1.2;
-        g.beginPath();
+        gt.strokeStyle = xp ? 'rgba(60, 120, 220, 0.8)' : 'rgba(140, 200, 255, 0.9)';
+        gt.lineWidth = 1.2;
+        gt.beginPath();
         for (let i = 0; i < 7; i++) {
           const x = tb.x + 4 + ((i * 11 + clock * 9) % (tb.w - 6));
           const y = tb.y + ((i * 7 + clock * 70) % (tb.h + 8)) - 4;
-          g.moveTo(x, y);
-          g.lineTo(x - 2, y + 6);
+          gt.moveTo(x, y);
+          gt.lineTo(x - 2, y + 6);
         }
-        g.stroke();
+        gt.stroke();
       }
-      drop(g, tb.x + tb.w / 2, tb.y + tb.h / 2 + (xp ? 1 : 2), xp ? 5 : 8 + (loading ? Math.sin(clock * 8) * 1 : 0));
-      g.restore();
+      drop(gt, tb.x + tb.w / 2, tb.y + tb.h / 2 + (xp ? 1 : 2), xp ? 5 : 8 + (loading ? Math.sin(clock * 8) * 1 : 0));
+      gt.restore();
       // The status bar's words, and a bar filling while it loads.
       const sy = h - L.status;
       const said = loading ? (loading.t < 0.4 ? 'Looking up host: www.rainlit.app...' : 'Transferring data from www.rainlit.app...') : xp ? 'Done' : 'Document: Done';
-      text(g, said, xp ? 8 : 10, sy + L.status / 2 - (xp ? 0 : 1), { max: w - 180 });
+      text(gb, said, xp ? 8 : 10, sy + L.status / 2 - (xp ? 0 : 1), { max: w - 180 });
       if (loading) {
         const k2 = Math.min(1, loading.t / loading.of);
         if (xp) {
           const bx = w - 250;
-          g.strokeStyle = '#a5a598';
-          g.strokeRect(bx + 0.5, sy + 5.5, 110, L.status - 11);
+          gb.strokeStyle = '#a5a598';
+          gb.strokeRect(bx + 0.5, sy + 5.5, 110, L.status - 11);
           for (let i = 0; i < Math.floor(k2 * 13); i++) {
-            g.fillStyle = '#3ca83c';
-            g.fillRect(bx + 3 + i * 8, sy + 8, 6, L.status - 16);
+            gb.fillStyle = '#3ca83c';
+            gb.fillRect(bx + 3 + i * 8, sy + 8, 6, L.status - 16);
           }
         } else {
-          g.fillStyle = '#000080';
-          g.fillRect(w - 150, sy + 4, Math.round(116 * k2), L.status - 10);
+          gb.fillStyle = '#000080';
+          gb.fillRect(w - 150, sy + 4, Math.round(116 * k2), L.status - 10);
         }
       }
+      if (layers) gb.restore();
     };
     const startLoad = () => {
       if (!loading) loading = { t: 0, of: rand(1.8, 3.2) };
     };
     return {
       fps: 20, // (a frame every 50 ms at most: slower, and its clock would lag)
+      // (Its window round the page, how far it comes in, for layers there in front of what's on the
+      // page (homepage.js sceneOn); given them, it's drawn on them.)
+      chrome: { top: TOP, bottom: BOTTOM, left: SIDES[0], right: SIDES[1] },
+      layers(on) {
+        layers = on && on.top && on.bottom && on.left && on.right ? on : null;
+        behind = false;
+      },
       resize(nw, nh) {
         w = nw;
         h = nh;

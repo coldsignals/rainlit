@@ -455,10 +455,12 @@
   // times a second (30 on a phone, and for the ones that take the most drawing); for someone
   // who'd rather things didn't move, it's one still picture.
   let scenesFrom = null;
-  const loadScenes = () => (scenesFrom ||= import('/homepage-scenes.js').catch((err) => {
+  let scenesHere = null; // (once they've come: a page drawn again has its scene at once)
+  const loadScenes = () => (scenesFrom ||= import('/homepage-scenes.js').then((m) => (scenesHere = m)).catch((err) => {
     scenesFrom = null;
     throw err;
   }));
+  const EDGES = ['top', 'bottom', 'left', 'right'];
   const calmMedia = () => (window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false });
 
   function sceneOn(page, room, bg, opts = {}) {
@@ -496,6 +498,20 @@
       cv.style.width = `${w}px`;
       cv.style.height = `${h}px`;
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (bars) {
+        const c = scene.chrome;
+        const tall = Math.max(1, h - c.top - c.bottom);
+        const sizes = { top: [w, c.top], bottom: [w, c.bottom], left: [c.left, tall], right: [c.right, tall] };
+        for (const edge of EDGES) {
+          const [bw, bh] = sizes[edge];
+          const n = bars[edge];
+          n.width = Math.max(1, Math.round(bw * dpr));
+          n.height = Math.max(1, Math.round(bh * dpr));
+          n.style.width = `${bw}px`;
+          n.style.height = `${bh}px`;
+          n.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+      }
       scene.resize(w, h);
       if (calm.matches) scene.still();
     };
@@ -563,14 +579,43 @@
     page.addEventListener('pointermove', move, { passive: true });
     page.addEventListener('pointerleave', leave);
     document.addEventListener('visibilitychange', shown);
-    loadScenes().then((m) => {
+    // (A scene with a window round the page (an old browser's): its top, its sides and its status
+    // bar on layers of their own, in front of what's on the page (a video popped up is still over
+    // them), held there in the view as the page scrolls under them; and the page starting under
+    // its top and ending over its status bar, as a page in a browser does.)
+    let bars = null;
+    const begin = (m) => {
       if (stopped) return;
       scene = (m.SCENES[bg.scene] || m.SCENES.warp)(g, hex(bg.c1, '#04050c'), hex(bg.c2, '#ffffff'), opts);
+      if (scene.chrome && scene.layers) {
+        bars = {};
+        const on = {};
+        for (const edge of EDGES) {
+          const n = document.createElement('canvas');
+          n.className = `hp-chrome hp-chrome-${edge}`;
+          n.setAttribute('aria-hidden', 'true');
+          room.append(n);
+          bars[edge] = n;
+          on[edge] = n.getContext('2d');
+          page.style.setProperty(`--hp-chrome-${edge}`, `${scene.chrome[edge]}px`);
+        }
+        page.classList.add('hp-chromed');
+        scene.layers(on);
+      }
       gap = 1000 / Math.min(phone ? 30 : 60, scene.fps || 60);
       size();
       if (ro) ro.observe(page);
       go();
-    }).catch(() => {});
+    };
+    // (Drawn again, as the editor does after each change: at once, so the page is as tall as it
+    // was, under its bars, for it to be scrolled back to where it was.)
+    if (scenesHere) {
+      try {
+        begin(scenesHere);
+      } catch {
+        // (as when it comes later: the page without it)
+      }
+    } else loadScenes().then(begin).catch(() => {});
     return {
       stop() {
         stopped = true;
@@ -583,6 +628,14 @@
         page.removeEventListener('pointerleave', leave);
         document.removeEventListener('visibilitychange', shown);
         cv.remove();
+        if (bars) {
+          for (const edge of EDGES) {
+            bars[edge].remove();
+            page.style.removeProperty(`--hp-chrome-${edge}`);
+          }
+          page.classList.remove('hp-chromed');
+          bars = null;
+        }
       },
       // (For tests: whether it's running, how many frames it's drawn (and how long each took, on
       // average), how many presses it's had and where the last was (in its own pixels), and what's
