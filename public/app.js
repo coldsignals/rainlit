@@ -1974,7 +1974,7 @@ function wsSend(msg) {
 
 function myState() {
   return {
-    mic: Boolean(S.micOn && S.local.mic && !S.onPhone && !S.deafened && !S.micTesting), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone), deaf: S.deafened,
+    mic: Boolean(S.micOn && S.local.mic && !S.onPhone && !S.deafened && !S.micTesting), cam: Boolean(S.local.cam), screen: Boolean(S.local.screen), phone: Boolean(S.onPhone), micBusy: Boolean(S.micBusy && !S.onPhone), deaf: S.deafened,
     // (This app shows a camera and a screen at once; it sends its screen on this stream, and is now.)
     both: true, share: S.shareStream.id, apart: Boolean(S.local.screen && S.conn && S.conn.routedBoth),
     // (This app asks before showing your friend's screen: Watch stream. And whether it's watching.)
@@ -2390,6 +2390,7 @@ function handleServerMessage(msg) {
         const wasCam = Boolean(S.peer.state && S.peer.state.cam);
         const wasOnPhone = Boolean(S.peer.state && S.peer.state.phone);
         const wasDeaf = Boolean(S.peer.state && S.peer.state.deaf);
+        const wasMicBusy = Boolean(S.peer.state && S.peer.state.micBusy);
         const wasWatching = Boolean(S.peer.state && S.peer.state.watching);
         S.peer.state = msg.state;
         // (Their screen's gone: not watching it any more, for the next one to ask again.)
@@ -2409,6 +2410,9 @@ function handleServerMessage(msg) {
         if (onPhone && !wasOnPhone) toast(`${who} is on another call. You're on hold until they're back.`, 20_000);
         if (!onPhone && wasOnPhone) toast(`${who} is back from their other call.`);
         if (msg.state && msg.state.deaf && !wasDeaf && !onPhone) toast(`${who} deafened: they can't hear you right now.`);
+        const micBusy = Boolean(msg.state && msg.state.micBusy);
+        if (micBusy && !wasMicBusy) toast(`Another app on ${who}'s phone is using the mic for now, so you might not hear them. They can still hear you.`, 10_000);
+        if (!micBusy && wasMicBusy && !onPhone) toast(`${who}'s mic is back.`);
         const sharing = Boolean(msg.state && msg.state.screen);
         if (sharing !== wasSharing) playShareSound(sharing); // your friend started or stopped sharing
         const cam = Boolean(msg.state && msg.state.cam);
@@ -23098,6 +23102,7 @@ function teardown({ sendLeave, keepActive = false }) {
   }
   S.inCall = false;
   S.onPhone = false;
+  S.micBusy = false;
   S.deafened = false;
   S.watchingPeer = false;
   finishCamPreview(false);
@@ -23631,6 +23636,15 @@ async function init() {
     ANDROID.addListener('phonecall', (d) => {
       trace('phone-call', { on: Boolean(d && d.on), why: (d && d.why) || undefined });
       setOnPhone(Boolean(d && d.on), (d && d.why) || '');
+    });
+    // (Another app using the mic, not on a call: TikTok or YouTube opening it for a moment. The
+    // call carries on; your friend's told why they mightn't hear you.)
+    ANDROID.addListener('micbusy', (d) => {
+      const on = Boolean(d && d.on);
+      trace('mic-busy', { on });
+      if (!S.inCall || Boolean(S.micBusy) === on) return;
+      S.micBusy = on;
+      sendState();
     });
   }
   // In the Android app, Save buttons (links to files) save to Downloads.

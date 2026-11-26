@@ -123,11 +123,16 @@ public class RainlitPlugin extends Plugin {
     // voice (a playback for voice communication that wasn't there before: Rainlit's own doesn't
     // count). Taking the sound alone isn't a call: a TikTok video does that too, and put someone
     // on hold with no call at all. No extra permission needed. (Another app's, seen two seconds
-    // running: not a moment's overlap as Rainlit's mic is opened again.) Says which: "phone" or
-    // "app".
+    // running: not a moment's overlap as Rainlit's mic is opened again.) Says which: "phone", or
+    // "app-call" (two recordings for calls) or "app-voice" (another app playing a call's voice).
+    // Rainlit's mic silenced for another app's recording, with neither of those, isn't a call (a
+    // TikTok or YouTube opening the mic for a moment does that: 2026-11-26): it's said apart
+    // ("micbusy"), and the call carries on.
     private final Handler handler = AudioRoute.background(); // (off the main thread: see AudioRoute)
     private boolean onPhone = false;
     private int otherSeen = 0;
+    private boolean micBusy = false;
+    private int busySeen = 0;
     private int voiceOutBefore = 0; // (call-voice playbacks while nobody else had the sound: Rainlit's own)
     private final Runnable watchPhone = new Runnable() {
         @Override
@@ -138,15 +143,26 @@ public class RainlitPlugin extends Plugin {
             boolean held = Ducking.heldElsewhere();
             int voiceOut = voiceOut(am);
             if (!held) voiceOutBefore = voiceOut;
-            boolean other = otherAppInCall(am) || (held && voiceOut > voiceOutBefore);
+            String rec = otherAppRecording(am);
+            boolean voice = held && voiceOut > voiceOutBefore;
+            boolean other = "call".equals(rec) || voice;
             otherSeen = other ? otherSeen + 1 : 0;
             boolean now = phone || otherSeen >= 2;
             if (now != onPhone) {
                 onPhone = now;
                 JSObject data = new JSObject();
                 data.put("on", now);
-                if (now) data.put("why", phone ? "phone" : "app");
+                if (now) data.put("why", phone ? "phone" : "call".equals(rec) ? "app-call" : "app-voice");
                 notifyListeners("phonecall", data);
+            }
+            // (Its mic silenced for another app's recording, and no call: just that.)
+            busySeen = !now && "silenced".equals(rec) ? busySeen + 1 : 0;
+            boolean busy = busySeen >= 2;
+            if (busy != micBusy) {
+                micBusy = busy;
+                JSObject data = new JSObject();
+                data.put("on", busy);
+                notifyListeners("micbusy", data);
             }
             handler.postDelayed(this, 1000);
         }
@@ -166,20 +182,22 @@ public class RainlitPlugin extends Plugin {
         }
     }
 
-    // Another app recording for a call (two recordings for calls at once: Rainlit's, and theirs), or
-    // Rainlit's own mic silenced (Android gives the mic to the app on a call).
-    private static boolean otherAppInCall(AudioManager am) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false;
+    // Another app recording: for a call ("call": two recordings for calls at once, Rainlit's and
+    // theirs), or not, with Rainlit's own mic silenced for it ("silenced": Android gives the mic to
+    // the app in front); or nothing (null).
+    private static String otherAppRecording(AudioManager am) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null;
         try {
             List<AudioRecordingConfiguration> list = am.getActiveRecordingConfigurations();
             int calls = 0;
+            boolean silenced = false;
             for (AudioRecordingConfiguration c : list) {
-                if (c.isClientSilenced() && list.size() > 1) return true;
+                if (c.isClientSilenced() && list.size() > 1) silenced = true;
                 if (c.getClientAudioSource() == MediaRecorder.AudioSource.VOICE_COMMUNICATION) calls++;
             }
-            return calls >= 2;
+            return calls >= 2 ? "call" : silenced ? "silenced" : null;
         } catch (RuntimeException e) {
-            return false;
+            return null;
         }
     }
 
