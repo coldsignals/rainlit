@@ -1,6 +1,18 @@
 {
   "entries": [
     {
+      "id": "2026-11-26",
+      "date": "2026-11-26",
+      "title": "Browse like it's 1999",
+      "items": [
+        {
+          "title": "Old browser backgrounds",
+          "text": "Two new homepage backgrounds put your whole page inside an old web browser, Rain95 or RainXP, complete with a Reload button and a progress bar.",
+          "media": "/whats-new/2026-11-26-browsers.webp"
+        }
+      ]
+    },
+    {
       "id": "2026-11-14b",
       "date": "2026-11-14",
       "title": "Picture effects, cards and homepages",
