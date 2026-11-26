@@ -3077,18 +3077,32 @@ async function reviveMic(why) {
 // says when), the Rainlit call waits: your mic is off and your friend goes quiet, so neither call
 // hears the other, and your friend is told. (Your mic's never opened again by itself meanwhile:
 // that would take it back from the other call.)
+// Rainlit muting you (on hold, or your mic taken by another app), heard: mute's sound going down,
+// and up again when you're back; not for an ordinary phone call (you know, and it could be heard
+// in it). By Settings' call sounds.
+function playMutedSound(muted) {
+  if (!S.callSounds || !soundReady()) return;
+  styleSounds().control(S.soundCtx, S.soundCtx.currentTime + 0.02, muted ? 'mute' : 'unmute');
+}
+
 function setOnPhone(on, why = '') {
   if (!S.inCall || Boolean(S.onPhone) === on) return;
   S.onPhone = on;
+  if (on) S.onPhoneWhy = why;
   applyMic();
   applyVolume();
   sendState();
+  const who = S.peer && S.peer.name ? S.peer.name : 'your friend';
   if (on) {
-    // (Said, and a way back: the app can take another app's sound for a call it isn't.)
+    // (Said, and a way back: the app can take another app's sound for a call it isn't. Out of
+    // Rainlit, a notification says it, and you hear it, as you mightn't see it.)
     toast(why === 'phone' ? "You're on a phone call: your Rainlit call waits till it's over. Tap the mic button to come back sooner."
       : 'Another app seems to be on a call, so your Rainlit call is waiting. Not on one? Tap the mic button to come back.', 12_000);
+    if (why !== 'phone') playMutedSound(true);
+    appNotify({ title: 'Your Rainlit call is on hold', body: why === 'phone' ? `${who} will be there when your phone call's over.` : `Another app seems to be on a call, so ${who} can't hear you. Not on one? Open Rainlit and tap the mic button.` });
     return;
   }
+  if (S.onPhoneWhy !== 'phone') playMutedSound(false);
   toast('Back in your Rainlit call.');
   // (The other call took the mic, and it's gone: opened again, now it's yours again.)
   if (S.local.mic && S.local.mic.readyState === 'ended') {
@@ -23645,6 +23659,11 @@ async function init() {
       if (!S.inCall || Boolean(S.micBusy) === on) return;
       S.micBusy = on;
       sendState();
+      // (You mightn't see it, in another app: heard, and a notification.)
+      playMutedSound(on);
+      const who = S.peer && S.peer.name ? S.peer.name : 'your friend';
+      if (on) appNotify({ title: 'Another app is using your mic', body: `${who} can't hear you till it lets go of it.` });
+      else toast(`Your mic is back: ${who} can hear you again.`);
     });
   }
   // In the Android app, Save buttons (links to files) save to Downloads.
