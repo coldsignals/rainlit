@@ -3766,8 +3766,18 @@
   function cityTile() {
     const W = 32;
     const tops = [[0, 4, 13], [4, 6, 9], [10, 5, 15], [15, 3, 11], [18, 7, 7], [25, 5, 12], [30, 2, 16]]; // ([x, width, how tall])
-    const g = Array.from({ length: WALL_ROWS }, (_, y) => Array(W).fill(y < 10 ? 'a' : 'b'));
-    for (const [x, y] of [[3, 2], [13, 5], [22, 1], [28, 4], [8, 8]]) g[y][x] = 's';
+    // (The sky lighter towards the city, in steps, each step's edge checkered so it's no hard line;
+    // and stars all down it, so a room of any height has some: 2026-11-26, two flat blues with a
+    // hard line between, and stars only at the top a first-size room never shows.)
+    const H = WALL_ROWS;
+    const shade = (x, y) => {
+      const from = y - (H - 36); // (as if the wall were 36 tall: the steps where they'd be)
+      const edge = (at) => from === at || from === at + 1 ? (x + y) % 2 === 0 : from > at + 1;
+      return edge(22) ? 'c' : edge(12) ? 'b' : 'a';
+    };
+    const g = Array.from({ length: H }, (_, y) => Array.from({ length: W }, (_, x) => shade(x, y)));
+    for (const [x, y] of [[3, 2], [13, 5], [22, 1], [28, 4], [8, 8], [17, 11], [26, 14], [5, 16], [11, 19]]) if (y < H) g[H - 36 + y] && (g[H - 36 + y][x] = 's');
+    for (const [x, y] of [[20, 7], [1, 10], [30, 9], [15, 3], [9, 13], [24, 18], [29, 20]]) if (g[H - 36 + y]) g[H - 36 + y][x] = 't';
     for (const [x0, w, tall] of tops) {
       for (let x = x0; x < Math.min(W, x0 + w); x++) for (let y = WALL_ROWS - tall; y < WALL_ROWS; y++) g[y][x] = 'h';
       for (let x = x0 + 1; x < Math.min(W, x0 + w) - 1; x += 2) for (let y = WALL_ROWS - tall + 2; y < WALL_ROWS - 1; y += 2) g[y][x] = (x * 7 + y * 3) % 5 === 0 ? 'h' : 'y';
@@ -3872,7 +3882,7 @@
       colors: { a: '#141a3a', b: '#fff4c2', c: '#8f96c9' },
     },
     aurora: { label: 'Aurora', perk: true, twinkle: 'g', tile: auroraTile(), colors: { a: '#0f1a33', b: '#0b1328', g: '#5ff0b0', t: '#2a9f96', p: '#7a5cd6' } },
-    city: { label: 'City at night', perk: true, twinkle: 'y', tile: cityTile(), colors: { a: '#0f1530', b: '#1a2246', s: '#cfd8ff', h: '#0a0d1c', y: '#ffd76a' } },
+    city: { label: 'City at night', perk: true, twinkle: 'y', tile: cityTile(), colors: { a: '#0d1229', b: '#151c3e', c: '#202a54', s: '#dbe3ff', t: '#7f8bc4', h: '#0a0d1c', y: '#ffd76a' } },
     leaves: { label: 'Dewy leaves', dew: true, tile: leavesTile(), colors: { a: '#284a37', b: '#3f7a4f', c: '#5fa36a', d: '#cfeeff' } },
     retro: { label: 'Seventies', dew: true, tile: ['aaabbbcccdddcccbbb'], colors: { a: '#4a2c1a', b: '#b5562a', c: '#d99a34', d: '#efd29a' } },
     raindrops: { label: 'Raindrops', dew: true, tile: ['aaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa', 'aaaabaaaaaaaaaaa', 'aaaabaaaaaaadaaa', 'aaabbbaaaaaaaaaa', 'aabbbbbaaaaaaaaa', 'aabcbbbadaaaaaaa',
